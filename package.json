@@ -1,0 +1,47 @@
+{
+  "name": "easyoracledb",
+  "version": "0.1.0",
+  "description": "An easy-to-use nodejs oracledb client",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "mocha",
+    "lint": "eslint --fix ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jovercao/easyoracledb.git"
+  },
+  "keywords": [
+    "node",
+    "nodejs",
+    "oracle",
+    "oracledb",
+    "mongodb",
+    "db",
+    "database"
+  ],
+  "author": "jover",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jovercao/easyoracledb/issues"
+  },
+  "homepage": "https://github.com/jovercao/easyoracledb#readme",
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^2.3.1",
+    "@typescript-eslint/parser": "^2.3.1",
+    "eslint": "^6.4.0",
+    "eslint-config-standard": "^14.1.0",
+    "eslint-plugin-import": "^2.18.2",
+    "eslint-plugin-node": "^10.0.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.0.1",
+    "typescript": "^3.6.3"
+  },
+  "dependencies": {
+    "lodash": "^4.17.15",
+    "oracledb": "^4.0.1"
+  }
+}
