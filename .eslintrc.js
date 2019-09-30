@@ -10,7 +10,9 @@ module.exports = {
     ],
     "globals": {
         "Atomics": "readonly",
-        "SharedArrayBuffer": "readonly"
+        "SharedArrayBuffer": "readonly",
+        "describe": "readonly",
+        "it": "readonly"
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {
@@ -20,6 +22,6 @@ module.exports = {
         "@typescript-eslint"
     ],
     "rules": {
-      "space-before-function-paren": ["error", "never"]
+      "space-before-function-paren": ["off", "never"]
     }
 };
