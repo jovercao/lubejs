@@ -134,7 +134,7 @@ declare namespace EasyOracleDB {
    * 创建一个数据库连接
    * @param config 数据库连接选项
    */
-  function createConnection(config: OracleDB.ConnectionAttributes): Connection;
+  function connect(config: OracleDB.ConnectionAttributes): Connection;
 }
 
 export = EasyOracleDB
