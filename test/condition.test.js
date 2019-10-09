@@ -1,10 +1,10 @@
 const oracledb = require('../index')
 const assert = require('power-assert')
 
-describe('连接数据库测试', function () {
-  const { NULL, Condition: { $not, $eq, $uneq, $lt, $gt, $lte, $gte, $like, $isnull, $notnull, $in, $notin, $and, $or } } = oracledb
+describe.skip('数据库条构建', function () {
+  const { Condition: { $not, $eq, $uneq, $lt, $gt, $lte, $gte, $like, $isnull, $notnull, $in, $notin, $and, $or } } = oracledb
 
-  it.only('条件构建测试', async function () {
+  it('条件构建测试', async function () {
     const where = $eq('ID', 1).and($uneq('ID', 0)).and($in('ID', [0, 1, 2, 3])).and(
       $or(
         $like('NAME', '%冷%'),
@@ -20,16 +20,16 @@ describe('连接数据库测试', function () {
     )
     console.dir(where.value)
 
-    const connection = await oracledb.connect({
-      user: 'test',
-      password: 'test',
-      connectString: 'rancher/ORCL'
-    })
+    // const connection = await oracledb.connect({
+    //   user: 'test',
+    //   password: 'test',
+    //   connectString: 'rancher/ORCL'
+    // })
 
-    const rows = await connection.select('ITEMS', {
-      where: where.value
-    })
+    // const rows = await connection.select('ITEMS', {
+    //   where: where.value
+    // })
 
-    console.log(rows)
+    // console.log(rows)
   })
 })

@@ -12,7 +12,9 @@ module.exports = {
         "Atomics": "readonly",
         "SharedArrayBuffer": "readonly",
         "describe": "readonly",
-        "it": "readonly"
+        "it": "readonly",
+        "before": "readonly",
+        "after": "readonly"
     },
     "parser": "@typescript-eslint/parser",
     "parserOptions": {

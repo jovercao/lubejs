@@ -3,6 +3,8 @@ import { ConnectionOptions } from 'tls';
 
 declare namespace EasyOracleDB {
 
+  const SYSDBA: Symbol;
+
   /**
    * 连接池
    */
