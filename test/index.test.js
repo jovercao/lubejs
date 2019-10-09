@@ -76,25 +76,25 @@ describe('数据库测试', function () {
   })
 
   it('select', async function () {
-    const { Condition: { $field } } = oracledb
-    const where = $field('FID').eq(1)
-      .and($field('FID').uneq(0))
-      .and($field('FID').in([0, 1, 2, 3]))
+    const { field: $, not: $not } = oracledb
+    const where = $('FID').eq(1)
+      .and($('FID').uneq(0))
+      .and($('FID').in([0, 1, 2, 3]))
       .and(
-        $field('FNAME').like('%冷%')
-          .or($field('FID').eq(1))
-          .or($field('FID').gt(1))
-          .or($field('FID').lte(1))
-          .or($field('FID').gte(1))
-          .or($field('FNAME').notnull())
-          .or($field('FID').in([1, 2, 3]))
-          .or($field('FID').notin([1, 2, 3]))
-          .or($field('FID').notnull())
+        $('FNAME').like('%冷%')
+          .or($('FID').eq(1))
+          .or($('FID').gt(1))
+          .or($('FID').lte(1))
+          .or($('FID').gte(1))
+          .or($('FNAME').notnull())
+          .or($('FID').in([1, 2, 3]))
+          .or($('FID').notin([1, 2, 3]))
+          .or($('FID').notnull())
       )
       .and(
-        $field('FID').eq(1)
-          .and($field('FNAME').eq('冷蒙'))
-          .and($field('FID').in(1, 2, 3, 4))
+        $('FID').eq(1)
+          .and($('FNAME').eq('冷蒙'))
+          .and($('FID').in(1, 2, 3, 4))
       )
 
     const rows = await conn.select('Items', {
