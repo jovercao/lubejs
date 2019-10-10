@@ -1,28 +1,29 @@
-# easyoracledb
+# lubejs
 
-> 本库诣在Node.js环境中轻松使用OracleDB数据库
+> 本库诣在Node.js环境中轻松使用数据库操作
+
+目前仅支持`Oracle DB`
+
 本库基于 [`node-oracledb`](https://github.com/oracle/node-oracledb) 实现，某些使用方法请参考
 
 ## 安装
 
 使用npm中安装
 
-```bash
-$ npm install easyoracledb --save
+```shell
+$ npm install lubejs --save
 ```
 
 ## 使用
 
-### 快速使用
-
 ```js
 // 引入
-const easyOracleDb = require('easyoracledb')
+const lube = require('lubejs')
 
 async function aQuery() {
 
   // 创建连接, 连接配置请参考 https://oracle.github.io/node-oracledb/doc/api.html#getconnectiondb
-  const conn = await easyOracleDb.connect({
+  const conn = await lube.connect({
     user: 'sys',
     password: 'oracle',
     connectString: 'rancher-vm/orcl',
@@ -95,7 +96,7 @@ async function aQuery() {
   // SELECT id, name FROM table1 WHERE sex = '男' AND age < 20 AND (id <= 100 OR id > 200)
   // 返回： [ { ID: 1, NAME: 'jover' }, ..., { ID: 201, NAME: 'bill'}, ... ]
 
-  const $ = easyOracleDb.field
+  const $ = lube.field
 
   // 函数风格查询
   res = await conn.select('table1', {
@@ -158,7 +159,7 @@ async function aQuery() {
 
   /*******************使用连接池********************/
   // 创建连接, 连接配置请参考 https://oracle.github.io/node-oracledb/doc/api.html#createpool
-  const pool = await easyOracleDb.createPool({
+  const pool = await lube.createPool({
     // 连接增量
     poolIncrement: 5,
     // 最大连接数
@@ -187,11 +188,11 @@ async function aQuery() {
 
 ## api
 
-### easyOracleDb
+### lube
 
-easyOracleDb库入口，使用`require('easyoracledb')`导入
+easyOracleDb库入口，使用`require('lubejs')`导入
 
-#### async easyOracleDb.connect(config)
+#### async lube.connect(config)
 
 打开一个数据库连接，并返回一个`connection`
 
@@ -203,7 +204,7 @@ easyOracleDb库入口，使用`require('easyoracledb')`导入
 
 返回连接对象`connection`
 
-#### async easyOracleDb.createPool(config)
+#### async lube.createPool(config)
 
 创建一个数据库连接池对象`pool`并返回
 
@@ -217,7 +218,7 @@ easyOracleDb库入口，使用`require('easyoracledb')`导入
 
 ### connection
 
-数据库连接，可以使用`easyOracleDb.connect(config)` 或者 `pool.getConnection()` 创建
+数据库连接，可以使用`lube.connect(config)` 或者 `pool.getConnection()` 创建
 
 #### async connection.query(sql, params)
 
@@ -226,7 +227,7 @@ easyOracleDb库入口，使用`require('easyoracledb')`导入
 **【参数】：**
 
 - `sql` - 要执行的SQL语句
-- `params` - 要传递的参数, 可以是 Object 也可以是 Array，当为Object时，需要与参数名对应，当为Array时，需要与参数索引位置对应，请参考[快速使用](#快速使用)
+- `params` - 要传递的参数, 可以是 Object 也可以是 Array，当为Object时，需要与参数名对应，当为Array时，需要与参数索引位置对应，请参考[使用](#使用)
 
 **【返回】：**
 
@@ -295,7 +296,7 @@ Object类型，符合条件的第一行数据对象，
   - `fields` - 字符串数组类型，要查询的字段列表
   - `offset` - 获取结果的偏移行数
   - `limit` - 获取结果的行数
-  - `orders` - 排序选项数组, 排序方向, `asc` 或者 `desc`， 请参考[快速使用](#快速使用)中的排序范例
+  - `orders` - 排序选项数组, 排序方向, `asc` 或者 `desc`， 请参考[使用](#使用)中的排序范例
 
 **【返回】：**
 
@@ -317,7 +318,7 @@ Number类型, 受影响行数
 
 ### pool
 
-连接池对象，通过`easyOracleDb.createPool(config)`创建
+连接池对象，通过`lube.createPool(config)`创建
 
 #### async pool.getConnection()
 
@@ -339,9 +340,9 @@ Number类型, 受影响行数
 
 ### field
 
-字段操作工具类，用于函数式编程编写查询条件表达式，可以通过 `easyOracleDb.field()` 创建
+字段操作工具类，用于函数式编程编写查询条件表达式，可以通过 `lube.field()` 创建
 
-请参考[快速使用](#快速使用)中的`函数风格查询`
+请参考[使用](#使用)中的`函数风格查询`
 
 #### field.eq(value)
 
@@ -393,7 +394,7 @@ Number类型, 受影响行数
 
 ### condition
 
-查询条件表达式对象，通过 `easyOracleDb.field(name).xxx`或 `easyOracleDb.not(condition)`创建
+查询条件表达式对象，通过 `lube.field(name).xxx`或 `lube.not(condition)`创建
 
 #### condition.and(condition)
 
