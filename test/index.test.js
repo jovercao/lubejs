@@ -1,4 +1,4 @@
-const oracledb = require('../index')
+const lube = require('../index')
 const assert = require('power-assert')
 const mock = require('mockjs')
 
@@ -10,12 +10,11 @@ describe('数据库测试', function () {
     user: 'sys',
     password: 'oracle',
     connectString: 'rancher-vm/orcl',
-    privilege: oracledb.Provider.SYSDBA
+    privilege: lube.Provider.SYSDBA
   }
 
-  before(async function () {
-
-    conn = await oracledb.connect(dbConfig)
+  before(async function() {
+    conn = await lube.connect(dbConfig)
     // conn.on('execute', command => {
     //   console.log(command)
     // })
@@ -76,7 +75,7 @@ describe('数据库测试', function () {
   })
 
   it('select', async function () {
-    const { field: $, not: $not } = oracledb
+    const { field: $, not: $not } = lube
     const where = $('FID').eq(1)
       .and($('FID').uneq(0))
       .and($('FID').in([0, 1, 2, 3]))
