@@ -46,6 +46,7 @@
   },
   "dependencies": {
     "lodash": "^4.17.15",
-    "mockjs": "^1.0.1-beta3"
+    "mockjs": "^1.0.1-beta3",
+    "oracledb": "^4.0.1"
   }
 }

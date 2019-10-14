@@ -2,16 +2,20 @@ const lube = require('../index')
 const assert = require('power-assert')
 const mock = require('mockjs')
 const _ = require('lodash')
+const oracle = require('oracledb')
 
-describe('数据库测试', function () {
+describe('ORACLE数据库测试', function () {
   this.timeout(0)
   let conn
 
   const dbConfig = {
+    dialect: 'oracle',
     user: 'sys',
     password: 'oracle',
-    connectString: 'rancher-vm/orcl',
-    privilege: lube.Provider.SYSDBA
+    host: 'rancher-vm',
+    database: 'orcl',
+    port: 1521,
+    privilege: oracle.SYSDBA
   }
 
   before(async function() {
