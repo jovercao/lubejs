@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
-  "name": "easyoracle",
-  "version": "0.1.0",
-=======
   "name": "lubejs",
   "version": "0.1.1",
->>>>>>> 3601fe026e79020c240cc585ceff52de02901b0c
   "description": "An easy-to-use nodejs oracledb client",
   "main": "index.js",
   "directories": {
@@ -51,7 +46,6 @@
   },
   "dependencies": {
     "lodash": "^4.17.15",
-    "mockjs": "^1.0.1-beta3",
-    "oracledb": "^4.0.1"
+    "mockjs": "^1.0.1-beta3"
   }
 }
