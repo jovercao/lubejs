@@ -1,5 +1,5 @@
 {
-  "name": "easyoracledb",
+  "name": "easyoracle",
   "version": "0.1.0",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "index.js",
