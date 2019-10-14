@@ -1,6 +1,7 @@
-const oracledb = require('../index')
+const lube = require('../index')
 const assert = require('power-assert')
 const mock = require('mockjs')
+const _ = require('lodash')
 
 describe('数据库测试', function () {
   this.timeout(0)
@@ -10,12 +11,11 @@ describe('数据库测试', function () {
     user: 'sys',
     password: 'oracle',
     connectString: 'rancher-vm/orcl',
-    privilege: oracledb.Provider.SYSDBA
+    privilege: lube.Provider.SYSDBA
   }
 
-  before(async function () {
-
-    conn = await oracledb.connect(dbConfig)
+  before(async function() {
+    conn = await lube.connect(dbConfig)
     // conn.on('execute', command => {
     //   console.log(command)
     // })
@@ -76,7 +76,7 @@ describe('数据库测试', function () {
   })
 
   it('select', async function () {
-    const { field: $, not: $not } = oracledb
+    const { field: $, not: $not } = lube
     const where = $('FID').eq(1)
       .and($('FID').uneq(0))
       .and($('FID').in([0, 1, 2, 3]))
@@ -102,12 +102,15 @@ describe('数据库测试', function () {
       offset: 0,
       limit: 1
     })
-    console.log(rows)
     assert(rows.length === 1)
     assert(rows[0].FNAME === '冷蒙')
     assert(rows[0].FSEX === 0)
   })
 
+  it('select all', async () => {
+    const rows = await conn.select('Items')
+    assert(_.isArray(rows))
+  })
   it('delete', async function () {
     const lines = await conn.delete('Items', {
       FID: 1

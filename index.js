@@ -1,1 +1,1 @@
-module.exports = require('./lib/easyOracle')
+module.exports = require('./lib/lube')
