@@ -2,44 +2,60 @@ const lube = require('../index')
 const assert = require('power-assert')
 const mock = require('mockjs')
 const _ = require('lodash')
-const oracle = require('oracledb')
 
-describe('ORACLE数据库测试', function () {
+describe.only('MSSQL数据库测试', function () {
   this.timeout(0)
-  let conn
+  let pool
 
   const dbConfig = {
-    dialect: 'oracle',
-    user: 'sys',
-    password: 'oracle',
+    dialect: 'mssql',
+    user: 'sa',
+    password: '!abcd1234',
     host: 'rancher-vm',
-    database: 'orcl',
-    port: 1521,
-    privilege: oracle.SYSDBA
+    database: 'test',
+    port: 1433,
+    options: {
+      // 最小值
+      poolMin: 0,
+      // 最大值
+      poolMax: 5,
+      // 闲置连接关闭等待时间
+      idelTimeout: 30000
+    }
   }
 
   before(async function() {
-    conn = await lube.connect(dbConfig)
-    // conn.on('execute', command => {
-    //   console.log(command)
-    // })
+    pool = await lube.connect(dbConfig)
+    pool.on('execute', command => {
+      console.log(command)
+    })
   })
 
   after(async function() {
-    conn.close()
+    await pool.query('drop table Items')
+    pool.close()
+  })
+
+  it('query', async function() {
+    const rs = await pool.query('select [Name] = @p1, [Age] = @p2', {
+      p1: 'name',
+      p2: '100'
+    })
+    console.dir(rs)
   })
 
   it('create table', async function() {
     const createTable =
     `create table Items
     (
-      FId NUMBER(4) PRIMARY KEY,
-      FName VARCHAR2(120),
-      FAge Number(4),
-      FSex Number(1),
-      FCreateDate Date
+      FId INT PRIMARY KEY,
+      FName NVARCHAR(120),
+      FAge INT,
+      FSex BIT,
+      FCreateDate DATETIME
     )`
-    conn.query(createTable)
+    const rs = await pool.query(createTable)
+    // console.dir(rs)
   })
 
   it('insert', async function () {
@@ -49,27 +65,27 @@ describe('ORACLE数据库测试', function () {
         // 属性 id 是一个自增数，起始值为 1，每次增 1
         'FID|+1': 1,
         'FAge|18-60': 1,
-        'FSex|0-1': 0,
+        'FSex|0-1': false,
         FName: '@name',
         FCreateDate: new Date()
       }]
     })
 
     for (const row of rows) {
-      const lines = await conn.insert('Items', row)
+      const lines = await pool.insert('Items', row)
       assert(lines === 1)
     }
   })
 
   it('find', async function () {
-    const item = await conn.find('Items', {
+    const item = await pool.find('Items', {
       FID: 1
     })
     assert(item)
   })
 
   it('update', async function () {
-    const lines = await conn.update('Items', {
+    const lines = await pool.update('Items', {
       FNAME: '冷蒙',
       FAGE: 21,
       FSEX: 0
@@ -80,7 +96,9 @@ describe('ORACLE数据库测试', function () {
   })
 
   it('select', async function () {
-    const { field: $, not: $not } = lube
+    const $ = lube.Condition.field
+    const $not = lube.Condition.not
+
     const where = $('FID').eq(1)
       .and($('FID').uneq(0))
       .and($('FID').in([0, 1, 2, 3]))
@@ -101,7 +119,7 @@ describe('ORACLE数据库测试', function () {
           .and($('FID').in(1, 2, 3, 4))
       )
 
-    const rows = await conn.select('Items', {
+    const rows = await pool.select('Items', {
       where,
       offset: 0,
       limit: 1
@@ -112,18 +130,15 @@ describe('ORACLE数据库测试', function () {
   })
 
   it('select all', async () => {
-    const rows = await conn.select('Items')
+    const rows = await pool.select('Items')
     assert(_.isArray(rows))
   })
-  it('delete', async function () {
-    const lines = await conn.delete('Items', {
-      FID: 1
-    })
-
-    assert(lines === 1)
+  it.skip('delete', async function () {
+    const lines = await pool.delete('Items')
+    assert(lines >= 1)
   })
 
-  it('drop table', async function() {
-    await conn.query('drop table Items')
-  })
+  // it('drop table', async function() {
+  //   await pool.query('drop table Items')
+  // })
 })
