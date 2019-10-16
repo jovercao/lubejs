@@ -26,14 +26,26 @@ describe.only('MSSQL数据库测试', function () {
 
   before(async function() {
     pool = await lube.connect(dbConfig)
-    pool.on('execute', command => {
-      console.log(command)
-    })
+    // pool.on('command', cmd => {
+    //   console.log(cmd)
+    // })
   })
 
   after(async function() {
-    await pool.query('drop table Items')
     pool.close()
+  })
+
+  it('create table', async function () {
+    const createTable =
+`create table Items (
+      FId INT PRIMARY KEY,
+      FName NVARCHAR(120),
+      FAge INT,
+      FSex BIT,
+      FCreateDate DATETIME
+    )`
+    await pool.query(createTable)
+    // console.dir(rs)
   })
 
   it('query', async function() {
@@ -41,21 +53,7 @@ describe.only('MSSQL数据库测试', function () {
       p1: 'name',
       p2: '100'
     })
-    console.dir(rs)
-  })
-
-  it('create table', async function() {
-    const createTable =
-    `create table Items
-    (
-      FId INT PRIMARY KEY,
-      FName NVARCHAR(120),
-      FAge INT,
-      FSex BIT,
-      FCreateDate DATETIME
-    )`
-    const rs = await pool.query(createTable)
-    // console.dir(rs)
+    assert(rs.rows[0].Name === 'name')
   })
 
   it('insert', async function () {
@@ -71,10 +69,8 @@ describe.only('MSSQL数据库测试', function () {
       }]
     })
 
-    for (const row of rows) {
-      const lines = await pool.insert('Items', row)
-      assert(lines === 1)
-    }
+    const lines = await pool.insert('Items', rows)
+    assert(lines === rows.length)
   })
 
   it('find', async function () {
@@ -88,7 +84,7 @@ describe.only('MSSQL数据库测试', function () {
     const lines = await pool.update('Items', {
       FNAME: '冷蒙',
       FAGE: 21,
-      FSEX: 0
+      FSEX: false
     }, {
       FID: 1
     })
@@ -125,20 +121,48 @@ describe.only('MSSQL数据库测试', function () {
       limit: 1
     })
     assert(rows.length === 1)
-    assert(rows[0].FNAME === '冷蒙')
-    assert(rows[0].FSEX === 0)
+    assert(rows[0].FName === '冷蒙')
+    assert(rows[0].FSex === false)
   })
 
   it('select all', async () => {
     const rows = await pool.select('Items')
     assert(_.isArray(rows))
   })
-  it.skip('delete', async function () {
+
+  it('trans -> rollback', async () => {
+    pool.trans(async (executor, abort) => {
+      const lines = await executor.delete('Items')
+      assert(lines > 0)
+      await abort()
+    })
+
+    const rows = await pool.select('Items')
+    assert(rows.length > 0)
+  })
+
+  it('trans -> commit', async () => {
+    await pool.trans(async (executor, cancel) => {
+      const lines = await executor.insert('Items', {
+        FId: 1024,
+        FName: '添加测试',
+        FSex: false,
+        FAge: 18
+      })
+      assert(lines > 0)
+      await cancel()
+    })
+
+    const rows = await pool.select('Items')
+    assert(rows.length > 0)
+  })
+
+  it('delete', async function () {
     const lines = await pool.delete('Items')
     assert(lines >= 1)
   })
 
-  // it('drop table', async function() {
-  //   await pool.query('drop table Items')
-  // })
+  it('drop table', async function() {
+    await pool.query('drop table Items')
+  })
 })
