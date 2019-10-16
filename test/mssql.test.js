@@ -51,11 +51,15 @@ describe.only('MSSQL数据库测试', function () {
   })
 
   it('query', async function() {
-    const rs = await pool.query('select [Name] = @p1, [Age] = @p2', {
+    const rs1 = await pool.query('select [Name] = @p1, [Age] = @p2', {
       p1: 'name',
       p2: '100'
     })
-    assert(rs.rows[0].Name === 'name')
+    assert(rs1.rows[0].Name === 'name')
+
+    const name = 'Jover'
+    const rs2 = await pool.query`select [Name] = ${name}, [Age] = ${19}`
+    assert(rs2.rows[0].Name === name)
   })
 
   it('insert', async function () {
