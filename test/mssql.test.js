@@ -10,18 +10,21 @@ describe.only('MSSQL数据库测试', function () {
   const dbConfig = {
     dialect: 'mssql',
     user: 'sa',
-    password: '!abcd1234',
-    host: 'rancher-vm',
-    database: 'test',
+    password: '!crgd-2019',
+    host: 'jover.wicp.net',
+    // instance: 'MSSQLSERVER',
+    database: 'TEST',
     port: 1433,
-    options: {
-      // 最小值
-      poolMin: 0,
-      // 最大值
-      poolMax: 5,
-      // 闲置连接关闭等待时间
-      idelTimeout: 30000
-    }
+    // 最小值
+    poolMin: 0,
+    // 最大值
+    poolMax: 5,
+    // 闲置连接关闭等待时间
+    idelTimeout: 30000,
+    // 连接超时时间
+    connectTimeout: 15000,
+    // 请求超时时间
+    requestTimeout: 15000
   }
 
   before(async function() {
@@ -36,8 +39,7 @@ describe.only('MSSQL数据库测试', function () {
   })
 
   it('create table', async function () {
-    const createTable =
-`create table Items (
+    const createTable = `create table Items (
       FId INT PRIMARY KEY,
       FName NVARCHAR(120),
       FAge INT,

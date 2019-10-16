@@ -1,6 +1,6 @@
 {
   "name": "lubejs",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "index.js",
   "directories": {
@@ -46,7 +46,6 @@
   },
   "dependencies": {
     "lodash": "^4.17.15",
-    "mockjs": "^1.0.1-beta3",
-    "oracledb": "^4.0.1"
+    "mockjs": "^1.0.1-beta3"
   }
 }
