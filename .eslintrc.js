@@ -24,6 +24,7 @@ module.exports = {
         "@typescript-eslint"
     ],
     "rules": {
-      "space-before-function-paren": ["off", "never"]
+      "space-before-function-paren": ["off", "never"],
+      "constructor-super": ["warn"]
     }
 };
