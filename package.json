@@ -8,6 +8,7 @@
   },
   "scripts": {
     "test": "mocha",
+    "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ."
   },
   "repository": {

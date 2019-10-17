@@ -3,7 +3,7 @@ const assert = require('power-assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
-describe.only('MSSQL数据库测试', function () {
+describe('MSSQL数据库测试', function () {
   this.timeout(0)
   let pool
 
@@ -65,7 +65,7 @@ describe.only('MSSQL数据库测试', function () {
   it('insert', async function () {
     const { rows } = mock.mock({
       // 属性  的值是一个数组，其中含有 1 到 10 个元素
-      'rows|1-50': [{
+      'rows|10-50': [{
         // 属性 id 是一个自增数，起始值为 1，每次增 1
         'FID|+1': 1,
         'FAge|18-60': 1,
