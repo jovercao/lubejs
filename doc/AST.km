@@ -1,1 +1,204 @@
-{"root":{"data":{"id":"bxrtrvrlnqo0","created":1571318086786,"text":"AST","expandState":"expand"},"children":[{"data":{"id":"bxrtrz63q6g0","created":1571318094193,"text":"Statment"},"children":[{"data":{"id":"bxrtscllgz40","created":1571318123428,"text":"SELECT"},"children":[]},{"data":{"id":"bxrtseiw6rc0","created":1571318127618,"text":"UPDATE"},"children":[]},{"data":{"id":"bxrtsggidao0","created":1571318131827,"text":"INSERT"},"children":[]},{"data":{"id":"bxrtsiock680","created":1571318136655,"text":"DELETE"},"children":[]},{"data":{"id":"bxrtsmp26y80","created":1571318145405,"text":"CREATE"},"children":[]},{"data":{"id":"bxrtsoohcwg0","created":1571318149724,"text":"DROP"},"children":[]}]},{"data":{"id":"bxrts1y92oo0","created":1571318100248,"text":"Expression","expandState":"expand"},"children":[{"data":{"id":"bxrtsrrafjc0","created":1571318156424,"text":"FieldExpression"},"children":[]},{"data":{"id":"bxrtum8nfwg0","created":1571318301141,"text":"GroupExpression"},"children":[]},{"data":{"id":"bxrtwr6qimw0","created":1571318468638,"text":"ConstantExpression"},"children":[]},{"data":{"id":"bxrtty8y1t40","created":1571318248916,"text":"FnExpression"},"children":[]},{"data":{"id":"bxruv40w0go0","created":1571321160964,"text":"NamedExpression"},"children":[]}]},{"data":{"id":"bxrtsvqivls0","created":1571318165085,"text":"Identifier","expandState":"expand"},"children":[{"data":{"id":"bxrttuiccrc0","created":1571318240777,"text":"Table"},"children":[]},{"data":{"id":"bxrttw07ja80","created":1571318244034,"text":"View"},"children":[]},{"data":{"id":"bxrtty8y1t40","created":1571318248916,"text":"Fn"},"children":[]}]}]},"template":"right","theme":"fresh-blue","version":"1.4.43"}
+{
+    "root": {
+        "data": {
+            "id": "bxrtrvrlnqo0",
+            "created": 1571318086786,
+            "text": "AST",
+            "expandState": "expand"
+        },
+        "children": [
+            {
+                "data": {
+                    "id": "bxrtrz63q6g0",
+                    "created": 1571318094193,
+                    "text": "Statment"
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "bxrtscllgz40",
+                            "created": 1571318123428,
+                            "text": "SELECT",
+                            "resource": [
+                                "$select"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtseiw6rc0",
+                            "created": 1571318127618,
+                            "text": "UPDATE",
+                            "resource": [
+                                "$update"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtsggidao0",
+                            "created": 1571318131827,
+                            "text": "INSERT",
+                            "resource": [
+                                "$insert"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtsiock680",
+                            "created": 1571318136655,
+                            "text": "DELETE",
+                            "resource": [
+                                "$delete"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtsmp26y80",
+                            "created": 1571318145405,
+                            "text": "CREATE",
+                            "resource": [
+                                "$create"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtsoohcwg0",
+                            "created": 1571318149724,
+                            "text": "DROP",
+                            "resource": [
+                                "$drop"
+                            ]
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "bxrts1y92oo0",
+                    "created": 1571318100248,
+                    "text": "Expression",
+                    "expandState": "expand",
+                    "resource": [
+                        "exp_proto"
+                    ]
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "bxrtsrrafjc0",
+                            "created": 1571318156424,
+                            "text": "FieldExpression",
+                            "resource": [
+                                "$field"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtum8nfwg0",
+                            "created": 1571318301141,
+                            "text": "QuotedExpression",
+                            "resource": [
+                                "$quoted"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtwr6qimw0",
+                            "created": 1571318468638,
+                            "text": "ConstantExpression",
+                            "resource": [
+                                "$const"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtty8y1t40",
+                            "created": 1571318248916,
+                            "text": "FnCall",
+                            "resource": [
+                                "$callfn"
+                            ]
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "bxrtsvqivls0",
+                    "created": 1571318165085,
+                    "text": "Sets",
+                    "expandState": "expand",
+                    "resource": [
+                        "sets_proto"
+                    ]
+                },
+                "children": [
+                    {
+                        "data": {
+                            "id": "bxrttuiccrc0",
+                            "created": 1571318240777,
+                            "text": "Table",
+                            "resource": [
+                                "$table"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrttw07ja80",
+                            "created": 1571318244034,
+                            "text": "View",
+                            "resource": [
+                                "$view"
+                            ]
+                        },
+                        "children": []
+                    },
+                    {
+                        "data": {
+                            "id": "bxrtty8y1t40",
+                            "created": 1571318248916,
+                            "text": "FnCall",
+                            "resource": [
+                                "$callfn"
+                            ]
+                        },
+                        "children": []
+                    }
+                ]
+            },
+            {
+                "data": {
+                    "id": "bxruv40w0go0",
+                    "created": 1571321160964,
+                    "text": "NamedExpression",
+                    "resource": [
+                        "$named"
+                    ]
+                },
+                "children": []
+            }
+        ]
+    },
+    "template": "right",
+    "theme": "fresh-blue",
+    "version": "1.4.43"
+}
