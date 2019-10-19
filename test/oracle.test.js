@@ -4,7 +4,7 @@ const mock = require('mockjs')
 const _ = require('lodash')
 const oracle = require('oracledb')
 
-describe('ORACLE数据库测试', function () {
+describe.skip('ORACLE数据库测试', function () {
   this.timeout(0)
   let pool
 

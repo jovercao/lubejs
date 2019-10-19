@@ -98,11 +98,10 @@ describe('MSSQL数据库测试', function () {
   })
 
   it('select', async function () {
-    const $ = lube.Condition.field
-    const $not = lube.Condition.not
+    const $ = lube.field
 
     const where = $('FID').eq(1)
-      .and($('FID').uneq(0))
+      .and($('FID').neq(0))
       .and($('FID').in([0, 1, 2, 3]))
       .and(
         $('FNAME').like('%冷%')
@@ -129,6 +128,44 @@ describe('MSSQL数据库测试', function () {
     assert(rows.length === 1)
     assert(rows[0].FName === '冷蒙')
     assert(rows[0].FSex === false)
+  })
+
+
+  it('select statement', async function () {
+    const { table, select } = lube
+
+    const a = table('Items').as('a')
+    const b = table('Items').as('b')
+
+    const sql = select(
+        a.fid.as('aid'),
+        b.fid.as('bid')
+      )
+      .from(a)
+      .join(b, a.fid.eq(b.fid))
+      .where(
+        a.fid.eq(1)
+        .and(a.fid.neq(0))
+        .and(a.fid.in([0, 1, 2, 3]))
+        .and(
+          b.fname.like('%冷%')
+            .or(a.fid.eq(1))
+            .or(b.fid.gt(1))
+            .or(b.fid.lte(1))
+            .or(b.fid.gte(1))
+            .or(b.fname.notnull())
+            .or(a.fid.in([1, 2, 3]))
+            .or(b.fid.notin([1, 2, 3]))
+            .or(b.fid.notnull())
+        )
+        .and(
+          a.fid.eq(1)
+            .and(a.fname.eq('冷蒙'))
+            .and(a.fid.in(1, 2, 3, 4))
+        )
+      )
+
+    const rows = await pool.query(sql)
   })
 
   it('select all', async () => {
