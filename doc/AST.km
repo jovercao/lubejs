@@ -132,7 +132,7 @@
                             "created": 1571318248916,
                             "text": "FnCall",
                             "resource": [
-                                "$callfn"
+                                "$fncall"
                             ]
                         },
                         "children": []
@@ -178,7 +178,7 @@
                             "created": 1571318248916,
                             "text": "FnCall",
                             "resource": [
-                                "$callfn"
+                                "$fncall"
                             ]
                         },
                         "children": []

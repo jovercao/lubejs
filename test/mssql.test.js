@@ -29,9 +29,9 @@ describe('MSSQL数据库测试', function () {
 
   before(async function () {
     pool = await lube.connect(dbConfig)
-    // pool.on('command', cmd => {
-    //   console.log(cmd)
-    // })
+    pool.on('command', cmd => {
+      console.log(cmd)
+    })
   })
 
   after(async function () {
@@ -188,6 +188,7 @@ describe('MSSQL数据库测试', function () {
       b.fid.as('bid'))
       .from(a)
       .join(b, a.fid.eq(b.fid))
+      .groupby(a.fid, b.fid)
       .orderby(a.fid)
       .offset(50)
       .limit(10)
