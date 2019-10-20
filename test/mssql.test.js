@@ -29,9 +29,9 @@ describe('MSSQL数据库测试', function () {
 
   before(async function () {
     pool = await lube.connect(dbConfig)
-    pool.on('command', cmd => {
-      console.log(cmd)
-    })
+    // pool.on('command', cmd => {
+    //   console.log(cmd)
+    // })
   })
 
   after(async function () {
@@ -166,6 +166,9 @@ describe('MSSQL数据库测试', function () {
 
     const rows = await pool.select('Items', {
       where,
+      orders: {
+        fid: 'asc'
+      },
       offset: 0,
       limit: 1
     })
@@ -185,29 +188,13 @@ describe('MSSQL数据库测试', function () {
       b.fid.as('bid'))
       .from(a)
       .join(b, a.fid.eq(b.fid))
-      .where(
-        a.fid.eq(1)
-          .and(a.fid.neq(0))
-          .and(a.fid.in([0, 1, 2, 3]))
-          .and(
-            b.fname.like('%冷%')
-              .or(a.fid.eq(1))
-              .or(b.fid.gt(1))
-              .or(b.fid.lte(1))
-              .or(b.fid.gte(1))
-              .or(b.fname.notnull())
-              .or(a.fid.in([1, 2, 3]))
-              .or(b.fid.notin([1, 2, 3]))
-              .or(b.fid.notnull())
-          )
-          .and(
-            a.fid.eq(1)
-              .and(a.fname.eq('冷蒙'))
-              .and(a.fid.in(1, 2, 3, 4))
-          )
-      )
+      .orderby(a.fid)
+      .offset(50)
+      .limit(10)
 
-    const rows = await pool.query(sql)
+    const { rows } = await pool.query(sql)
+    assert(rows[0].aid === 51, '数据不是预期结果')
+    assert(rows.length === 10, '查询到的数据不正确')
   })
 
   it('select all', async () => {
