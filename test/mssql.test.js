@@ -27,14 +27,25 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
+  const sqlLogs = true
+
   before(async function () {
     pool = await lube.connect(dbConfig)
-    // pool.on('command', cmd => {
-    //   console.log(cmd)
-    // })
+    pool.on('command', cmd => {
+      sqlLogs && console.log(cmd)
+    })
+
+    await pool.query(`CREATE FUNCTION dosomething(
+    @x int
+)
+RETURNS INT
+BEGIN
+    return @x
+END`)
   })
 
   after(async function () {
+    await pool.query('drop function dosomething')
     pool.close()
   })
 
@@ -112,15 +123,15 @@ describe('MSSQL数据库测试', function () {
   })
 
   it('update statement', async function () {
-    const items = lube.table('items').as('a')
-    const sql = lube.update(items)
+    const a = lube.table('items').as('a')
+    const sql = lube.update(a)
       .set({
         fname: '哈罗',
         fage: 100,
         fsex: true
       })
-      .from(items)
-      .where(items.fid.eq(10000))
+      .from(a)
+      .where(a.fid.eq(10000))
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
   })
@@ -178,22 +189,30 @@ describe('MSSQL数据库测试', function () {
   })
 
   it('select statement', async function () {
-    const { table, select } = lube
+    const { table, select, now, fn, exists } = lube
 
     const a = table('Items').as('a')
     const b = table('Items').as('b')
 
     const sql = select(
+      now().as('Now'),
+      fn('dosomething', 'dbo').call(100),
+      // 子查询
+      select(1).value().as('field'),
       a.fid.as('aid'),
-      b.fid.as('bid'))
+      b.fid.as('bid')
+    )
       .from(a)
       .join(b, a.fid.eq(b.fid))
+      .where(exists(select(1)))
       .groupby(a.fid, b.fid)
       .orderby(a.fid)
       .offset(50)
       .limit(10)
 
     const { rows } = await pool.query(sql)
+    console.log(rows[0])
+    assert(_.isDate(rows[0].Now), '不是日期类型')
     assert(rows[0].aid === 51, '数据不是预期结果')
     assert(rows.length === 10, '查询到的数据不正确')
   })
