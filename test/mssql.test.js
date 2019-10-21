@@ -1,5 +1,5 @@
 const lube = require('../index')
-const assert = require('power-assert')
+const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
@@ -27,14 +27,25 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
-  before(async function() {
+  const sqlLogs = true
+
+  before(async function () {
     pool = await lube.connect(dbConfig)
-    // pool.on('command', cmd => {
-    //   console.log(cmd)
-    // })
+    pool.on('command', cmd => {
+      sqlLogs && console.log(cmd)
+    })
+
+    await pool.query(`CREATE FUNCTION dosomething(
+    @x int
+)
+RETURNS INT
+BEGIN
+    return @x
+END`)
   })
 
-  after(async function() {
+  after(async function () {
+    await pool.query('drop function dosomething')
     pool.close()
   })
 
@@ -50,7 +61,7 @@ describe('MSSQL数据库测试', function () {
     // console.dir(rs)
   })
 
-  it('query', async function() {
+  it('query', async function () {
     const rs1 = await pool.query('select [Name] = @p1, [Age] = @p2', {
       p1: 'name',
       p2: '100'
@@ -65,7 +76,7 @@ describe('MSSQL数据库测试', function () {
   it('insert', async function () {
     const { rows } = mock.mock({
       // 属性  的值是一个数组，其中含有 1 到 10 个元素
-      'rows|10-50': [{
+      'rows|100': [{
         // 属性 id 是一个自增数，起始值为 1，每次增 1
         'FID|+1': 1,
         'FAge|18-60': 1,
@@ -77,6 +88,20 @@ describe('MSSQL数据库测试', function () {
 
     const lines = await pool.insert('Items', rows)
     assert(lines === rows.length)
+  })
+
+  it('insert statement', async function () {
+    const row = mock.mock({
+      // 属性 id 是一个自增数，起始值为 1，每次增 1
+      'FID|+1': 10000,
+      'FAge|18-60': 1,
+      'FSex|0-1': false,
+      FName: '@name',
+      FCreateDate: new Date()
+    })
+    const sql = lube.insert('Items').values(row)
+    const { rowsAffected } = await pool.query(sql)
+    assert(rowsAffected === 1)
   })
 
   it('find', async function () {
@@ -97,12 +122,41 @@ describe('MSSQL数据库测试', function () {
     assert(lines === 1)
   })
 
+  it('update statement', async function () {
+    const a = lube.table('items').as('a')
+    const sql = lube.update(a)
+      .set({
+        fname: '哈罗',
+        fage: 100,
+        fsex: true
+      })
+      .from(a)
+      .where(a.fid.eq(10000))
+    const { rowsAffected } = await pool.query(sql)
+    assert(rowsAffected === 1)
+  })
+
+  it('update statement -> join update', async function () {
+    const a = lube.table('items').as('a')
+    const b = lube.table('items').as('b')
+    const sql = lube.update(a)
+      .set(
+        a.fname.assign('哈罗'),
+        a.fage.assign(100),
+        a.fsex.assign(true)
+      )
+      .from(a)
+      .join(b, b.fid.eq(a.fid))
+      .where(a.fid.eq(10000))
+    const { rowsAffected } = await pool.query(sql)
+    assert(rowsAffected === 1)
+  })
+
   it('select', async function () {
-    const $ = lube.Condition.field
-    const $not = lube.Condition.not
+    const $ = lube.field
 
     const where = $('FID').eq(1)
-      .and($('FID').uneq(0))
+      .and($('FID').neq(0))
       .and($('FID').in([0, 1, 2, 3]))
       .and(
         $('FNAME').like('%冷%')
@@ -123,12 +177,44 @@ describe('MSSQL数据库测试', function () {
 
     const rows = await pool.select('Items', {
       where,
+      orders: {
+        fid: 'asc'
+      },
       offset: 0,
       limit: 1
     })
     assert(rows.length === 1)
     assert(rows[0].FName === '冷蒙')
     assert(rows[0].FSex === false)
+  })
+
+  it('select statement', async function () {
+    const { table, select, now, fn, exists } = lube
+
+    const a = table('Items').as('a')
+    const b = table('Items').as('b')
+
+    const sql = select(
+      now().as('Now'),
+      fn('dosomething', 'dbo').call(100),
+      // 子查询
+      select(1).value().as('field'),
+      a.fid.as('aid'),
+      b.fid.as('bid')
+    )
+      .from(a)
+      .join(b, a.fid.eq(b.fid))
+      .where(exists(select(1)))
+      .groupby(a.fid, b.fid)
+      .orderby(a.fid)
+      .offset(50)
+      .limit(10)
+
+    const { rows } = await pool.query(sql)
+    console.log(rows[0])
+    assert(_.isDate(rows[0].Now), '不是日期类型')
+    assert(rows[0].aid === 51, '数据不是预期结果')
+    assert(rows.length === 10, '查询到的数据不正确')
   })
 
   it('select all', async () => {
@@ -168,7 +254,7 @@ describe('MSSQL数据库测试', function () {
     assert(lines >= 1)
   })
 
-  it('drop table', async function() {
+  it('drop table', async function () {
     await pool.query('drop table Items')
   })
 })
