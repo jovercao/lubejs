@@ -29,9 +29,9 @@ describe('MSSQL数据库测试', function () {
 
   before(async function () {
     pool = await lube.connect(dbConfig)
-    pool.on('command', cmd => {
-      console.log(cmd)
-    })
+    // pool.on('command', cmd => {
+    //   console.log(cmd)
+    // })
   })
 
   after(async function () {
