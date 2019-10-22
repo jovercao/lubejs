@@ -217,6 +217,25 @@ END`)
     assert(rows.length === 10, '查询到的数据不正确')
   })
 
+  it('select statement', async function () {
+    const { table, select } = lube
+    const o = table('sysobjects').as('o')
+    const p = table('extended_properties', 'sys').as('p')
+    const sql = select({
+      id: o.id,
+      name: o.name,
+      desc: p.value
+    })
+      .from(o)
+      .leftJoin(p, p.major_id.eq(o.id)
+        .and(p.minor_id.eq(0))
+        .and(p.class.eq(1))
+        .and(p.name.eq('MS_Description')))
+      .where(o.type.in('U', 'V'))
+    const { rows } = await pool.query(sql)
+    assert(rows.length > 0)
+  })
+
   it('select all', async () => {
     const rows = await pool.select('Items')
     assert(_.isArray(rows))
