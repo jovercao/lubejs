@@ -55,7 +55,8 @@ END`)
       FName NVARCHAR(120),
       FAge INT,
       FSex BIT,
-      FCreateDate DATETIME
+      FCreateDate DATETIME,
+      Flag TIMESTAMP NOT NULL
     )`
     await pool.query(createTable)
     // console.dir(rs)
@@ -109,6 +110,7 @@ END`)
       FID: 1
     })
     assert(item)
+    console.log(item.Flag)
   })
 
   it('update', async function () {
@@ -189,12 +191,13 @@ END`)
   })
 
   it('select statement', async function () {
-    const { table, select, now, fn, exists } = lube
+    const { table, select, now, fn, iif, exists } = lube
 
     const a = table('Items').as('a')
     const b = table('Items').as('b')
 
     const sql = select(
+      iif(a.fsex.eq(true), '男', '女').as('性别'),
       now().as('Now'),
       fn('dosomething', 'dbo').call(100),
       // 子查询
@@ -205,7 +208,7 @@ END`)
       .from(a)
       .join(b, a.fid.eq(b.fid))
       .where(exists(select(1)))
-      .groupby(a.fid, b.fid)
+      .groupby(a.fid, b.fid, a.fsex)
       .orderby(a.fid)
       .offset(50)
       .limit(10)
@@ -214,6 +217,7 @@ END`)
     console.log(rows[0])
     assert(_.isDate(rows[0].Now), '不是日期类型')
     assert(rows[0].aid === 51, '数据不是预期结果')
+    assert(['男', '女'].includes(rows[0]['性别']), '性别不正确')
     assert(rows.length === 10, '查询到的数据不正确')
   })
 
