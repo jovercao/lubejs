@@ -27,7 +27,7 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
-  const sqlLogs = true
+  const sqlLogs = false
 
   before(async function () {
     pool = await lube.connect(dbConfig)
@@ -51,7 +51,7 @@ END`)
 
   it('create table', async function () {
     const createTable = `create table Items (
-      FId INT PRIMARY KEY,
+      FId INT IDENTITY(1,1) PRIMARY KEY,
       FName NVARCHAR(120),
       FAge INT,
       FSex BIT,
@@ -72,6 +72,9 @@ END`)
     const name = 'Jover'
     const rs2 = await pool.query`select [Name] = ${name}, [Age] = ${19}`
     assert(rs2.rows[0].Name === name)
+
+    const rs3 = await pool.query('select @@identity f1, @@identity f2')
+    console.log(rs3)
   })
 
   it('insert', async function () {
@@ -79,7 +82,7 @@ END`)
       // 属性  的值是一个数组，其中含有 1 到 10 个元素
       'rows|100': [{
         // 属性 id 是一个自增数，起始值为 1，每次增 1
-        'FID|+1': 1,
+        // 'FID|+1': 1,
         'FAge|18-60': 1,
         'FSex|0-1': false,
         FName: '@name',
@@ -94,7 +97,7 @@ END`)
   it('insert statement', async function () {
     const row = mock.mock({
       // 属性 id 是一个自增数，起始值为 1，每次增 1
-      'FID|+1': 10000,
+      // 'FID|+1': 10000,
       'FAge|18-60': 1,
       'FSex|0-1': false,
       FName: '@name',
@@ -103,6 +106,10 @@ END`)
     const sql = lube.insert('Items').values(row)
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
+
+    const sql2 = lube.select(lube.var('@@IDENTITY').as('id'))
+    const res2 = await pool.query(sql2)
+    assert(res2.rows[0].id > 0)
   })
 
   it('find', async function () {
@@ -110,7 +117,6 @@ END`)
       FID: 1
     })
     assert(item)
-    console.log(item.Flag)
   })
 
   it('update', async function () {
@@ -133,7 +139,7 @@ END`)
         fsex: true
       })
       .from(a)
-      .where(a.fid.eq(10000))
+      .where(a.fid.eq(2))
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
   })
@@ -149,7 +155,7 @@ END`)
       )
       .from(a)
       .join(b, b.fid.eq(a.fid))
-      .where(a.fid.eq(10000))
+      .where(a.fid.eq(2))
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
   })
@@ -259,7 +265,6 @@ END`)
   it('trans -> commit', async () => {
     await pool.trans(async (executor, cancel) => {
       const lines = await executor.insert('Items', {
-        FId: 1024,
         FName: '添加测试',
         FSex: false,
         FAge: 18
