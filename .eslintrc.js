@@ -25,6 +25,7 @@ module.exports = {
     ],
     "rules": {
       "space-before-function-paren": ["off", "never"],
-      "constructor-super": ["warn"]
+      "constructor-super": ["warn"],
+      "no-unused-vars": ["warn"]
     }
 };

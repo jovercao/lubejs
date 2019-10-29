@@ -27,7 +27,7 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
-  const sqlLogs = false
+  const sqlLogs = true
 
   before(async function () {
     pool = await lube.connect(dbConfig)
@@ -107,7 +107,7 @@ END`)
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
 
-    const sql2 = lube.select(lube.var('@@IDENTITY').as('id'))
+    const sql2 = lube.select(lube.variant('@@IDENTITY').as('id'))
     const res2 = await pool.query(sql2)
     assert(res2.rows[0].id > 0)
   })
@@ -196,8 +196,8 @@ END`)
     assert(rows[0].FSex === false)
   })
 
-  it('select statement', async function () {
-    const { table, select, now, fn, iif, exists } = lube
+  it('select statement -> multitest', async function () {
+    const { table, select, now, fn, iif, exists, count, all } = lube
 
     const a = table('Items').as('a')
     const b = table('Items').as('b')
@@ -219,15 +219,22 @@ END`)
       .offset(50)
       .limit(10)
 
-    const { rows } = await pool.query(sql)
+    let { rows } = await pool.query(sql)
     console.log(rows[0])
     assert(_.isDate(rows[0].Now), '不是日期类型')
     assert(rows[0].aid === 51, '数据不是预期结果')
     assert(['男', '女'].includes(rows[0]['性别']), '性别不正确')
     assert(rows.length === 10, '查询到的数据不正确')
+
+    const sql2 = select(a.fid, a.fsex).from(a).distinct()
+    await pool.query(sql2)
+
+    const sql3 = select(count(all()).as('count')).from(a)
+    rows = (await pool.query(sql3)).rows
+    assert(rows[0].count > 0)
   })
 
-  it('select statement', async function () {
+  it('select statement -> join', async function () {
     const { table, select } = lube
     const o = table('sysobjects').as('o')
     const p = table('extended_properties', 'sys').as('p')
