@@ -27,12 +27,12 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
-  const sqlLogs = true
+  const sqlLogs = false
 
   before(async function () {
     pool = await lube.connect(dbConfig)
     pool.on('command', cmd => {
-      sqlLogs && console.log(cmd)
+      sqlLogs && console.log(cmd.sql)
     })
 
     await pool.query(`CREATE FUNCTION dosomething(
@@ -138,7 +138,6 @@ END`)
         fage: 100,
         fsex: true
       })
-      .from(a)
       .where(a.fid.eq(2))
     const { rowsAffected } = await pool.query(sql)
     assert(rowsAffected === 1)
@@ -147,7 +146,7 @@ END`)
   it('update statement -> join update', async function () {
     const a = lube.table('items').as('a')
     const b = lube.table('items').as('b')
-    const sql = lube.update(a)
+    const sql = lube.update()
       .set(
         a.fname.assign('哈罗'),
         a.fage.assign(100),
@@ -191,9 +190,9 @@ END`)
       offset: 0,
       limit: 1
     })
-    assert(rows.length === 1)
-    assert(rows[0].FName === '冷蒙')
-    assert(rows[0].FSex === false)
+    assert.strictEqual(rows.length, 1)
+    assert.strictEqual(rows[0].FName, '冷蒙')
+    assert.strictEqual(rows[0].FSex, false)
   })
 
   it('select statement -> multitest', async function () {
