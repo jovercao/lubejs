@@ -3,6 +3,8 @@ const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
+const { table, select, now, fn, iif, exists, count, all, ASC, DESC } = lube
+
 describe('MSSQL数据库测试', function () {
   this.timeout(0)
   let pool
@@ -160,32 +162,14 @@ END`)
   })
 
   it('select', async function () {
-    const $ = lube.field
-
-    const where = $('FID').eq(1)
-      .and($('FID').neq(0))
-      .and($('FID').in([0, 1, 2, 3]))
-      .and(
-        $('FNAME').like('%冷%')
-          .or($('FID').eq(1))
-          .or($('FID').gt(1))
-          .or($('FID').lte(1))
-          .or($('FID').gte(1))
-          .or($('FNAME').notnull())
-          .or($('FID').in([1, 2, 3]))
-          .or($('FID').notin([1, 2, 3]))
-          .or($('FID').notnull())
-      )
-      .and(
-        $('FID').eq(1)
-          .and($('FNAME').eq('冷蒙'))
-          .and($('FID').in(1, 2, 3, 4))
-      )
-
     const rows = await pool.select('Items', {
-      where,
+      where: {
+        fid: {
+          $in: [1, 10, 11, 12, 13, 14]
+        }
+      },
       orders: {
-        fid: 'asc'
+        fid: ASC
       },
       offset: 0,
       limit: 1
@@ -196,7 +180,6 @@ END`)
   })
 
   it('select statement -> multitest', async function () {
-    const { table, select, now, fn, iif, exists, count, all } = lube
 
     const a = table('Items').as('a')
     const b = table('Items').as('b')
@@ -214,7 +197,7 @@ END`)
       .join(b, a.fid.eq(b.fid))
       .where(exists(select(1)))
       .groupby(a.fid, b.fid, a.fsex)
-      .orderby(a.fid)
+      .orderby([a.fid, ASC])
       .offset(50)
       .limit(10)
 
