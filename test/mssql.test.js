@@ -180,7 +180,6 @@ END`)
   })
 
   it('select statement -> multitest', async function () {
-
     const a = table('Items').as('a')
     const b = table('Items').as('b')
 
