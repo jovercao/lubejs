@@ -291,8 +291,16 @@ describe('MSSQL数据库测试', function () {
   it('exec proc -> statement with output param', async function () {
     const p2 = output('o', STRING)
     const sql = proc('doProc').call(1, p2)
-    await db.query(sql)
+    const res = await db.query(sql)
 
+    console.log(res)
+    assert(res.returnValue === 1)
+    assert(p2.value === 'hello world')
+  })
+
+  it('exec proc -> method with output param', async function () {
+    const p2 = output('o', STRING)
+    await db.execute('doProc', [1, p2])
     assert(p2.value === 'hello world')
   })
 
