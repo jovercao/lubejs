@@ -3,11 +3,11 @@ const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
-const { table, select, now, fn, iif, exists, count, all, ASC, DESC } = lube
+const { table, select, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING } = lube
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0)
-  let pool
+  let db
 
   const dbConfig = {
     dialect: 'mssql',
@@ -29,26 +29,42 @@ describe('MSSQL数据库测试', function () {
     requestTimeout: 15000
   }
 
-  const sqlLogs = false
+  const sqlLogs = true
 
   before(async function () {
-    pool = await lube.connect(dbConfig)
-    pool.on('command', cmd => {
-      sqlLogs && console.log(cmd.sql)
+    db = await lube.connect(dbConfig)
+    db.on('command', cmd => {
+      if (sqlLogs) {
+        console.log('sql:', cmd.sql)
+        if (cmd.params) {
+          console.log('params:', cmd.params)
+        }
+      }
     })
 
-    await pool.query(`CREATE FUNCTION dosomething(
-    @x int
-)
-RETURNS INT
-BEGIN
-    return @x
-END`)
+    await db.query(`CREATE FUNCTION dosomething(
+        @x int
+    )
+    RETURNS INT
+    BEGIN
+        return @x
+    END`)
+
+    await db.query(`CREATE PROC doProc(
+      @i int,
+      @o nvarchar(20) output
+    )
+    AS
+    BEGIN
+      set @o = 'hello world'
+      return @i
+    END`)
   })
 
   after(async function () {
-    await pool.query('drop function dosomething')
-    pool.close()
+    await db.query('drop function dosomething')
+    await db.query('drop PROC doProc')
+    db.close()
   })
 
   it('create table', async function () {
@@ -60,22 +76,23 @@ END`)
       FCreateDate DATETIME,
       Flag TIMESTAMP NOT NULL
     )`
-    await pool.query(createTable)
+    await db.query(createTable)
     // console.dir(rs)
   })
 
   it('query', async function () {
-    const rs1 = await pool.query('select [Name] = @p1, [Age] = @p2', {
+    const rs1 = await db.query('select [Name] = @p1, [Age] = @p2', {
       p1: 'name',
       p2: '100'
     })
+    console.log(rs1)
     assert(rs1.rows[0].Name === 'name')
 
     const name = 'Jover'
-    const rs2 = await pool.query`select [Name] = ${name}, [Age] = ${19}`
+    const rs2 = await db.query`select [Name] = ${name}, [Age] = ${19}`
     assert(rs2.rows[0].Name === name)
 
-    const rs3 = await pool.query('select @@identity f1, @@identity f2')
+    const rs3 = await db.query('select @@identity f1, @@identity f2')
     console.log(rs3)
   })
 
@@ -92,7 +109,7 @@ END`)
       }]
     })
 
-    const lines = await pool.insert('Items', rows)
+    const lines = await db.insert('Items', rows)
     assert(lines === rows.length)
   })
 
@@ -106,23 +123,23 @@ END`)
       FCreateDate: new Date()
     })
     const sql = lube.insert('Items').values(row)
-    const { rowsAffected } = await pool.query(sql)
+    const { rowsAffected } = await db.query(sql)
     assert(rowsAffected === 1)
 
     const sql2 = lube.select(lube.variant('@@IDENTITY').as('id'))
-    const res2 = await pool.query(sql2)
+    const res2 = await db.query(sql2)
     assert(res2.rows[0].id > 0)
   })
 
   it('find', async function () {
-    const item = await pool.find('Items', {
+    const item = await db.find('Items', {
       FID: 1
     })
     assert(item)
   })
 
   it('update', async function () {
-    const lines = await pool.update('Items', {
+    const lines = await db.update('Items', {
       FNAME: '冷蒙',
       FAGE: 21,
       FSEX: false
@@ -141,7 +158,7 @@ END`)
         fsex: true
       })
       .where(a.fid.eq(2))
-    const { rowsAffected } = await pool.query(sql)
+    const { rowsAffected } = await db.query(sql)
     assert(rowsAffected === 1)
   })
 
@@ -149,20 +166,20 @@ END`)
     const a = lube.table('items').as('a')
     const b = lube.table('items').as('b')
     const sql = lube.update()
-      .set(
-        a.fname.assign('哈罗'),
-        a.fage.assign(100),
-        a.fsex.assign(true)
-      )
+      .set({
+        fname: '哈罗',
+        fage: 100,
+        fsex: true
+      })
       .from(a)
       .join(b, b.fid.eq(a.fid))
       .where(a.fid.eq(2))
-    const { rowsAffected } = await pool.query(sql)
+    const { rowsAffected } = await db.query(sql)
     assert(rowsAffected === 1)
   })
 
   it('select', async function () {
-    const rows = await pool.select('Items', {
+    const rows = await db.select('Items', {
       where: {
         fid: {
           $in: [1, 10, 11, 12, 13, 14]
@@ -200,7 +217,7 @@ END`)
       .offset(50)
       .limit(10)
 
-    let { rows } = await pool.query(sql)
+    let { rows } = await db.query(sql)
     console.log(rows[0])
     assert(_.isDate(rows[0].Now), '不是日期类型')
     assert(rows[0].aid === 51, '数据不是预期结果')
@@ -208,21 +225,22 @@ END`)
     assert(rows.length === 10, '查询到的数据不正确')
 
     const sql2 = select(a.fid, a.fsex).from(a).distinct()
-    await pool.query(sql2)
+    await db.query(sql2)
 
     const sql3 = select(count(all()).as('count')).from(a)
-    rows = (await pool.query(sql3)).rows
+    rows = (await db.query(sql3)).rows
     assert(rows[0].count > 0)
   })
 
   it('select statement -> join', async function () {
-    const { table, select } = lube
+    const { table, select, input } = lube
     const o = table('sysobjects').as('o')
     const p = table('extended_properties', 'sys').as('p')
     const sql = select({
       id: o.id,
       name: o.name,
-      desc: p.value
+      desc: p.value,
+      abc: input('XABC', 1000)
     })
       .from(o)
       .leftJoin(p, p.major_id.eq(o.id)
@@ -230,28 +248,28 @@ END`)
         .and(p.class.eq(1))
         .and(p.name.eq('MS_Description')))
       .where(o.type.in('U', 'V'))
-    const { rows } = await pool.query(sql)
+    const { rows } = await db.query(sql)
     assert(rows.length > 0)
   })
 
   it('select all', async () => {
-    const rows = await pool.select('Items')
+    const rows = await db.select('Items')
     assert(_.isArray(rows))
   })
 
   it('trans -> rollback', async () => {
-    pool.trans(async (executor, abort) => {
+    db.trans(async (executor, abort) => {
       const lines = await executor.delete('Items')
       assert(lines > 0)
       await abort()
     })
 
-    const rows = await pool.select('Items')
+    const rows = await db.select('Items')
     assert(rows.length > 0)
   })
 
   it('trans -> commit', async () => {
-    await pool.trans(async (executor, cancel) => {
+    await db.trans(async (executor, cancel) => {
       const lines = await executor.insert('Items', {
         FName: '添加测试',
         FSex: false,
@@ -261,16 +279,24 @@ END`)
       await cancel()
     })
 
-    const rows = await pool.select('Items')
+    const rows = await db.select('Items')
     assert(rows.length > 0)
   })
 
   it('delete', async function () {
-    const lines = await pool.delete('Items')
+    const lines = await db.delete('Items')
     assert(lines >= 1)
   })
 
+  it('exec proc -> statement with output param', async function () {
+    const p2 = output('o', STRING)
+    const sql = proc('doProc').call(1, p2)
+    await db.query(sql)
+
+    assert(p2.value === 'hello world')
+  })
+
   it('drop table', async function () {
-    await pool.query('drop table Items')
+    await db.query('drop table Items')
   })
 })
