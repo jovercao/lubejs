@@ -20,6 +20,7 @@ describe.only('mssql demo', function () {
   }
 
   it('测试事务回滚', async () => {
+    // 经测试发现，某些条件下事务会自动回滚，在我们再次调用回滚时则会发生异常
     const pool = await sql.connect(dbConfig)
 
     const trans = pool.transaction()
