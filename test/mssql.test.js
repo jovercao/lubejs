@@ -3,7 +3,7 @@ const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
-const { table, select, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING } = lube
+const { table, select, variant, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING } = lube
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0)
@@ -258,29 +258,66 @@ describe('MSSQL数据库测试', function () {
   })
 
   it('trans -> rollback', async () => {
-    db.trans(async (executor, abort) => {
-      const lines = await executor.delete('Items')
+    const srcRows = await db.select('Items')
+    try {
+      await db.trans(async (executor, abort) => {
+        let lines = await executor.delete('Items')
+        assert(lines > 0)
+        const row = {
+          FNAME: '中华人民共和国',
+          FAGE: 70,
+          FSEX: false
+        }
+        lines = await executor.insert('Items', row)
+        assert(lines > 0)
+
+        const t = table('Items')
+        const item = (await executor.query(select().from(t).where(t.FId.eq(variant('@@identity'))))).rows[0]
+        assert.strictEqual(item.FName, row.FNAME)
+        throw new Error('事务错误回滚测试')
+      })
+    } catch (ex) {
+      assert(ex.message === '事务错误回滚测试')
+    }
+
+    const rows2 = await db.select('Items')
+    assert.deepStrictEqual(rows2, srcRows)
+  })
+
+  it('trans -> commit', async () => {
+    await db.trans(async (executor) => {
+      await executor.query('SET identity_insert [Items] ON')
+      const lines = await executor.insert('Items', {
+        // FId: 10000,
+        FName: '添加测试',
+        FSex: false,
+        FAge: 18
+      })
       assert(lines > 0)
-      await abort()
+      await executor.query('SET identity_insert [Items] OFF')
     })
 
     const rows = await db.select('Items')
     assert(rows.length > 0)
   })
 
-  it('trans -> commit', async () => {
-    await db.trans(async (executor, cancel) => {
-      const lines = await executor.insert('Items', {
-        FName: '添加测试',
-        FSex: false,
-        FAge: 18
-      })
-      assert(lines > 0)
-      await cancel()
-    })
-
-    const rows = await db.select('Items')
-    assert(rows.length > 0)
+  it('mssql -> trans identity_insert on', async () => {
+    dbConfig.server = dbConfig.host
+    const pool = await require('mssql').connect(dbConfig)
+    const trans = pool.transaction()
+    await trans.begin()
+    try {
+      const req = trans.request()
+      await req.query('SET identity_insert [Items] ON')
+      const req2 = trans.request()
+      // id is the identity column
+      await req2.query("INSERT INTO [Items](Fid, Fname) VALUES(1, 'aName')")
+      // throw error: Cannot insert explicit value for identity column in table 'Department' when IDENTITY_INSERT is set to OFF.
+      await trans.commit()
+    } catch (ex) {
+      await trans.rollback()
+      throw ex
+    }
   })
 
   it('delete', async function () {
