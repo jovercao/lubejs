@@ -1,6 +1,6 @@
 const sql = require('mssql')
 
-describe.only('mssql demo', function () {
+describe.skip('mssql demo', function () {
   const dbConfig = {
     user: 'sa',
     password: '!crgd-2019',
@@ -30,6 +30,26 @@ describe.only('mssql demo', function () {
 
       await req2.query("INSERT INTO [Product]([code],[queryCode],[drugName],[goodsName],[specs],[unit],[producerId],[operatorId],[productType],[taxrate],[createdAt],[updatedAt]) VALUES('10000', 'ZXY', '朱秀英', 'Maria', '8mg', '合', 2249, 1, 'Drug', 0.13, CONVERT(DATETIME, '2019-11-13 21:34:39.120'), CONVERT(DATETIME, '2019-11-13 21:34:39.120'))")
 
+      await trans.commit()
+    } catch (ex) {
+      await trans.rollback()
+      throw ex
+    }
+  })
+
+  // 发现在事务范围内都不生效 set identity_insert on
+  it('测试 identity_insert 作用域', async () => {
+    dbConfig.server = dbConfig.host
+    const pool = await require('mssql').connect(dbConfig)
+    const trans = pool.transaction()
+    await trans.begin()
+    try {
+      const req = trans.request()
+      await req.query('SET identity_insert [Items] ON')
+      const req2 = trans.request()
+      // id is the identity column
+      await req2.query("INSERT INTO [Items](Fid, Fname) VALUES(1, 'aName')")
+      // throw error: Cannot insert explicit value for identity column in table 'Department' when IDENTITY_INSERT is set to OFF.
       await trans.commit()
     } catch (ex) {
       await trans.rollback()

@@ -301,25 +301,6 @@ describe('MSSQL数据库测试', function () {
     assert(rows.length > 0)
   })
 
-  it('mssql -> trans identity_insert on', async () => {
-    dbConfig.server = dbConfig.host
-    const pool = await require('mssql').connect(dbConfig)
-    const trans = pool.transaction()
-    await trans.begin()
-    try {
-      const req = trans.request()
-      await req.query('SET identity_insert [Items] ON')
-      const req2 = trans.request()
-      // id is the identity column
-      await req2.query("INSERT INTO [Items](Fid, Fname) VALUES(1, 'aName')")
-      // throw error: Cannot insert explicit value for identity column in table 'Department' when IDENTITY_INSERT is set to OFF.
-      await trans.commit()
-    } catch (ex) {
-      await trans.rollback()
-      throw ex
-    }
-  })
-
   it('delete', async function () {
     const lines = await db.delete('Items')
     assert(lines >= 1)
