@@ -3,7 +3,7 @@ const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
-const { table, select, variant, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING } = lube
+const { table, select, variant, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING, sum } = lube
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0)
@@ -213,6 +213,7 @@ describe('MSSQL数据库测试', function () {
       .join(b, a.fid.eq(b.fid))
       .where(exists(select(1)))
       .groupby(a.fid, b.fid, a.fsex)
+      .having(count(a.fid).gte(1))
       .orderby([a.fid, ASC])
       .offset(50)
       .limit(10)
