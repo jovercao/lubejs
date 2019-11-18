@@ -6,15 +6,17 @@
 Supports list:
 
 - mssql - microsoft sqlserver 2012 or highter version, base on `node-mssql`.
-- oracle db - 11g or highter - base on `node-oracledb`.
+- oracle db - 11g or highter for the next version，base on `node-oracledb`.
 
-## queick start
+## Queick Start
 
 ```js
 const lube = require('lubejs')
 
 async function action() {
   const pool = await lube.connect('mssql://sa:password@127.0.0.1/test-db')
+  // for oracle
+  // const pool = await lube.connect('oracle://user:password@127.0.0.1/sid')
   // (Not recommended)query with template sql
   // const id = 1
   // const res = pool.query`select * from person where id = ${id}`
@@ -113,15 +115,28 @@ async function action() {
 
 ## Install
 
-install with npm
+Install with npm:
 
 ```shell
-$ npm install lubejs --save
+pm install lubejs --save
+```
+
+If use mssql, you need to run:
+
+```shell
+npm install mssql
+```
+
+At oracle db:
+
+```shell
+npm install oracledb
 ```
 
 ## Usage
 
-@import "./test/index.test.js"
+See [test](./test/index.test.js).
+<!--@import "./test/index.test.js"-->
 
 ## API
 
