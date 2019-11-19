@@ -181,9 +181,7 @@ describe('MSSQL数据库测试', function () {
   it('select', async function () {
     const rows = await db.select('Items', {
       where: {
-        fid: {
-          $in: [1, 10, 11, 12, 13, 14]
-        }
+        fid: [1, 10, 11, 12, 13, 14]
       },
       orders: {
         fid: ASC
