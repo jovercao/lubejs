@@ -108,8 +108,8 @@ describe('MSSQL数据库测试', function () {
         FCreateDate: new Date()
       }]
     })
-
-    const lines = await db.insert('Items', rows)
+    const items = table('Items')
+    const lines = await db.insert(items, rows)
     assert(lines === rows.length)
   })
 
