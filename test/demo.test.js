@@ -1,6 +1,6 @@
 const sql = require('mssql')
 
-describe.skip('mssql demo', function () {
+describe.only('mssql demo', function () {
   const dbConfig = {
     user: 'sa',
     password: '!crgd-2019',
@@ -18,6 +18,32 @@ describe.skip('mssql demo', function () {
     // 请求超时时间
     requestTimeout: 15000
   }
+
+  it.only('属性访问测试', () => {
+    const obj = {
+      type: 'Statement'
+    }
+
+    let i = 0
+    while (i < 10000000) {
+      i++
+      const x = obj.type
+    }
+  })
+
+  it.only('键值访问测试', () => {
+    const met = Symbol('X')
+    const obj = {
+      [met]: 'Statement'
+    }
+
+    let i = 0
+    while (i < 10000000) {
+      i++
+      const x = Object.getOwnPropertySymbols(obj)[0]
+      const v = obj[x]
+    }
+  })
 
   it('测试事务回滚', async () => {
     // 经测试发现，某些条件下事务会自动回滚，在我们再次调用回滚时则会发生异常
