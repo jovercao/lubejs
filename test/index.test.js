@@ -110,6 +110,8 @@ describe('MSSQL数据库测试', function () {
     })
     const items = table('Items')
     const lines = await db.insert(items, rows)
+    const added = await db.find('Items', { FId: variant('@@identity') })
+    assert(added, '新建失败')
     assert(lines === rows.length)
   })
 
@@ -136,6 +138,8 @@ describe('MSSQL数据库测试', function () {
       FID: 1
     })
     assert(item)
+    const item2 = await db.find('Items', ['FId', 'FName'], { FID: 1 })
+    assert(item2)
   })
 
   it('update', async function () {
