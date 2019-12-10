@@ -280,7 +280,7 @@ describe('MSSQL数据库测试', function () {
         throw new Error('事务错误回滚测试')
       })
     } catch (ex) {
-      assert(ex.message === '事务错误回滚测试')
+      assert.strictEqual(ex.message, '事务错误回滚测试')
     }
 
     const rows2 = await db.select('Items')
