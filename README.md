@@ -147,3 +147,7 @@ Pls waite for update.
 ### 0.9.7
 
 - add having clause support
+
+### 0.9.30
+
+- add static method(add/eq/neq/is/not/in/notin/...) to exports
