@@ -4,9 +4,9 @@ describe.skip('mssql demo', function () {
   const dbConfig = {
     user: 'sa',
     password: '!crgd-2019',
-    server: 'jover.wicp.net',
+    server: 'jover.f3322.net',
     database: 'erp-dev',
-    port: 1433,
+    port: 2433,
     // 最小值
     poolMin: 0,
     // 最大值

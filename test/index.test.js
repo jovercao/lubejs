@@ -13,10 +13,10 @@ describe('MSSQL数据库测试', function () {
     dialect: 'mssql',
     user: 'sa',
     password: '!crgd-2019',
-    host: 'jover.wicp.net',
+    host: 'jover.f3322.net',
     // instance: 'MSSQLSERVER',
     database: 'TEST',
-    port: 1433,
+    port: 2433,
     // 最小值
     poolMin: 0,
     // 最大值
