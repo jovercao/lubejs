@@ -3,7 +3,7 @@ const assert = require('assert')
 const mock = require('mockjs')
 const _ = require('lodash')
 
-const { table, select, variant, now, fn, iif, exists, proc, count, all, output, ASC, DESC, STRING, sum } = lube
+const { table, select, variant, now, fn, iif, exists, proc, count, all, output, sub, ASC, DESC, STRING, sum } = lube
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0)
@@ -145,7 +145,7 @@ describe('MSSQL数据库测试', function () {
   it('update', async function () {
     const lines = await db.update('Items', {
       FNAME: '冷蒙',
-      FAGE: 21,
+      FAGE: sub(21, 3),
       FSEX: false
     }, {
       FID: 1

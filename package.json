@@ -1,6 +1,6 @@
 {
   "name": "lubejs",
-  "version": "0.9.34",
+  "version": "0.9.35",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "index.js",
   "directories": {
