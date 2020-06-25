@@ -46,6 +46,7 @@
     "typescript": "^3.6.3"
   },
   "dependencies": {
+    "@types/lodash": "^4.14.156",
     "lodash": "^4.17.15",
     "mockjs": "^1.0.1-beta3",
     "moment": "^2.24.0"
