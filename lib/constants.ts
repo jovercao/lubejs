@@ -10,7 +10,7 @@ export enum SortDirection {
  * 参数方向
  */
 export enum ParameterDirection {
-  INPUT  = 'INPUT',
+  INPUT = 'INPUT',
   OUTPUT = 'OUTPUT'
 }
 
@@ -100,4 +100,12 @@ export enum SqlSymbol {
   WHEN = 'WHEN',
   CASE = 'CASE',
   DECLARE = 'DECLARE'
+}
+
+export enum DataType {
+  STRING = 'STRING',
+  INTEGER = 'INTEGER',
+  FLOAT = 'FLOAT',
+  BOOLEAN = 'BOOLEAN',
+  DATE = 'DATE'
 }

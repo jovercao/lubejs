@@ -824,10 +824,10 @@ export class Identity extends Expression {
   /**
    * 标识符
    */
-  constructor(name: string, parent?: Identity) {
+  constructor(name: string, parent?: UnsureIdentity) {
     super(SqlSymbol.IDENTITY)
     this.$name = name
-    this.$parent = parent
+    this.$parent = ensureIdentity(parent)
   }
 
   get lvalue() {
@@ -840,6 +840,19 @@ export class Identity extends Expression {
    */
   dot(name: string) {
     return new Identity(name, this)
+  }
+}
+
+export class Variant extends Expression {
+  $name: string
+
+  constructor(name: string) {
+    super(SqlSymbol.VARAINT)
+    this.$name = name
+  }
+
+  get lvalue() {
+    return true
   }
 }
 
@@ -879,12 +892,19 @@ export class Invoke extends Expression {
   $params: Expression[]
 
   /**
+   * 是否抽象函数，如果为抽象的，则需要
+   */
+  $abstract: boolean
+
+  /**
    * 函数调用
    */
-  constructor(func: Identity, params: (Expression | JsConstant)[]) {
+  constructor(func: UnsureIdentity, params: (Expression | JsConstant)[])
+  constructor(func: UnsureIdentity, params: (Expression | JsConstant)[], abstract = false) {
     super(SqlSymbol.INVOKE)
-    this.$func = func
+    this.$func = ensureIdentity(func)
     this.$params = params.map(exp => ensureConstant(exp))
+    this.$abstract = abstract
   }
 }
 
@@ -1344,7 +1364,7 @@ export class Insert extends Statement {
    * @param table
    * @param fields
    */
-  into(table: Identity) {
+  into(table: UnsureIdentity) {
     assert(!this.$table, 'The into clause is declared')
     this.$table = ensureIdentity(table)
     return this
@@ -1539,9 +1559,9 @@ export class Delete extends AST {
 export class Execute extends Statement {
   $proc: Identity
   $params: Expressions[] | Parameter[]
-  constructor(proc: UnsureIdentity, ...params: UnsureExpressions[])
-  constructor(proc: UnsureIdentity, ...params: Parameter[])
-  constructor(proc: UnsureIdentity, ...params: UnsureExpressions[] | Parameter[]) {
+  constructor(proc: UnsureIdentity, params: UnsureExpressions[])
+  constructor(proc: UnsureIdentity, params: Parameter[])
+  constructor(proc: UnsureIdentity, params: UnsureExpressions[] | Parameter[]) {
     super(SqlSymbol.EXECUTE)
     this.$proc = ensureIdentity(proc)
     if (params.length === 0) {

@@ -3,7 +3,8 @@
         "module": "commonjs",
         "target": "ESNext",
         "jsx": "preserve",
-        "sourceMap": true
+        "sourceMap": true,
+        "declaration": true
     },
     "exclude": [
         "node_modules",
