@@ -44,8 +44,6 @@ export declare abstract class AST {
 }
 /**
  * 表达式基类，抽象类
- * @class Expression
- * @extends {AST}
  */
 export declare abstract class Expression extends AST {
     /**
@@ -298,9 +296,9 @@ export declare abstract class Condition extends AST {
      */
     or(condition: any): BinaryLogicCondition;
     /**
-     * @returns {Bracket<Condition>}
+     * 返回括号表达式
      */
-    enclose(): Bracket<this>;
+    quoted(): Bracket<this>;
     /**
      * 将多个查询条件通过 AND 合并成一个大查询条件
      * @static
@@ -318,7 +316,7 @@ export declare abstract class Condition extends AST {
     /**
      * Not 逻辑运算
      * @param condition
-     * @returns {NotCondition}
+     * @returns
      */
     static not(condition: any): UnaryLogicCondition;
     /**
@@ -489,8 +487,6 @@ declare class IsNotNullCondition extends UnaryLogicCondition {
 }
 /**
  * 联接查询
- * @class Join
- * @extends {AST}
  */
 declare class Join extends AST {
     readonly $type: SqlSymbol;
@@ -502,7 +498,6 @@ declare class Join extends AST {
      * @param table
      * @param on 关联条件
      * @param left 是否左联接
-     * @field
      */
     constructor(table: UnsureIdentity, on: Conditions, left?: boolean);
 }
@@ -522,6 +517,11 @@ export declare class Identity extends Expression {
      * @param name
      */
     dot(name: string): Identity;
+    /**
+     * 访问下一节点
+     * @param name 节点名称
+     */
+    $(name: string): Identity;
 }
 export declare class Variant extends Expression {
     $name: string;
@@ -679,8 +679,6 @@ interface SortObject {
 }
 /**
  * SELECT查询
- * @class Select
- * @extends {Statement}
  */
 export declare class Select extends Statement {
     $from: Identity[];
@@ -769,7 +767,7 @@ export declare class Select extends Statement {
      * 将本SELECT返回表达式
      * @returns 返回一个加()后的SELECT语句
      */
-    enclose(): Bracket<this>;
+    quoted(): Bracket<this>;
     /**
      * 将本次查询，转换为Table行集
      * @param alias

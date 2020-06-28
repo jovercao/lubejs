@@ -82,8 +82,6 @@ export abstract class AST {
 
 /**
  * 表达式基类，抽象类
- * @class Expression
- * @extends {AST}
  */
 export abstract class Expression extends AST {
   /**
@@ -465,9 +463,9 @@ export abstract class Condition extends AST {
   }
 
   /**
-   * @returns {Bracket<Condition>}
+   * 返回括号表达式
    */
-  enclose() {
+  quoted() {
     return new Bracket(this)
   }
 
@@ -504,7 +502,7 @@ export abstract class Condition extends AST {
   /**
    * Not 逻辑运算
    * @param condition
-   * @returns {NotCondition}
+   * @returns
    */
   static not(condition) {
     condition = ensureCondition(condition)
@@ -518,7 +516,7 @@ export abstract class Condition extends AST {
    * @param select 查询语句
    */
   static exists(select: Select) {
-    return new UnaryCompareCondition(CompareOperator.EXISTS, select.enclose())
+    return new UnaryCompareCondition(CompareOperator.EXISTS, select.quoted())
   }
 
   /**
@@ -774,8 +772,6 @@ class IsNotNullCondition extends UnaryLogicCondition {
 
 /**
  * 联接查询
- * @class Join
- * @extends {AST}
  */
 class Join extends AST {
   readonly $type: SqlSymbol
@@ -788,7 +784,6 @@ class Join extends AST {
    * @param table
    * @param on 关联条件
    * @param left 是否左联接
-   * @field
    */
   constructor(table: UnsureIdentity, on: Conditions, left: boolean = false) {
     super(SqlSymbol.JOIN)
@@ -841,7 +836,17 @@ export class Identity extends Expression {
   dot(name: string) {
     return new Identity(name, this)
   }
+
+  /**
+   * 访问下一节点
+   * @param name 节点名称
+   */
+  $(name: string) {
+    return this.dot(name)
+  }
 }
+
+
 
 export class Variant extends Expression {
   $name: string
@@ -1113,8 +1118,6 @@ interface SortObject {
 
 /**
  * SELECT查询
- * @class Select
- * @extends {Statement}
  */
 export class Select extends Statement {
   $from: Identity[]
@@ -1315,7 +1318,7 @@ export class Select extends Statement {
    * 将本SELECT返回表达式
    * @returns 返回一个加()后的SELECT语句
    */
-  enclose() {
+  quoted() {
     return new Bracket(this)
   }
 
@@ -1324,7 +1327,7 @@ export class Select extends Statement {
    * @param alias
    */
   as(alias) {
-    return new Alias(this.enclose(), alias)
+    return new Alias(this.quoted(), alias)
   }
 }
 
@@ -1396,8 +1399,6 @@ export class Insert extends Statement {
       this.$values = rows[0]
       return this
     }
-
-    const findedFields = {}
 
     if (rows.length === 1 && !this.$fields) {
       this.fields(...Object.keys(rows[0]))
@@ -1600,13 +1601,13 @@ export class Assignment extends AST {
 // }
 
 export class Parameter extends AST {
-  $name: Identity
+  $name: string
   $value: Expressions
   $direction: ParameterDirection
 
-  constructor(name: UnsureIdentity, value: UnsureExpressions, direction: ParameterDirection = ParameterDirection.INPUT) {
+  constructor(name: string, value: UnsureExpressions, direction: ParameterDirection = ParameterDirection.INPUT) {
     super(SqlSymbol.PARAMETER)
-    this.$name = ensureIdentity(name)
+    this.$name = name
     this.$value = ensureConstant(value)
     this.$direction = direction
   }
