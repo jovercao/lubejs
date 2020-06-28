@@ -73,10 +73,20 @@ export const or = Condition.or
  */
 export const exists = Condition.exists
 
+/**
+ * 函数调用
+ * @param func 函数名称
+ * @param params 参数列表
+ */
 export function invoke(func, params) {
   return new Invoke(func, params)
 }
 
+/**
+ * 存储过程调用
+ * @param proc 存储过程名称
+ * @param params 参数列表
+ */
 export function exec(proc, params) {
   return new Execute(proc, params)
 }
@@ -216,6 +226,11 @@ export function allField() {
 }
 
 // ************************** 系统函数区 *************************
+
+/**
+ * 数量
+ * @param exp 表达式
+ */
 export function count(exp: UnsureExpressions) {
   return new Invoke('count', [exp])
 }
@@ -268,8 +283,12 @@ export function round(exp: UnsureExpressions, digit: UnsureExpressions) {
   return new Invoke('round', [exp, digit])
 }
 
-export function sign(exp: UnsureExpressions) {
-  return new Invoke('sign', [exp])
+export function sin(exp: UnsureExpressions) {
+  return new Invoke('sin', [exp])
+}
+
+export function cos(exp: UnsureExpressions) {
+  return new Invoke('cos', [exp])
 }
 
 export function sqrt(exp: UnsureExpressions) {
@@ -279,6 +298,7 @@ export function sqrt(exp: UnsureExpressions) {
 export function power(exp: UnsureExpressions, pwr: UnsureExpressions) {
   return new Invoke('power', [exp, pwr])
 }
+
 // code(char) {
 //   return new Invoke('code', [char], true)
 // },
