@@ -68,6 +68,9 @@ export declare enum ComputeOperator {
 /**
  * SQL运算符
  */
+/**
+ * SQL运算符
+ */
 export declare enum SqlSymbol {
     AGGREGATE = "AGGREGATE",
     EXPRESSION = "EXPRESSION",
@@ -93,7 +96,8 @@ export declare enum SqlSymbol {
     UNION = "UNION",
     WHEN = "WHEN",
     CASE = "CASE",
-    DECLARE = "DECLARE"
+    DECLARE = "DECLARE",
+    DOCUMENT = "DOCUMENT"
 }
 export declare enum DataType {
     STRING = "STRING",

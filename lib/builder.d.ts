@@ -1,4 +1,4 @@
-import { Condition, Alias, Parameter, Insert, Update, Constant, Variant, Bracket, Invoke, Identity, Execute, Expressions, UnsureExpressions, UnsureIdentity, JsConstant, AST } from './ast';
+import { Condition, Parameter, Invoke, Identity, Statement, Expression, UnsureExpressions } from './ast';
 /**
  * not 查询条件运算
  */
@@ -27,13 +27,14 @@ export declare const or: typeof Condition.or;
  * @memberof SQL
  */
 export declare const exists: typeof Condition.exists;
-export declare function invoke(func: any, params: any): Invoke;
-export declare function exec(proc: any, params: any): Execute;
+export declare const invoke: typeof Expression.invoke;
+export declare const exec: typeof Statement.exec;
+export declare const execute: typeof Statement.execute;
 /**
  * 标识符
  * @returns
  */
-export declare function identity(...names: string[]): string | Identity;
+export declare const identity: typeof Expression.identity;
 /**
  * 创建一个表格标识
  * @param names 表标识限定，如果有多级，请传多个参数
@@ -41,82 +42,43 @@ export declare function identity(...names: string[]): string | Identity;
  * @example table(database, schema, tableName) => Identity
  * @example table(tableName) => Identity
  */
-export declare function table(...names: string[]): string | Identity;
-/**
- * 字段引用
- * @param name
- * @param table
- * @returns
- */
-export declare function field(name: string, table: UnsureIdentity): Identity;
-/**
- * 常量表达式
- */
-export declare function constant(value: JsConstant): Constant;
-/**
- * 括号表达式
- * @param context 括号上下文
- * @returns
- */
-export declare function quoted(context: AST): Bracket<AST>;
+export declare const table: typeof Expression.identity;
+export declare const field: typeof Expression.identity;
+export declare const constant: typeof Expression.constant;
+export declare const quoted: typeof Expression.quoted;
 /**
  * input 参数
  */
-export declare function input(name: string, value: UnsureExpressions): Parameter;
+export declare const input: typeof Parameter.input;
 /**
  * output参数
  */
-export declare function output(name: string, value: UnsureExpressions): Parameter;
+export declare const output: typeof Parameter.output;
 /**
  * 变量引用
- * @param name
- * @returns
  */
-export declare function variant(name: string): Variant;
+export declare const variant: typeof Expression.variant;
 /**
- * 创建一个列
- * @static
- * @param name 名称
- * @param exp 当不传递该参数时，默认为字段名
- * @returns 返回列实例
- * @memberof SQL
+ * 创建一个别名
  */
-export declare function alias(exp: Expressions, name: string): Alias<import("./ast").Expression>;
+export declare const alias: typeof Expression.alias;
 /**
- * 创建一个SELECT SQL对象
- * @static
- * @param columns 列列表
- * @returns
- * @memberof SQL
+ * 创建一个SELECT语句
  */
-export declare function select(...columns: UnsureExpressions[]): any;
+export declare const select: typeof Statement.select;
 /**
- * 创建一个insert SQL 对象
- * @static
- * @returns  insert sql 对象
- * @memberof SQL
+ * 创建一个INSERT语句
  */
-export declare function insert(table: UnsureIdentity): Insert;
+export declare const insert: typeof Statement.insert;
 /**
- * 创建一个update sql 对象
- * @static
- * @param tables
- * @param sets
- * @param where
- * @returns
- * @memberof SQL
+ * 创建一个UPDATE语句
  */
-export declare function update(table: UnsureIdentity): Update;
+export declare const update: typeof Statement.update;
 /**
- * 创建一个delete SQL 对象
- * @static
- * @param table
- * @param where
- * @returns
- * @memberof SQL
+ * 创建一个DELETE语句
  */
-export declare function del(table: UnsureIdentity): void;
-export declare function allField(): Identity;
+export declare const del: typeof Statement.delete;
+export declare const allFields: Identity;
 export declare function count(exp: UnsureExpressions): Invoke;
 export declare function stdev(exp: UnsureExpressions): Invoke;
 export declare function sum(exp: UnsureExpressions): Invoke;

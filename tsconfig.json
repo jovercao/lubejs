@@ -4,10 +4,12 @@
         "target": "ESNext",
         "jsx": "preserve",
         "sourceMap": true,
-        "declaration": true
+        "declaration": true,
+        "outDir": "lib"
     },
     "exclude": [
         "node_modules",
+        "lib",
         "**/node_modules/*"
     ]
 }
