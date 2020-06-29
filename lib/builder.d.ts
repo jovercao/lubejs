@@ -1,4 +1,4 @@
-import { Condition, Parameter, Invoke, Identity, Statement, Expression, UnsureExpressions } from './ast';
+import { Condition, Parameter, Identifier, Statement, Expression, UnsureExpressions } from './ast';
 /**
  * not 查询条件运算
  */
@@ -34,7 +34,7 @@ export declare const execute: typeof Statement.execute;
  * 标识符
  * @returns
  */
-export declare const identity: typeof Expression.identity;
+export declare const identity: typeof Expression.identifier;
 /**
  * 创建一个表格标识
  * @param names 表标识限定，如果有多级，请传多个参数
@@ -42,8 +42,8 @@ export declare const identity: typeof Expression.identity;
  * @example table(database, schema, tableName) => Identity
  * @example table(tableName) => Identity
  */
-export declare const table: typeof Expression.identity;
-export declare const field: typeof Expression.identity;
+export declare const table: typeof Expression.identifier;
+export declare const field: typeof Expression.identifier;
 export declare const constant: typeof Expression.constant;
 export declare const quoted: typeof Expression.quoted;
 /**
@@ -78,20 +78,20 @@ export declare const update: typeof Statement.update;
  * 创建一个DELETE语句
  */
 export declare const del: typeof Statement.delete;
-export declare const allFields: Identity;
-export declare function count(exp: UnsureExpressions): Invoke;
-export declare function stdev(exp: UnsureExpressions): Invoke;
-export declare function sum(exp: UnsureExpressions): Invoke;
-export declare function avg(exp: UnsureExpressions): Invoke;
-export declare function max(exp: UnsureExpressions): Invoke;
-export declare function min(exp: UnsureExpressions): Invoke;
-export declare function nvl(exp: UnsureExpressions, defaults: UnsureExpressions): Invoke;
-export declare function abs(exp: UnsureExpressions): Invoke;
-export declare function ceil(exp: UnsureExpressions): Invoke;
-export declare function exp(exp: UnsureExpressions): Invoke;
-export declare function square(exp: UnsureExpressions): Invoke;
-export declare function floor(exp: UnsureExpressions): Invoke;
-export declare function round(exp: UnsureExpressions, digit: UnsureExpressions): Invoke;
-export declare function sign(exp: UnsureExpressions): Invoke;
-export declare function sqrt(exp: UnsureExpressions): Invoke;
-export declare function power(exp: UnsureExpressions, pwr: UnsureExpressions): Invoke;
+export declare const allFields: Identifier;
+export declare function count(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function stdev(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function sum(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function avg(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function max(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function min(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function nvl(exp: UnsureExpressions, defaults: UnsureExpressions): import("./ast").Invoke;
+export declare function abs(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function ceil(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function exp(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function square(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function floor(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function round(exp: UnsureExpressions, digit: UnsureExpressions): import("./ast").Invoke;
+export declare function sign(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function sqrt(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function power(exp: UnsureExpressions, pwr: UnsureExpressions): import("./ast").Invoke;
