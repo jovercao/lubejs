@@ -82,9 +82,9 @@ export const identifier = Expression.identifier
  * @example table(database, schema, tableName) => Identity
  * @example table(tableName) => Identity
  */
-export const table = Expression.identifier
+export const table = Expression.table
 
-export const field = Expression.identifier
+export const field = Expression.field
 
 export const constant = Expression.constant
 

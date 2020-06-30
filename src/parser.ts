@@ -151,6 +151,7 @@ export class Parser {
     if (_.isArrayBuffer(value) || _.isArray(value)) {
       return '0x' + Buffer.from(value).toString('hex')
     }
+    console.debug(value)
     throw new Error('unsupport constant value type:' + value.toString())
   }
 
@@ -177,7 +178,7 @@ export class Parser {
       case SqlSymbol.DECLARE:
         return this.parseDeclare(ast as Declare, params)
       case SqlSymbol.BRACKET:
-        return '(' + this.parseAST((ast as Bracket<AST>).context, params) + ')'
+        return this.parseBracket(ast as Bracket<any>, params)
       case SqlSymbol.CONSTANT:
         return this.parseConstant(ast as Constant)
       case SqlSymbol.ALIAS:
@@ -205,6 +206,16 @@ export class Parser {
       default:
         throw new Error('Error AST type: ' + ast.type)
     }
+  }
+
+  protected parseBracket<T>(bracket: Bracket<T>, params: Set<Parameter>): string {
+    let inner
+    if (_.isArray(bracket.context)) {
+      inner = bracket.context.map(ast => this.parseAST((ast as Bracket<AST>).context, params)).join(', ')
+    }  else {
+      inner = this.parseAST(bracket.context as unknown as AST, params)
+    }
+    return '(' + inner + ')'
   }
 
   protected parseUnion(union: Union, params: Set<Parameter>): string {
@@ -326,7 +337,8 @@ export class Parser {
     assert(sets, 'set statement un declared')
 
     let sql = 'UPDATE '
-    sql += this.parseAST(table, params)
+    // 必须以Identifier解析，否则会生成别名
+    sql += this.parseIdentifier(table)
 
     sql += ' SET ' + sets.map(({ left, right }) => this.parseAST(left, params) + ' = ' + this.parseAST(right, params)).join(', ')
 
@@ -334,8 +346,8 @@ export class Parser {
       sql += ' FROM ' + tables.map(table => this.parseAST(table, params)).join(', ')
     }
 
-    if (joins) {
-      sql += joins.map(join => this.parseJoin(join, params)).join(' ')
+    if (joins && joins.length > 0) {
+      sql += ' ' + joins.map(join => this.parseJoin(join, params)).join(' ')
     }
     if (filters) {
       sql += ' WHERE ' + this.parseAST(filters, params)

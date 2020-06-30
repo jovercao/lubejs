@@ -3,7 +3,7 @@ const assert = require('assert');
 const mock = require('mockjs');
 const _ = require('lodash');
 
-const { table, select, variant, exists, count, allFields, output } = lube;
+const { table, select, variant, exists, count, SortDirection, output } = lube;
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0);
@@ -155,7 +155,7 @@ describe('MSSQL数据库测试', function () {
   });
 
   it('update statement', async function () {
-    const a = lube.table('items').as('a');
+    const a = lube.table('items');
     const sql = lube.update(a)
       .set({
         fname: '哈罗',
@@ -170,7 +170,7 @@ describe('MSSQL数据库测试', function () {
   it('update statement -> join update', async function () {
     const a = lube.table('items').as('a');
     const b = lube.table('items').as('b');
-    const sql = lube.update()
+    const sql = lube.update(a)
       .set({
         fname: '哈罗',
         fage: 100,
@@ -188,8 +188,8 @@ describe('MSSQL数据库测试', function () {
       where: {
         fid: [1, 10, 11, 12, 13, 14]
       },
-      orders: {
-        fid: ASC
+      sorts: {
+        fid: SortDirection.ASC
       },
       offset: 0,
       limit: 1

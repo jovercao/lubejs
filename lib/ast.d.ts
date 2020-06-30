@@ -177,7 +177,7 @@ export interface IExpression {
     /**
      * 为当前表达式添加别名
      */
-    as(alias: string): Alias;
+    as(alias: string): Identifier;
 }
 /**
  * 表达式基类，抽象类
@@ -332,7 +332,7 @@ export declare abstract class Expression extends AST implements IExpression {
     /**
      * 为当前表达式添加别名
      */
-    as: (alias: string) => Alias;
+    as: (alias: string) => Identifier;
     /**
      * 获取当前表达式是否为左值
      * @type {boolean}
@@ -455,6 +455,21 @@ export declare abstract class Expression extends AST implements IExpression {
      * 标识符
      */
     static identifier(...names: string[]): Identifier;
+    /**
+     * 代理化的identifier，可以自动接受字段名
+     * @param name
+     */
+    static proxyIdentifier(name: UnsureIdentity): Identifier;
+    /**
+     * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+     * @param names
+     */
+    static table(...names: string[]): Identifier;
+    /**
+     * 字段，实为 identifier(...names) 别名
+     * @param names
+     */
+    static field(...names: string[]): Identifier;
     /**
      * 调用表达式
      * @param func 函数
@@ -719,11 +734,7 @@ export declare class Identifier extends Expression {
      * @param name
      */
     dot(name: string): Identifier;
-    /**
-     * 访问下一节点
-     * @param name 节点名称
-     */
-    $(name: string): Identifier;
+    field(name: string): Identifier;
     any(): AnyIdentifier;
     /**
      * 执行一个函数
@@ -794,9 +805,9 @@ export declare abstract class Statement extends AST {
     /**
      * 选择列
      */
-    static select(columns: KeyValueObject): any;
-    static select(columns: KeyValueObject): any;
-    static select(...columns: UnsureExpressions[]): any;
+    static select(columns: KeyValueObject): Select;
+    static select(columns: KeyValueObject): Select;
+    static select(...columns: UnsureExpressions[]): Select;
     /**
      * 执行一个存储过程
      * @param proc
@@ -1152,8 +1163,8 @@ export declare class Select extends Fromable {
      * order by 排序
      * @param sorts 排序信息
      */
-    orderBy(sorts: SortObject): Select;
-    orderBy(...sorts: (SortInfo | UnsureExpressions)[]): Select;
+    orderBy(sorts: SortObject): this;
+    orderBy(...sorts: (SortInfo | UnsureExpressions)[]): this;
     /**
      * 分组查询
      * @param groups

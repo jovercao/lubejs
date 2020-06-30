@@ -17,8 +17,6 @@ export declare function ensureIdentity(expr: string | Identifier): Identifier;
  */
 export declare function ensureCondition(condition: UnsureConditions): Conditions;
 /**
- * 混入器
- * @param derivedCtor
- * @param baseCtors
+ * 将制作table的代理，用于生成字段
  */
-export declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
+export declare function makeProxyIdentity(identifier: Identifier): Identifier;

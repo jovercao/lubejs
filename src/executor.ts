@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, Identifier, UnsureConditions, AnyIdentifier } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, Identifier, UnsureConditions, AnyIdentifier, SortObject } from './ast'
 import { Parser } from './parser'
 
 export interface QueryResult {
@@ -23,12 +23,13 @@ export interface QueryHandler {
 }
 
 export interface SelectOptions {
+  where?: UnsureConditions,
   top?: number,
   offset?: number,
   limit?: number,
   distinct?: boolean,
   fields?: string[],
-  sorts?: (SortInfo | UnsureExpressions)[]
+  sorts?: SortObject | (SortInfo | UnsureExpressions)[]
 }
 
 interface IExecuotor {
@@ -68,7 +69,7 @@ interface IExecuotor {
    * @param where
    * @param options
    */
-  select(table: UnsureIdentity, where?: UnsureConditions, options?: SelectOptions): Promise<object>
+  select(table: UnsureIdentity, options?: SelectOptions): Promise<object>
 
   update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): Promise<number>
   update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
@@ -236,8 +237,8 @@ export class Executor extends EventEmitter implements IExecuotor {
    * @param where
    * @param options
    */
-  async select(table: UnsureIdentity, where?: UnsureConditions, options: SelectOptions = {}) {
-    const { sorts, offset, limit, fields } = options
+  async select(table: UnsureIdentity, options: SelectOptions = {}) {
+    const { where, sorts, offset, limit, fields } = options
     let columns: UnsureExpressions[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
@@ -249,7 +250,11 @@ export class Executor extends EventEmitter implements IExecuotor {
       sql.where(where)
     }
     if (sorts) {
-      sql.orderby(sorts)
+      if (_.isArray(sorts)) {
+        sql.orderBy(...sorts)
+      } else {
+        sql.orderBy(sorts)
+      }
     }
     if (!_.isUndefined(offset)) {
       sql.offset(offset)

@@ -58,15 +58,35 @@ export function ensureCondition(condition: UnsureConditions): Conditions {
   return compares.length >= 2 ? Condition.and(...compares) : compares[0]
 }
 
+// /**
+//  * 混入器
+//  * @param derivedCtor
+//  * @param baseCtors
+//  */
+// export function applyMixins(derivedCtor: any, baseCtors: any[]) {
+//   baseCtors.forEach(baseCtor => {
+//     Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
+//       derivedCtor.prototype[name] = baseCtor.prototype[name]
+//     })
+//   })
+// }
+
 /**
- * 混入器
- * @param derivedCtor
- * @param baseCtors
+ * 将制作table的代理，用于生成字段
  */
-export function applyMixins(derivedCtor: any, baseCtors: any[]) {
-  baseCtors.forEach(baseCtor => {
-    Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
-      derivedCtor.prototype[name] = baseCtor.prototype[name]
-    })
+export function makeProxyIdentity(identifier: Identifier): Identifier {
+  return new Proxy(identifier, {
+    get(target, prop) {
+      if (Reflect.has(target, prop)) {
+        return target[prop]
+      }
+      if (_.isString(prop)) {
+        // $开头，实为转义符，避免字段命名冲突，程序自动移除首个
+        if (prop.startsWith('$')) {
+          prop = prop.substring(1)
+        }
+        return new Identifier(prop, identifier)
+      }
+    }
   })
 }

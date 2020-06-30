@@ -8,7 +8,7 @@ import {
   ensureConstant,
   ensureCondition,
   ensureIdentity,
-  applyMixins
+  makeProxyIdentity
   // assertType,
   // assertValue
 } from './util'
@@ -243,7 +243,7 @@ export interface IExpression {
   /**
    * 为当前表达式添加别名
    */
-  as(alias: string): Alias
+  as(alias: string): Identifier
 }
 
 const ExpressionPrototype: IExpression = {
@@ -481,8 +481,12 @@ const ExpressionPrototype: IExpression = {
   /**
    * 为当前表达式添加别名
    */
-  as(alias: string): Alias {
-    return new Alias(this, alias)
+  as(alias: string): Identifier {
+    const identifier = new Alias(this, alias)
+    if (identifier instanceof Identifier) {
+      return makeProxyIdentity(identifier)
+    }
+    return identifier
   }
 }
 
@@ -666,7 +670,7 @@ export abstract class Expression extends AST implements IExpression {
   /**
    * 为当前表达式添加别名
    */
-  as: (alias: string) => Alias
+  as: (alias: string) => Identifier
 
   /**
    * 获取当前表达式是否为左值
@@ -861,8 +865,24 @@ export abstract class Expression extends AST implements IExpression {
    * 代理化的identifier，可以自动接受字段名
    * @param name
    */
-  static proxyIdentifier(name: string) {
+  static proxyIdentifier(name: UnsureIdentity) {
+    return makeProxyIdentity(ensureIdentity(name))
+  }
 
+  /**
+   * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+   * @param names
+   */
+  static table(...names: string[]) {
+    return Expression.proxyIdentifier(Expression.identifier(...names))
+  }
+
+  /**
+   * 字段，实为 identifier(...names) 别名
+   * @param names
+   */
+  static field(...names: string[]) {
+    return Expression.identifier(...names)
   }
 
   /**
@@ -1191,8 +1211,6 @@ class BinaryCompareCondition extends Condition {
   constructor(operator: CompareOperator, left: UnsureExpressions, right: UnsureExpressions) {
     super(SqlSymbol.BINARY)
     this.operator = operator
-    assert(left, 'Left must not null')
-    assert(right, 'Right must not null')
     this.left = ensureConstant(left)
     this.right = ensureConstant(right)
   }
@@ -1420,7 +1438,7 @@ export abstract class Statement extends AST {
    * @param table
    */
   static update(table: UnsureIdentity) {
-    return new Update(table)
+    return new Update(table).from(table)
   }
 
   /**
@@ -1442,9 +1460,9 @@ export abstract class Statement extends AST {
   /**
    * 选择列
    */
-  static select(columns: KeyValueObject)
-  static select(columns: KeyValueObject)
-  static select(...columns: UnsureExpressions[])
+  static select(columns: KeyValueObject): Select
+  static select(columns: KeyValueObject): Select
+  static select(...columns: UnsureExpressions[]): Select
   static select(...args) {
     return new Select(...args)
   }
@@ -2005,9 +2023,9 @@ export class Select extends Fromable {
    * order by 排序
    * @param sorts 排序信息
    */
-  orderBy(sorts: SortObject): Select
-  orderBy(...sorts: (SortInfo | UnsureExpressions)[]): Select
-  orderBy(...sorts: (SortObject | SortInfo | UnsureExpressions)[]): Select {
+  orderBy(sorts: SortObject): this
+  orderBy(...sorts: (SortInfo | UnsureExpressions)[]): this
+  orderBy(...sorts: (SortObject | SortInfo | UnsureExpressions)[]): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(sorts.length > 0, 'must have one or more order basis')
     // 如果传入的是对象类型

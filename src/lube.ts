@@ -138,3 +138,10 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 }
 
 export * from './builder'
+
+
+export {
+  IsolationLevel,
+  ParameterDirection,
+  SortDirection
+} from './constants'

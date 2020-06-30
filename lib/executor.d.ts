@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { Parameter, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions } from './ast';
+import { Parameter, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
 import { Parser } from './parser';
 export interface QueryResult {
     output?: object;
@@ -12,12 +12,13 @@ export interface QueryHandler {
     (sql: string, params: Parameter[]): Promise<QueryResult>;
 }
 export interface SelectOptions {
+    where?: UnsureConditions;
     top?: number;
     offset?: number;
     limit?: number;
     distinct?: boolean;
     fields?: string[];
-    sorts?: (SortInfo | UnsureExpressions)[];
+    sorts?: SortObject | (SortInfo | UnsureExpressions)[];
 }
 interface IExecuotor {
     doQuery: QueryHandler;
@@ -50,7 +51,7 @@ interface IExecuotor {
      * @param where
      * @param options
      */
-    select(table: UnsureIdentity, where?: UnsureConditions, options?: SelectOptions): Promise<object>;
+    select(table: UnsureIdentity, options?: SelectOptions): Promise<object>;
     update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): Promise<number>;
     update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>;
     update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>;
@@ -104,7 +105,7 @@ export declare class Executor extends EventEmitter implements IExecuotor {
      * @param where
      * @param options
      */
-    select(table: UnsureIdentity, where?: UnsureConditions, options?: SelectOptions): Promise<object[]>;
+    select(table: UnsureIdentity, options?: SelectOptions): Promise<object[]>;
     update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): any;
     update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): any;
     delete(table: UnsureIdentity, where?: UnsureConditions): Promise<number>;

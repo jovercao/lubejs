@@ -43,8 +43,8 @@ export declare const identifier: typeof Expression.identifier;
  * @example table(database, schema, tableName) => Identity
  * @example table(tableName) => Identity
  */
-export declare const table: typeof Expression.identifier;
-export declare const field: typeof Expression.identifier;
+export declare const table: typeof Expression.table;
+export declare const field: typeof Expression.field;
 export declare const constant: typeof Expression.constant;
 export declare const quoted: typeof Expression.quoted;
 /**

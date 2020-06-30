@@ -51,3 +51,4 @@ interface ConnectOptions {
 export declare function connect(url: string): Promise<Lube>;
 export declare function connect(config: ConnectOptions): Promise<Lube>;
 export * from './builder';
+export { IsolationLevel, ParameterDirection, SortDirection } from './constants';
