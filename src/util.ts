@@ -47,12 +47,15 @@ export function ensureIdentity(expr: string | Identifier): Identifier {
 export function ensureCondition(condition: UnsureConditions): Conditions {
   if (condition instanceof Condition) return condition
   assert(_.isPlainObject(condition), 'condition must typeof `Condition` or `plain object`')
-  return Condition.and(...Object.entries(condition).map(([key, value]) => {
+  const compares = Object.entries(condition).map(([key, value]) => {
+    const field = Expression.identifier(key)
     if (_.isArray(value)) {
-      return Condition.in(key, value)
+      return Condition.in(field, value)
     }
-    return Condition.eq(key, value)
-  }))
+    return Condition.eq(field, value)
+  })
+
+  return compares.length >= 2 ? Condition.and(...compares) : compares[0]
 }
 
 /**

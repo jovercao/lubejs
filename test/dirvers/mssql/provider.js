@@ -1,47 +1,37 @@
 const mssql = require('mssql')
 const {
-  INPUT,
-  OUTPUT,
-  READ_COMMIT,
-  READ_UNCOMMIT,
-  SERIALIZABLE,
-  REPEATABLE_READ,
-  SNAPSHOT,
-  STRING,
-  NUMBER,
-  DATE,
-  BOOLEAN,
-  BUFFER
-} = require('../constants')
+  ParameterDirection,
+  IsolationLevel
+} = require('../../../lib/constants')
 
 const ployfill = require('./ployfill')
 
 const IsolationLevelMapps = {
-  [READ_COMMIT]: mssql.ISOLATION_LEVEL.READ_COMMITTED,
-  [READ_UNCOMMIT]: mssql.ISOLATION_LEVEL.READ_UNCOMMITTED,
-  [SERIALIZABLE]: mssql.ISOLATION_LEVEL.SERIALIZABLE,
-  [REPEATABLE_READ]: mssql.ISOLATION_LEVEL.REPEATABLE_READ,
-  [SNAPSHOT]: mssql.ISOLATION_LEVEL.SNAPSHOT
+  [IsolationLevel.READ_COMMIT]: mssql.ISOLATION_LEVEL.READ_COMMITTED,
+  [IsolationLevel.READ_UNCOMMIT]: mssql.ISOLATION_LEVEL.READ_UNCOMMITTED,
+  [IsolationLevel.SERIALIZABLE]: mssql.ISOLATION_LEVEL.SERIALIZABLE,
+  [IsolationLevel.REPEATABLE_READ]: mssql.ISOLATION_LEVEL.REPEATABLE_READ,
+  [IsolationLevel.SNAPSHOT]: mssql.ISOLATION_LEVEL.SNAPSHOT
 }
 
-const typeMapps = {
-  [STRING]: mssql.NVarChar(4000),
-  [NUMBER]: mssql.Real,
-  [DATE]: mssql.DateTime2,
-  [BOOLEAN]: mssql.Bit,
-  [BUFFER]: mssql.Image
-}
+// const typeMapps = {
+//   [STRING]: mssql.NVarChar(4000),
+//   [NUMBER]: mssql.Real,
+//   [DATE]: mssql.DateTime2,
+//   [BOOLEAN]: mssql.Bit,
+//   [BUFFER]: mssql.Image
+// }
 
 async function doQuery(driver, sql, params = []) {
   const request = await driver.request()
-  params.forEach(({ name, value, type, direction = INPUT }) => {
-    if (direction === INPUT) {
+  params.forEach(({ name, value, dataType: type, direction = ParameterDirection.INPUT }) => {
+    if (direction === ParameterDirection.INPUT) {
       if (type) {
         request.input(name, typeMapps[type], value)
       } else {
         request.input(name, value)
       }
-    } else if (direction === OUTPUT) {
+    } else if (direction === ParameterDirection.OUTPUT) {
       if (value === undefined) {
         request.output(name, typeMapps[type])
       } else {

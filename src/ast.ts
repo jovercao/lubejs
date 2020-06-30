@@ -837,15 +837,32 @@ export abstract class Expression extends AST implements IExpression {
   }
 
   /**
+   * 任意字段 *
+   * @param parent parent identifier
+   */
+  static any(parent?: UnsureIdentity) {
+    return new AnyIdentifier(parent)
+  }
+
+  /**
    * 标识符
    */
-  static identifier(...names: string[]) {
+  static identifier(...names: string[]): Identifier {
     assert(names.length > 0, 'must have one or more names')
     assert(names.length < 6, 'nodes deepth max 6 level')
-    return (names as (string | Identifier)[]).reduce((previous, current) => {
-      if (!previous) return new Identifier(current as string)
-      return new Identifier(current as string, previous)
+    let identity: Identifier
+    names.forEach(name => {
+      identity = new Identifier(name, identity)
     })
+    return identity
+  }
+
+  /**
+   * 代理化的identifier，可以自动接受字段名
+   * @param name
+   */
+  static proxyIdentifier(name: string) {
+
   }
 
   /**
@@ -858,7 +875,7 @@ export abstract class Expression extends AST implements IExpression {
   }
 }
 
-Object.assign(ExpressionPrototype, Expression.prototype)
+Object.assign(Expression.prototype, ExpressionPrototype)
 
 export interface ICondition {
   /**
@@ -1122,8 +1139,8 @@ Object.assign(Condition.prototype, ConditionPrototype)
 /**
  * 二元逻辑查询条件条件
  */
-export class BinaryLogicCondition extends Condition {
-  opeartor: LogicOperator
+export class BinaryLogicCondition extends Condition implements IBinary {
+  operator: LogicOperator
   left: Conditions
   right: Conditions
   /**
@@ -1131,7 +1148,7 @@ export class BinaryLogicCondition extends Condition {
    */
   constructor(operator: LogicOperator, left: UnsureConditions, right: UnsureConditions) {
     super(SqlSymbol.BINARY)
-    this.opeartor = operator
+    this.operator = operator
     /**
      * 左查询条件
      */
@@ -1146,7 +1163,7 @@ export class BinaryLogicCondition extends Condition {
 /**
  * 一元逻辑查询条件
  */
-class UnaryLogicCondition extends Condition {
+class UnaryLogicCondition extends Condition implements IUnary {
   operator: LogicOperator
   next: Conditions
   /**
@@ -1160,7 +1177,6 @@ class UnaryLogicCondition extends Condition {
     this.next = ensureCondition(next)
   }
 }
-
 
 /**
  * 二元比较条件
@@ -1185,8 +1201,8 @@ class BinaryCompareCondition extends Condition {
 /**
  * 一元比较条件
  */
-class UnaryCompareCondition extends Condition {
-  expr: Expressions
+class UnaryCompareCondition extends Condition implements IUnary {
+  next: Expressions
   operator: CompareOperator
   /**
    * 一元比较运算符
@@ -1197,7 +1213,7 @@ class UnaryCompareCondition extends Condition {
     super(SqlSymbol.UNARY)
     this.operator = operator
     assert(expr, 'next must not null')
-    this.expr = ensureConstant(expr)
+    this.next = ensureConstant(expr)
   }
 }
 
@@ -1206,10 +1222,10 @@ class UnaryCompareCondition extends Condition {
  */
 class IsNullCondition extends UnaryCompareCondition {
   /**
-   * @param expr 下一查询条件
+   * @param next 表达式
    */
-  constructor(expr: UnsureExpressions) {
-    super(CompareOperator.IS_NULL, expr)
+  constructor(next: UnsureExpressions) {
+    super(CompareOperator.IS_NULL, next)
   }
 }
 
@@ -1219,10 +1235,10 @@ class IsNullCondition extends UnaryCompareCondition {
 class IsNotNullCondition extends UnaryLogicCondition {
   /**
    * 是否空值
-   * @param expr
+   * @param next 表达式
    */
-  constructor(expr: UnsureExpressions) {
-    super(CompareOperator.IS_NOT_NULL, expr)
+  constructor(next: UnsureExpressions) {
+    super(CompareOperator.IS_NOT_NULL, next)
   }
 }
 
@@ -1263,6 +1279,14 @@ export class Join extends AST {
   }
 }
 
+export class Raw extends AST {
+  sql: string
+  constructor(sql: string) {
+    super(SqlSymbol.RAW)
+    this.sql = sql
+  }
+}
+
 /**
  * 标识符，可以多级，如表名等
  */
@@ -1272,15 +1296,13 @@ export class Identifier extends Expression {
 
   public readonly name: string
   public readonly parent?: Identifier
+  public readonly special: boolean
+
   /**
    * 标识符
    */
-  constructor(name: string, parent?: UnsureIdentity, isAlias = false) {
-    if (isAlias) {
-      super(SqlSymbol.ALIAS)
-    } else {
-      super(SqlSymbol.IDENTITY)
-    }
+  constructor(name: string, parent?: UnsureIdentity, type: SqlSymbol = SqlSymbol.IDENTIFIER) {
+    super(type)
     this.name = name
     this.parent = ensureIdentity(parent)
   }
@@ -1297,12 +1319,12 @@ export class Identifier extends Expression {
     return new Identifier(name, this)
   }
 
-  /**
-   * 访问下一节点
-   * @param name 节点名称
-   */
-  $(name: string) {
+  field(name: string) {
     return this.dot(name)
+  }
+
+  any() {
+    return new AnyIdentifier(this)
   }
 
   /**
@@ -1314,6 +1336,11 @@ export class Identifier extends Expression {
   }
 }
 
+export class AnyIdentifier extends Identifier {
+  constructor(parent: UnsureIdentity) {
+    super('*', parent, SqlSymbol.ANY)
+  }
+}
 
 
 export class Variant extends Expression {
@@ -1344,7 +1371,7 @@ export class Alias extends Identifier {
    * @param name 别名
    */
   constructor(expr: UnsureExpressions, name: string) {
-    super(name, null, true)
+    super(name, null, SqlSymbol.ALIAS)
     assert(_.isString(name), 'The alias must type of string')
     // assertType(expr, [DbObject, Field, Constant, Select], 'alias must type of DbObject|Field|Constant|Bracket<Select>')
     this.expr = ensureConstant(expr)
@@ -1416,6 +1443,7 @@ export abstract class Statement extends AST {
    * 选择列
    */
   static select(columns: KeyValueObject)
+  static select(columns: KeyValueObject)
   static select(...columns: UnsureExpressions[])
   static select(...args) {
     return new Select(...args)
@@ -1459,6 +1487,15 @@ export abstract class Statement extends AST {
   static declare(...declares) {
     return new Declare(...declares)
   }
+
+  /**
+   * WHEN 语句块
+   * @param expr
+   * @param value
+   */
+  static when(expr: UnsureExpressions, value?: UnsureExpressions) {
+    return new When(expr, value)
+  }
 }
 
 /**
@@ -1468,9 +1505,15 @@ export class When extends AST {
   expr: Expressions
   value: Expressions
 
-  constructor(expr: Expressions, value: Expressions) {
+  constructor(expr: UnsureExpressions, value?: UnsureExpressions) {
     super(SqlSymbol.WHEN)
     this.expr = ensureConstant(expr)
+    if (value) {
+      this.value = ensureConstant(value)
+    }
+  }
+
+  then(value: UnsureExpressions) {
     this.value = ensureConstant(value)
   }
 }
@@ -1486,7 +1529,7 @@ export class Case extends Expression {
 
   expr: Expressions
   whens: When[]
-  defaults: Expressions
+  defaults?: Expressions
 
   /**
    *
@@ -1746,11 +1789,21 @@ export class BracketCondition extends Bracket<Conditions> implements ICondition 
 
 Object.assign(BracketCondition.prototype, ConditionPrototype)
 
+export interface IBinary {
+  operator: String
+  left: AST
+  right: AST
+}
+
+export interface IUnary {
+  operator: String
+  next: AST
+}
 
 /**
  * 二元运算表达式
  */
-export class BinaryExpression extends Expression {
+export class BinaryExpression extends Expression implements IBinary {
 
   get lvalue() {
     return false
@@ -1759,7 +1812,6 @@ export class BinaryExpression extends Expression {
   operator: ComputeOperator
   left: Expressions
   right: Expressions
-
 
   /**
    * 名称
@@ -1781,10 +1833,10 @@ export class BinaryExpression extends Expression {
 /**
  * - 运算符
  */
-export class UnaryExpression extends Expression {
+export class UnaryExpression extends Expression implements IUnary {
 
   operator: ComputeOperator
-  expr: Expressions
+  next: Expressions
   readonly type: SqlSymbol
 
   get lvalue() {
@@ -1797,7 +1849,7 @@ export class UnaryExpression extends Expression {
   constructor(operator: ComputeOperator, expr: UnsureExpressions) {
     super(SqlSymbol.UNARY)
 
-    this.expr = ensureConstant(expr)
+    this.next = ensureConstant(expr)
   }
 }
 
@@ -2235,9 +2287,15 @@ export class Assignment extends Statement {
   }
 }
 
-interface VariantDeclare {
+class VariantDeclare extends AST {
+  constructor(name: string, dataType: string) {
+    super(SqlSymbol.VARAINT_DECLARE)
+    this.name = name
+    this.dataType = dataType
+  }
+
   name: string
-  type: string
+  dataType: string
 }
 
 /**
@@ -2259,7 +2317,7 @@ export class Declare extends Statement {
  */
 export class Parameter extends Expression {
   name?: string
-  private _value?: Expressions
+  private _value?: JsConstant
   direction: ParameterDirection
   // dataType?: DbType
   get lvalue() {
@@ -2275,29 +2333,27 @@ export class Parameter extends Expression {
     // TODO: 自动设置数据类型
   }
 
-  constructor(name: string)
-  constructor(value: UnsureExpressions)
-  constructor(value: UnsureExpressions, name: string)
-  constructor(value: UnsureExpressions, name: string, direction: ParameterDirection)
-  constructor(value: UnsureExpressions, name?: string, direction: ParameterDirection = ParameterDirection.INPUT) {
+  constructor(name: string, value: JsConstant)
+  constructor(name: string, value: JsConstant, direction: ParameterDirection)
+  constructor(name: string, value?: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
     super(SqlSymbol.PARAMETER)
     this.name = name
-    this.value = ensureConstant(value)
+    this.value = value // ensureConstant(value)
     this.direction = direction
   }
 
   /**
    * input 参数
    */
-  static input(value: UnsureExpressions, name: string) {
-    return new Parameter(value, name, ParameterDirection.INPUT)
+  static input(name: string, value: JsConstant) {
+    return new Parameter(name, value, ParameterDirection.INPUT)
   }
 
   /**
    * output参数
    */
-  static output(value: UnsureExpressions, name: string) {
-    return new Parameter(value, name, ParameterDirection.OUTPUT)
+  static output(name: string, value: JsConstant) {
+    return new Parameter(name, value, ParameterDirection.OUTPUT)
   }
 }
 

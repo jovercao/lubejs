@@ -2,19 +2,29 @@ import * as assert from 'assert'
 import * as moment from 'moment'
 import * as _ from 'lodash'
 
-import { AST, Parameter, Identifier, Constant, Expression, Bracket, Statement, Alias, Declare, Delete, Insert, Assignment, Update, Select, Invoke, Case, BinaryExpression, UnaryExpression, Variant, Condition, Join, InnerExpression }  from './ast'
+import {
+  AST, Parameter, Identifier, Constant, When,
+  Bracket, Alias, Declare, Delete, Insert,
+  Assignment, Update, Select, Invoke, Case,
+  Variant, Join, IUnary,
+  IBinary, Union, AnyIdentifier
+} from './ast'
 import { SqlSymbol } from './constants'
-import { stat } from 'fs'
-import { identity } from './builder'
 
 export interface Command {
   sql: string
   params: Parameter[]
 }
 
-export interface Parser {
-  (ast: AST): Command
+/**
+ * 命令生成器
+ */
+interface CommandBuilder {
+  sql: string[],
+  params: Set<Parameter>
 }
+
+// TODO: 使用命令生成器优化SQL字符串拼接
 
 /**
  * 兼容
@@ -103,11 +113,19 @@ export class Parser {
    */
   protected parseParameter(param: Parameter, params: Set<Parameter>): string {
     params.add(param)
-    return this.ployfill.parameterPrefix + param.name || ''
+    return this.properParameterName(param.name)
+  }
+
+  properParameterName(name?: string) {
+    return this.ployfill.parameterPrefix + (name || '')
+  }
+
+  protected properVariantName(name: string) {
+    return this.ployfill.variantPrefix + name
   }
 
   protected parseVariant(variant: Variant, params: Set<Parameter>): string {
-    return this.ployfill.variantPrefix + variant.name
+    return this.properVariantName(variant.name)
   }
 
   protected parseConstant(constant: Constant) {
@@ -136,83 +154,83 @@ export class Parser {
     throw new Error('unsupport constant value type:' + value.toString())
   }
 
-  protected parse(ast: AST, params: Set<Parameter>) {
-    if (ast instanceof Expression) {
-      return this.parseExpression(ast as Expression, params)
+  public parse(ast: AST): Command {
+    const params = new Set<Parameter>()
+    return {
+      sql: this.parseAST(ast, params),
+      params: Array.from(params)
     }
-    if (ast instanceof Statement) {
-      return this.parseStatment(ast, params)
-    }
-    if (ast instanceof Condition) {
-      return this.parseCondition(ast as Condition, params)
-    }
-    if (ast instanceof Bracket) {
-      return '(' + this.parse(ast.context, params) + ')'
-    }
-
-    throw new Error('Unsupport AST type: ' + ast.type)
   }
 
-  protected parseStatment(statement: Statement, params: Set<Parameter>): string {
-    switch (statement.type) {
+  protected parseAST(ast: AST, params: Set<Parameter>): string {
+    switch (ast.type) {
       case SqlSymbol.SELECT:
-        return this.parseSelectStatement(statement as Select, params)
+        return this.parseSelect(ast as Select, params)
       case SqlSymbol.UPDATE:
-        return this.parseUpdateStatement(statement as Update, params)
-      case SqlSymbol.AGGREGATE:
-        return this.parseAssignment(statement as Assignment, params)
+        return this.parseUpdate(ast as Update, params)
+      case SqlSymbol.ASSIGNMENT:
+        return this.parseAssignment(ast as Assignment, params)
       case SqlSymbol.INSERT:
-        return this.parseInsertStatement(statement as Insert, params)
+        return this.parseInsert(ast as Insert, params)
       case SqlSymbol.DELETE:
-        return this.parseDeleteStatement(statement as Delete, params)
+        return this.parseDelete(ast as Delete, params)
       case SqlSymbol.DECLARE:
-        return this.parseDeclareStatement(statement as Declare, params)
+        return this.parseDeclare(ast as Declare, params)
+      case SqlSymbol.BRACKET:
+        return '(' + this.parseAST((ast as Bracket<AST>).context, params) + ')'
+      case SqlSymbol.CONSTANT:
+        return this.parseConstant(ast as Constant)
+      case SqlSymbol.ALIAS:
+        return this.parseAlias(ast as Alias, params)
+      case SqlSymbol.IDENTIFIER:
+        return this.parseIdentifier(ast as Identifier)
+      case SqlSymbol.ANY:
+        return (ast as AnyIdentifier).name
+      case SqlSymbol.INVOKE:
+        return this.parseInvoke(ast as Invoke, params)
+      case SqlSymbol.CASE:
+        return this.parseCase(ast as Case, params)
+      case SqlSymbol.BINARY:
+        return this.parseBinary(ast as unknown as IBinary, params)
+      case SqlSymbol.UNARY:
+        return this.parseUnary(ast as unknown as IUnary, params)
+      case SqlSymbol.PARAMETER:
+        return this.parseParameter(ast as Parameter, params)
+      case SqlSymbol.VARAINT:
+        return this.parseVariant(ast as Variant, params)
+      case SqlSymbol.JOIN:
+        return this.parseJoin(ast as Join, params)
+      case SqlSymbol.UNION:
+        return this.parseUnion(ast as Union, params)
       default:
-        throw new Error('Unsupport statement type: ' + statement.type)
+        throw new Error('Error AST type: ' + ast.type)
     }
+  }
+
+  protected parseUnion(union: Union, params: Set<Parameter>): string {
+    return 'UNION ' + union.all ? 'ALL ' : '' + this.parseAST(union.select, params)
   }
 
   protected parseAlias(alias: Alias, params: Set<Parameter>): string {
-    return this.parseExpression(alias.expr, params) + this.ployfill.setsAliasJoinWith + alias.name
+    return this.parseAST(alias.expr, params) + ' ' + this.ployfill.setsAliasJoinWith + ' ' + alias.name
   }
 
   protected parseCase(caseExpr: Case, params: Set<Parameter>): string {
-
+    return 'CASE ' + this.parseAST(caseExpr.expr, params) +
+      caseExpr.whens.map(when => this.parseWhen(when, params)) +
+      (caseExpr.defaults || '') && ' ELSE ' + this.parseAST(caseExpr.defaults, params)
   }
 
-  protected parseBinaryExpression(expr: BinaryExpression, params: Set<Parameter>): string {
-
+  protected parseWhen(when: When, params: Set<Parameter>): string {
+    return 'WHEN ' + this.parseAST(when.expr, params) + ' THEN ' + this.parseAST(when.value, params)
   }
 
-  protected parseUnaryExpression(expr: UnaryExpression, params: Set<Parameter>): string {
-
+  protected parseBinary(expr: IBinary, params: Set<Parameter>): string {
+    return this.parseAST(expr.left, params) + ' ' + expr.operator + ' ' + this.parseAST(expr.right, params)
   }
 
-  protected parseExpression(expr: Expression, params: Set<Parameter>): string {
-    switch (expr.type) {
-      case SqlSymbol.BRACKET:
-        return '(' + this.parse((expr as InnerExpression).value, params) + ')'
-      case SqlSymbol.CONSTANT:
-        return this.parseConstant(expr as Constant)
-      case SqlSymbol.ALIAS:
-        return this.parseAlias(expr as Alias, params)
-      case SqlSymbol.IDENTITY:
-        return this.parseIdentifier(expr as Identifier)
-      case SqlSymbol.INVOKE:
-        return this.parseInvoke(expr as Invoke, params)
-      case SqlSymbol.CASE:
-        return this.parseCase(expr as Case, params)
-      case SqlSymbol.BINARY:
-        return this.parseBinaryExpression(expr as BinaryExpression, params)
-      case SqlSymbol.UNARY:
-        return this.parseUnaryExpression(expr as UnaryExpression, params)
-      case SqlSymbol.PARAMETER:
-        return this.parseParameter(expr as Parameter, params)
-      case SqlSymbol.VARAINT:
-        return this.parseVariant(expr as Variant, params)
-      default:
-        throw new Error('Unsupport expression type: ' + expr.type)
-    }
+  protected parseUnary(expr: IUnary, params: Set<Parameter>): string {
+    return expr.operator + ' ' + this.parseAST(expr.next, params)
   }
 
   /**
@@ -222,175 +240,123 @@ export class Parser {
    * @returns
    * @memberof Executor
    */
-  protected parseInvoke(invoke: Invoke, params) {
-    return `${this.parseIdentifier(invoke.func)}(${(invoke.params || []).map(v => this.parseExpression(v, params)).join(', ')})`
+  protected parseInvoke(invoke: Invoke, params: Set<Parameter>): string {
+    return `${this.parseIdentifier(invoke.func)}(${(invoke.params || []).map(v => this.parseAST(v, params)).join(', ')})`
   }
 
-  protected parseJoins(join: Join, params) {
-    let sql = ''
-    for (const { table, on, left } of join) {
-      if (left) {
-        sql += ' LEFT'
-      }
-      sql += ` JOIN ${this._compileSets(table)} ON ${this.parseCondition(on, params)}`
-    }
-    return sql
+  protected parseJoin(join: Join, params: Set<Parameter>): string {
+    return (join.left ? 'LEFT ' : '') + 'JOIN ' + this.parseAST(join.table, params) + ' ON ' + this.parseAST(join.on, params)
   }
 
-  /**
-   * 编译Where查询条件为Sql
-   * @param {*} condition where条件
-   * @param {array} params 用于接收参数值的数组
-   * @returns string sql 返回Sql字符串
-   * @memberof Pool
-   */
-  protected parseCondition(condition, params) {
-
-  }
-
-  protected parseSelectStatement(select, params) {
-    const { table, top, joins, columns, where, orders, groups, having, offset, limit, distinct } = select
+  protected parseSelect(select: Select, params): string {
+    const { tables, top, joins, unions, columns, filters, sorts, groups, havings, offsets, limits, isDistinct } = select
     let sql = 'SELECT '
-    if (distinct) {
+    if (isDistinct) {
       sql += 'DISTINCT '
     }
     if (_.isNumber(top)) {
       sql += `TOP ${top} `
     }
-    sql += this._parseColumns(columns, params)
-    if (table) {
-      sql += ` FROM ${this._compileSets(table, params)}`
+    sql += columns.map(expr => this.parseAST(expr, params)).join(', ')
+    if (tables) {
+      sql += ' FROM ' + tables.map(table => this.parseAST(table, params)).join(', ')
     }
     if (joins && joins.length > 0) {
-      sql += this.parseJoins(joins, params)
+      sql += ' ' + joins.map(join => this.parseJoin(join, params)).join(' ')
     }
-    if (where) {
-      sql += ' WHERE ' + this.parseCondition(where, params)
+    if (filters) {
+      sql += ' WHERE ' + this.parseAST(filters, params)
     }
     if (groups && groups.length) {
-      sql += ' GROUP BY ' + groups.map(p => this.parseExpression(p, params, $field)).join(', ')
+      sql += ' GROUP BY ' + groups.map(p => this.parseAST(p, params)).join(', ')
     }
-    if (having) {
-      sql += ' HAVING ' + this.parseCondition(having, params)
+    if (havings) {
+      sql += ' HAVING ' + this.parseAST(havings, params)
     }
-    if (orders) {
-      if (!_.isArray(orders) || orders.length > 0) {
-        sql += ' ORDER BY ' + orders.map(([exp, direct]) => `${this.parseExpression(exp, params, $field)} ${OrderDirectionMapps[direct || ASC]}`).join(', ')
-      }
+    if (sorts && sorts.length > 0) {
+      sql += ' ORDER BY ' + sorts.map(sort => `${this.parseAST(sort.expr, params)} ${sort.direction}`).join(', ')
     }
 
-    if (_.isNumber(offset) || _.isNumber(limit)) {
-      if (!orders || orders.length === 0) {
-        throw new Error('offset needs must use with order by statement')
-      }
-      sql += ` OFFSET ${offset || 0} ROWS`
-      if (_.isNumber(limit)) {
-        sql += ` FETCH NEXT ${limit} ROWS ONLY`
-      }
+    if (_.isNumber(offsets)) {
+      sql += ` OFFSET ${offsets || 0} ROWS`
+    }
+    if (_.isNumber(limits)) {
+      sql += ` FETCH NEXT ${limits} ROWS ONLY`
+    }
+
+    if (unions) {
+      sql += ' ' + this.parseUnion(unions, params)
     }
 
     return sql
   }
 
-  parseInsertStatement(insert, params) {
-    const { table, values, fields } = insert
-    let sql = `INSERT INTO ${this._compile(table, params, $table, [$table])}`
+  parseInsert(insert: Insert, params: Set<Parameter>): string {
+    const { table, rows, fields } = insert
+    let sql = 'INSERT INTO '
+
+    sql += this.parseAST(table, params)
 
     if (fields) {
-      sql += `(${fields.map(p => this.parseExpression(p, params, $field))})`
+      sql += '(' + fields.map(field => this.parseAST(field, params)).join(', ') + ')'
     }
 
-    if (_.isArray(values)) {
+    if (_.isArray(rows)) {
       sql += ' VALUES'
-      sql += values.map(row => '(' + row.map(v => this.parseExpression(v, params, $const)).join(', ') + ')').join(', ')
+      sql += rows.map(row => '(' + row.map(v => this.parseAST(v, params)).join(', ') + ')').join(', ')
     } else {
-      sql += ' ' + this._compile(values, params, $select, [$select])
+      sql += ' ' + this.parseAST(rows, params)
     }
 
     return sql
   }
 
-  parseAssignment(assign, params) {
+  parseAssignment(assign: Assignment, params: Set<Parameter>): string {
     const { left, right } = assign
-    return `${this._compile(left, params, $field, [$field])} = ${this.parseExpression(right, params, $const)}`
+    return this.parseAST(left, params) + ' = ' + this.parseAST(right, params)
   }
 
-  parseDeclareStatement(declare: Declare, params: Set<Parameter>): string {
-
+  parseDeclare(declare: Declare, params: Set<Parameter>): string {
+    return 'DECLARE ' + declare.declares.map(varDec => this.properVariantName(varDec.name) + ' ' + varDec.dataType).join(', ')
   }
 
-  parseUpdateStatement(update, params) {
-    const { table, sets, where, joins } = update
+  parseUpdate(update: Update, params: Set<Parameter>): string {
+    const { table, sets, filters, tables, joins } = update
     assert(table, 'table is required by update statement')
     assert(sets, 'set statement un declared')
 
-    let sql = `UPDATE ${this._compileSetsAlias(table, params, $table, [$table])} SET ${sets.map(([field, value]) => `${this._compile(field, params, $field, [$field, $var, $param])} = ${this.parseExpression(value)}`).join(', ')}`
+    let sql = 'UPDATE '
+    sql += this.parseAST(table, params)
 
-    sql += ' FROM ' + this._compileSets(table)
+    sql += ' SET ' + sets.map(({ left, right }) => this.parseAST(left, params) + ' = ' + this.parseAST(right, params)).join(', ')
+
+    if (tables && tables.length > 0) {
+      sql += ' FROM ' + tables.map(table => this.parseAST(table, params)).join(', ')
+    }
 
     if (joins) {
-      sql += this.parseJoins(joins, params)
+      sql += joins.map(join => this.parseJoin(join, params)).join(' ')
     }
-    if (where) {
-      sql += ' WHERE ' + this.parseCondition(where, params)
+    if (filters) {
+      sql += ' WHERE ' + this.parseAST(filters, params)
     }
     return sql
   }
 
-  parseDeleteStatement(del, params) {
-    const { table, joins, where } = del
-    assert(table, 'table is required for delete statement')
-    let sql = `DELETE ${this._compileSetsAlias(table, params, $table, [$table])}`
-    sql += ' FROM ' + this._compileSets(table)
-
-    if (joins) {
-      sql += this.parseJoins(joins, params)
+  parseDelete(del: Delete, params: Set<Parameter>): string {
+    const { table, tables, joins, filters } = del
+    let sql = 'DELETE '
+    if (table) sql += this.parseAST(table, params)
+    if (tables && tables.length > 0) {
+      sql += ' FROM ' + tables.map(table => this.parseAST(table, params)).join(', ')
     }
 
-    if (where) {
-      sql += ' WHERE ' + this.parseCondition(where)
+    if (joins) {
+      sql += joins.map(join => this.parseJoin(join, params)).join(' ')
+    }
+    if (filters) {
+      sql += ' WHERE ' + this.parseAST(filters, params)
     }
     return sql
   }
-
-  /**
-   * columns 支持两种格式:
-   * 1. array,写法如下： [ field1, [ field2, alias ] ]
-   * 2. object, 写法如下： { field1: table1.field, field2: table1.field2 }
-   * @param {*} columns
-   * @param {*} params
-   * @returns
-   * @memberof Executor
-   */
-  _parseColumns(columns, params) {
-    return columns.map(p => this._compile(p, params, $column)).join(', ')
-  }
-
-  _parseColumn(ast, params) {
-    // 默认为字段
-    if (_.isString(ast)) {
-      return this.quoted(ast)
-    }
-
-    if (_.isArray(ast)) {
-      const [exp, name] = ast
-
-      let sql = this.parseExpression(exp, params, $field)
-      if (name) {
-        sql += ' AS ' + this.quoted(name)
-      }
-      return sql
-    }
-
-    if (_.isPlainObject(ast)) {
-      return this.parseExpression(ast, params, $field)
-    }
-
-    // 常量
-    return this.parseConstant(ast)
-  }
-}
-
-module.exports = {
-  Parser: Compiler
 }

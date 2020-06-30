@@ -1,4 +1,4 @@
-import { Condition, Parameter, Identifier, Statement, Expression, UnsureExpressions } from './ast';
+import { Condition, Parameter, Statement, Expression, UnsureExpressions } from './ast';
 /**
  * not 查询条件运算
  */
@@ -30,11 +30,12 @@ export declare const exists: typeof Condition.exists;
 export declare const invoke: typeof Expression.invoke;
 export declare const exec: typeof Statement.exec;
 export declare const execute: typeof Statement.execute;
+export declare const when: typeof Statement.when;
 /**
  * 标识符
  * @returns
  */
-export declare const identity: typeof Expression.identifier;
+export declare const identifier: typeof Expression.identifier;
 /**
  * 创建一个表格标识
  * @param names 表标识限定，如果有多级，请传多个参数
@@ -78,7 +79,8 @@ export declare const update: typeof Statement.update;
  * 创建一个DELETE语句
  */
 export declare const del: typeof Statement.delete;
-export declare const allFields: Identifier;
+export declare const any: typeof Expression.any;
+export declare const anyFields: import("./ast").AnyIdentifier;
 export declare function count(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function stdev(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function sum(exp: UnsureExpressions): import("./ast").Invoke;

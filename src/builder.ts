@@ -67,11 +67,13 @@ export const exec = Statement.exec
 
 export const execute = Statement.execute
 
+export const when = Statement.when
+
 /**
  * 标识符
  * @returns
  */
-export const identity = Expression.identifier
+export const identifier = Expression.identifier
 
 /**
  * 创建一个表格标识
@@ -128,7 +130,9 @@ export const update = Statement.update
  */
 export const del = Statement.delete
 
-export const allFields = new Identifier('*')
+export const any = Expression.any
+
+export const anyFields = Expression.any()
 
 // ************************** 系统函数区 *************************
 export function count(exp: UnsureExpressions) {

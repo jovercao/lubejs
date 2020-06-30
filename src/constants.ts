@@ -78,9 +78,10 @@ export enum ComputeOperator {
  * SQL运算符
  */
 export enum SqlSymbol {
-  AGGREGATE = 'AGGREGATE',
-  EXPRESSION = 'EXPRESSION',
-  IDENTITY = 'IDENTITY',
+  RAW = 'RAW',
+  ANY = '*',
+  VARAINT_DECLARE = 'VARAINT_DECLARE',
+  IDENTIFIER = 'IDENTIFIER',
   PARAMETER = 'PARAMETER',
   VARAINT = 'VARAINT',
   DATATYPE = 'DATATYPE',

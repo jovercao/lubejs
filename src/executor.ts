@@ -1,11 +1,11 @@
 import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
-import { insert, select, update, del, allFields, exec, invoke, input, field } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, Identifier, UnsureConditions } from './ast'
-import { Parser, Ployfill } from './parser'
+import { insert, select, update, del, exec, input, field, anyFields } from './builder'
+import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, Identifier, UnsureConditions, AnyIdentifier } from './ast'
+import { Parser } from './parser'
 
-interface QueryResult {
+export interface QueryResult {
   output?: object
   rows?: object[]
   rowsAffected: number
@@ -31,23 +31,77 @@ export interface SelectOptions {
   sorts?: (SortInfo | UnsureExpressions)[]
 }
 
-export class Executor extends EventEmitter {
+interface IExecuotor {
 
-  private _query: QueryHandler
-  private _compile: Parser
-  private _ployfill: Ployfill
+  doQuery: QueryHandler
+
+  query(sql: string, params: Parameter[]): Promise<QueryResult>
+  query(sql: string, params: Object): Promise<QueryResult>
+  query(sql: Statement | Document): Promise<QueryResult>
+
+  /**
+   * 执行一个查询并获取返回的第一个标量值
+   * @param sql
+   */
+  queryScalar(sql: string, params: Parameter[]): Promise<JsConstant>
+  queryScalar(sql: string, params: Object): Promise<JsConstant>
+  queryScalar(sql: Statement | Document): Promise<JsConstant>
+  queryScalar(sql: string[], ...params: any[]): Promise<JsConstant>
+
+  /**
+   * 插入数据的快捷操作
+   * @param {*} table
+   * @param {array?} fields 字段列表，可空
+   * @param {*} rows 可接受二维数组/对象，或者单行数组
+   */
+  insert(table: UnsureIdentity, select: Select): Promise<number>
+  insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select): Promise<number>
+  insert(table: UnsureIdentity, rows: KeyValueObject[]): Promise<number>
+  insert(table: UnsureIdentity, row: KeyValueObject): Promise<number>
+  insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpressions[][]): Promise<number>
+
+  find(table: UnsureIdentity, where: Conditions, fields?: string[]): Promise<object>
+
+  /**
+   * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
+   * @param table
+   * @param where
+   * @param options
+   */
+  select(table: UnsureIdentity, where?: UnsureConditions, options?: SelectOptions): Promise<object>
+
+  update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>
+
+  execute(spname: UnsureIdentity, params: UnsureExpressions[]): Promise<number>
+  execute(spname: UnsureIdentity, params: Parameter[]): Promise<number>
+
+  /**
+   * 执行存储过程
+   * @param spname 存储过程名称
+   * @param params
+   */
+  execute(spname, params): Promise<QueryResult>
+}
+
+export class Executor extends EventEmitter implements IExecuotor {
+  doQuery: QueryHandler
+  protected parser: Parser
+
+  readonly isTrans: boolean
 
   /**
    * SQL执行器
    * @param {*} query 查询函数
-   * @param {*} compile 编译函数
+   * @param {*} parser 编译函数
    */
-  constructor(query: QueryHandler, compile: Parser, ployfill: Ployfill) {
+  protected constructor(query: QueryHandler, parser: Parser, isTrans: boolean = false) {
     super()
     // 是否启用严格模式，避免关键字等问题
-    this._query = query
-    this._compile = compile
-    this._ployfill = ployfill
+    this.doQuery = query
+    this.parser = parser
+    this.isTrans = isTrans
   }
 
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
@@ -57,7 +111,8 @@ export class Executor extends EventEmitter {
     let sql: string, params: Parameter[]
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
-      ({ sql, params } = this._compile(args[0]))
+      ({ sql, params } = this.parser.parse(args[0]))
+      // eslint-disable-next-line brace-style
     }
     // 如果是模板字符串
     else if (_.isArray(args[0])) {
@@ -67,7 +122,7 @@ export class Executor extends EventEmitter {
         if (index < args.length - 1) {
           const name = '__p__' + index
           params.push(input(name, args[index + 1]))
-          previous += this._ployfill.parameterPrefix + name
+          previous += this.parser.properParameterName(name)
         }
         return previous
       }, '')
@@ -83,7 +138,7 @@ export class Executor extends EventEmitter {
     }
 
     try {
-      const res = await this._query(sql, params)
+      const res = await this.doQuery(sql, params)
       // 如果有输出参数
       if (res.output) {
         Object.entries(res.output).forEach(([name, value]) => {
@@ -147,7 +202,7 @@ export class Executor extends EventEmitter {
 
     const sql = insert(table, fields)
     // one row => rows
-    if (!_.isArray(rows) || !_.isArray(rows[0])) {
+    if (!_.isArray(rows) && !_.isArray(rows[0])) {
       rows = [rows]
     }
 
@@ -161,11 +216,11 @@ export class Executor extends EventEmitter {
   }
 
   async find(table: UnsureIdentity, where: Conditions, fields?: string[]) {
-    let columns: UnsureExpressions[]
+    let columns: (UnsureExpressions | AnyIdentifier)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
     } else {
-      columns = [allFields]
+      columns = [anyFields]
     }
     const sql = select(...columns).top(1).from(table).where(where)
     const res = await this.query(sql)
@@ -187,7 +242,7 @@ export class Executor extends EventEmitter {
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
     } else {
-      columns = [allFields]
+      columns = [anyFields]
     }
     const sql = select(...columns).from(table)
     if (where) {
@@ -227,7 +282,9 @@ export class Executor extends EventEmitter {
     return res.rowsAffected
   }
 
-  async execute(spname, params) {
+  async execute(spname: UnsureIdentity, params: UnsureExpressions[])
+  async execute(spname: UnsureIdentity, params: Parameter[])
+  async execute(spname: UnsureIdentity, params: UnsureExpressions[] | Parameter[]) {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res

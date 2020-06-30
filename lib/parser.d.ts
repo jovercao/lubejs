@@ -1,10 +1,7 @@
-import { AST, Parameter, Identifier, Constant, Expression, Statement, Alias, Declare, Invoke, Case, BinaryExpression, UnaryExpression, Variant, Join } from './ast';
+import { AST, Parameter, Identifier, Constant, When, Alias, Declare, Delete, Insert, Assignment, Update, Select, Invoke, Case, Variant, Join, IUnary, IBinary, Union } from './ast';
 export interface Command {
     sql: string;
     params: Parameter[];
-}
-export interface Parser {
-    (ast: AST): Command;
 }
 /**
  * 兼容
@@ -70,15 +67,18 @@ export declare class Parser {
      * @param {any} value 参数值
      */
     protected parseParameter(param: Parameter, params: Set<Parameter>): string;
+    properParameterName(name?: string): string;
+    protected properVariantName(name: string): string;
     protected parseVariant(variant: Variant, params: Set<Parameter>): string;
     protected parseConstant(constant: Constant): string;
-    protected parse(ast: AST, params: Set<Parameter>): any;
-    protected parseStatment(statement: Statement, params: Set<Parameter>): string;
+    parse(ast: AST): Command;
+    protected parseAST(ast: AST, params: Set<Parameter>): string;
+    protected parseUnion(union: Union, params: Set<Parameter>): string;
     protected parseAlias(alias: Alias, params: Set<Parameter>): string;
     protected parseCase(caseExpr: Case, params: Set<Parameter>): string;
-    protected parseBinaryExpression(expr: BinaryExpression, params: Set<Parameter>): string;
-    protected parseUnaryExpression(expr: UnaryExpression, params: Set<Parameter>): string;
-    protected parseExpression(expr: Expression, params: Set<Parameter>): string;
+    protected parseWhen(when: When, params: Set<Parameter>): string;
+    protected parseBinary(expr: IBinary, params: Set<Parameter>): string;
+    protected parseUnary(expr: IUnary, params: Set<Parameter>): string;
     /**
      * 函数调用
      * @param {*} invoke
@@ -86,31 +86,12 @@ export declare class Parser {
      * @returns
      * @memberof Executor
      */
-    protected parseInvoke(invoke: Invoke, params: any): string;
-    protected parseJoins(join: Join, params: any): string;
-    /**
-     * 编译Where查询条件为Sql
-     * @param {*} condition where条件
-     * @param {array} params 用于接收参数值的数组
-     * @returns string sql 返回Sql字符串
-     * @memberof Pool
-     */
-    protected parseCondition(condition: any, params: any): void;
-    protected parseSelectStatement(select: any, params: any): string;
-    parseInsertStatement(insert: any, params: any): string;
-    parseAssignment(assign: any, params: any): string;
-    parseDeclareStatement(declare: Declare, params: Set<Parameter>): string;
-    parseUpdateStatement(update: any, params: any): string;
-    parseDeleteStatement(del: any, params: any): string;
-    /**
-     * columns 支持两种格式:
-     * 1. array,写法如下： [ field1, [ field2, alias ] ]
-     * 2. object, 写法如下： { field1: table1.field, field2: table1.field2 }
-     * @param {*} columns
-     * @param {*} params
-     * @returns
-     * @memberof Executor
-     */
-    _parseColumns(columns: any, params: any): any;
-    _parseColumn(ast: any, params: any): string;
+    protected parseInvoke(invoke: Invoke, params: Set<Parameter>): string;
+    protected parseJoin(join: Join, params: Set<Parameter>): string;
+    protected parseSelect(select: Select, params: any): string;
+    parseInsert(insert: Insert, params: Set<Parameter>): string;
+    parseAssignment(assign: Assignment, params: Set<Parameter>): string;
+    parseDeclare(declare: Declare, params: Set<Parameter>): string;
+    parseUpdate(update: Update, params: Set<Parameter>): string;
+    parseDelete(del: Delete, params: Set<Parameter>): string;
 }

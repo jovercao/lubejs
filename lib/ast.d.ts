@@ -447,9 +447,14 @@ export declare abstract class Expression extends AST implements IExpression {
     static quoted(context: Expressions): BracketExpression;
     static alias(expr: Expressions, name: string): Alias;
     /**
+     * 任意字段 *
+     * @param parent parent identifier
+     */
+    static any(parent?: UnsureIdentity): AnyIdentifier;
+    /**
      * 标识符
      */
-    static identifier(...names: string[]): string | Identifier;
+    static identifier(...names: string[]): Identifier;
     /**
      * 调用表达式
      * @param func 函数
@@ -611,8 +616,8 @@ export declare abstract class Condition extends AST implements ICondition {
 /**
  * 二元逻辑查询条件条件
  */
-export declare class BinaryLogicCondition extends Condition {
-    opeartor: LogicOperator;
+export declare class BinaryLogicCondition extends Condition implements IBinary {
+    operator: LogicOperator;
     left: Conditions;
     right: Conditions;
     /**
@@ -623,7 +628,7 @@ export declare class BinaryLogicCondition extends Condition {
 /**
  * 一元逻辑查询条件
  */
-declare class UnaryLogicCondition extends Condition {
+declare class UnaryLogicCondition extends Condition implements IUnary {
     operator: LogicOperator;
     next: Conditions;
     /**
@@ -648,8 +653,8 @@ declare class BinaryCompareCondition extends Condition {
 /**
  * 一元比较条件
  */
-declare class UnaryCompareCondition extends Condition {
-    expr: Expressions;
+declare class UnaryCompareCondition extends Condition implements IUnary {
+    next: Expressions;
     operator: CompareOperator;
     /**
      * 一元比较运算符
@@ -663,9 +668,9 @@ declare class UnaryCompareCondition extends Condition {
  */
 declare class IsNullCondition extends UnaryCompareCondition {
     /**
-     * @param expr 下一查询条件
+     * @param next 表达式
      */
-    constructor(expr: UnsureExpressions);
+    constructor(next: UnsureExpressions);
 }
 /**
  * 是否为空值条件
@@ -673,9 +678,9 @@ declare class IsNullCondition extends UnaryCompareCondition {
 declare class IsNotNullCondition extends UnaryLogicCondition {
     /**
      * 是否空值
-     * @param expr
+     * @param next 表达式
      */
-    constructor(expr: UnsureExpressions);
+    constructor(next: UnsureExpressions);
 }
 /**
  * 联接查询
@@ -693,16 +698,21 @@ export declare class Join extends AST {
      */
     constructor(table: UnsureIdentity, on: Conditions, left?: boolean);
 }
+export declare class Raw extends AST {
+    sql: string;
+    constructor(sql: string);
+}
 /**
  * 标识符，可以多级，如表名等
  */
 export declare class Identifier extends Expression {
     readonly name: string;
     readonly parent?: Identifier;
+    readonly special: boolean;
     /**
      * 标识符
      */
-    constructor(name: string, parent?: UnsureIdentity, isAlias?: boolean);
+    constructor(name: string, parent?: UnsureIdentity, type?: SqlSymbol);
     get lvalue(): boolean;
     /**
      * 访问下一节点
@@ -714,11 +724,15 @@ export declare class Identifier extends Expression {
      * @param name 节点名称
      */
     $(name: string): Identifier;
+    any(): AnyIdentifier;
     /**
      * 执行一个函数
      * @param params
      */
     invoke(...params: (UnsureExpressions)[]): Invoke;
+}
+export declare class AnyIdentifier extends Identifier {
+    constructor(parent: UnsureIdentity);
 }
 export declare class Variant extends Expression {
     name: string;
@@ -781,6 +795,7 @@ export declare abstract class Statement extends AST {
      * 选择列
      */
     static select(columns: KeyValueObject): any;
+    static select(columns: KeyValueObject): any;
     static select(...columns: UnsureExpressions[]): any;
     /**
      * 执行一个存储过程
@@ -807,6 +822,12 @@ export declare abstract class Statement extends AST {
      * @param declares 变量列表
      */
     static declare(...declares: any[]): Declare;
+    /**
+     * WHEN 语句块
+     * @param expr
+     * @param value
+     */
+    static when(expr: UnsureExpressions, value?: UnsureExpressions): When;
 }
 /**
  * When语句
@@ -814,7 +835,8 @@ export declare abstract class Statement extends AST {
 export declare class When extends AST {
     expr: Expressions;
     value: Expressions;
-    constructor(expr: Expressions, value: Expressions);
+    constructor(expr: UnsureExpressions, value?: UnsureExpressions);
+    then(value: UnsureExpressions): void;
 }
 /**
  * CASE表达式
@@ -823,7 +845,7 @@ export declare class Case extends Expression {
     get lvalue(): boolean;
     expr: Expressions;
     whens: When[];
-    defaults: Expressions;
+    defaults?: Expressions;
     /**
      *
      * @param expr
@@ -1017,10 +1039,19 @@ export declare class BracketCondition extends Bracket<Conditions> implements ICo
      */
     quoted: () => Bracket<Conditions>;
 }
+export interface IBinary {
+    operator: String;
+    left: AST;
+    right: AST;
+}
+export interface IUnary {
+    operator: String;
+    next: AST;
+}
 /**
  * 二元运算表达式
  */
-export declare class BinaryExpression extends Expression {
+export declare class BinaryExpression extends Expression implements IBinary {
     get lvalue(): boolean;
     operator: ComputeOperator;
     left: Expressions;
@@ -1036,9 +1067,9 @@ export declare class BinaryExpression extends Expression {
 /**
  * - 运算符
  */
-export declare class UnaryExpression extends Expression {
+export declare class UnaryExpression extends Expression implements IUnary {
     operator: ComputeOperator;
-    expr: Expressions;
+    next: Expressions;
     readonly type: SqlSymbol;
     get lvalue(): boolean;
     /**
@@ -1218,9 +1249,10 @@ export declare class Assignment extends Statement {
     right: Expressions;
     constructor(left: Expression, right: UnsureExpressions);
 }
-interface VariantDeclare {
+declare class VariantDeclare extends AST {
+    constructor(name: string, dataType: string);
     name: string;
-    type: string;
+    dataType: string;
 }
 /**
  * 声明语句，暂时只支持变量声明
@@ -1237,20 +1269,18 @@ export declare class Parameter extends Expression {
     private _value?;
     direction: ParameterDirection;
     get lvalue(): boolean;
-    get value(): Expressions;
-    set value(value: Expressions);
-    constructor(name: string);
-    constructor(value: UnsureExpressions);
-    constructor(value: UnsureExpressions, name: string);
-    constructor(value: UnsureExpressions, name: string, direction: ParameterDirection);
+    get value(): JsConstant;
+    set value(value: JsConstant);
+    constructor(name: string, value: JsConstant);
+    constructor(name: string, value: JsConstant, direction: ParameterDirection);
     /**
      * input 参数
      */
-    static input(value: UnsureExpressions, name: string): Parameter;
+    static input(name: string, value: JsConstant): Parameter;
     /**
      * output参数
      */
-    static output(value: UnsureExpressions, name: string): Parameter;
+    static output(name: string, value: JsConstant): Parameter;
 }
 /**
  * SQL 文档

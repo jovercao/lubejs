@@ -1,42 +1,39 @@
-import { Executor }  from './executor'
-import { Parser }  from './parser'
-import { URL }  from 'url'
-import * as builder  from './builder'
-import { EventEmitter }  from 'events'
-import { assert }  from './util'
+import { Executor, QueryResult } from './executor'
+import { Parser, Ployfill } from './parser'
+import { URL } from 'url'
 import * as _ from 'lodash'
-import { SqlSymbol }  from './constants'
+import { IsolationLevel } from './constants'
 
-class Lube extends EventEmitter {
-  constructor(provider, ployfill, options) {
-    super()
-    assert(provider, 'provider is required.')
-    assert(_.isFunction(provider.query), 'provider must provide function: query')
-    assert(_.isFunction(provider.beginTrans), 'provider must provide function: beginTrans')
+export type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>
 
-    this._provider = provider
-    const compiler = new Parser(ployfill, options)
-    const compile = this._compile = function (...args) {
-      return compiler.compile(...args)
-    }
-    const query = function (...args) {
+/**
+ * 数据库事务
+ */
+export interface ITransaction {
+  query(): Promise<QueryResult>
+  commit(): void
+  rollback(): void
+}
+
+/**
+ * 数据库提供驱动程序
+ */
+export interface IDbProvider {
+  ployfill: Ployfill
+  query(sql, params): Promise<QueryResult>
+  beginTrans(isolationLevel: IsolationLevel): ITransaction
+  close(): Promise<void>
+}
+
+export class Lube extends Executor {
+  private _provider: IDbProvider
+
+  constructor(provider: IDbProvider, options) {
+    const parser = new Parser(provider.ployfill, options)
+    super(function (...args) {
       return provider.query(...args)
-    }
-    this._executor = new Executor(
-      query,
-      compile,
-      ployfill.properParameter
-    )
-
-    this._executor.on('error', err => this.emit('error', err))
-    this._executor.on('command', cmd => this.emit('command', cmd))
-
-    // 复制主要方法到lube对象
-    for (const fn of ['insert', 'find', 'query', 'select', 'update', 'delete', 'execute']) {
-      this[fn] = function (...args) {
-        return this._executor[fn](...args)
-      }
-    }
+    }, parser)
+    this._provider = provider
   }
 
   /**
@@ -44,8 +41,8 @@ class Lube extends EventEmitter {
    * @param {*} handler (exeutor, cancel) => false
    * @param {*} isolationLevel 事务隔离级别
    */
-  async trans(handler, isolationLevel) {
-    if (this._isTrans) {
+  async trans(handler: TransactionHandler, isolationLevel) {
+    if (this.isTrans) {
       throw new Error('is in transaction now')
     }
     let canceled = false
@@ -54,9 +51,7 @@ class Lube extends EventEmitter {
       canceled = true
       await rollback()
     }
-    const executor = new Executor(query, this._compile)
-    executor._isTrans = true
-    // TODO: 今天做到这里
+    const executor = new Executor(query, this.parser, true)
     executor.on('command', cmd => this.emit('command', cmd))
     executor.on('error', cmd => this.emit('error', cmd))
     try {
@@ -78,13 +73,31 @@ class Lube extends EventEmitter {
   }
 }
 
+interface ConnectOptions {
+  /**
+   * 驱动
+   */
+  driver: string | ((config: ConnectOptions) => IDbProvider)
+  host: string
+  port?: number
+  user: string
+  password: string
+  database: string
+  poolMax: number
+  poolMin: number
+  idelTimeout: number
+}
+
 /**
  * 连接数据库并返回一个连接池
  * @param {*} config
  */
-async function connect(config) {
-  if (typeof config === 'string') {
-    const url = new URL(config)
+export async function connect(url: string): Promise<Lube>
+export async function connect(config: ConnectOptions): Promise<Lube>
+export async function connect(arg: ConnectOptions | string): Promise<Lube> {
+  let config: ConnectOptions
+  if (typeof arg === 'string') {
+    const url = new URL(arg)
     const params = url.searchParams
     const options = {
       poolMax: 100,
@@ -93,36 +106,35 @@ async function connect(config) {
       // 连接闲置关闭等待时间
       idelTimeout: 30
     }
+    for (const [key, value] of params.entries()) {
+      if (value !== undefined) {
+        options[key] = value
+      }
+    }
+    const dialect = url.protocol.substr(0, url.protocol.length - 1).toUpperCase()
 
-    params.entries().forEach(([key, value]) => { value !== undefined && (options[key] = value) })
     config = {
-      dialetc: url.protocol.substr(0, url.protocol.length - 1).toLowerCase(),
+      driver: dialect,
       host: url.host,
-      port: url.port || undefined,
+      port: url.port && parseInt(url.port),
       user: url.username,
       password: url.password,
-      database: url.pathname.split('|')[0] || undefined,
+      database: url.pathname.split('|')[0],
       ...options
     }
+  } else {
+    config = arg
   }
 
-  let provider
-  switch (config.dialect) {
-    case 'oracle':
-      provider = await require('./oracle').connect(config)
-      break
-    case 'mssql':
-      provider = await require('./mssql').connect(config)
-      break
-    default:
-      throw new Error('not support dialetc')
+  let provider: IDbProvider
+  if (_.isString(config.driver)) {
+    // TIPS: 必须以 lubejs-dialect 命名
+    provider = await (require('lubejs-' + config.driver))()
+  } else {
+    provider = await config.driver(config)
   }
 
-  return new Lube(provider, provider.ployfill, config)
+  return new Lube(provider, config)
 }
 
-module.exports = {
-  connect,
-  ...builder,
-  Op: SqlSymbolMapps
-}
+export * from './builder'
