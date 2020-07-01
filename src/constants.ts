@@ -79,9 +79,14 @@ export enum ComputeOperator {
  */
 export enum SqlSymbol {
   RAW = 'RAW',
-  ANY = '*',
+  // ANY = '*',
+  VALUE_LIST = 'VALUE_LIST',
   VARAINT_DECLARE = 'VARAINT_DECLARE',
   IDENTIFIER = 'IDENTIFIER',
+  /**
+   * 系统内建标识符，如COUNT, SUM等系统函数
+   */
+  BUILDIN_IDENTIFIER = 'BUILDIN_IDENTIFIER',
   PARAMETER = 'PARAMETER',
   VARAINT = 'VARAINT',
   DATATYPE = 'DATATYPE',

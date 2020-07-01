@@ -8,7 +8,8 @@ import {
   ensureConstant,
   ensureCondition,
   ensureIdentity,
-  makeProxyIdentity
+  makeProxyIdentity,
+  ensureGroupValues
   // assertType,
   // assertValue
 } from './util'
@@ -53,23 +54,23 @@ export interface WhereObject {
 
 export type UnsureConditions = Conditions | WhereObject
 
-export type BracketSelectExpressions = Bracket<SelectExpressions>
+export type SelectExpression = Bracket<Select>
 
 /**
  * SELECT查询表达式
  */
-export type SelectExpressions = Select | Bracket<Select | BracketSelectExpressions>
+export type UnsureSelectExpressions = Select | Bracket<Select>
 
-export type Expressions = SelectExpressions | BracketExpression | Expression
+export type Expressions = BracketExpression | Expression | Bracket<AST>
 
-export type UnsureGroupValues = UnsureExpressions[] | Bracket<Expression[]>
+export type GroupValues = Bracket<ValueList>
+/**
+ * 组数据
+ */
+export type UnsureGroupValues = UnsureExpressions[] | Bracket<ValueList> | ValueList
 
 export type UnsureIdentity = Identifier | string
 
-export interface SortInfo {
-  expr: Expressions,
-  direction: SortDirection
-}
 
 /**
  * AST 基类
@@ -80,6 +81,14 @@ export abstract class AST {
   }
 
   readonly type: SqlSymbol
+
+  static bracket<T extends AST>(context: T) {
+    return new Bracket(context)
+  }
+
+  static list(...values: UnsureExpressions[]) {
+    return AST.bracket(new ValueList(...values))
+  }
 }
 
 export interface IExpression {
@@ -461,10 +470,7 @@ const ExpressionPrototype: IExpression = {
    * @returns 返回对比条件表达式
    */
   asc(): SortInfo {
-    return {
-      expr: this,
-      direction: SortDirection.ASC
-    }
+    return new SortInfo(this, SortDirection.ASC)
   },
 
   /**
@@ -472,10 +478,7 @@ const ExpressionPrototype: IExpression = {
    * @returns 返回对比条件表达式
    */
   desc(): SortInfo {
-    return {
-      expr: this,
-      direction: SortDirection.DESC
-    }
+    return new SortInfo(this, SortDirection.DESC)
   },
 
   /**
@@ -828,14 +831,6 @@ export abstract class Expression extends AST implements IExpression {
     return Expression.variant(name)
   }
 
-  /**
-   * 括号引用
-   * @param context 括号引用
-   */
-  static quoted(context: Expressions) {
-    return new BracketExpression(context)
-  }
-
   static alias(expr: Expressions, name: string) {
     return new Alias(expr, name)
   }
@@ -845,7 +840,7 @@ export abstract class Expression extends AST implements IExpression {
    * @param parent parent identifier
    */
   static any(parent?: UnsureIdentity) {
-    return new AnyIdentifier(parent)
+    return Identifier.any(parent)
   }
 
   /**
@@ -856,7 +851,11 @@ export abstract class Expression extends AST implements IExpression {
     assert(names.length < 6, 'nodes deepth max 6 level')
     let identity: Identifier
     names.forEach(name => {
-      identity = new Identifier(name, identity)
+      if (!identity) {
+        identity = Identifier.normal(name)
+      } else {
+        identity = identity.dot(name)
+      }
     })
     return identity
   }
@@ -904,6 +903,12 @@ export interface ICondition {
    * @returns 返回新的查询条件
    */
   and(condition: Conditions): Condition
+  /**
+   * and连接，并在被连接的条件中加上括号 ()
+   * @param condition 下一个查询条件
+   * @returns 返回新的查询条件
+   */
+  andGroup(condition: Conditions): Condition
 
   /**
    * OR语句
@@ -911,10 +916,16 @@ export interface ICondition {
    * @returns 返回新的查询条件
    */
   or(condition: Conditions): Condition
+
+  /**
+   * or 连接，并在被连接的条件中加上括号 ()
+   * @param condition
+   * @returns 返回新的查询条件
+   */
+  orGroup(condition: Conditions): Condition
 }
 
 const ConditionPrototype: ICondition = {
-
   /**
    * and连接
    * @param condition 下一个查询条件
@@ -926,6 +937,16 @@ const ConditionPrototype: ICondition = {
   },
 
   /**
+   * and连接
+   * @param condition 下一个查询条件
+   * @returns 返回新的查询条件
+   */
+  andGroup(condition: Conditions) {
+    condition = ensureCondition(condition)
+    return new BinaryLogicCondition(LogicOperator.AND, this, Condition.quoted(condition))
+  },
+
+  /**
    * OR语句
    * @param condition
    * @returns 返回新的查询条件
@@ -933,6 +954,17 @@ const ConditionPrototype: ICondition = {
   or(condition: Conditions) {
     condition = ensureCondition(condition)
     return new BinaryLogicCondition(LogicOperator.OR, this, condition)
+  },
+
+
+  /**
+   * and连接
+   * @param condition 下一个查询条件
+   * @returns 返回新的查询条件
+   */
+  orGroup(condition: Conditions) {
+    condition = ensureCondition(condition)
+    return new BinaryLogicCondition(LogicOperator.OR, this, Condition.quoted(condition))
   }
 }
 
@@ -948,11 +980,25 @@ export abstract class Condition extends AST implements ICondition {
   and: (condition: Conditions) => Condition
 
   /**
+   * and连接，并在被连接的条件中加上括号 ()
+   * @param condition 下一个查询条件
+   * @returns 返回新的查询条件
+   */
+  andGroup: (condition: Conditions) => Condition
+
+  /**
    * OR语句
    * @param condition
    * @returns 返回新的查询条件
    */
   or: (condition: Conditions) => Condition
+
+  /**
+   * or 连接，并在被连接的条件中加上括号 ()
+   * @param condition
+   * @returns 返回新的查询条件
+   */
+  orGroup: (condition: Conditions) => Condition
 
   /**
    * 将多个查询条件通过 AND 合并成一个大查询条件
@@ -999,8 +1045,8 @@ export abstract class Condition extends AST implements ICondition {
    * 判断是否存在
    * @param select 查询语句
    */
-  static exists(select: SelectExpressions) {
-    return new UnaryCompareCondition(CompareOperator.EXISTS, Expression.quoted(select))
+  static exists(select: UnsureSelectExpressions) {
+    return new UnaryCompareCondition(CompareOperator.EXISTS, AST.bracket(select))
   }
 
   /**
@@ -1102,13 +1148,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static in(left: UnsureExpressions, values: UnsureGroupValues) {
-    let group
-    if (values instanceof Bracket) {
-      group = values
-    } else {
-      group = new Bracket(values)
-    }
-    return Condition.compare(left, group, CompareOperator.IN)
+    return Condition.compare(left, ensureGroupValues(values), CompareOperator.IN)
   }
 
   /**
@@ -1118,13 +1158,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static notIn(left: UnsureExpressions, values: UnsureGroupValues) {
-    let group
-    if (values instanceof Bracket) {
-      group = values
-    } else {
-      group = new Bracket(values)
-    }
-    return Condition.compare(left, group, CompareOperator.NOT_IN)
+    return Condition.compare(left, ensureGroupValues(values), CompareOperator.NOT_IN)
   }
 
   /**
@@ -1314,12 +1348,11 @@ export class Identifier extends Expression {
 
   public readonly name: string
   public readonly parent?: Identifier
-  public readonly special: boolean
 
   /**
    * 标识符
    */
-  constructor(name: string, parent?: UnsureIdentity, type: SqlSymbol = SqlSymbol.IDENTIFIER) {
+  protected constructor(name: string, parent?: UnsureIdentity, type: SqlSymbol = SqlSymbol.IDENTIFIER) {
     super(type)
     this.name = name
     this.parent = ensureIdentity(parent)
@@ -1342,7 +1375,7 @@ export class Identifier extends Expression {
   }
 
   any() {
-    return new AnyIdentifier(this)
+    return Identifier.any(this)
   }
 
   /**
@@ -1352,14 +1385,28 @@ export class Identifier extends Expression {
   invoke(...params: (UnsureExpressions)[]) {
     return new Invoke(this, params)
   }
-}
 
-export class AnyIdentifier extends Identifier {
-  constructor(parent: UnsureIdentity) {
-    super('*', parent, SqlSymbol.ANY)
+  /**
+   * 常规标识符
+   */
+  static normal(name) {
+    return new Identifier(name)
+  }
+
+  /**
+   * 内建标识符
+   */
+  static buildIn(name) {
+    return new Identifier(name, null, SqlSymbol.BUILDIN_IDENTIFIER)
+  }
+
+  /**
+   * 内建标识符
+   */
+  static any(parent?: UnsureIdentity) {
+    return new Identifier('*', parent, SqlSymbol.BUILDIN_IDENTIFIER)
   }
 }
-
 
 export class Variant extends Expression {
   name: string
@@ -1412,10 +1459,10 @@ export class Invoke extends Expression {
   /**
    * 函数调用
    */
-  constructor(func: UnsureIdentity, params: UnsureExpressions[]) {
+  constructor(func: UnsureIdentity, params?: UnsureExpressions[]) {
     super(SqlSymbol.INVOKE)
     this.func = ensureIdentity(func)
-    this.params = params.map(expr => ensureConstant(expr))
+    this.params = (params || []).map(expr => ensureConstant(expr))
   }
 }
 
@@ -1472,9 +1519,9 @@ export abstract class Statement extends AST {
    * @param proc
    * @param params
    */
-  static execute(proc: UnsureIdentity, params: UnsureExpressions[])
-  static execute(proc: UnsureIdentity, params: Parameter[])
-  static execute(proc: UnsureIdentity, params: UnsureExpressions[] | Parameter[]) {
+  static execute(proc: UnsureIdentity, params?: UnsureExpressions[])
+  static execute(proc: UnsureIdentity, params?: Parameter[])
+  static execute(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]) {
     return new Execute(proc, params)
   }
 
@@ -1566,8 +1613,9 @@ export class Case extends Expression {
    * ELSE语句
    * @param defaults
    */
-  else(defaults) {
+  else(defaults): this {
     this.defaults = ensureConstant(defaults)
+    return this
   }
 
   /**
@@ -1575,10 +1623,11 @@ export class Case extends Expression {
    * @param expr
    * @param then
    */
-  when(expr: UnsureExpressions, then) {
+  when(expr: UnsureExpressions, then): this {
     this.whens.push(
       new When(ensureConstant(expr), then)
     )
+    return this
   }
 }
 
@@ -1603,9 +1652,20 @@ export class Constant extends Expression {
 }
 
 /**
+ * 值列表（不含括号）
+ */
+export class ValueList extends AST {
+  items: Expressions[]
+  constructor(...values: UnsureExpressions[]) {
+    super(SqlSymbol.VALUE_LIST)
+    this.items = values.map(value => ensureConstant(value))
+  }
+}
+
+/**
  * 括号引用
  */
-export class Bracket<T> extends AST {
+export class Bracket<T extends AST> extends AST {
   /**
    * 表达式
    */
@@ -1617,7 +1677,7 @@ export class Bracket<T> extends AST {
   }
 }
 
-export class BracketExpression extends Bracket<Expressions> implements IExpression {
+export class BracketExpression extends Bracket<Expressions | ValueList | Select> implements IExpression {
 
   /**
    * 加法运算
@@ -1793,11 +1853,25 @@ export class BracketCondition extends Bracket<Conditions> implements ICondition 
   and: (condition) => Condition
 
   /**
+   * and连接，并在被连接的条件中加上括号 ()
+   * @param condition 下一个查询条件
+   * @returns 返回新的查询条件
+   */
+  andGroup: (condition: Conditions) => Condition
+
+  /**
    * OR语句
    * @param condition
    * @returns 返回新的查询条件
    */
-  or: (condition) => Condition
+  or: (condition: Conditions) => Condition
+
+  /**
+   * or 连接，并在被连接的条件中加上括号 ()
+   * @param condition
+   * @returns 返回新的查询条件
+   */
+  orGroup: (condition: Conditions) => Condition
 
   /**
    * 返回括号表达式
@@ -1875,7 +1949,7 @@ export class UnaryExpression extends Expression implements IUnary {
  * 联接查询
  */
 export class Union extends AST {
-  select: SelectExpressions
+  select: UnsureSelectExpressions
   all: boolean
   /**
    *
@@ -1963,6 +2037,16 @@ export abstract class Fromable extends Statement {
   }
 }
 
+export class SortInfo extends AST {
+  expr: Expressions
+  direction?: SortDirection
+  constructor(expr: UnsureExpressions, direction?: SortDirection) {
+    super(SqlSymbol.SORT)
+    this.expr = ensureConstant(expr)
+    this.direction = direction
+  }
+}
+
 /**
  * SELECT查询
  */
@@ -2031,18 +2115,12 @@ export class Select extends Fromable {
     // 如果传入的是对象类型
     if (sorts.length === 1 && _.isPlainObject(sorts[0])) {
       const obj = sorts[0]
-      this.sorts = Object.entries(obj).map(([expr, direction]) => ({
-        expr: new Identifier(expr),
-        direction: direction
-      }))
+      this.sorts = Object.entries(obj).map(([expr, direction]) => (new SortInfo(expr, direction)))
       return this
     }
     sorts = sorts as (UnsureExpressions | SortInfo)[]
     this.sorts = sorts.map(
-      expr => _.isObject(expr) ? (expr as SortInfo) : {
-        expr: ensureConstant(expr as UnsureExpressions),
-        direction: SortDirection.ASC
-      }
+      expr => expr instanceof SortInfo ? expr : new SortInfo(expr as UnsureExpressions)
     )
     return this
   }
@@ -2092,11 +2170,11 @@ export class Select extends Fromable {
   /**
    * 合并查询
    */
-  union(select: SelectExpressions, all = false) {
+  union(select: UnsureSelectExpressions, all = false) {
     this.unions = new Union(select, all)
   }
 
-  unionAll(select: SelectExpressions) {
+  unionAll(select: UnsureSelectExpressions) {
     return this.union(select, true)
   }
 
@@ -2124,7 +2202,7 @@ export class Insert extends Statement {
 
   table: Identifier
   fields: Identifier[]
-  rows: Expressions[][] | Select
+  rows: GroupValues[] | Select
 
   /**
    * 构造函数
@@ -2170,14 +2248,14 @@ export class Insert extends Statement {
       }
       // (row: UnsureExpressions[])
       if (_.isArray(args[0])) {
-        this.rows = [args]
+        this.rows = [AST.list(...args[0])]
         return this
       }
     }
 
     // (rows: UnsureExpressions[][])
     if (args.length > 1 && _.isArray(args[0])) {
-      this.rows = args
+      this.rows = args.map(rowValues => AST.list(...rowValues))
       return this
     }
 
@@ -2191,8 +2269,9 @@ export class Insert extends Statement {
       this._fields(...Object.keys(existsFields))
     }
 
-    this.rows = args.map(row => {
-      return this.fields.map(field => ensureConstant(row[field.name]))
+    this.rows = (args).map(row => {
+      const rowValues = this.fields.map(field => (row as ValuesObject)[field.name])
+      return AST.list(...rowValues)
     })
     return this
   }
@@ -2240,7 +2319,7 @@ export class Update extends Fromable {
 
     const obj = sets[0]
     this.sets = Object.entries(obj).map(
-      ([key, value]) => new Assignment(new Identifier(key), ensureConstant(value))
+      ([key, value]) => new Assignment(Identifier.normal(key), ensureConstant(value))
     )
     return this
   }
@@ -2271,15 +2350,16 @@ export class Delete extends Fromable {
  */
 export class Execute extends Statement {
   proc: Identifier
-  params: Expressions[] | Parameter[]
-  constructor(proc: UnsureIdentity, params: UnsureExpressions[])
-  constructor(proc: UnsureIdentity, params: Parameter[])
-  constructor(proc: UnsureIdentity, params: UnsureExpressions[] | Parameter[])
-  constructor(proc: UnsureIdentity, params: UnsureExpressions[] | Parameter[]) {
+  params: Expressions[] | Parameter[] | Assignment[]
+  constructor(proc: UnsureIdentity, params?: UnsureExpressions[])
+  constructor(proc: UnsureIdentity, params?: Parameter[])
+  constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[])
+  constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]) {
     super(SqlSymbol.EXECUTE)
     this.proc = ensureIdentity(proc)
-    if (params.length === 0) {
+    if (!params || params.length === 0) {
       this.params = []
+      return
     }
 
     if (!(params[0] instanceof Parameter)) {
@@ -2328,7 +2408,7 @@ export class Declare extends Statement {
   }
 }
 
-// type DbType = string
+type DbType = string
 
 /**
  * 程序与数据库间传递值所使用的参数
@@ -2337,7 +2417,7 @@ export class Parameter extends Expression {
   name?: string
   private _value?: JsConstant
   direction: ParameterDirection
-  // dataType?: DbType
+  dbType?: DbType
   get lvalue() {
     return false
   }
@@ -2351,12 +2431,11 @@ export class Parameter extends Expression {
     // TODO: 自动设置数据类型
   }
 
-  constructor(name: string, value: JsConstant)
-  constructor(name: string, value: JsConstant, direction: ParameterDirection)
-  constructor(name: string, value?: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
+  constructor(name: string, dbType: DbType, value: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
     super(SqlSymbol.PARAMETER)
     this.name = name
     this.value = value // ensureConstant(value)
+    this.dbType = dbType
     this.direction = direction
   }
 
@@ -2364,14 +2443,14 @@ export class Parameter extends Expression {
    * input 参数
    */
   static input(name: string, value: JsConstant) {
-    return new Parameter(name, value, ParameterDirection.INPUT)
+    return new Parameter(name, null, value, ParameterDirection.INPUT)
   }
 
   /**
    * output参数
    */
-  static output(name: string, value: JsConstant) {
-    return new Parameter(name, value, ParameterDirection.OUTPUT)
+  static output(name: string, type: DbType, value?: JsConstant) {
+    return new Parameter(name, type, value, ParameterDirection.OUTPUT)
   }
 }
 

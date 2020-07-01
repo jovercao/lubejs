@@ -4,11 +4,15 @@ import {
   Conditions,
   UnsureConditions,
   UnsureExpressions,
+  UnsureGroupValues,
+  Bracket,
   Expression,
   Expressions,
   AST,
   Identifier,
-  JsConstant
+  JsConstant,
+  ValueList,
+  BracketExpression
 } from './ast'
 
 /**
@@ -34,9 +38,19 @@ export function ensureConstant(expr: UnsureExpressions): Expressions {
 
 export function ensureIdentity(expr: string | Identifier): Identifier {
   if (_.isString(expr)) {
-    return new Identifier(expr)
+    return Identifier.normal(expr)
   }
   return expr
+}
+
+export function ensureGroupValues(values: UnsureGroupValues): Bracket<AST> {
+  if (_.isArray(values)) {
+    return new BracketExpression(new ValueList(...values))
+  }
+  if (!(values instanceof Bracket)) {
+    return new BracketExpression(values)
+  }
+  return values
 }
 
 /**
@@ -85,7 +99,7 @@ export function makeProxyIdentity(identifier: Identifier): Identifier {
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return new Identifier(prop, identifier)
+        return identifier.dot(prop)
       }
     }
   })

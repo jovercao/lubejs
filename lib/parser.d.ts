@@ -1,4 +1,4 @@
-import { AST, Parameter, Identifier, Constant, When, Bracket, Alias, Declare, Delete, Insert, Assignment, Update, Select, Invoke, Case, Variant, Join, IUnary, IBinary, Union } from './ast';
+import { AST, Parameter, Identifier, Constant, When, Bracket, Alias, Declare, Delete, Insert, Assignment, Update, Select, Invoke, Case, Variant, Join, IUnary, Execute, IBinary, Union, ValueList, SortInfo } from './ast';
 export interface Command {
     sql: string;
     params: Parameter[];
@@ -73,7 +73,9 @@ export declare class Parser {
     protected parseConstant(constant: Constant): string;
     parse(ast: AST): Command;
     protected parseAST(ast: AST, params: Set<Parameter>): string;
-    protected parseBracket<T>(bracket: Bracket<T>, params: Set<Parameter>): string;
+    protected parseExecute<T extends AST>(exec: Execute, params: Set<Parameter>): string;
+    protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string;
+    protected parseValueList(values: ValueList, params: Set<Parameter>): string;
     protected parseUnion(union: Union, params: Set<Parameter>): string;
     protected parseAlias(alias: Alias, params: Set<Parameter>): string;
     protected parseCase(caseExpr: Case, params: Set<Parameter>): string;
@@ -89,6 +91,7 @@ export declare class Parser {
      */
     protected parseInvoke(invoke: Invoke, params: Set<Parameter>): string;
     protected parseJoin(join: Join, params: Set<Parameter>): string;
+    protected parseSort(sort: SortInfo, params: Set<Parameter>): string;
     protected parseSelect(select: Select, params: any): string;
     parseInsert(insert: Insert, params: Set<Parameter>): string;
     parseAssignment(assign: Assignment, params: Set<Parameter>): string;

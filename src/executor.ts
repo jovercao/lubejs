@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, Identifier, UnsureConditions, AnyIdentifier, SortObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast'
 import { Parser } from './parser'
 
 export interface QueryResult {
@@ -217,7 +217,7 @@ export class Executor extends EventEmitter implements IExecuotor {
   }
 
   async find(table: UnsureIdentity, where: Conditions, fields?: string[]) {
-    let columns: (UnsureExpressions | AnyIdentifier)[]
+    let columns: (UnsureExpressions)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
     } else {

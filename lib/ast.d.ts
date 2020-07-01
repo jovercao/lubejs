@@ -23,24 +23,26 @@ export interface WhereObject {
     [field: string]: JsConstant | JsConstant[];
 }
 export declare type UnsureConditions = Conditions | WhereObject;
-export declare type BracketSelectExpressions = Bracket<SelectExpressions>;
+export declare type SelectExpression = Bracket<Select>;
 /**
  * SELECT查询表达式
  */
-export declare type SelectExpressions = Select | Bracket<Select | BracketSelectExpressions>;
-export declare type Expressions = SelectExpressions | BracketExpression | Expression;
-export declare type UnsureGroupValues = UnsureExpressions[] | Bracket<Expression[]>;
+export declare type UnsureSelectExpressions = Select | Bracket<Select>;
+export declare type Expressions = BracketExpression | Expression | Bracket<AST>;
+export declare type GroupValues = Bracket<ValueList>;
+/**
+ * 组数据
+ */
+export declare type UnsureGroupValues = UnsureExpressions[] | Bracket<ValueList> | ValueList;
 export declare type UnsureIdentity = Identifier | string;
-export interface SortInfo {
-    expr: Expressions;
-    direction: SortDirection;
-}
 /**
  * AST 基类
  */
 export declare abstract class AST {
     constructor(type: SqlSymbol);
     readonly type: SqlSymbol;
+    static bracket<T extends AST>(context: T): Bracket<T>;
+    static list(...values: UnsureExpressions[]): Bracket<ValueList>;
 }
 export interface IExpression {
     /**
@@ -440,17 +442,12 @@ export declare abstract class Expression extends AST implements IExpression {
      * @param name 变量名，不需要带前缀
      */
     static var(name: string): Variant;
-    /**
-     * 括号引用
-     * @param context 括号引用
-     */
-    static quoted(context: Expressions): BracketExpression;
     static alias(expr: Expressions, name: string): Alias;
     /**
      * 任意字段 *
      * @param parent parent identifier
      */
-    static any(parent?: UnsureIdentity): AnyIdentifier;
+    static any(parent?: UnsureIdentity): Identifier;
     /**
      * 标识符
      */
@@ -485,11 +482,23 @@ export interface ICondition {
      */
     and(condition: Conditions): Condition;
     /**
+     * and连接，并在被连接的条件中加上括号 ()
+     * @param condition 下一个查询条件
+     * @returns 返回新的查询条件
+     */
+    andGroup(condition: Conditions): Condition;
+    /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
     or(condition: Conditions): Condition;
+    /**
+     * or 连接，并在被连接的条件中加上括号 ()
+     * @param condition
+     * @returns 返回新的查询条件
+     */
+    orGroup(condition: Conditions): Condition;
 }
 /**
  * 查询条件
@@ -502,11 +511,23 @@ export declare abstract class Condition extends AST implements ICondition {
      */
     and: (condition: Conditions) => Condition;
     /**
+     * and连接，并在被连接的条件中加上括号 ()
+     * @param condition 下一个查询条件
+     * @returns 返回新的查询条件
+     */
+    andGroup: (condition: Conditions) => Condition;
+    /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
     or: (condition: Conditions) => Condition;
+    /**
+     * or 连接，并在被连接的条件中加上括号 ()
+     * @param condition
+     * @returns 返回新的查询条件
+     */
+    orGroup: (condition: Conditions) => Condition;
     /**
      * 将多个查询条件通过 AND 合并成一个大查询条件
      * @static
@@ -530,7 +551,7 @@ export declare abstract class Condition extends AST implements ICondition {
      * 判断是否存在
      * @param select 查询语句
      */
-    static exists(select: SelectExpressions): UnaryCompareCondition;
+    static exists(select: UnsureSelectExpressions): UnaryCompareCondition;
     /**
      * 比较运算
      * @private
@@ -723,11 +744,10 @@ export declare class Raw extends AST {
 export declare class Identifier extends Expression {
     readonly name: string;
     readonly parent?: Identifier;
-    readonly special: boolean;
     /**
      * 标识符
      */
-    constructor(name: string, parent?: UnsureIdentity, type?: SqlSymbol);
+    protected constructor(name: string, parent?: UnsureIdentity, type?: SqlSymbol);
     get lvalue(): boolean;
     /**
      * 访问下一节点
@@ -735,15 +755,24 @@ export declare class Identifier extends Expression {
      */
     dot(name: string): Identifier;
     field(name: string): Identifier;
-    any(): AnyIdentifier;
+    any(): Identifier;
     /**
      * 执行一个函数
      * @param params
      */
     invoke(...params: (UnsureExpressions)[]): Invoke;
-}
-export declare class AnyIdentifier extends Identifier {
-    constructor(parent: UnsureIdentity);
+    /**
+     * 常规标识符
+     */
+    static normal(name: any): Identifier;
+    /**
+     * 内建标识符
+     */
+    static buildIn(name: any): Identifier;
+    /**
+     * 内建标识符
+     */
+    static any(parent?: UnsureIdentity): Identifier;
 }
 export declare class Variant extends Expression {
     name: string;
@@ -775,7 +804,7 @@ export declare class Invoke extends Expression {
     /**
      * 函数调用
      */
-    constructor(func: UnsureIdentity, params: UnsureExpressions[]);
+    constructor(func: UnsureIdentity, params?: UnsureExpressions[]);
 }
 /**
  * SQL 语句
@@ -813,8 +842,8 @@ export declare abstract class Statement extends AST {
      * @param proc
      * @param params
      */
-    static execute(proc: UnsureIdentity, params: UnsureExpressions[]): any;
-    static execute(proc: UnsureIdentity, params: Parameter[]): any;
+    static execute(proc: UnsureIdentity, params?: UnsureExpressions[]): any;
+    static execute(proc: UnsureIdentity, params?: Parameter[]): any;
     /**
      * 执行一个存储过程，execute的别名
      * @param proc 存储过程
@@ -866,13 +895,13 @@ export declare class Case extends Expression {
      * ELSE语句
      * @param defaults
      */
-    else(defaults: any): void;
+    else(defaults: any): this;
     /**
      * WHEN语句
      * @param expr
      * @param then
      */
-    when(expr: UnsureExpressions, then: any): void;
+    when(expr: UnsureExpressions, then: any): this;
 }
 /**
  * 常量表达式
@@ -886,16 +915,23 @@ export declare class Constant extends Expression {
     constructor(value: JsConstant);
 }
 /**
+ * 值列表（不含括号）
+ */
+export declare class ValueList extends AST {
+    items: Expressions[];
+    constructor(...values: UnsureExpressions[]);
+}
+/**
  * 括号引用
  */
-export declare class Bracket<T> extends AST {
+export declare class Bracket<T extends AST> extends AST {
     /**
      * 表达式
      */
     context: T;
     constructor(context: T);
 }
-export declare class BracketExpression extends Bracket<Expressions> implements IExpression {
+export declare class BracketExpression extends Bracket<Expressions | ValueList | Select> implements IExpression {
     /**
      * 加法运算
      */
@@ -1040,11 +1076,23 @@ export declare class BracketCondition extends Bracket<Conditions> implements ICo
      */
     and: (condition: any) => Condition;
     /**
+     * and连接，并在被连接的条件中加上括号 ()
+     * @param condition 下一个查询条件
+     * @returns 返回新的查询条件
+     */
+    andGroup: (condition: Conditions) => Condition;
+    /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
-    or: (condition: any) => Condition;
+    or: (condition: Conditions) => Condition;
+    /**
+     * or 连接，并在被连接的条件中加上括号 ()
+     * @param condition
+     * @returns 返回新的查询条件
+     */
+    orGroup: (condition: Conditions) => Condition;
     /**
      * 返回括号表达式
      */
@@ -1093,7 +1141,7 @@ export declare class UnaryExpression extends Expression implements IUnary {
  * 联接查询
  */
 export declare class Union extends AST {
-    select: SelectExpressions;
+    select: UnsureSelectExpressions;
     all: boolean;
     /**
      *
@@ -1133,6 +1181,11 @@ export declare abstract class Fromable extends Statement {
      * @param condition
      */
     where(condition: UnsureConditions): this;
+}
+export declare class SortInfo extends AST {
+    expr: Expressions;
+    direction?: SortDirection;
+    constructor(expr: UnsureExpressions, direction?: SortDirection);
 }
 /**
  * SELECT查询
@@ -1188,8 +1241,8 @@ export declare class Select extends Fromable {
     /**
      * 合并查询
      */
-    union(select: SelectExpressions, all?: boolean): void;
-    unionAll(select: SelectExpressions): void;
+    union(select: UnsureSelectExpressions, all?: boolean): void;
+    unionAll(select: UnsureSelectExpressions): void;
     /**
      * 将本SELECT返回表达式
      * @returns 返回一个加()后的SELECT语句
@@ -1207,7 +1260,7 @@ export declare class Select extends Fromable {
 export declare class Insert extends Statement {
     table: Identifier;
     fields: Identifier[];
-    rows: Expressions[][] | Select;
+    rows: GroupValues[] | Select;
     /**
      * 构造函数
      */
@@ -1247,10 +1300,10 @@ export declare class Delete extends Fromable {
  */
 export declare class Execute extends Statement {
     proc: Identifier;
-    params: Expressions[] | Parameter[];
-    constructor(proc: UnsureIdentity, params: UnsureExpressions[]);
-    constructor(proc: UnsureIdentity, params: Parameter[]);
-    constructor(proc: UnsureIdentity, params: UnsureExpressions[] | Parameter[]);
+    params: Expressions[] | Parameter[] | Assignment[];
+    constructor(proc: UnsureIdentity, params?: UnsureExpressions[]);
+    constructor(proc: UnsureIdentity, params?: Parameter[]);
+    constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]);
 }
 /**
  * 赋值语句
@@ -1272,6 +1325,7 @@ export declare class Declare extends Statement {
     declares: VariantDeclare[];
     constructor(...declares: VariantDeclare[]);
 }
+declare type DbType = string;
 /**
  * 程序与数据库间传递值所使用的参数
  */
@@ -1279,11 +1333,11 @@ export declare class Parameter extends Expression {
     name?: string;
     private _value?;
     direction: ParameterDirection;
+    dbType?: DbType;
     get lvalue(): boolean;
     get value(): JsConstant;
     set value(value: JsConstant);
-    constructor(name: string, value: JsConstant);
-    constructor(name: string, value: JsConstant, direction: ParameterDirection);
+    constructor(name: string, dbType: DbType, value: JsConstant, direction?: ParameterDirection);
     /**
      * input 参数
      */
@@ -1291,7 +1345,7 @@ export declare class Parameter extends Expression {
     /**
      * output参数
      */
-    static output(name: string, value: JsConstant): Parameter;
+    static output(name: string, type: DbType, value?: JsConstant): Parameter;
 }
 /**
  * SQL 文档

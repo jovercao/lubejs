@@ -4,6 +4,7 @@ import {
   Condition,
   Parameter,
   Identifier,
+  AST,
   Statement,
   Expression,
   UnsureExpressions
@@ -88,7 +89,9 @@ export const field = Expression.field
 
 export const constant = Expression.constant
 
-export const quoted = Expression.quoted
+export const quoted = AST.bracket
+
+export const bracket = AST.bracket
 
 /**
  * input 参数
@@ -120,10 +123,34 @@ export const select = Statement.select
  */
 export const insert = Statement.insert
 
+export const $case = Expression.case
+
 /**
  * 创建一个UPDATE语句
  */
 export const update = Statement.update
+
+export const fn = function(...names: string[]) {
+  return function(...args: UnsureExpressions[]) {
+    return Expression.identifier(...names).invoke(...args)
+  }
+}
+
+export const proc = function (...names: string[]) {
+  return function (...args: UnsureExpressions[]) {
+    return Statement.execute(Expression.identifier(...names), args)
+  }
+}
+
+/**
+ * 内建函数
+ * @param name
+ */
+export const sysFn = function(name: string) {
+  return function (...args: UnsureExpressions[]) {
+    return Identifier.buildIn(name).invoke(...args)
+  }
+}
 
 /**
  * 创建一个DELETE语句
@@ -136,67 +163,67 @@ export const anyFields = Expression.any()
 
 // ************************** 系统函数区 *************************
 export function count(exp: UnsureExpressions) {
-  return invoke('count', [exp])
+  return Identifier.buildIn('count').invoke(exp)
 }
 
 export function stdev(exp: UnsureExpressions) {
-  return invoke('stdev', [exp])
+  return Identifier.buildIn('stdev').invoke(exp)
 }
 
 export function sum(exp: UnsureExpressions) {
-  return invoke('sum', [exp])
+  return Identifier.buildIn('sum').invoke(exp)
 }
 
 export function avg(exp: UnsureExpressions) {
-  return invoke('avg', [exp])
+  return Identifier.buildIn('avg').invoke(exp)
 }
 
 export function max(exp: UnsureExpressions) {
-  return invoke('max', [exp])
+  return Identifier.buildIn('max').invoke(exp)
 }
 
 export function min(exp: UnsureExpressions) {
-  return invoke('min', [exp])
+  return Identifier.buildIn('min').invoke(exp)
 }
 
 export function nvl(exp: UnsureExpressions, defaults: UnsureExpressions) {
-  return invoke('nvl', [exp, defaults])
+  return Identifier.buildIn('nvl').invoke(exp)
 }
 
 export function abs(exp: UnsureExpressions) {
-  return invoke('abs', [exp])
+  return Identifier.buildIn('abs').invoke(exp)
 }
 
 export function ceil(exp: UnsureExpressions) {
-  return invoke('ceil', [exp])
+  return Identifier.buildIn('ceil').invoke(exp)
 }
 
 export function exp(exp: UnsureExpressions) {
-  return invoke('exp', [exp])
+  return Identifier.buildIn('exp').invoke(exp)
 }
 
 export function square(exp: UnsureExpressions) {
-  return invoke('square', [exp])
+  return Identifier.buildIn('square').invoke(exp)
 }
 
 export function floor(exp: UnsureExpressions) {
-  return invoke('floor', [exp])
+  return Identifier.buildIn('floor').invoke(exp)
 }
 
 export function round(exp: UnsureExpressions, digit: UnsureExpressions) {
-  return invoke('round', [exp, digit])
+  return Identifier.buildIn('round').invoke(exp, digit)
 }
 
-export function sign(exp: UnsureExpressions) {
-  return invoke('sign', [exp])
+export function sine(exp: UnsureExpressions) {
+  return Identifier.buildIn('sine').invoke(exp)
 }
 
 export function sqrt(exp: UnsureExpressions) {
-  return invoke('sqrt', [exp])
+  return Identifier.buildIn('sqrt').invoke(exp)
 }
 
 export function power(exp: UnsureExpressions, pwr: UnsureExpressions) {
-  return invoke('power', [exp, pwr])
+  return Identifier.buildIn('power').invoke(exp, pwr)
 }
 
 // TODO: 完成函数的转换

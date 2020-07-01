@@ -3,7 +3,7 @@ const assert = require('assert');
 const mock = require('mockjs');
 const _ = require('lodash');
 
-const { table, select, variant, exists, count, SortDirection, output } = lube;
+const { table, select, $case, identifier, invoke, any, variant, fn, sysFn, proc, exists, count, SortDirection, output } = lube;
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0);
@@ -37,7 +37,7 @@ describe('MSSQL数据库测试', function () {
     if (sqlLogs) {
       db.on('command', (cmd) => {
         console.log('sql:', cmd.sql);
-        if (cmd.params) {
+        if (cmd.params && cmd.params.length > 0) {
           console.log('params:', cmd.params);
         }
       });
@@ -204,22 +204,22 @@ describe('MSSQL数据库测试', function () {
     const b = table('Items').as('b');
 
     const sql = select(
-      iif(a.fsex.eq(true), '男', '女').as('性别'),
-      now().as('Now'),
-      fn('dosomething', 'dbo').call(100),
+      $case(a.fsex).when(true, '男').else('女').as('性别'),
+      sysFn('GETDATE')().as('Now'),
+      fn('dbo', 'dosomething')(100),
       // 子查询
-      select(1).value().as('field'),
+      select(1).as('field'),
       a.fid.as('aid'),
       b.fid.as('bid')
     )
       .from(a)
       .join(b, a.fid.eq(b.fid))
       .where(exists(select(1)))
-      .groupby(a.fid, b.fid, a.fsex)
+      .groupBy(a.fid, b.fid, a.fsex)
       .having(count(a.fid).gte(1))
-      .orderby([a.fid, ASC])
       .offset(50)
-      .limit(10);
+      .limit(10)
+      .orderBy(a.fid.asc());
 
     let { rows } = await db.query(sql);
     console.log(rows[0]);
@@ -231,7 +231,7 @@ describe('MSSQL数据库测试', function () {
     const sql2 = select(a.fid, a.fsex).from(a).distinct();
     await db.query(sql2);
 
-    const sql3 = select(count(all()).as('count')).from(a);
+    const sql3 = select(count(any()).as('count')).from(a);
     rows = (await db.query(sql3)).rows;
     assert(rows[0].count > 0);
   });
@@ -239,7 +239,7 @@ describe('MSSQL数据库测试', function () {
   it('select statement -> join', async function () {
     const { table, select, input } = lube;
     const o = table('sysobjects').as('o');
-    const p = table('extended_properties', 'sys').as('p');
+    const p = table('sys', 'extended_properties').as('p');
     const sql = select({
       id: o.id,
       name: o.name,
@@ -250,8 +250,8 @@ describe('MSSQL数据库测试', function () {
       .leftJoin(p, p.major_id.eq(o.id)
         .and(p.minor_id.eq(0))
         .and(p.class.eq(1))
-        .and(p.name.eq('MS_Description')))
-      .where(o.type.in('U', 'V'));
+        .and(p.$name.eq('MS_Description')))
+      .where(o.$type.in('U', 'V'));
     const { rows } = await db.query(sql);
     assert(rows.length > 0);
   });
@@ -276,7 +276,7 @@ describe('MSSQL数据库测试', function () {
         assert(lines > 0);
 
         const t = table('Items');
-        const item = (await executor.query(select().from(t).where(t.FId.eq(variant('@@identity'))))).rows[0];
+        const item = (await executor.query(select().from(t).where(t.FId.eq(variant('@identity'))))).rows[0];
         assert.strictEqual(item.FName, row.FNAME);
         throw new Error('事务错误回滚测试');
       });
@@ -311,7 +311,7 @@ describe('MSSQL数据库测试', function () {
   });
 
   it('exec proc -> statement with output param', async function () {
-    const p2 = output('o', STRING);
+    const p2 = output('o', 'NVARCHAR(MAX)');
     const sql = proc('doProc').call(1, p2);
     const res = await db.query(sql);
 
@@ -321,7 +321,7 @@ describe('MSSQL数据库测试', function () {
   });
 
   it('exec proc -> method with output param', async function () {
-    const p2 = output('o', STRING);
+    const p2 = output('o', 'NVARCHAR(MAX)');
     await db.execute('doProc', [1, p2]);
     assert(p2.value === 'hello world');
   });

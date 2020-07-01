@@ -74,7 +74,7 @@ class Provider {
     return res
   }
 
-  async beginTrans(isolationLevel = READ_COMMIT) {
+  async beginTrans(isolationLevel = IsolationLevel.READ_COMMIT) {
     const trans = this._pool.transaction()
     await trans.begin(IsolationLevelMapps[isolationLevel])
     return {

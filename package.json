@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "mocha ./test/mssql.test.js",
+    "test": "npm run build && mocha ./test/mssql.test.js",
+    "build": "tsc",
     "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ./src --ext .ts"
   },
@@ -46,7 +47,7 @@
     "mssql": "^6.2.0",
     "oracledb": "^5.0.0",
     "power-assert": "^1.6.1",
-    "typescript": "^3.6.3"
+    "typescript": "^3.9.5"
   },
   "dependencies": {
     "@types/lodash": "^4.14.156",

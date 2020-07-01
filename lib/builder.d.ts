@@ -1,4 +1,4 @@
-import { Condition, Parameter, Statement, Expression, UnsureExpressions } from './ast';
+import { Condition, Parameter, Identifier, AST, Statement, Expression, UnsureExpressions } from './ast';
 /**
  * not 查询条件运算
  */
@@ -46,7 +46,8 @@ export declare const identifier: typeof Expression.identifier;
 export declare const table: typeof Expression.table;
 export declare const field: typeof Expression.field;
 export declare const constant: typeof Expression.constant;
-export declare const quoted: typeof Expression.quoted;
+export declare const quoted: typeof AST.bracket;
+export declare const bracket: typeof AST.bracket;
 /**
  * input 参数
  */
@@ -71,16 +72,24 @@ export declare const select: typeof Statement.select;
  * 创建一个INSERT语句
  */
 export declare const insert: typeof Statement.insert;
+export declare const $case: typeof Expression.case;
 /**
  * 创建一个UPDATE语句
  */
 export declare const update: typeof Statement.update;
+export declare const fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
+export declare const proc: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+/**
+ * 内建函数
+ * @param name
+ */
+export declare const sysFn: (name: string) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
 /**
  * 创建一个DELETE语句
  */
 export declare const del: typeof Statement.delete;
 export declare const any: typeof Expression.any;
-export declare const anyFields: import("./ast").AnyIdentifier;
+export declare const anyFields: Identifier;
 export declare function count(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function stdev(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function sum(exp: UnsureExpressions): import("./ast").Invoke;
@@ -94,6 +103,6 @@ export declare function exp(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function square(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function floor(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function round(exp: UnsureExpressions, digit: UnsureExpressions): import("./ast").Invoke;
-export declare function sign(exp: UnsureExpressions): import("./ast").Invoke;
+export declare function sine(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function sqrt(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function power(exp: UnsureExpressions, pwr: UnsureExpressions): import("./ast").Invoke;

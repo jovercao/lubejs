@@ -6,8 +6,8 @@ import {
   AST, Parameter, Identifier, Constant, When,
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
-  Variant, Join, IUnary,
-  IBinary, Union, AnyIdentifier
+  Variant, Join, IUnary, Execute,
+  IBinary, Union, ValueList, SortInfo
 } from './ast'
 import { SqlSymbol } from './constants'
 
@@ -185,8 +185,10 @@ export class Parser {
         return this.parseAlias(ast as Alias, params)
       case SqlSymbol.IDENTIFIER:
         return this.parseIdentifier(ast as Identifier)
-      case SqlSymbol.ANY:
-        return (ast as AnyIdentifier).name
+      case SqlSymbol.BUILDIN_IDENTIFIER:
+        return (ast as Identifier).name
+      case SqlSymbol.EXECUTE:
+        return this.parseExecute(ast as Execute, params)
       case SqlSymbol.INVOKE:
         return this.parseInvoke(ast as Invoke, params)
       case SqlSymbol.CASE:
@@ -203,19 +205,25 @@ export class Parser {
         return this.parseJoin(ast as Join, params)
       case SqlSymbol.UNION:
         return this.parseUnion(ast as Union, params)
+      case SqlSymbol.VALUE_LIST:
+        return this.parseValueList(ast as ValueList, params)
+      case SqlSymbol.SORT:
+        return this.parseSort(ast as SortInfo, params)
       default:
         throw new Error('Error AST type: ' + ast.type)
     }
   }
 
-  protected parseBracket<T>(bracket: Bracket<T>, params: Set<Parameter>): string {
-    let inner
-    if (_.isArray(bracket.context)) {
-      inner = bracket.context.map(ast => this.parseAST((ast as Bracket<AST>).context, params)).join(', ')
-    }  else {
-      inner = this.parseAST(bracket.context as unknown as AST, params)
-    }
-    return '(' + inner + ')'
+  protected parseExecute<T extends AST>(exec: Execute, params: Set<Parameter>): string {
+    return 'EXECUTE ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
+  }
+
+  protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string {
+    return '(' + this.parseAST(bracket.context, params) + ')'
+  }
+
+  protected parseValueList(values: ValueList, params: Set<Parameter>): string {
+    return values.items.map(ast => this.parseAST(ast, params)).join(', ')
   }
 
   protected parseUnion(union: Union, params: Set<Parameter>): string {
@@ -223,13 +231,15 @@ export class Parser {
   }
 
   protected parseAlias(alias: Alias, params: Set<Parameter>): string {
-    return this.parseAST(alias.expr, params) + ' ' + this.ployfill.setsAliasJoinWith + ' ' + alias.name
+    return this.parseAST(alias.expr, params) + ' ' + this.ployfill.setsAliasJoinWith + ' ' + this.quoted(alias.name)
   }
 
   protected parseCase(caseExpr: Case, params: Set<Parameter>): string {
-    return 'CASE ' + this.parseAST(caseExpr.expr, params) +
-      caseExpr.whens.map(when => this.parseWhen(when, params)) +
-      (caseExpr.defaults || '') && ' ELSE ' + this.parseAST(caseExpr.defaults, params)
+    let fragment = 'CASE ' + this.parseAST(caseExpr.expr, params)
+    fragment += ' ' + caseExpr.whens.map(when => this.parseWhen(when, params))
+    if (caseExpr.defaults) fragment += ' ELSE ' + this.parseAST(caseExpr.defaults, params)
+    fragment += ' END'
+    return fragment
   }
 
   protected parseWhen(when: When, params: Set<Parameter>): string {
@@ -252,11 +262,17 @@ export class Parser {
    * @memberof Executor
    */
   protected parseInvoke(invoke: Invoke, params: Set<Parameter>): string {
-    return `${this.parseIdentifier(invoke.func)}(${(invoke.params || []).map(v => this.parseAST(v, params)).join(', ')})`
+    return `${this.parseAST(invoke.func, params)}(${(invoke.params || []).map(v => this.parseAST(v, params)).join(', ')})`
   }
 
   protected parseJoin(join: Join, params: Set<Parameter>): string {
     return (join.left ? 'LEFT ' : '') + 'JOIN ' + this.parseAST(join.table, params) + ' ON ' + this.parseAST(join.on, params)
+  }
+
+  protected parseSort(sort: SortInfo, params: Set<Parameter>): string {
+    let sql = this.parseAST(sort.expr, params)
+    if (sort.direction) sql += ' ' + sort.direction
+    return sql
   }
 
   protected parseSelect(select: Select, params): string {
@@ -285,7 +301,7 @@ export class Parser {
       sql += ' HAVING ' + this.parseAST(havings, params)
     }
     if (sorts && sorts.length > 0) {
-      sql += ' ORDER BY ' + sorts.map(sort => `${this.parseAST(sort.expr, params)} ${sort.direction}`).join(', ')
+      sql += ' ORDER BY ' + sorts.map(sort => this.parseSort(sort, params)).join(', ')
     }
 
     if (_.isNumber(offsets)) {
@@ -314,7 +330,7 @@ export class Parser {
 
     if (_.isArray(rows)) {
       sql += ' VALUES'
-      sql += rows.map(row => '(' + row.map(v => this.parseAST(v, params)).join(', ') + ')').join(', ')
+      sql += rows.map(row => this.parseAST(row, params)).join(', ')
     } else {
       sql += ' ' + this.parseAST(rows, params)
     }
