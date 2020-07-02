@@ -112,10 +112,10 @@ export enum SqlSymbol {
   DOCUMENT = "DOCUMENT"
 }
 
-export enum DataType {
-  STRING = 'STRING',
-  INTEGER = 'INTEGER',
-  FLOAT = 'FLOAT',
-  BOOLEAN = 'BOOLEAN',
-  DATE = 'DATE'
-}
+// export enum DataType {
+//   STRING = 'STRING',
+//   INTEGER = 'INTEGER',
+//   FLOAT = 'FLOAT',
+//   BOOLEAN = 'BOOLEAN',
+//   DATE = 'DATE'
+// }

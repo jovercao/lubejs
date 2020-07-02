@@ -2409,6 +2409,7 @@ export class Declare extends Statement {
 }
 
 type DbType = string
+type JsType = Function
 
 /**
  * 程序与数据库间传递值所使用的参数
@@ -2417,7 +2418,7 @@ export class Parameter extends Expression {
   name?: string
   private _value?: JsConstant
   direction: ParameterDirection
-  dbType?: DbType
+  dbType?: DbType | JsType
   get lvalue() {
     return false
   }

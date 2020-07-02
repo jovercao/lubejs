@@ -1,4 +1,5 @@
 const mssql = require('mssql')
+const _ = require('lodash')
 const {
   ParameterDirection,
   IsolationLevel
@@ -14,28 +15,33 @@ const IsolationLevelMapps = {
   [IsolationLevel.SNAPSHOT]: mssql.ISOLATION_LEVEL.SNAPSHOT
 }
 
-// const typeMapps = {
-//   [STRING]: mssql.NVarChar(4000),
-//   [NUMBER]: mssql.Real,
-//   [DATE]: mssql.DateTime2,
-//   [BOOLEAN]: mssql.Bit,
-//   [BUFFER]: mssql.Image
-// }
+const typeMapps = new Map([
+  [String, mssql.NVarChar(4000)],
+  [Number, mssql.Real],
+  [Date, mssql.DateTime2],
+  [Boolean, mssql.Bit],
+  [Buffer, mssql.Image],
+  ['BIT', mssql.Bit],
+  ['BIGINT', mssql.BigInt],
+  ['FLOAT', mssql.Float],
+  ['DATE', mssql.Date]
+])
 
 async function doQuery(driver, sql, params = []) {
   const request = await driver.request()
   params.forEach(({ name, value, dataType: type, direction = ParameterDirection.INPUT }) => {
+    const dbType = _.isString(type) ? typeMapps[type.toUpperCase()] : typeMapps[type]
     if (direction === ParameterDirection.INPUT) {
       if (type) {
-        request.input(name, typeMapps[type], value)
+        request.input(name, dbType, value)
       } else {
         request.input(name, value)
       }
     } else if (direction === ParameterDirection.OUTPUT) {
       if (value === undefined) {
-        request.output(name, typeMapps[type])
+        request.output(name, dbType)
       } else {
-        request.output(name, typeMapps[type], value)
+        request.output(name, dbType, value)
       }
     }
   })

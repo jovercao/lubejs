@@ -276,11 +276,12 @@ describe('MSSQL数据库测试', function () {
         assert(lines > 0);
 
         const t = table('Items');
-        const item = (await executor.query(select().from(t).where(t.FId.eq(variant('@identity'))))).rows[0];
+        const item = (await executor.query(select(t.any()).from(t).where(t.FId.eq(variant('@identity'))))).rows[0];
         assert.strictEqual(item.FName, row.FNAME);
         throw new Error('事务错误回滚测试');
       });
     } catch (ex) {
+      console.log(ex)
       assert(ex.message === '事务错误回滚测试');
     }
 
