@@ -3,7 +3,7 @@ const assert = require('assert');
 const mock = require('mockjs');
 const _ = require('lodash');
 
-const { table, select, $case, identifier, invoke, any, variant, fn, sysFn, proc, exists, count, SortDirection, output } = lube;
+const { table, select, $case, identifier, invoke, any, variant, fn, sysFn, sp, exists, count, SortDirection, output } = lube;
 
 describe('MSSQL数据库测试', function () {
   this.timeout(0);
@@ -240,18 +240,17 @@ describe('MSSQL数据库测试', function () {
     const { table, select, input } = lube;
     const o = table('sysobjects').as('o');
     const p = table('sys', 'extended_properties').as('p');
-    const sql = select({
-      id: o.id,
-      name: o.name,
-      desc: p.value,
-      abc: input('XABC', 1000)
-    })
-      .from(o)
-      .leftJoin(p, p.major_id.eq(o.id)
-        .and(p.minor_id.eq(0))
-        .and(p.class.eq(1))
-        .and(p.$name.eq('MS_Description')))
-      .where(o.$type.in('U', 'V'));
+    const sql = select(
+      o.$id,
+      o.$name,
+      p.$value.as('desc'),
+      input('inputValue', 1000).as('inputValue'))
+    .from(o)
+    .leftJoin(p, p.major_id.eq(o.id)
+      .and(p.minor_id.eq(0))
+      .and(p.class.eq(1))
+      .and(p.$name.eq('MS_Description')))
+    .where(o.$type.in('U', 'V'));
     const { rows } = await db.query(sql);
     assert(rows.length > 0);
   });
@@ -311,9 +310,9 @@ describe('MSSQL数据库测试', function () {
     assert(lines >= 1);
   });
 
-  it('exec proc -> statement with output param', async function () {
-    const p2 = output('o', 'NVARCHAR(MAX)');
-    const sql = proc('doProc').call(1, p2);
+  it('sp(name)(...params)', async function () {
+    const p2 = output('o', String);
+    const sql = sp('doProc')(1, p2);
     const res = await db.query(sql);
 
     console.log(res);
@@ -321,7 +320,7 @@ describe('MSSQL数据库测试', function () {
     assert(p2.value === 'hello world');
   });
 
-  it('exec proc -> method with output param', async function () {
+  it('db.execute(sp, [...args])', async function () {
     const p2 = output('o', 'NVARCHAR(MAX)');
     await db.execute('doProc', [1, p2]);
     assert(p2.value === 'hello world');

@@ -78,7 +78,7 @@ export declare const $case: typeof Expression.case;
  */
 export declare const update: typeof Statement.update;
 export declare const fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
-export declare const proc: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+export declare const sp: (...names: string[]) => (...args: UnsureExpressions[]) => any;
 /**
  * 内建函数
  * @param name

@@ -3,8 +3,10 @@ import { EventEmitter } from 'events';
 import { Parameter, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
 import { Parser } from './parser';
 export interface QueryResult {
-    output?: object;
     rows?: object[];
+    output?: {
+        [key: string]: JsConstant;
+    };
     rowsAffected: number;
     returnValue?: any;
 }

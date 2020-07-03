@@ -49,5 +49,9 @@ module.exports = {
   /**
    * 字段别名连接字符器，默认为 ''
    */
-  fieldAliasJoinWith: 'AS'
+  fieldAliasJoinWith: 'AS',
+  /**
+   * 存储过程返回值参数
+   */
+  returnValueParameter: '__return_value__'
 }

@@ -104,10 +104,3 @@ export declare enum SqlSymbol {
     DECLARE = "DECLARE",
     DOCUMENT = "DOCUMENT"
 }
-export declare enum DataType {
-    STRING = "STRING",
-    INTEGER = "INTEGER",
-    FLOAT = "FLOAT",
-    BOOLEAN = "BOOLEAN",
-    DATE = "DATE"
-}

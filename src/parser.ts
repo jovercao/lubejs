@@ -58,6 +58,10 @@ export interface Ployfill {
    * 字段别名连接字符器，默认为 ''
    */
   fieldAliasJoinWith: string
+  /**
+   * 返回参数名称
+   */
+  returnValueParameter: string
 }
 
 /**
@@ -215,7 +219,8 @@ export class Parser {
   }
 
   protected parseExecute<T extends AST>(exec: Execute, params: Set<Parameter>): string {
-    return 'EXECUTE ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
+    const returnValueParameter = Parameter.output(this.ployfill.returnValueParameter, Number)
+    return 'EXECUTE ' + this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
   }
 
   protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string {

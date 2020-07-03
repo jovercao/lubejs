@@ -31,6 +31,10 @@ export interface Ployfill {
      * 字段别名连接字符器，默认为 ''
      */
     fieldAliasJoinWith: string;
+    /**
+     * 返回参数名称
+     */
+    returnValueParameter: string;
 }
 /**
  * 编译选项

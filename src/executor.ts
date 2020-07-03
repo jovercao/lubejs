@@ -2,12 +2,14 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
 import { Parser } from './parser'
 
 export interface QueryResult {
-  output?: object
   rows?: object[]
+  output?: {
+    [key:string]: JsConstant
+  }
   rowsAffected: number
   returnValue?: any
 }

@@ -136,7 +136,7 @@ export const fn = function(...names: string[]) {
   }
 }
 
-export const proc = function (...names: string[]) {
+export const sp = function (...names: string[]) {
   return function (...args: UnsureExpressions[]) {
     return Statement.execute(Expression.identifier(...names), args)
   }

@@ -2362,11 +2362,7 @@ export class Execute extends Statement {
       return
     }
 
-    if (!(params[0] instanceof Parameter)) {
-      this.params = (params as UnsureExpressions[]).map(expr => ensureConstant(expr))
-    }
-
-    this.params = params as Parameter[]
+    this.params = (params as any[]).map(expr => ensureConstant(expr))
   }
 }
 
@@ -2432,7 +2428,7 @@ export class Parameter extends Expression {
     // TODO: 自动设置数据类型
   }
 
-  constructor(name: string, dbType: DbType, value: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
+  constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
     super(SqlSymbol.PARAMETER)
     this.name = name
     this.value = value // ensureConstant(value)
@@ -2450,7 +2446,7 @@ export class Parameter extends Expression {
   /**
    * output参数
    */
-  static output(name: string, type: DbType, value?: JsConstant) {
+  static output(name: string, type: DbType | JsType, value?: JsConstant) {
     return new Parameter(name, type, value, ParameterDirection.OUTPUT)
   }
 }

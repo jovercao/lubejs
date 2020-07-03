@@ -1326,6 +1326,7 @@ export declare class Declare extends Statement {
     constructor(...declares: VariantDeclare[]);
 }
 declare type DbType = string;
+declare type JsType = Function;
 /**
  * 程序与数据库间传递值所使用的参数
  */
@@ -1333,11 +1334,11 @@ export declare class Parameter extends Expression {
     name?: string;
     private _value?;
     direction: ParameterDirection;
-    dbType?: DbType;
+    dbType?: DbType | JsType;
     get lvalue(): boolean;
     get value(): JsConstant;
     set value(value: JsConstant);
-    constructor(name: string, dbType: DbType, value: JsConstant, direction?: ParameterDirection);
+    constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction?: ParameterDirection);
     /**
      * input 参数
      */
@@ -1345,7 +1346,7 @@ export declare class Parameter extends Expression {
     /**
      * output参数
      */
-    static output(name: string, type: DbType, value?: JsConstant): Parameter;
+    static output(name: string, type: DbType | JsType, value?: JsConstant): Parameter;
 }
 /**
  * SQL 文档
