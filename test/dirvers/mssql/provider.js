@@ -66,18 +66,20 @@ function parseType(type) {
 async function doQuery(driver, sql, params = []) {
   const request = await driver.request()
   params.forEach(({ name, value, dataType: type, direction = ParameterDirection.INPUT }) => {
-    const sqlType = parseType(type)
     if (direction === ParameterDirection.INPUT) {
       if (type) {
-        request.input(name, sqlType, value)
+        request.input(name, parseType(type), value)
       } else {
         request.input(name, value)
       }
     } else if (direction === ParameterDirection.OUTPUT) {
+      if (!sqlType) {
+        throw new Error('输出参数必须指定参数类型！')
+      }
       if (value === undefined) {
-        request.output(name, sqlType)
+        request.output(name, parseType(type))
       } else {
-        request.output(name, sqlType, value)
+        request.output(name, parseType(type), value)
       }
     }
   })
