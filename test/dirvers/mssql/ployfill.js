@@ -53,5 +53,7 @@ module.exports = {
   /**
    * 存储过程返回值参数
    */
-  returnValueParameter: '__return_value__'
+  returnValueParameter: '__return_value__',
+
+  executeKeyword: 'EXECUTE'
 }

@@ -62,6 +62,11 @@ export interface Ployfill {
    * 返回参数名称
    */
   returnValueParameter: string
+
+  /**
+   * Execute的关键字，在Oracle中无须该关键字，只需留空即可
+   */
+  executeKeyword: string
 }
 
 /**
@@ -220,7 +225,7 @@ export class Parser {
 
   protected parseExecute<T extends AST>(exec: Execute, params: Set<Parameter>): string {
     const returnValueParameter = Parameter.output(this.ployfill.returnValueParameter, Number)
-    return 'EXECUTE ' + this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
+    return (this.ployfill.executeKeyword && (this.ployfill.executeKeyword + ' ')) + this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
   }
 
   protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string {

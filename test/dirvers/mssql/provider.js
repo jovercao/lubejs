@@ -16,13 +16,12 @@ const IsolationLevelMapps = {
 }
 
 const jsTypeMapps = new Map([
-  [String, mssql.NVarChar(4000)],
-  [Number, mssql.Real],
-  [Date, mssql.DateTime2],
+  [String, mssql.NVarChar(mssql.MAX)],
+  [Number, mssql.Decimal(18,8)],
+  [Date, mssql.DateTimeOffset(8)],
   [Boolean, mssql.Bit],
   [Buffer, mssql.Image],
-  [BigInt, mssql.BigInt],
-  [Buffer, mssql.Binary]
+  [BigInt, mssql.BigInt]
 ])
 
 const strTypeMapps = {}
@@ -30,7 +29,7 @@ Object.entries(mssql.TYPES).forEach(([name, dbType]) => {
   strTypeMapps[name.toUpperCase()] = dbType
 })
 
-const typeReg = /^\s*(?<type>\w+)\s*(?:\(\s*((?<max>max)|((?<p1>\d+)(\s*,\s*(?<p2>\d+))?))\s*\))?\s*$/
+const typeReg = /^\s*(?<type>\w+)\s*(?:\(\s*((?<max>max)|((?<p1>\d+)(\s*,\s*(?<p2>\d+))?))\s*\))?\s*$/i
 
 function parseStringType(type) {
   const matched = typeReg.exec(type)
@@ -57,15 +56,16 @@ function parseType(type) {
   if (_.isString(type)) {
     return parseStringType(type)
   }
-  const sqlType = jsTypeMapps[type]
+  const sqlType = jsTypeMapps.get(type)
   if (!sqlType) {
     throw new Error('不受支持的类型：' + type.name || type)
   }
+  return sqlType
 }
 
 async function doQuery(driver, sql, params = []) {
   const request = await driver.request()
-  params.forEach(({ name, value, dataType: type, direction = ParameterDirection.INPUT }) => {
+  params.forEach(({ name, value, dbType: type, direction = ParameterDirection.INPUT }) => {
     if (direction === ParameterDirection.INPUT) {
       if (type) {
         request.input(name, parseType(type), value)
@@ -73,7 +73,7 @@ async function doQuery(driver, sql, params = []) {
         request.input(name, value)
       }
     } else if (direction === ParameterDirection.OUTPUT) {
-      if (!sqlType) {
+      if (!type) {
         throw new Error('输出参数必须指定参数类型！')
       }
       if (value === undefined) {

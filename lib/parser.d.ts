@@ -35,6 +35,10 @@ export interface Ployfill {
      * 返回参数名称
      */
     returnValueParameter: string;
+    /**
+     * Execute的关键字，在Oracle中无须该关键字，只需留空即可
+     */
+    executeKeyword: string;
 }
 /**
  * 编译选项

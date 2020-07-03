@@ -57,7 +57,7 @@ describe('MSSQL数据库测试', function () {
 
     await db.query(`CREATE PROC doProc(
       @i int,
-      @o nvarchar(20) output
+      @o nvarchar(20) OUTPUT
     )
     AS
     BEGIN
@@ -322,7 +322,8 @@ describe('MSSQL数据库测试', function () {
 
   it('db.execute(sp, [...args])', async function () {
     const p2 = output('o', 'NVARCHAR(MAX)');
-    await db.execute('doProc', [1, p2]);
+    const res = await db.execute('doProc', [1, p2]);
+    assert(res.returnValue === 1);
     assert(p2.value === 'hello world');
   });
 
