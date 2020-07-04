@@ -1,15 +1,16 @@
 {
   "name": "lubejs",
-  "version": "0.4.1",
+  "version": "1.0.0-preview",
   "description": "An easy-to-use nodejs oracledb client",
-  "main": "index.js",
+  "main": "lib/lube.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "mocha",
+    "test": "npm run build && mocha ./test/mssql.test.js",
+    "build": "tsc",
     "dep": "npm i oracledb mssql --no-save",
-    "lint": "eslint --fix ."
+    "lint": "eslint --fix ./src --ext .ts"
   },
   "repository": {
     "type": "git",
@@ -33,21 +34,25 @@
   },
   "homepage": "https://github.com/jovercao/lubejs#readme",
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^2.3.1",
-    "@typescript-eslint/parser": "^2.3.1",
-    "eslint": "^6.4.0",
+    "@types/node": "^14.0.14",
+    "@typescript-eslint/eslint-plugin": "^2.34.0",
+    "@typescript-eslint/parser": "^2.34.0",
+    "eslint": "^6.8.0",
     "eslint-config-standard": "^14.1.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-node": "^10.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
     "mocha": "^6.2.1",
+    "mssql": "^6.2.0",
+    "oracledb": "^5.0.0",
     "power-assert": "^1.6.1",
-    "typescript": "^3.6.3"
+    "typescript": "^3.9.5",
+    "@types/lodash": "^4.14.156",
+    "mockjs": "^1.0.1-beta3"
   },
   "dependencies": {
     "lodash": "^4.17.15",
-    "mockjs": "^1.0.1-beta3",
     "moment": "^2.24.0"
   }
 }
