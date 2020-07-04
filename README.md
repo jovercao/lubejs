@@ -86,7 +86,7 @@ async function action() {
     .from(pay)
     .join(p, pay.persionId.eq(p.id))
     .where(p.age.lte(18))
-    .groupby(
+    .groupBy(
       pay.year,
       pay.month,
       p.name,
@@ -95,7 +95,7 @@ async function action() {
     .having(
       lube.sum(pay.amount).gte(100000.00)
     )
-    .orderby(
+    .orderBy(
       pay.year.asc(),
       pay.month.asc(),
       pay.amount.asc(),
