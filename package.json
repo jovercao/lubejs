@@ -1,6 +1,6 @@
 {
   "name": "lubejs",
-  "version": "0.9.8",
+  "version": "1.0.0-preview",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "lib/lube.js",
   "directories": {
@@ -47,12 +47,12 @@
     "mssql": "^6.2.0",
     "oracledb": "^5.0.0",
     "power-assert": "^1.6.1",
-    "typescript": "^3.9.5"
+    "typescript": "^3.9.5",
+    "@types/lodash": "^4.14.156",
+    "mockjs": "^1.0.1-beta3"
   },
   "dependencies": {
-    "@types/lodash": "^4.14.156",
     "lodash": "^4.17.15",
-    "mockjs": "^1.0.1-beta3",
     "moment": "^2.24.0"
   }
 }
