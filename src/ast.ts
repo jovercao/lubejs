@@ -1446,15 +1446,15 @@ export class Invoke extends Expression {
 
   func: Identifier
 
-  params: Expressions[]
+  args: Expressions[]
 
   /**
    * 函数调用
    */
-  constructor(func: UnsureIdentity, params?: UnsureExpressions[]) {
+  constructor(func: UnsureIdentity, args?: UnsureExpressions[]) {
     super(SQL_SYMBOLE.INVOKE)
     this.func = ensureIdentity(func)
-    this.params = (params || []).map(expr => ensureConstant(expr))
+    this.args = (args || []).map(expr => ensureConstant(expr))
   }
 }
 
@@ -2338,19 +2338,19 @@ export class Delete extends Fromable {
  */
 export class Execute extends Statement {
   proc: Identifier
-  params: Expressions[] | Parameter[] | Assignment[]
-  constructor(proc: UnsureIdentity, params?: UnsureExpressions[])
-  constructor(proc: UnsureIdentity, params?: Parameter[])
-  constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[])
-  constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]) {
+  args: Expressions[] | Parameter[] | Assignment[]
+  constructor(proc: UnsureIdentity, args?: UnsureExpressions[])
+  constructor(proc: UnsureIdentity, args?: Parameter[])
+  constructor(proc: UnsureIdentity, args?: UnsureExpressions[] | Parameter[])
+  constructor(proc: UnsureIdentity, args?: UnsureExpressions[] | Parameter[]) {
     super(SQL_SYMBOLE.EXECUTE)
     this.proc = ensureIdentity(proc)
-    if (!params || params.length === 0) {
-      this.params = []
+    if (!args || args.length === 0) {
+      this.args = []
       return
     }
 
-    this.params = (params as any[]).map(expr => ensureConstant(expr))
+    this.args = (args as any[]).map(expr => ensureConstant(expr))
   }
 }
 

@@ -794,11 +794,11 @@ export declare class Alias extends Identifier {
 export declare class Invoke extends Expression {
     get lvalue(): boolean;
     func: Identifier;
-    params: Expressions[];
+    args: Expressions[];
     /**
      * 函数调用
      */
-    constructor(func: UnsureIdentity, params?: UnsureExpressions[]);
+    constructor(func: UnsureIdentity, args?: UnsureExpressions[]);
 }
 /**
  * SQL 语句

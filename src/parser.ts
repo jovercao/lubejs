@@ -254,7 +254,7 @@ export class Parser {
     const returnValueParameter = Parameter.output(this.ployfill.returnValueParameter, Number)
     return (this.ployfill.executeKeyword && (this.ployfill.executeKeyword + ' ')) +
       this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' +
-      (exec.params as AST[]).map(p => p instanceof Parameter ? this.parseParameter(p, params, true) : this.parseAST(p, params)).join(', ')
+      (exec.args as AST[]).map(p => p instanceof Parameter ? this.parseParameter(p, params, true) : this.parseAST(p, params)).join(', ')
   }
 
   protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string {
@@ -301,7 +301,7 @@ export class Parser {
    * @memberof Executor
    */
   protected parseInvoke(invoke: Invoke, params: Set<Parameter>): string {
-    return `${this.parseAST(invoke.func, params)}(${(invoke.params || []).map(v => this.parseAST(v, params)).join(', ')})`
+    return `${this.parseAST(invoke.func, params)}(${(invoke.args || []).map(v => this.parseAST(v, params)).join(', ')})`
   }
 
   protected parseJoin(join: Join, params: Set<Parameter>): string {
