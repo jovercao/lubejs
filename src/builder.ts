@@ -1,5 +1,3 @@
-import * as _ from 'lodash'
-import { assert } from './util'
 import {
   Condition,
   Parameter,
@@ -7,29 +5,15 @@ import {
   AST,
   Statement,
   Expression,
-  UnsureExpressions
+  UnsureExpressions,
+  Raw
 } from './ast'
 
 import {
-  ParameterDirection,
-  SortDirection
+  PARAMETER_DIRECTION,
+  SORT_DIRECTION
 } from './constants'
-
-// /**
-//  * 将制作table的代理，用于生成字段
-//  * @param table
-//  * @returns
-//  */
-// function makeAutoFieldTableProxy(table) {
-//   return new Proxy(table, {
-//     get(target, prop) {
-//       if (_.isSymbol(prop) || prop.startsWith('$') || Object.prototype.hasOwnProperty.call(target, prop)) {
-//         return target[prop]
-//       }
-//       return new Field(prop, table)
-//     }
-//   })
-// }
+import { Lube } from './lube'
 
 /**
  * not 查询条件运算
@@ -119,6 +103,14 @@ export const alias = Expression.alias
 export const select = Statement.select
 
 /**
+ * 创建一个原始的SQL片段
+ * @param sql 原始SQL
+ */
+export const raw = function(sql: string) {
+  return new Raw(sql)
+}
+
+/**
  * 创建一个INSERT语句
  */
 export const insert = Statement.insert
@@ -141,6 +133,14 @@ export const sp = function (...names: string[]) {
     return Statement.execute(Expression.identifier(...names), args)
   }
 }
+
+export const buildIn = Identifier.buildIn
+
+/**
+ * 内建标识符，不会被 [] 包裹，buildIn的别名
+ * @param name
+ */
+export const sys = buildIn
 
 /**
  * 内建函数
@@ -167,69 +167,126 @@ export const any = Expression.any
 export const anyFields = Expression.any()
 
 // ************************** 系统函数区 *************************
-export function count(exp: UnsureExpressions) {
-  return Identifier.buildIn('count').invoke(exp)
+// export function count(exp: UnsureExpressions) {
+//   return Identifier.buildIn('count').invoke(exp)
+// }
+
+// export function sum(exp: UnsureExpressions) {
+//   return Identifier.buildIn('sum').invoke(exp)
+// }
+
+// export function avg(exp: UnsureExpressions) {
+//   return Identifier.buildIn('avg').invoke(exp)
+// }
+
+// export function max(exp: UnsureExpressions) {
+//   return Identifier.buildIn('max').invoke(exp)
+// }
+
+// export function min(exp: UnsureExpressions) {
+//   return Identifier.buildIn('min').invoke(exp)
+// }
+
+// export function nvl(exp: UnsureExpressions, defaults: UnsureExpressions) {
+//   return Identifier.buildIn('nvl').invoke(exp)
+// }
+
+// export function abs(exp: UnsureExpressions) {
+//   return Identifier.buildIn('abs').invoke(exp)
+// }
+
+// export function ceil(exp: UnsureExpressions) {
+//   return Identifier.buildIn('ceil').invoke(exp)
+// }
+
+// export function exp(exp: UnsureExpressions) {
+//   return Identifier.buildIn('exp').invoke(exp)
+// }
+
+// export function stdev(exp: UnsureExpressions) {
+//   return Identifier.buildIn('stdev').invoke(exp)
+// }
+
+// export function square(exp: UnsureExpressions) {
+//   return Identifier.buildIn('square').invoke(exp)
+// }
+
+// export function floor(exp: UnsureExpressions) {
+//   return Identifier.buildIn('floor').invoke(exp)
+// }
+
+// export function round(exp: UnsureExpressions, digit: UnsureExpressions) {
+//   return Identifier.buildIn('round').invoke(exp, digit)
+// }
+
+// export function sine(exp: UnsureExpressions) {
+//   return Identifier.buildIn('sine').invoke(exp)
+// }
+
+// export function sqrt(exp: UnsureExpressions) {
+//   return Identifier.buildIn('sqrt').invoke(exp)
+// }
+
+// export function power(exp: UnsureExpressions, pwr: UnsureExpressions) {
+//   return Identifier.buildIn('power').invoke(exp, pwr)
+// }
+
+// /**
+//  * 通用函数
+//  */
+// export const CommonFunctions = {
+//   count,
+//   avg,
+//   sum,
+//   max,
+//   min,
+  // abs,
+  // exp,
+  // ceil,
+  // round,
+  // floor,
+  // sqrt,
+  // sine,
+  // power,
+  // nvl,
+  // stdev,
+  // square
+// }
+
+/**
+ * 语句
+ */
+export const SQL = {
+  select,
+  insert,
+  update,
+  delete: $delete,
+  case: $case,
+  execute,
+  exec,
+  when,
+  exists,
+  invoke,
+  fn,
+  sp,
+  buildIn,
+  sys,
+  table,
+  field,
+  alias,
+  input,
+  output,
+  and,
+  or,
+  variant,
+  bracket,
+  quoted,
+  raw,
+  any,
+  anyFields
 }
 
-export function stdev(exp: UnsureExpressions) {
-  return Identifier.buildIn('stdev').invoke(exp)
-}
-
-export function sum(exp: UnsureExpressions) {
-  return Identifier.buildIn('sum').invoke(exp)
-}
-
-export function avg(exp: UnsureExpressions) {
-  return Identifier.buildIn('avg').invoke(exp)
-}
-
-export function max(exp: UnsureExpressions) {
-  return Identifier.buildIn('max').invoke(exp)
-}
-
-export function min(exp: UnsureExpressions) {
-  return Identifier.buildIn('min').invoke(exp)
-}
-
-export function nvl(exp: UnsureExpressions, defaults: UnsureExpressions) {
-  return Identifier.buildIn('nvl').invoke(exp)
-}
-
-export function abs(exp: UnsureExpressions) {
-  return Identifier.buildIn('abs').invoke(exp)
-}
-
-export function ceil(exp: UnsureExpressions) {
-  return Identifier.buildIn('ceil').invoke(exp)
-}
-
-export function exp(exp: UnsureExpressions) {
-  return Identifier.buildIn('exp').invoke(exp)
-}
-
-export function square(exp: UnsureExpressions) {
-  return Identifier.buildIn('square').invoke(exp)
-}
-
-export function floor(exp: UnsureExpressions) {
-  return Identifier.buildIn('floor').invoke(exp)
-}
-
-export function round(exp: UnsureExpressions, digit: UnsureExpressions) {
-  return Identifier.buildIn('round').invoke(exp, digit)
-}
-
-export function sine(exp: UnsureExpressions) {
-  return Identifier.buildIn('sine').invoke(exp)
-}
-
-export function sqrt(exp: UnsureExpressions) {
-  return Identifier.buildIn('sqrt').invoke(exp)
-}
-
-export function power(exp: UnsureExpressions, pwr: UnsureExpressions) {
-  return Identifier.buildIn('power').invoke(exp, pwr)
-}
+export default SQL
 
 // TODO: 完成函数的转换
 // TODO: 完成数据类型的转换

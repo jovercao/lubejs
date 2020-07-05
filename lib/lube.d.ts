@@ -1,6 +1,6 @@
 import { Executor, QueryResult } from './executor';
 import { Parser, Ployfill } from './parser';
-import { IsolationLevel } from './constants';
+import { ISOLATION_LEVEL } from './constants';
 export declare type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>;
 /**
  * 数据库事务
@@ -17,7 +17,7 @@ export interface IDbProvider {
     ployfill?: Ployfill;
     parser?: Parser;
     query(sql: any, params: any): Promise<QueryResult>;
-    beginTrans(isolationLevel: IsolationLevel): ITransaction;
+    beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction;
     close(): Promise<void>;
 }
 export declare class Lube extends Executor {
@@ -31,7 +31,7 @@ export declare class Lube extends Executor {
     trans(handler: TransactionHandler, isolationLevel: any): Promise<any>;
     close(): Promise<void>;
 }
-interface ConnectOptions {
+export interface ConnectOptions {
     /**
      * 数据库方言，必须安装相应的驱动才可正常使用
      */
@@ -56,4 +56,6 @@ interface ConnectOptions {
 export declare function connect(url: string): Promise<Lube>;
 export declare function connect(config: ConnectOptions): Promise<Lube>;
 export * from './builder';
-export { IsolationLevel, ParameterDirection, SortDirection } from './constants';
+export * from './constants';
+export * from './ast';
+export * from './parser';

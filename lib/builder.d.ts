@@ -1,4 +1,4 @@
-import { Condition, Parameter, Identifier, AST, Statement, Expression, UnsureExpressions } from './ast';
+import { Condition, Parameter, Identifier, AST, Statement, Expression, UnsureExpressions, Raw } from './ast';
 /**
  * not 查询条件运算
  */
@@ -69,6 +69,11 @@ export declare const alias: typeof Expression.alias;
  */
 export declare const select: typeof Statement.select;
 /**
+ * 创建一个原始的SQL片段
+ * @param sql 原始SQL
+ */
+export declare const raw: (sql: string) => Raw;
+/**
  * 创建一个INSERT语句
  */
 export declare const insert: typeof Statement.insert;
@@ -79,6 +84,12 @@ export declare const $case: typeof Expression.case;
 export declare const update: typeof Statement.update;
 export declare const fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
 export declare const sp: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+export declare const buildIn: typeof Identifier.buildIn;
+/**
+ * 内建标识符，不会被 [] 包裹，buildIn的别名
+ * @param name
+ */
+export declare const sys: typeof Identifier.buildIn;
 /**
  * 内建函数
  * @param name
@@ -94,19 +105,36 @@ export declare const any: typeof Expression.any;
  * 任意字段
  */
 export declare const anyFields: Identifier;
-export declare function count(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function stdev(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function sum(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function avg(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function max(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function min(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function nvl(exp: UnsureExpressions, defaults: UnsureExpressions): import("./ast").Invoke;
-export declare function abs(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function ceil(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function exp(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function square(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function floor(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function round(exp: UnsureExpressions, digit: UnsureExpressions): import("./ast").Invoke;
-export declare function sine(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function sqrt(exp: UnsureExpressions): import("./ast").Invoke;
-export declare function power(exp: UnsureExpressions, pwr: UnsureExpressions): import("./ast").Invoke;
+/**
+ * 语句
+ */
+export declare const SQL: {
+    select: typeof Statement.select;
+    insert: typeof Statement.insert;
+    update: typeof Statement.update;
+    delete: typeof Statement.delete;
+    case: typeof Expression.case;
+    execute: typeof Statement.execute;
+    exec: typeof Statement.exec;
+    when: typeof Statement.when;
+    exists: typeof Condition.exists;
+    invoke: typeof Expression.invoke;
+    fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
+    sp: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+    buildIn: typeof Identifier.buildIn;
+    sys: typeof Identifier.buildIn;
+    table: typeof Expression.table;
+    field: typeof Expression.field;
+    alias: typeof Expression.alias;
+    input: typeof Parameter.input;
+    output: typeof Parameter.output;
+    and: typeof Condition.and;
+    or: typeof Condition.or;
+    variant: typeof Expression.variant;
+    bracket: typeof AST.bracket;
+    quoted: typeof AST.bracket;
+    raw: (sql: string) => Raw;
+    any: typeof Expression.any;
+    anyFields: Identifier;
+};
+export default SQL;

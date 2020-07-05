@@ -15,12 +15,12 @@ import {
 } from './util'
 
 import {
-  ComputeOperator,
-  ParameterDirection,
-  SqlSymbol,
-  CompareOperator,
-  SortDirection,
-  LogicOperator,
+  COMPUTE_OPERATOR,
+  PARAMETER_DIRECTION,
+  SQL_SYMBOLE,
+  COMPARE_OPERATOR,
+  SORT_DIRECTION,
+  LOGIC_OPERATOR,
 } from './constants'
 
 // **********************************类型声明******************************************
@@ -76,11 +76,11 @@ export type UnsureIdentity = Identifier | string
  * AST 基类
  */
 export abstract class AST {
-  constructor(type: SqlSymbol) {
+  constructor(type: SQL_SYMBOLE) {
     this.type = type
   }
 
-  readonly type: SqlSymbol
+  readonly type: SQL_SYMBOLE
 
   static bracket<T extends AST>(context: T) {
     return new Bracket(context)
@@ -470,7 +470,7 @@ const ExpressionPrototype: IExpression = {
    * @returns 返回对比条件表达式
    */
   asc(): SortInfo {
-    return new SortInfo(this, SortDirection.ASC)
+    return new SortInfo(this, SORT_DIRECTION.ASC)
   },
 
   /**
@@ -478,7 +478,7 @@ const ExpressionPrototype: IExpression = {
    * @returns 返回对比条件表达式
    */
   desc(): SortInfo {
-    return new SortInfo(this, SortDirection.DESC)
+    return new SortInfo(this, SORT_DIRECTION.DESC)
   },
 
   /**
@@ -688,7 +688,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static add(left, right) {
-    return new BinaryExpression(ComputeOperator.ADD, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.ADD, left, right)
   }
 
   /**
@@ -698,7 +698,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static sub(left, right) {
-    return new BinaryExpression(ComputeOperator.SUB, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.SUB, left, right)
   }
 
   /**
@@ -708,7 +708,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static mul(left, right) {
-    return new BinaryExpression(ComputeOperator.MUL, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.MUL, left, right)
   }
 
   /**
@@ -718,7 +718,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static div(left, right) {
-    return new BinaryExpression(ComputeOperator.DIV, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.DIV, left, right)
   }
 
   /**
@@ -728,7 +728,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static mod(left, right) {
-    return new BinaryExpression(ComputeOperator.MOD, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.MOD, left, right)
   }
 
   /**
@@ -738,7 +738,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static and(left, right) {
-    return new BinaryExpression(ComputeOperator.BITAND, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.BITAND, left, right)
   }
 
   /**
@@ -748,7 +748,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static or(left, right) {
-    return new BinaryExpression(ComputeOperator.BITOR, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.BITOR, left, right)
   }
 
   /**
@@ -758,7 +758,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static xor(left, right) {
-    return new BinaryExpression(ComputeOperator.BITXOR, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.BITXOR, left, right)
   }
 
   /**
@@ -768,7 +768,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static not(left, right) {
-    return new BinaryExpression(ComputeOperator.BITNOT, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.BITNOT, left, right)
   }
 
   /**
@@ -778,7 +778,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static shl(left, right) {
-    return new BinaryExpression(ComputeOperator.SHL, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.SHL, left, right)
   }
 
   /**
@@ -788,7 +788,7 @@ export abstract class Expression extends AST implements IExpression {
    * @returns 返回算术运算表达式
    */
   static shr(left, right) {
-    return new BinaryExpression(ComputeOperator.SHR, left, right)
+    return new BinaryExpression(COMPUTE_OPERATOR.SHR, left, right)
   }
 
   /**
@@ -933,7 +933,7 @@ const ConditionPrototype: ICondition = {
    */
   and(condition: Conditions) {
     condition = ensureCondition(condition)
-    return new BinaryLogicCondition(LogicOperator.AND, this, condition)
+    return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, condition)
   },
 
   /**
@@ -943,7 +943,7 @@ const ConditionPrototype: ICondition = {
    */
   andGroup(condition: Conditions) {
     condition = ensureCondition(condition)
-    return new BinaryLogicCondition(LogicOperator.AND, this, Condition.quoted(condition))
+    return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, Condition.quoted(condition))
   },
 
   /**
@@ -953,7 +953,7 @@ const ConditionPrototype: ICondition = {
    */
   or(condition: Conditions) {
     condition = ensureCondition(condition)
-    return new BinaryLogicCondition(LogicOperator.OR, this, condition)
+    return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, condition)
   },
 
 
@@ -964,7 +964,7 @@ const ConditionPrototype: ICondition = {
    */
   orGroup(condition: Conditions) {
     condition = ensureCondition(condition)
-    return new BinaryLogicCondition(LogicOperator.OR, this, Condition.quoted(condition))
+    return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, Condition.quoted(condition))
   }
 }
 
@@ -1011,7 +1011,7 @@ export abstract class Condition extends AST implements ICondition {
     return conditions.reduce((previous, current) => {
       current = ensureCondition(current)
       if (!previous) return current
-      return new BinaryLogicCondition(LogicOperator.AND, previous, current)
+      return new BinaryLogicCondition(LOGIC_OPERATOR.AND, previous, current)
     })
   }
 
@@ -1026,7 +1026,7 @@ export abstract class Condition extends AST implements ICondition {
     return conditions.reduce((previous, current, index) => {
       current = ensureCondition(current)
       if (!previous) return current
-      return new BinaryLogicCondition(LogicOperator.OR, previous, current)
+      return new BinaryLogicCondition(LOGIC_OPERATOR.OR, previous, current)
     })
   }
 
@@ -1036,7 +1036,7 @@ export abstract class Condition extends AST implements ICondition {
    */
   static not(condition: Conditions) {
     condition = ensureCondition(condition)
-    return new UnaryLogicCondition(LogicOperator.NOT, condition)
+    return new UnaryLogicCondition(LOGIC_OPERATOR.NOT, condition)
   }
 
 
@@ -1046,7 +1046,7 @@ export abstract class Condition extends AST implements ICondition {
    * @param select 查询语句
    */
   static exists(select: UnsureSelectExpressions) {
-    return new UnaryCompareCondition(CompareOperator.EXISTS, AST.bracket(select))
+    return new UnaryCompareCondition(COMPARE_OPERATOR.EXISTS, AST.bracket(select))
   }
 
   /**
@@ -1057,7 +1057,7 @@ export abstract class Condition extends AST implements ICondition {
    * @param operator 运算符
    * @returns 返回比较运算对比条件
    */
-  static compare(left: UnsureExpressions, right: UnsureExpressions, operator: CompareOperator = CompareOperator.EQ) {
+  static compare(left: UnsureExpressions, right: UnsureExpressions, operator: COMPARE_OPERATOR = COMPARE_OPERATOR.EQ) {
     return new BinaryCompareCondition(operator, left, right)
   }
 
@@ -1068,7 +1068,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static eq(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.EQ)
+    return Condition.compare(left, right, COMPARE_OPERATOR.EQ)
   }
 
   /**
@@ -1078,7 +1078,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static neq(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.NEQ)
+    return Condition.compare(left, right, COMPARE_OPERATOR.NEQ)
   }
 
   /**
@@ -1088,7 +1088,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static lt(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.LT)
+    return Condition.compare(left, right, COMPARE_OPERATOR.LT)
   }
 
   /**
@@ -1098,7 +1098,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static lte(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.LTE)
+    return Condition.compare(left, right, COMPARE_OPERATOR.LTE)
   }
 
   /**
@@ -1108,7 +1108,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static gt(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.GT)
+    return Condition.compare(left, right, COMPARE_OPERATOR.GT)
   }
 
   /**
@@ -1118,7 +1118,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static gte(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.GTE)
+    return Condition.compare(left, right, COMPARE_OPERATOR.GTE)
   }
 
   /**
@@ -1128,7 +1128,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static like(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.LIKE)
+    return Condition.compare(left, right, COMPARE_OPERATOR.LIKE)
   }
 
   /**
@@ -1138,7 +1138,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static notLike(left: UnsureExpressions, right: UnsureExpressions) {
-    return Condition.compare(left, right, CompareOperator.NOT_LIKE)
+    return Condition.compare(left, right, COMPARE_OPERATOR.NOT_LIKE)
   }
 
   /**
@@ -1148,7 +1148,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static in(left: UnsureExpressions, values: UnsureGroupValues) {
-    return Condition.compare(left, ensureGroupValues(values), CompareOperator.IN)
+    return Condition.compare(left, ensureGroupValues(values), COMPARE_OPERATOR.IN)
   }
 
   /**
@@ -1158,7 +1158,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static notIn(left: UnsureExpressions, values: UnsureGroupValues) {
-    return Condition.compare(left, ensureGroupValues(values), CompareOperator.NOT_IN)
+    return Condition.compare(left, ensureGroupValues(values), COMPARE_OPERATOR.NOT_IN)
   }
 
   /**
@@ -1194,14 +1194,14 @@ Object.assign(Condition.prototype, ConditionPrototype)
  * 二元逻辑查询条件条件
  */
 export class BinaryLogicCondition extends Condition implements IBinary {
-  operator: LogicOperator
+  operator: LOGIC_OPERATOR
   left: Conditions
   right: Conditions
   /**
    * 创建二元逻辑查询条件实例
    */
-  constructor(operator: LogicOperator, left: UnsureConditions, right: UnsureConditions) {
-    super(SqlSymbol.BINARY)
+  constructor(operator: LOGIC_OPERATOR, left: UnsureConditions, right: UnsureConditions) {
+    super(SQL_SYMBOLE.BINARY)
     this.operator = operator
     /**
      * 左查询条件
@@ -1218,7 +1218,7 @@ export class BinaryLogicCondition extends Condition implements IBinary {
  * 一元逻辑查询条件
  */
 class UnaryLogicCondition extends Condition implements IUnary {
-  operator: LogicOperator
+  operator: LOGIC_OPERATOR
   next: Conditions
   /**
    * 创建一元逻辑查询条件实例
@@ -1226,7 +1226,7 @@ class UnaryLogicCondition extends Condition implements IUnary {
    * @param next
    */
   constructor(operator, next) {
-    super(SqlSymbol.UNARY)
+    super(SQL_SYMBOLE.UNARY)
     this.operator = operator
     this.next = ensureCondition(next)
   }
@@ -1238,12 +1238,12 @@ class UnaryLogicCondition extends Condition implements IUnary {
 class BinaryCompareCondition extends Condition {
   left: Expressions
   right: Expressions
-  operator: CompareOperator
+  operator: COMPARE_OPERATOR
   /**
    * 构造函数
    */
-  constructor(operator: CompareOperator, left: UnsureExpressions, right: UnsureExpressions) {
-    super(SqlSymbol.BINARY)
+  constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions) {
+    super(SQL_SYMBOLE.BINARY)
     this.operator = operator
     this.left = ensureConstant(left)
     this.right = ensureConstant(right)
@@ -1255,14 +1255,14 @@ class BinaryCompareCondition extends Condition {
  */
 class UnaryCompareCondition extends Condition implements IUnary {
   next: Expressions
-  operator: CompareOperator
+  operator: COMPARE_OPERATOR
   /**
    * 一元比较运算符
    * @param operator 运算符
    * @param expr 查询条件
    */
-  constructor(operator: CompareOperator, expr: UnsureExpressions) {
-    super(SqlSymbol.UNARY)
+  constructor(operator: COMPARE_OPERATOR, expr: UnsureExpressions) {
+    super(SQL_SYMBOLE.UNARY)
     this.operator = operator
     assert(expr, 'next must not null')
     this.next = ensureConstant(expr)
@@ -1277,7 +1277,7 @@ class IsNullCondition extends UnaryCompareCondition {
    * @param next 表达式
    */
   constructor(next: UnsureExpressions) {
-    super(CompareOperator.IS_NULL, next)
+    super(COMPARE_OPERATOR.IS_NULL, next)
   }
 }
 
@@ -1290,7 +1290,7 @@ class IsNotNullCondition extends UnaryLogicCondition {
    * @param next 表达式
    */
   constructor(next: UnsureExpressions) {
-    super(CompareOperator.IS_NOT_NULL, next)
+    super(COMPARE_OPERATOR.IS_NOT_NULL, next)
   }
 }
 
@@ -1298,7 +1298,7 @@ class IsNotNullCondition extends UnaryLogicCondition {
  * 联接查询
  */
 export class Join extends AST {
-  readonly type: SqlSymbol
+  readonly type: SQL_SYMBOLE
   left: boolean
   table: Identifier
   on: Conditions
@@ -1310,7 +1310,7 @@ export class Join extends AST {
    * @param left 是否左联接
    */
   constructor(table: UnsureIdentity, on: Conditions, left: boolean = false) {
-    super(SqlSymbol.JOIN)
+    super(SQL_SYMBOLE.JOIN)
 
     /**
      * 关联表
@@ -1334,7 +1334,7 @@ export class Join extends AST {
 export class Raw extends AST {
   sql: string
   constructor(sql: string) {
-    super(SqlSymbol.RAW)
+    super(SQL_SYMBOLE.RAW)
     this.sql = sql
   }
 }
@@ -1352,11 +1352,13 @@ export class Identifier extends Expression {
   /**
    * 标识符
    */
-  protected constructor(name: string, parent?: UnsureIdentity, type: SqlSymbol = SqlSymbol.IDENTIFIER) {
+  protected constructor(name: string, parent?: UnsureIdentity, type: SQL_SYMBOLE = SQL_SYMBOLE.IDENTIFIER) {
     super(type)
     this.name = name
     if (parent) {
       this.parent = ensureIdentity(parent)
+    } else {
+      this.parent = null
     }
   }
 
@@ -1370,10 +1372,6 @@ export class Identifier extends Expression {
    */
   dot(name: string) {
     return new Identifier(name, this)
-  }
-
-  field(name: string) {
-    return this.dot(name)
   }
 
   any() {
@@ -1399,14 +1397,14 @@ export class Identifier extends Expression {
    * 内建标识符
    */
   static buildIn(name) {
-    return new Identifier(name, null, SqlSymbol.BUILDIN_IDENTIFIER)
+    return new Identifier(name, null, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 
   /**
    * 内建标识符
    */
   static any(parent?: UnsureIdentity) {
-    return new Identifier('*', parent, SqlSymbol.BUILDIN_IDENTIFIER)
+    return new Identifier('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 }
 
@@ -1414,7 +1412,7 @@ export class Variant extends Expression {
   name: string
 
   constructor(name: string) {
-    super(SqlSymbol.VARAINT)
+    super(SQL_SYMBOLE.VARAINT)
     this.name = name
   }
 
@@ -1438,7 +1436,7 @@ export class Alias extends Identifier {
    * @param name 别名
    */
   constructor(expr: UnsureExpressions, name: string) {
-    super(name, null, SqlSymbol.ALIAS)
+    super(name, null, SQL_SYMBOLE.ALIAS)
     assert(_.isString(name), 'The alias must type of string')
     // assertType(expr, [DbObject, Field, Constant, Select], 'alias must type of DbObject|Field|Constant|Bracket<Select>')
     this.expr = ensureConstant(expr)
@@ -1462,7 +1460,7 @@ export class Invoke extends Expression {
    * 函数调用
    */
   constructor(func: UnsureIdentity, params?: UnsureExpressions[]) {
-    super(SqlSymbol.INVOKE)
+    super(SQL_SYMBOLE.INVOKE)
     this.func = ensureIdentity(func)
     this.params = (params || []).map(expr => ensureConstant(expr))
   }
@@ -1573,7 +1571,7 @@ export class When extends AST {
   value: Expressions
 
   constructor(expr: UnsureExpressions, value?: UnsureExpressions) {
-    super(SqlSymbol.WHEN)
+    super(SQL_SYMBOLE.WHEN)
     this.expr = ensureConstant(expr)
     if (value) {
       this.value = ensureConstant(value)
@@ -1603,7 +1601,7 @@ export class Case extends Expression {
    * @param expr
    */
   constructor(expr: UnsureExpressions) {
-    super(SqlSymbol.CASE)
+    super(SQL_SYMBOLE.CASE)
     this.expr = ensureConstant(expr)
     /**
      * @type {When[]}
@@ -1648,7 +1646,7 @@ export class Constant extends Expression {
   value: JsConstant
 
   constructor(value: JsConstant) {
-    super(SqlSymbol.CONSTANT)
+    super(SQL_SYMBOLE.CONSTANT)
     this.value = value
   }
 }
@@ -1659,7 +1657,7 @@ export class Constant extends Expression {
 export class ValueList extends AST {
   items: Expressions[]
   constructor(...values: UnsureExpressions[]) {
-    super(SqlSymbol.VALUE_LIST)
+    super(SQL_SYMBOLE.VALUE_LIST)
     this.items = values.map(value => ensureConstant(value))
   }
 }
@@ -1674,7 +1672,7 @@ export class Bracket<T extends AST> extends AST {
   context: T
 
   constructor(context: T) {
-    super(SqlSymbol.BRACKET)
+    super(SQL_SYMBOLE.BRACKET)
     this.context = context
   }
 }
@@ -1903,7 +1901,7 @@ export class BinaryExpression extends Expression implements IBinary {
     return false
   }
 
-  operator: ComputeOperator
+  operator: COMPUTE_OPERATOR
   left: Expressions
   right: Expressions
 
@@ -1913,8 +1911,8 @@ export class BinaryExpression extends Expression implements IBinary {
    * @param left 左值
    * @param right 右值
    */
-  constructor(operator: ComputeOperator, left: UnsureExpressions, right: UnsureExpressions) {
-    super(SqlSymbol.BINARY)
+  constructor(operator: COMPUTE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions) {
+    super(SQL_SYMBOLE.BINARY)
     assert(left, 'The argument left must not null')
     assert(right, 'The arguemnt right must not null')
     this.operator = operator
@@ -1929,9 +1927,9 @@ export class BinaryExpression extends Expression implements IBinary {
  */
 export class UnaryExpression extends Expression implements IUnary {
 
-  operator: ComputeOperator
+  operator: COMPUTE_OPERATOR
   next: Expressions
-  readonly type: SqlSymbol
+  readonly type: SQL_SYMBOLE
 
   get lvalue() {
     return false
@@ -1940,8 +1938,8 @@ export class UnaryExpression extends Expression implements IUnary {
    * 一元运算目前只支持负数运算符
    * @param expr
    */
-  constructor(operator: ComputeOperator, expr: UnsureExpressions) {
-    super(SqlSymbol.UNARY)
+  constructor(operator: COMPUTE_OPERATOR, expr: UnsureExpressions) {
+    super(SQL_SYMBOLE.UNARY)
 
     this.next = ensureConstant(expr)
   }
@@ -1959,7 +1957,7 @@ export class Union extends AST {
    * @param all 是否所有查询
    */
   constructor(select, all) {
-    super(SqlSymbol.UNION)
+    super(SQL_SYMBOLE.UNION)
     this.select = select
     this.all = all
   }
@@ -1979,7 +1977,7 @@ export class Union extends AST {
 // }
 
 export interface SortObject {
-  [key: string]: SortDirection
+  [key: string]: SORT_DIRECTION
 }
 
 export abstract class Fromable extends Statement {
@@ -2041,9 +2039,9 @@ export abstract class Fromable extends Statement {
 
 export class SortInfo extends AST {
   expr: Expressions
-  direction?: SortDirection
-  constructor(expr: UnsureExpressions, direction?: SortDirection) {
-    super(SqlSymbol.SORT)
+  direction?: SORT_DIRECTION
+  constructor(expr: UnsureExpressions, direction?: SORT_DIRECTION) {
+    super(SQL_SYMBOLE.SORT)
     this.expr = ensureConstant(expr)
     this.direction = direction
   }
@@ -2067,7 +2065,7 @@ export class Select extends Fromable {
   constructor(...columns: UnsureExpressions[])
   constructor(...columns: (object | UnsureConditions)[])
   constructor(...columns: (object | UnsureConditions)[]/*options?: SelectOptions*/) {
-    super(SqlSymbol.SELECT)
+    super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]
       this.columns = Object.entries(obj).map(([alias, expr]) => new Alias(ensureConstant(expr), alias))
@@ -2210,7 +2208,7 @@ export class Insert extends Statement {
    * 构造函数
    */
   constructor(table: UnsureIdentity, fields?: UnsureIdentity[]) {
-    super(SqlSymbol.INSERT)
+    super(SQL_SYMBOLE.INSERT)
     assert(!this.table, 'The into clause is declared')
     this.table = ensureIdentity(table)
     if (fields) {
@@ -2298,7 +2296,7 @@ export class Update extends Fromable {
   sets: Assignment[]
 
   constructor(table: UnsureIdentity /*options?: UpdateOptions*/) {
-    super(SqlSymbol.UPDATE)
+    super(SQL_SYMBOLE.UPDATE)
     this.table = ensureIdentity(table)
     // if (options?.table) this.from(options.table)
     // if (options?.sets) this.set(options.sets)
@@ -2338,7 +2336,7 @@ export class Delete extends Fromable {
   table: Identifier
 
   constructor(table: UnsureIdentity /*options?: DeleteOptions*/) {
-    super(SqlSymbol.DELETE)
+    super(SQL_SYMBOLE.DELETE)
     this.table = ensureIdentity(table)
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
@@ -2357,7 +2355,7 @@ export class Execute extends Statement {
   constructor(proc: UnsureIdentity, params?: Parameter[])
   constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[])
   constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]) {
-    super(SqlSymbol.EXECUTE)
+    super(SQL_SYMBOLE.EXECUTE)
     this.proc = ensureIdentity(proc)
     if (!params || params.length === 0) {
       this.params = []
@@ -2376,7 +2374,7 @@ export class Assignment extends Statement {
   right: Expressions
 
   constructor(left: Expression, right: UnsureExpressions) {
-    super(SqlSymbol.ASSIGNMENT)
+    super(SQL_SYMBOLE.ASSIGNMENT)
     assert(left.lvalue, 'Argument left not lvalue')
     this.left = left
     this.right = ensureConstant(right)
@@ -2385,7 +2383,7 @@ export class Assignment extends Statement {
 
 class VariantDeclare extends AST {
   constructor(name: string, dataType: string) {
-    super(SqlSymbol.VARAINT_DECLARE)
+    super(SQL_SYMBOLE.VARAINT_DECLARE)
     this.name = name
     this.dataType = dataType
   }
@@ -2401,7 +2399,7 @@ export class Declare extends Statement {
   declares: VariantDeclare[]
 
   constructor(...declares: VariantDeclare[]) {
-    super(SqlSymbol.DECLARE)
+    super(SQL_SYMBOLE.DECLARE)
     this.declares = declares
   }
 }
@@ -2415,7 +2413,7 @@ type JsType = Function
 export class Parameter extends Expression {
   name?: string
   private _value?: JsConstant
-  direction: ParameterDirection
+  direction: PARAMETER_DIRECTION
   dbType?: DbType | JsType
   get lvalue() {
     return false
@@ -2430,8 +2428,8 @@ export class Parameter extends Expression {
     // TODO: 自动设置数据类型
   }
 
-  constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction: ParameterDirection = ParameterDirection.INPUT) {
-    super(SqlSymbol.PARAMETER)
+  constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT) {
+    super(SQL_SYMBOLE.PARAMETER)
     this.name = name
     this.value = value // ensureConstant(value)
     this.dbType = dbType
@@ -2442,14 +2440,14 @@ export class Parameter extends Expression {
    * input 参数
    */
   static input(name: string, value: JsConstant) {
-    return new Parameter(name, null, value, ParameterDirection.INPUT)
+    return new Parameter(name, null, value, PARAMETER_DIRECTION.INPUT)
   }
 
   /**
    * output参数
    */
   static output(name: string, type: DbType | JsType, value?: JsConstant) {
-    return new Parameter(name, type, value, ParameterDirection.OUTPUT)
+    return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT)
   }
 }
 
@@ -2459,7 +2457,7 @@ export class Parameter extends Expression {
 export class Document extends AST {
   statements: Statement[]
   constructor(...statements: Statement[]) {
-    super(SqlSymbol.DOCUMENT)
+    super(SQL_SYMBOLE.DOCUMENT)
     this.statements = statements
   }
 }

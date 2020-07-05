@@ -9,7 +9,7 @@ import {
   Variant, Join, IUnary, Execute,
   IBinary, Union, ValueList, SortInfo
 } from './ast'
-import { SqlSymbol, ParameterDirection } from './constants'
+import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
 export interface Command {
   sql: string
@@ -105,8 +105,9 @@ export class Parser {
    */
   protected parseIdentifier(identifier: Identifier): string {
     const sql = this.quoted(identifier.name)
-    if (identifier.parent) {
-      return this.parseIdentifier(identifier.parent) + '.' + sql
+    const parent = Reflect.get(identifier, 'parent')
+    if (parent) {
+      return this.parseIdentifier(parent) + '.' + sql
     }
     return sql
   }
@@ -134,7 +135,7 @@ export class Parser {
 
   public properParameterName(p: Parameter, isProcParam: boolean = false) {
     let sql = this.ployfill.parameterPrefix + (p.name || '')
-    if (isProcParam && p.direction === ParameterDirection.OUTPUT && this.ployfill.parameterOutWord) {
+    if (isProcParam && p.direction === PARAMETER_DIRECTION.OUTPUT && this.ployfill.parameterOutWord) {
       sql += ' ' + this.ployfill.parameterOutWord
     }
     return sql
@@ -146,6 +147,10 @@ export class Parser {
 
   protected parseVariant(variant: Variant, params: Set<Parameter>): string {
     return this.properVariantName(variant.name)
+  }
+
+  protected parseDate(date) {
+    return "'" + moment(date).format('YYYY-MM-DD HH:mm:ss.SSS') + "'"
   }
 
   protected parseConstant(constant: Constant) {
@@ -163,7 +168,7 @@ export class Parser {
       return value ? '1' : '0'
     }
     if (_.isDate(value)) {
-      return "CONVERT(DATETIME, '" + moment(value).format('YYYY-MM-DD HH:mm:ss.SSS') + "')"
+      return this.parseDate(value)
     }
     if (_.isBuffer(value)) {
       return '0x' + (value as Buffer).toString('hex')
@@ -185,49 +190,49 @@ export class Parser {
 
   protected parseAST(ast: AST, params: Set<Parameter>): string {
     switch (ast.type) {
-      case SqlSymbol.SELECT:
+      case SQL_SYMBOLE.SELECT:
         return this.parseSelect(ast as Select, params)
-      case SqlSymbol.UPDATE:
+      case SQL_SYMBOLE.UPDATE:
         return this.parseUpdate(ast as Update, params)
-      case SqlSymbol.ASSIGNMENT:
+      case SQL_SYMBOLE.ASSIGNMENT:
         return this.parseAssignment(ast as Assignment, params)
-      case SqlSymbol.INSERT:
+      case SQL_SYMBOLE.INSERT:
         return this.parseInsert(ast as Insert, params)
-      case SqlSymbol.DELETE:
+      case SQL_SYMBOLE.DELETE:
         return this.parseDelete(ast as Delete, params)
-      case SqlSymbol.DECLARE:
+      case SQL_SYMBOLE.DECLARE:
         return this.parseDeclare(ast as Declare, params)
-      case SqlSymbol.BRACKET:
+      case SQL_SYMBOLE.BRACKET:
         return this.parseBracket(ast as Bracket<any>, params)
-      case SqlSymbol.CONSTANT:
+      case SQL_SYMBOLE.CONSTANT:
         return this.parseConstant(ast as Constant)
-      case SqlSymbol.ALIAS:
+      case SQL_SYMBOLE.ALIAS:
         return this.parseAlias(ast as Alias, params)
-      case SqlSymbol.IDENTIFIER:
+      case SQL_SYMBOLE.IDENTIFIER:
         return this.parseIdentifier(ast as Identifier)
-      case SqlSymbol.BUILDIN_IDENTIFIER:
+      case SQL_SYMBOLE.BUILDIN_IDENTIFIER:
         return (ast as Identifier).name
-      case SqlSymbol.EXECUTE:
+      case SQL_SYMBOLE.EXECUTE:
         return this.parseExecute(ast as Execute, params)
-      case SqlSymbol.INVOKE:
+      case SQL_SYMBOLE.INVOKE:
         return this.parseInvoke(ast as Invoke, params)
-      case SqlSymbol.CASE:
+      case SQL_SYMBOLE.CASE:
         return this.parseCase(ast as Case, params)
-      case SqlSymbol.BINARY:
+      case SQL_SYMBOLE.BINARY:
         return this.parseBinary(ast as unknown as IBinary, params)
-      case SqlSymbol.UNARY:
+      case SQL_SYMBOLE.UNARY:
         return this.parseUnary(ast as unknown as IUnary, params)
-      case SqlSymbol.PARAMETER:
+      case SQL_SYMBOLE.PARAMETER:
         return this.parseParameter(ast as Parameter, params)
-      case SqlSymbol.VARAINT:
+      case SQL_SYMBOLE.VARAINT:
         return this.parseVariant(ast as Variant, params)
-      case SqlSymbol.JOIN:
+      case SQL_SYMBOLE.JOIN:
         return this.parseJoin(ast as Join, params)
-      case SqlSymbol.UNION:
+      case SQL_SYMBOLE.UNION:
         return this.parseUnion(ast as Union, params)
-      case SqlSymbol.VALUE_LIST:
+      case SQL_SYMBOLE.VALUE_LIST:
         return this.parseValueList(ast as ValueList, params)
-      case SqlSymbol.SORT:
+      case SQL_SYMBOLE.SORT:
         return this.parseSort(ast as SortInfo, params)
       default:
         throw new Error('Error AST type: ' + ast.type)

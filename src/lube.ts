@@ -2,7 +2,7 @@ import { Executor, QueryResult } from './executor'
 import { Parser, Ployfill } from './parser'
 import { URL } from 'url'
 import * as _ from 'lodash'
-import { IsolationLevel } from './constants'
+import { ISOLATION_LEVEL } from './constants'
 import { assert } from 'console'
 
 export type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>
@@ -23,7 +23,7 @@ export interface IDbProvider {
   ployfill?: Ployfill
   parser?: Parser
   query(sql, params): Promise<QueryResult>
-  beginTrans(isolationLevel: IsolationLevel): ITransaction
+  beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction
   close(): Promise<void>
 }
 
@@ -78,7 +78,7 @@ export class Lube extends Executor {
   }
 }
 
-interface ConnectOptions {
+export interface ConnectOptions {
   /**
    * 数据库方言，必须安装相应的驱动才可正常使用
    */
@@ -154,9 +154,9 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 
 export * from './builder'
 
+export * from './constants'
 
-export {
-  IsolationLevel,
-  ParameterDirection,
-  SortDirection
-} from './constants'
+export * from './ast'
+
+export * from './parser'
+
