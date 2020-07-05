@@ -1,5 +1,5 @@
 /// <reference types="node" />
-import { ComputeOperator, ParameterDirection, SqlSymbol, CompareOperator, SortDirection, LogicOperator } from './constants';
+import { COMPUTE_OPERATOR, PARAMETER_DIRECTION, SQL_SYMBOLE, COMPARE_OPERATOR, SORT_DIRECTION, LOGIC_OPERATOR } from './constants';
 /**
  * JS常量类型
  */
@@ -39,8 +39,8 @@ export declare type UnsureIdentity = Identifier | string;
  * AST 基类
  */
 export declare abstract class AST {
-    constructor(type: SqlSymbol);
-    readonly type: SqlSymbol;
+    constructor(type: SQL_SYMBOLE);
+    readonly type: SQL_SYMBOLE;
     static bracket<T extends AST>(context: T): Bracket<T>;
     static list(...values: UnsureExpressions[]): Bracket<ValueList>;
 }
@@ -418,11 +418,6 @@ export declare abstract class Expression extends AST implements IExpression {
      */
     static shr(left: any, right: any): BinaryExpression;
     /**
-     * CASE语句表达式
-     * @param expr 表达式
-     */
-    static case(expr: UnsureExpressions): Case;
-    /**
      * 常量
      * @param value 常量值
      */
@@ -560,7 +555,7 @@ export declare abstract class Condition extends AST implements ICondition {
      * @param operator 运算符
      * @returns 返回比较运算对比条件
      */
-    static compare(left: UnsureExpressions, right: UnsureExpressions, operator?: CompareOperator): BinaryCompareCondition;
+    static compare(left: UnsureExpressions, right: UnsureExpressions, operator?: COMPARE_OPERATOR): BinaryCompareCondition;
     /**
      * 比较运算 =
      * @param left 左值
@@ -653,19 +648,19 @@ export declare abstract class Condition extends AST implements ICondition {
  * 二元逻辑查询条件条件
  */
 export declare class BinaryLogicCondition extends Condition implements IBinary {
-    operator: LogicOperator;
+    operator: LOGIC_OPERATOR;
     left: Conditions;
     right: Conditions;
     /**
      * 创建二元逻辑查询条件实例
      */
-    constructor(operator: LogicOperator, left: UnsureConditions, right: UnsureConditions);
+    constructor(operator: LOGIC_OPERATOR, left: UnsureConditions, right: UnsureConditions);
 }
 /**
  * 一元逻辑查询条件
  */
 declare class UnaryLogicCondition extends Condition implements IUnary {
-    operator: LogicOperator;
+    operator: LOGIC_OPERATOR;
     next: Conditions;
     /**
      * 创建一元逻辑查询条件实例
@@ -680,24 +675,24 @@ declare class UnaryLogicCondition extends Condition implements IUnary {
 declare class BinaryCompareCondition extends Condition {
     left: Expressions;
     right: Expressions;
-    operator: CompareOperator;
+    operator: COMPARE_OPERATOR;
     /**
      * 构造函数
      */
-    constructor(operator: CompareOperator, left: UnsureExpressions, right: UnsureExpressions);
+    constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions);
 }
 /**
  * 一元比较条件
  */
 declare class UnaryCompareCondition extends Condition implements IUnary {
     next: Expressions;
-    operator: CompareOperator;
+    operator: COMPARE_OPERATOR;
     /**
      * 一元比较运算符
      * @param operator 运算符
      * @param expr 查询条件
      */
-    constructor(operator: CompareOperator, expr: UnsureExpressions);
+    constructor(operator: COMPARE_OPERATOR, expr: UnsureExpressions);
 }
 /**
  * IS NULL 运算
@@ -722,7 +717,7 @@ declare class IsNotNullCondition extends UnaryLogicCondition {
  * 联接查询
  */
 export declare class Join extends AST {
-    readonly type: SqlSymbol;
+    readonly type: SQL_SYMBOLE;
     left: boolean;
     table: Identifier;
     on: Conditions;
@@ -747,14 +742,13 @@ export declare class Identifier extends Expression {
     /**
      * 标识符
      */
-    protected constructor(name: string, parent?: UnsureIdentity, type?: SqlSymbol);
+    protected constructor(name: string, parent?: UnsureIdentity, type?: SQL_SYMBOLE);
     get lvalue(): boolean;
     /**
      * 访问下一节点
      * @param name
      */
     dot(name: string): Identifier;
-    field(name: string): Identifier;
     any(): Identifier;
     /**
      * 执行一个函数
@@ -827,11 +821,6 @@ export declare abstract class Statement extends AST {
      */
     static delete(table: UnsureIdentity): Delete;
     /**
-     * 删除一个表格，delete的别名
-     * @param table 表格
-     */
-    static del(table: UnsureIdentity): Delete;
-    /**
      * 选择列
      */
     static select(columns: KeyValueObject): Select;
@@ -868,6 +857,7 @@ export declare abstract class Statement extends AST {
      * @param value
      */
     static when(expr: UnsureExpressions, value?: UnsureExpressions): When;
+    static case(expr: UnsureExpressions): Case;
 }
 /**
  * When语句
@@ -1112,7 +1102,7 @@ export interface IUnary {
  */
 export declare class BinaryExpression extends Expression implements IBinary {
     get lvalue(): boolean;
-    operator: ComputeOperator;
+    operator: COMPUTE_OPERATOR;
     left: Expressions;
     right: Expressions;
     /**
@@ -1121,21 +1111,21 @@ export declare class BinaryExpression extends Expression implements IBinary {
      * @param left 左值
      * @param right 右值
      */
-    constructor(operator: ComputeOperator, left: UnsureExpressions, right: UnsureExpressions);
+    constructor(operator: COMPUTE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions);
 }
 /**
  * - 运算符
  */
 export declare class UnaryExpression extends Expression implements IUnary {
-    operator: ComputeOperator;
+    operator: COMPUTE_OPERATOR;
     next: Expressions;
-    readonly type: SqlSymbol;
+    readonly type: SQL_SYMBOLE;
     get lvalue(): boolean;
     /**
      * 一元运算目前只支持负数运算符
      * @param expr
      */
-    constructor(operator: ComputeOperator, expr: UnsureExpressions);
+    constructor(operator: COMPUTE_OPERATOR, expr: UnsureExpressions);
 }
 /**
  * 联接查询
@@ -1151,7 +1141,7 @@ export declare class Union extends AST {
     constructor(select: any, all: any);
 }
 export interface SortObject {
-    [key: string]: SortDirection;
+    [key: string]: SORT_DIRECTION;
 }
 export declare abstract class Fromable extends Statement {
     tables?: Identifier[];
@@ -1184,8 +1174,8 @@ export declare abstract class Fromable extends Statement {
 }
 export declare class SortInfo extends AST {
     expr: Expressions;
-    direction?: SortDirection;
-    constructor(expr: UnsureExpressions, direction?: SortDirection);
+    direction?: SORT_DIRECTION;
+    constructor(expr: UnsureExpressions, direction?: SORT_DIRECTION);
 }
 /**
  * SELECT查询
@@ -1333,12 +1323,12 @@ declare type JsType = Function;
 export declare class Parameter extends Expression {
     name?: string;
     private _value?;
-    direction: ParameterDirection;
+    direction: PARAMETER_DIRECTION;
     dbType?: DbType | JsType;
     get lvalue(): boolean;
     get value(): JsConstant;
     set value(value: JsConstant);
-    constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction?: ParameterDirection);
+    constructor(name: string, dbType: DbType | JsType, value: JsConstant, direction?: PARAMETER_DIRECTION);
     /**
      * input 参数
      */

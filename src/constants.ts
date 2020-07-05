@@ -1,7 +1,7 @@
 /**
  * 排序方向
  */
-export enum SortDirection {
+export enum SORT_DIRECTION {
   ASC = 'ASC',
   DESC = 'DESC'
 }
@@ -9,7 +9,7 @@ export enum SortDirection {
 /**
  * 参数方向
  */
-export enum ParameterDirection {
+export enum PARAMETER_DIRECTION {
   INPUT = 'INPUT',
   OUTPUT = 'OUTPUT'
 }
@@ -17,7 +17,7 @@ export enum ParameterDirection {
 /**
  * 参数隔离方向
  */
-export enum IsolationLevel {
+export enum ISOLATION_LEVEL {
   READ_COMMIT = 1,
   READ_UNCOMMIT = 2,
   REPEATABLE_READ = 3,
@@ -28,7 +28,7 @@ export enum IsolationLevel {
 /**
  * 逻辑运算符列表
  */
-export enum LogicOperator {
+export enum LOGIC_OPERATOR {
   AND = 'AND',
   OR = 'OR',
   NOT = 'NOT'
@@ -37,7 +37,7 @@ export enum LogicOperator {
 /**
  * 比较运算符列表
  */
-export enum CompareOperator {
+export enum COMPARE_OPERATOR {
   IS_NULL = 'IS NULL',
   IS_NOT_NULL = 'IS NOT NULL',
   IN = 'IN',
@@ -56,7 +56,7 @@ export enum CompareOperator {
 /**
  * 算术运算符列表
  */
-export enum ComputeOperator {
+export enum COMPUTE_OPERATOR {
   ADD = '+',
   SUB = '-',
   MUL = '*',
@@ -77,7 +77,7 @@ export enum ComputeOperator {
 /**
  * SQL运算符
  */
-export enum SqlSymbol {
+export enum SQL_SYMBOLE {
   RAW = 'RAW',
   // ANY = '*',
   VALUE_LIST = 'VALUE_LIST',
@@ -111,11 +111,3 @@ export enum SqlSymbol {
   DECLARE = 'DECLARE',
   DOCUMENT = "DOCUMENT"
 }
-
-// export enum DataType {
-//   STRING = 'STRING',
-//   INTEGER = 'INTEGER',
-//   FLOAT = 'FLOAT',
-//   BOOLEAN = 'BOOLEAN',
-//   DATE = 'DATE'
-// }

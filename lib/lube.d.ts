@@ -1,6 +1,6 @@
 import { Executor, QueryResult } from './executor';
-import { Ployfill } from './parser';
-import { IsolationLevel } from './constants';
+import { Parser, Ployfill } from './parser';
+import { ISOLATION_LEVEL } from './constants';
 export declare type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>;
 /**
  * 数据库事务
@@ -14,9 +14,10 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-    ployfill: Ployfill;
+    ployfill?: Ployfill;
+    parser?: Parser;
     query(sql: any, params: any): Promise<QueryResult>;
-    beginTrans(isolationLevel: IsolationLevel): ITransaction;
+    beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction;
     close(): Promise<void>;
 }
 export declare class Lube extends Executor {
@@ -30,11 +31,15 @@ export declare class Lube extends Executor {
     trans(handler: TransactionHandler, isolationLevel: any): Promise<any>;
     close(): Promise<void>;
 }
-interface ConnectOptions {
+export interface ConnectOptions {
     /**
-     * 驱动
+     * 数据库方言，必须安装相应的驱动才可正常使用
      */
-    driver: string | ((config: ConnectOptions) => IDbProvider);
+    dialect?: string;
+    /**
+     * 驱动程序，与dialect二选一
+     */
+    driver?: ((config: ConnectOptions) => IDbProvider);
     host: string;
     port?: number;
     user: string;
@@ -51,4 +56,6 @@ interface ConnectOptions {
 export declare function connect(url: string): Promise<Lube>;
 export declare function connect(config: ConnectOptions): Promise<Lube>;
 export * from './builder';
-export { IsolationLevel, ParameterDirection, SortDirection } from './constants';
+export * from './constants';
+export * from './ast';
+export * from './parser';

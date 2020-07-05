@@ -1,13 +1,13 @@
 {
   "name": "lubejs",
-  "version": "1.0.0-preview",
+  "version": "1.0.0-beta01",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "lib/lube.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "npm run build && mocha ./test/mssql.test.js",
+    "test": "npm run build && mocha test",
     "build": "tsc",
     "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ./src --ext .ts"

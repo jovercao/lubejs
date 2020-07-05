@@ -20,6 +20,11 @@ export interface Ployfill {
      */
     parameterPrefix: string;
     /**
+     * 输出类型参数
+     * 如 mssql: @paramName OUT
+     */
+    parameterOutWord: string;
+    /**
      * 变量前缀
      */
     variantPrefix: string;
@@ -74,10 +79,13 @@ export declare class Parser {
      * @param {array} values 参数列表
      * @param {any} value 参数值
      */
-    protected parseParameter(param: Parameter, params: Set<Parameter>): string;
-    properParameterName(name?: string): string;
+    protected parseParameter(param: Parameter, params: Set<Parameter>, isProcParam?: boolean): string;
+    properParameterName(p: Parameter, isProcParam?: boolean): string;
     protected properVariantName(name: string): string;
     protected parseVariant(variant: Variant, params: Set<Parameter>): string;
+    protected parseDate(date: Date): string;
+    protected parseBoolean(value: boolean): "0" | "1";
+    protected parseString(value: string): string;
     protected parseConstant(constant: Constant): string;
     parse(ast: AST): Command;
     protected parseAST(ast: AST, params: Set<Parameter>): string;
@@ -101,9 +109,9 @@ export declare class Parser {
     protected parseJoin(join: Join, params: Set<Parameter>): string;
     protected parseSort(sort: SortInfo, params: Set<Parameter>): string;
     protected parseSelect(select: Select, params: any): string;
-    parseInsert(insert: Insert, params: Set<Parameter>): string;
-    parseAssignment(assign: Assignment, params: Set<Parameter>): string;
-    parseDeclare(declare: Declare, params: Set<Parameter>): string;
-    parseUpdate(update: Update, params: Set<Parameter>): string;
-    parseDelete(del: Delete, params: Set<Parameter>): string;
+    protected parseInsert(insert: Insert, params: Set<Parameter>): string;
+    protected parseAssignment(assign: Assignment, params: Set<Parameter>): string;
+    protected parseDeclare(declare: Declare, params: Set<Parameter>): string;
+    protected parseUpdate(update: Update, params: Set<Parameter>): string;
+    protected parseDelete(del: Delete, params: Set<Parameter>): string;
 }

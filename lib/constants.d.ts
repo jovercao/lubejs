@@ -1,21 +1,21 @@
 /**
  * 排序方向
  */
-export declare enum SortDirection {
+export declare enum SORT_DIRECTION {
     ASC = "ASC",
     DESC = "DESC"
 }
 /**
  * 参数方向
  */
-export declare enum ParameterDirection {
+export declare enum PARAMETER_DIRECTION {
     INPUT = "INPUT",
     OUTPUT = "OUTPUT"
 }
 /**
  * 参数隔离方向
  */
-export declare enum IsolationLevel {
+export declare enum ISOLATION_LEVEL {
     READ_COMMIT = 1,
     READ_UNCOMMIT = 2,
     REPEATABLE_READ = 3,
@@ -25,7 +25,7 @@ export declare enum IsolationLevel {
 /**
  * 逻辑运算符列表
  */
-export declare enum LogicOperator {
+export declare enum LOGIC_OPERATOR {
     AND = "AND",
     OR = "OR",
     NOT = "NOT"
@@ -33,7 +33,7 @@ export declare enum LogicOperator {
 /**
  * 比较运算符列表
  */
-export declare enum CompareOperator {
+export declare enum COMPARE_OPERATOR {
     IS_NULL = "IS NULL",
     IS_NOT_NULL = "IS NOT NULL",
     IN = "IN",
@@ -51,7 +51,7 @@ export declare enum CompareOperator {
 /**
  * 算术运算符列表
  */
-export declare enum ComputeOperator {
+export declare enum COMPUTE_OPERATOR {
     ADD = "+",
     SUB = "-",
     MUL = "*",
@@ -71,7 +71,7 @@ export declare enum ComputeOperator {
 /**
  * SQL运算符
  */
-export declare enum SqlSymbol {
+export declare enum SQL_SYMBOLE {
     RAW = "RAW",
     VALUE_LIST = "VALUE_LIST",
     VARAINT_DECLARE = "VARAINT_DECLARE",
