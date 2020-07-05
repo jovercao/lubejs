@@ -149,8 +149,16 @@ export class Parser {
     return this.properVariantName(variant.name)
   }
 
-  protected parseDate(date) {
+  protected parseDate(date: Date) {
     return "'" + moment(date).format('YYYY-MM-DD HH:mm:ss.SSS') + "'"
+  }
+
+  protected parseBoolean(value: boolean) {
+    return value ? '1' : '0'
+  }
+
+  protected parseString(value: string) {
+    return `'${value.replace(/'/g, "''")}'`
   }
 
   protected parseConstant(constant: Constant) {
@@ -158,14 +166,17 @@ export class Parser {
     if (value === null || value === undefined) {
       return 'NULL'
     }
+
     if (_.isString(value)) {
-      return `'${value.replace(/'/g, "''")}'`
+      return this.parseString(value)
     }
-    if (_.isNumber(value)) {
+
+    if (_.isNumber(value) || typeof value === 'bigint') {
       return value.toString(10)
     }
+
     if (_.isBoolean(value)) {
-      return value ? '1' : '0'
+      return this.parseBoolean(value)
     }
     if (_.isDate(value)) {
       return this.parseDate(value)

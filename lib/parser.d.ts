@@ -83,7 +83,9 @@ export declare class Parser {
     properParameterName(p: Parameter, isProcParam?: boolean): string;
     protected properVariantName(name: string): string;
     protected parseVariant(variant: Variant, params: Set<Parameter>): string;
-    protected parseDate(date: any): string;
+    protected parseDate(date: Date): string;
+    protected parseBoolean(value: boolean): "0" | "1";
+    protected parseString(value: string): string;
     protected parseConstant(constant: Constant): string;
     parse(ast: AST): Command;
     protected parseAST(ast: AST, params: Set<Parameter>): string;

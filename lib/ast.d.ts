@@ -418,11 +418,6 @@ export declare abstract class Expression extends AST implements IExpression {
      */
     static shr(left: any, right: any): BinaryExpression;
     /**
-     * CASE语句表达式
-     * @param expr 表达式
-     */
-    static case(expr: UnsureExpressions): Case;
-    /**
      * 常量
      * @param value 常量值
      */
@@ -826,11 +821,6 @@ export declare abstract class Statement extends AST {
      */
     static delete(table: UnsureIdentity): Delete;
     /**
-     * 删除一个表格，delete的别名
-     * @param table 表格
-     */
-    static del(table: UnsureIdentity): Delete;
-    /**
      * 选择列
      */
     static select(columns: KeyValueObject): Select;
@@ -867,6 +857,7 @@ export declare abstract class Statement extends AST {
      * @param value
      */
     static when(expr: UnsureExpressions, value?: UnsureExpressions): When;
+    static case(expr: UnsureExpressions): Case;
 }
 /**
  * When语句

@@ -792,14 +792,6 @@ export abstract class Expression extends AST implements IExpression {
   }
 
   /**
-   * CASE语句表达式
-   * @param expr 表达式
-   */
-  static case(expr: UnsureExpressions) {
-    return new Case(expr)
-  }
-
-  /**
    * 常量
    * @param value 常量值
    */
@@ -1497,14 +1489,6 @@ export abstract class Statement extends AST {
   }
 
   /**
-   * 删除一个表格，delete的别名
-   * @param table 表格
-   */
-  static del(table: UnsureIdentity) {
-    return Statement.delete(table)
-  }
-
-  /**
    * 选择列
    */
   static select(columns: KeyValueObject): Select
@@ -1560,6 +1544,10 @@ export abstract class Statement extends AST {
    */
   static when(expr: UnsureExpressions, value?: UnsureExpressions) {
     return new When(expr, value)
+  }
+
+  static case(expr: UnsureExpressions) {
+    return new Case(expr)
   }
 }
 

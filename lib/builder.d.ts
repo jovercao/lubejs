@@ -77,7 +77,7 @@ export declare const raw: (sql: string) => Raw;
  * 创建一个INSERT语句
  */
 export declare const insert: typeof Statement.insert;
-export declare const $case: typeof Expression.case;
+export declare const $case: typeof Statement.case;
 /**
  * 创建一个UPDATE语句
  */
@@ -113,7 +113,7 @@ export declare const SQL: {
     insert: typeof Statement.insert;
     update: typeof Statement.update;
     delete: typeof Statement.delete;
-    case: typeof Expression.case;
+    case: typeof Statement.case;
     execute: typeof Statement.execute;
     exec: typeof Statement.exec;
     when: typeof Statement.when;
@@ -131,6 +131,7 @@ export declare const SQL: {
     and: typeof Condition.and;
     or: typeof Condition.or;
     variant: typeof Expression.variant;
+    var: typeof Expression.variant;
     bracket: typeof AST.bracket;
     quoted: typeof AST.bracket;
     raw: (sql: string) => Raw;
