@@ -1290,10 +1290,10 @@ export declare class Delete extends Fromable {
  */
 export declare class Execute extends Statement {
     proc: Identifier;
-    params: Expressions[] | Parameter[] | Assignment[];
-    constructor(proc: UnsureIdentity, params?: UnsureExpressions[]);
-    constructor(proc: UnsureIdentity, params?: Parameter[]);
-    constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]);
+    args: Expressions[] | Parameter[] | Assignment[];
+    constructor(proc: UnsureIdentity, args?: UnsureExpressions[]);
+    constructor(proc: UnsureIdentity, args?: Parameter[]);
+    constructor(proc: UnsureIdentity, args?: UnsureExpressions[] | Parameter[]);
 }
 /**
  * 赋值语句
