@@ -88,7 +88,11 @@ export declare const sysFn: (name: string) => (...args: UnsureExpressions[]) => 
  * 创建一个DELETE语句
  */
 export declare const del: typeof Statement.delete;
+export declare const $delete: typeof Statement.delete;
 export declare const any: typeof Expression.any;
+/**
+ * 任意字段
+ */
 export declare const anyFields: Identifier;
 export declare function count(exp: UnsureExpressions): import("./ast").Invoke;
 export declare function stdev(exp: UnsureExpressions): import("./ast").Invoke;

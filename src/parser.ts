@@ -9,7 +9,7 @@ import {
   Variant, Join, IUnary, Execute,
   IBinary, Union, ValueList, SortInfo
 } from './ast'
-import { SqlSymbol } from './constants'
+import { SqlSymbol, ParameterDirection } from './constants'
 
 export interface Command {
   sql: string
@@ -45,6 +45,12 @@ export interface Ployfill {
   parameterPrefix: string
 
   /**
+   * 输出类型参数
+   * 如 mssql: @paramName OUT
+   */
+  parameterOutWord: string
+
+  /**
    * 变量前缀
    */
   variantPrefix: string
@@ -67,6 +73,7 @@ export interface Ployfill {
    * Execute的关键字，在Oracle中无须该关键字，只需留空即可
    */
   executeKeyword: string
+
 }
 
 /**
@@ -120,13 +127,17 @@ export class Parser {
    * @param {array} values 参数列表
    * @param {any} value 参数值
    */
-  protected parseParameter(param: Parameter, params: Set<Parameter>): string {
+  protected parseParameter(param: Parameter, params: Set<Parameter>, isProcParam: boolean = false): string {
     params.add(param)
-    return this.properParameterName(param.name)
+    return this.properParameterName(param, isProcParam)
   }
 
-  properParameterName(name?: string) {
-    return this.ployfill.parameterPrefix + (name || '')
+  public properParameterName(p: Parameter, isProcParam: boolean = false) {
+    let sql = this.ployfill.parameterPrefix + (p.name || '')
+    if (isProcParam && p.direction === ParameterDirection.OUTPUT && this.ployfill.parameterOutWord) {
+      sql += ' ' + this.ployfill.parameterOutWord
+    }
+    return sql
   }
 
   protected properVariantName(name: string) {
@@ -225,7 +236,9 @@ export class Parser {
 
   protected parseExecute<T extends AST>(exec: Execute, params: Set<Parameter>): string {
     const returnValueParameter = Parameter.output(this.ployfill.returnValueParameter, Number)
-    return (this.ployfill.executeKeyword && (this.ployfill.executeKeyword + ' ')) + this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' + (exec.params as any[]).map(p => this.parseAST(p, params)).join(', ')
+    return (this.ployfill.executeKeyword && (this.ployfill.executeKeyword + ' ')) +
+      this.parseAST(returnValueParameter, params) + ' = ' + this.parseAST(exec.proc, params) + ' ' +
+      (exec.params as AST[]).map(p => p instanceof Parameter ? this.parseParameter(p, params, true) : this.parseAST(p, params)).join(', ')
   }
 
   protected parseBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>): string {
@@ -328,7 +341,7 @@ export class Parser {
     return sql
   }
 
-  parseInsert(insert: Insert, params: Set<Parameter>): string {
+  protected parseInsert(insert: Insert, params: Set<Parameter>): string {
     const { table, rows, fields } = insert
     let sql = 'INSERT INTO '
 
@@ -348,16 +361,16 @@ export class Parser {
     return sql
   }
 
-  parseAssignment(assign: Assignment, params: Set<Parameter>): string {
+  protected parseAssignment(assign: Assignment, params: Set<Parameter>): string {
     const { left, right } = assign
     return this.parseAST(left, params) + ' = ' + this.parseAST(right, params)
   }
 
-  parseDeclare(declare: Declare, params: Set<Parameter>): string {
+  protected parseDeclare(declare: Declare, params: Set<Parameter>): string {
     return 'DECLARE ' + declare.declares.map(varDec => this.properVariantName(varDec.name) + ' ' + varDec.dataType).join(', ')
   }
 
-  parseUpdate(update: Update, params: Set<Parameter>): string {
+  protected parseUpdate(update: Update, params: Set<Parameter>): string {
     const { table, sets, filters, tables, joins } = update
     assert(table, 'table is required by update statement')
     assert(sets, 'set statement un declared')
@@ -381,7 +394,7 @@ export class Parser {
     return sql
   }
 
-  parseDelete(del: Delete, params: Set<Parameter>): string {
+  protected parseDelete(del: Delete, params: Set<Parameter>): string {
     const { table, tables, joins, filters } = del
     let sql = 'DELETE '
     if (table) sql += this.parseAST(table, params)

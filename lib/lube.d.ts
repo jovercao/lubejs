@@ -1,5 +1,5 @@
 import { Executor, QueryResult } from './executor';
-import { Ployfill } from './parser';
+import { Parser, Ployfill } from './parser';
 import { IsolationLevel } from './constants';
 export declare type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>;
 /**
@@ -14,7 +14,8 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-    ployfill: Ployfill;
+    ployfill?: Ployfill;
+    parser?: Parser;
     query(sql: any, params: any): Promise<QueryResult>;
     beginTrans(isolationLevel: IsolationLevel): ITransaction;
     close(): Promise<void>;
@@ -32,9 +33,13 @@ export declare class Lube extends Executor {
 }
 interface ConnectOptions {
     /**
-     * 驱动
+     * 数据库方言，必须安装相应的驱动才可正常使用
      */
-    driver: string | ((config: ConnectOptions) => IDbProvider);
+    dialect?: string;
+    /**
+     * 驱动程序，与dialect二选一
+     */
+    driver?: ((config: ConnectOptions) => IDbProvider);
     host: string;
     port?: number;
     user: string;

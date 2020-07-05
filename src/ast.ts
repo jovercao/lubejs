@@ -1355,7 +1355,9 @@ export class Identifier extends Expression {
   protected constructor(name: string, parent?: UnsureIdentity, type: SqlSymbol = SqlSymbol.IDENTIFIER) {
     super(type)
     this.name = name
-    this.parent = ensureIdentity(parent)
+    if (parent) {
+      this.parent = ensureIdentity(parent)
+    }
   }
 
   get lvalue() {

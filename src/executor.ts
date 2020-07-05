@@ -124,8 +124,9 @@ export class Executor extends EventEmitter implements IExecuotor {
         previous += current
         if (index < args.length - 1) {
           const name = '__p__' + index
-          params.push(input(name, args[index + 1]))
-          previous += this.parser.properParameterName(name)
+          const param = input(name, args[index + 1])
+          params.push(param)
+          previous += this.parser.properParameterName(param)
         }
         return previous
       }, '')

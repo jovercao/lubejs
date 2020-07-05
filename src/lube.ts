@@ -3,6 +3,7 @@ import { Parser, Ployfill } from './parser'
 import { URL } from 'url'
 import * as _ from 'lodash'
 import { IsolationLevel } from './constants'
+import { assert } from 'console'
 
 export type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>
 
@@ -19,7 +20,8 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-  ployfill: Ployfill
+  ployfill?: Ployfill
+  parser?: Parser
   query(sql, params): Promise<QueryResult>
   beginTrans(isolationLevel: IsolationLevel): ITransaction
   close(): Promise<void>
@@ -29,7 +31,10 @@ export class Lube extends Executor {
   private _provider: IDbProvider
 
   constructor(provider: IDbProvider, options) {
-    const parser = new Parser(provider.ployfill, options)
+    let parser = provider.parser
+    if (!parser) {
+      parser = new Parser(provider.ployfill, options)
+    }
     super(function (...args) {
       return provider.query(...args)
     }, parser)
@@ -75,9 +80,13 @@ export class Lube extends Executor {
 
 interface ConnectOptions {
   /**
-   * 驱动
+   * 数据库方言，必须安装相应的驱动才可正常使用
    */
-  driver: string | ((config: ConnectOptions) => IDbProvider)
+  dialect?: string
+  /**
+   * 驱动程序，与dialect二选一
+   */
+  driver?: ((config: ConnectOptions) => IDbProvider)
   host: string
   port?: number
   user: string
@@ -111,29 +120,35 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
         options[key] = value
       }
     }
-    const dialect = url.protocol.substr(0, url.protocol.length - 1).toUpperCase()
-
-    config = {
-      driver: dialect,
-      host: url.host,
-      port: url.port && parseInt(url.port),
-      user: url.username,
-      password: url.password,
-      database: url.pathname.split('|')[0],
-      ...options
+    const dialect = url.protocol.substr(0, url.protocol.length - 1).toLowerCase()
+    try {
+      config = {
+        dialect,
+        host: url.host,
+        port: url.port && parseInt(url.port),
+        user: url.username,
+        password: url.password,
+        database: url.pathname.split('|')[0],
+        ...options
+      }
+    } catch(error) {
+      throw new Error('Unsupport or uninstalled dialect: ' + dialect)
     }
   } else {
     config = arg
   }
 
-  let provider: IDbProvider
-  if (_.isString(config.driver)) {
-    // TIPS: 必须以 lubejs-dialect 命名
-    provider = await (require('lubejs-' + config.driver))()
-  } else {
-    provider = await config.driver(config)
+  assert(config.driver || config.dialect, 'One of the dialect and driver items must be specified.')
+
+  if (!config.driver) {
+    try {
+      config.driver = require('lubejs-' + config.dialect)
+    } catch (err) {
+      throw new Error('Unsupported dialect or driver not installed.')
+    }
   }
 
+  const provider: IDbProvider = await config.driver(config)
   return new Lube(provider, config)
 }
 

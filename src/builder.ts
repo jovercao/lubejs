@@ -157,8 +157,13 @@ export const sysFn = function(name: string) {
  */
 export const del = Statement.delete
 
+export const $delete = Statement.delete
+
 export const any = Expression.any
 
+/**
+ * 任意字段
+ */
 export const anyFields = Expression.any()
 
 // ************************** 系统函数区 *************************
