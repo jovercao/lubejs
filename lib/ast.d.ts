@@ -29,11 +29,10 @@ export declare type SelectExpression = Bracket<Select>;
  */
 export declare type UnsureSelectExpressions = Select | Bracket<Select>;
 export declare type Expressions = BracketExpression | Expression | Bracket<AST>;
-export declare type GroupValues = Bracket<ValueList>;
 /**
  * 组数据
  */
-export declare type UnsureGroupValues = UnsureExpressions[] | Bracket<ValueList> | ValueList;
+export declare type UnsureGroupValues = UnsureExpressions[] | List;
 export declare type UnsureIdentity = Identifier | string;
 /**
  * AST 基类
@@ -42,7 +41,6 @@ export declare abstract class AST {
     constructor(type: SQL_SYMBOLE);
     readonly type: SQL_SYMBOLE;
     static bracket<T extends AST>(context: T): Bracket<T>;
-    static list(...values: UnsureExpressions[]): Bracket<ValueList>;
 }
 export interface IExpression {
     /**
@@ -555,7 +553,7 @@ export declare abstract class Condition extends AST implements ICondition {
      * @param operator 运算符
      * @returns 返回比较运算对比条件
      */
-    static compare(left: UnsureExpressions, right: UnsureExpressions, operator?: COMPARE_OPERATOR): BinaryCompareCondition;
+    static compare(left: UnsureExpressions, right: UnsureExpressions | UnsureGroupValues, operator?: COMPARE_OPERATOR): BinaryCompareCondition;
     /**
      * 比较运算 =
      * @param left 左值
@@ -674,12 +672,12 @@ declare class UnaryLogicCondition extends Condition implements IUnary {
  */
 declare class BinaryCompareCondition extends Condition {
     left: Expressions;
-    right: Expressions;
+    right: Expressions | UnsureGroupValues;
     operator: COMPARE_OPERATOR;
     /**
      * 构造函数
      */
-    constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions);
+    constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions | UnsureGroupValues);
 }
 /**
  * 一元比较条件
@@ -794,7 +792,7 @@ export declare class Alias extends Identifier {
 export declare class Invoke extends Expression {
     get lvalue(): boolean;
     func: Identifier;
-    args: Expressions[];
+    args: List;
     /**
      * 函数调用
      */
@@ -907,9 +905,13 @@ export declare class Constant extends Expression {
 /**
  * 值列表（不含括号）
  */
-export declare class ValueList extends AST {
+export declare class List extends AST {
     items: Expressions[];
-    constructor(...values: UnsureExpressions[]);
+    private constructor();
+    static values(...values: UnsureExpressions[]): List;
+    static columns(...exprs: UnsureExpressions[]): List;
+    static invokeArgs(...exprs: UnsureExpressions[]): List;
+    static execArgs(...exprs: UnsureExpressions[]): List;
 }
 /**
  * 括号引用
@@ -921,7 +923,7 @@ export declare class Bracket<T extends AST> extends AST {
     context: T;
     constructor(context: T);
 }
-export declare class BracketExpression extends Bracket<Expressions | ValueList | Select> implements IExpression {
+export declare class BracketExpression extends Bracket<Expressions | List | Select> implements IExpression {
     /**
      * 加法运算
      */
@@ -1088,12 +1090,12 @@ export declare class BracketCondition extends Bracket<Conditions> implements ICo
      */
     quoted: () => Bracket<Conditions>;
 }
-export interface IBinary {
+export interface IBinary extends AST {
     operator: String;
     left: AST;
     right: AST;
 }
-export interface IUnary {
+export interface IUnary extends AST {
     operator: String;
     next: AST;
 }
@@ -1185,7 +1187,7 @@ export declare class Select extends Fromable {
     offsets?: number;
     limits?: number;
     isDistinct?: boolean;
-    columns: Expressions[];
+    columns: List;
     sorts?: SortInfo[];
     groups?: Expressions[];
     havings?: Conditions;
@@ -1250,7 +1252,7 @@ export declare class Select extends Fromable {
 export declare class Insert extends Statement {
     table: Identifier;
     fields: Identifier[];
-    rows: GroupValues[] | Select;
+    rows: List[] | Select;
     /**
      * 构造函数
      */
@@ -1290,7 +1292,7 @@ export declare class Delete extends Fromable {
  */
 export declare class Execute extends Statement {
     proc: Identifier;
-    args: Expressions[] | Parameter[] | Assignment[];
+    args: List;
     constructor(proc: UnsureIdentity, args?: UnsureExpressions[]);
     constructor(proc: UnsureIdentity, args?: Parameter[]);
     constructor(proc: UnsureIdentity, args?: UnsureExpressions[] | Parameter[]);

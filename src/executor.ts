@@ -3,7 +3,7 @@ import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
 import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
-import { Parser } from './parser'
+import { Compiler } from './compiler'
 
 export interface QueryResult {
   rows?: object[]
@@ -90,7 +90,7 @@ interface IExecuotor {
 
 export class Executor extends EventEmitter implements IExecuotor {
   doQuery: QueryHandler
-  protected parser: Parser
+  protected parser: Compiler
 
   readonly isTrans: boolean
 
@@ -99,7 +99,7 @@ export class Executor extends EventEmitter implements IExecuotor {
    * @param {*} query 查询函数
    * @param {*} parser 编译函数
    */
-  protected constructor(query: QueryHandler, parser: Parser, isTrans: boolean = false) {
+  protected constructor(query: QueryHandler, parser: Compiler, isTrans: boolean = false) {
     super()
     // 是否启用严格模式，避免关键字等问题
     this.doQuery = query
@@ -114,7 +114,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     let sql: string, params: Parameter[]
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
-      ({ sql, params } = this.parser.parse(args[0]))
+      ({ sql, params } = this.parser.compile(args[0]))
       // eslint-disable-next-line brace-style
     }
     // 如果是模板字符串
@@ -126,7 +126,7 @@ export class Executor extends EventEmitter implements IExecuotor {
           const name = '__p__' + index
           const param = input(name, args[index + 1])
           params.push(param)
-          previous += this.parser.properParameterName(param)
+          previous += this.parser.prepareParameterName(param)
         }
         return previous
       }, '')

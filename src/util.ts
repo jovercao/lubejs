@@ -11,7 +11,7 @@ import {
   AST,
   Identifier,
   JsConstant,
-  ValueList,
+  List,
   BracketExpression
 } from './ast'
 
@@ -43,12 +43,9 @@ export function ensureIdentity(expr: string | Identifier): Identifier {
   return expr
 }
 
-export function ensureGroupValues(values: UnsureGroupValues): Bracket<AST> {
+export function ensureGroupValues(values: UnsureGroupValues): List {
   if (_.isArray(values)) {
-    return new BracketExpression(new ValueList(...values))
-  }
-  if (!(values instanceof Bracket)) {
-    return new BracketExpression(values)
+    return List.values(...values)
   }
   return values
 }

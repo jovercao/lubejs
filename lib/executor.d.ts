@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
 import { Parameter, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
-import { Parser } from './parser';
+import { Compiler } from './compiler';
 export interface QueryResult {
     rows?: object[];
     output?: {
@@ -68,14 +68,14 @@ interface IExecuotor {
 }
 export declare class Executor extends EventEmitter implements IExecuotor {
     doQuery: QueryHandler;
-    protected parser: Parser;
+    protected parser: Compiler;
     readonly isTrans: boolean;
     /**
      * SQL执行器
      * @param {*} query 查询函数
      * @param {*} parser 编译函数
      */
-    protected constructor(query: QueryHandler, parser: Parser, isTrans?: boolean);
+    protected constructor(query: QueryHandler, parser: Compiler, isTrans?: boolean);
     _internalQuery(...args: any[]): Promise<QueryResult>;
     query(sql: string, params: Parameter[]): Promise<QueryResult>;
     query(sql: string, params: Object): Promise<QueryResult>;

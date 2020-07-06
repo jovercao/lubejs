@@ -63,11 +63,10 @@ export type UnsureSelectExpressions = Select | Bracket<Select>
 
 export type Expressions = BracketExpression | Expression | Bracket<AST>
 
-export type GroupValues = Bracket<ValueList>
 /**
  * 组数据
  */
-export type UnsureGroupValues = UnsureExpressions[] | Bracket<ValueList> | ValueList
+export type UnsureGroupValues = UnsureExpressions[] | List
 
 export type UnsureIdentity = Identifier | string
 
@@ -84,10 +83,6 @@ export abstract class AST {
 
   static bracket<T extends AST>(context: T) {
     return new Bracket(context)
-  }
-
-  static list(...values: UnsureExpressions[]) {
-    return AST.bracket(new ValueList(...values))
   }
 }
 
@@ -1049,7 +1044,7 @@ export abstract class Condition extends AST implements ICondition {
    * @param operator 运算符
    * @returns 返回比较运算对比条件
    */
-  static compare(left: UnsureExpressions, right: UnsureExpressions, operator: COMPARE_OPERATOR = COMPARE_OPERATOR.EQ) {
+  static compare(left: UnsureExpressions, right: UnsureExpressions | UnsureGroupValues, operator: COMPARE_OPERATOR = COMPARE_OPERATOR.EQ) {
     return new BinaryCompareCondition(operator, left, right)
   }
 
@@ -1229,16 +1224,20 @@ class UnaryLogicCondition extends Condition implements IUnary {
  */
 class BinaryCompareCondition extends Condition {
   left: Expressions
-  right: Expressions
+  right: Expressions | UnsureGroupValues
   operator: COMPARE_OPERATOR
   /**
    * 构造函数
    */
-  constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions) {
+  constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions | UnsureGroupValues) {
     super(SQL_SYMBOLE.BINARY)
     this.operator = operator
     this.left = ensureConstant(left)
-    this.right = ensureConstant(right)
+    if (_.isArray(right) || right instanceof List) {
+      this.right = ensureGroupValues(right)
+    } else {
+      this.right = ensureConstant(right)
+    }
   }
 }
 
@@ -1446,7 +1445,7 @@ export class Invoke extends Expression {
 
   func: Identifier
 
-  args: Expressions[]
+  args: List
 
   /**
    * 函数调用
@@ -1454,7 +1453,7 @@ export class Invoke extends Expression {
   constructor(func: UnsureIdentity, args?: UnsureExpressions[]) {
     super(SQL_SYMBOLE.INVOKE)
     this.func = ensureIdentity(func)
-    this.args = (args || []).map(expr => ensureConstant(expr))
+    this.args = List.invokeArgs(...args)
   }
 }
 
@@ -1642,11 +1641,27 @@ export class Constant extends Expression {
 /**
  * 值列表（不含括号）
  */
-export class ValueList extends AST {
+export class List extends AST {
   items: Expressions[]
-  constructor(...values: UnsureExpressions[]) {
-    super(SQL_SYMBOLE.VALUE_LIST)
+  private constructor(symbol: SQL_SYMBOLE, ...values: UnsureExpressions[]) {
+    super(symbol)
     this.items = values.map(value => ensureConstant(value))
+  }
+
+  static values(...values: UnsureExpressions[]): List {
+    return new List(SQL_SYMBOLE.VALUE_LIST, ...values)
+  }
+
+  static columns(...exprs: UnsureExpressions[]): List {
+    return new List(SQL_SYMBOLE.COLUMN_LIST, ...exprs)
+  }
+
+  static invokeArgs(...exprs: UnsureExpressions[]): List {
+    return new List(SQL_SYMBOLE.INVOKE_ARGUMENT_LIST, ...exprs)
+  }
+
+  static execArgs(...exprs: UnsureExpressions[]): List {
+    return new List(SQL_SYMBOLE.EXECUTE_ARGUMENT_LIST, ...exprs)
   }
 }
 
@@ -1665,7 +1680,7 @@ export class Bracket<T extends AST> extends AST {
   }
 }
 
-export class BracketExpression extends Bracket<Expressions | ValueList | Select> implements IExpression {
+export class BracketExpression extends Bracket<Expressions | List | Select> implements IExpression {
 
   /**
    * 加法运算
@@ -1869,13 +1884,13 @@ export class BracketCondition extends Bracket<Conditions> implements ICondition 
 
 Object.assign(BracketCondition.prototype, ConditionPrototype)
 
-export interface IBinary {
+export interface IBinary extends AST {
   operator: String
   left: AST
   right: AST
 }
 
-export interface IUnary {
+export interface IUnary extends AST {
   operator: String
   next: AST
 }
@@ -2043,7 +2058,7 @@ export class Select extends Fromable {
   offsets?: number
   limits?: number
   isDistinct?: boolean
-  columns: Expressions[]
+  columns: List
   sorts?: SortInfo[]
   groups?: Expressions[]
   havings?: Conditions
@@ -2056,11 +2071,11 @@ export class Select extends Fromable {
     super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]
-      this.columns = Object.entries(obj).map(([alias, expr]) => new Alias(ensureConstant(expr), alias))
+      this.columns = List.columns(...Object.entries(obj).map(([alias, expr]) => new Alias(ensureConstant(expr), alias)))
       return
     }
     // 实例化
-    this.columns = (columns as UnsureExpressions[]).map(expr => ensureConstant(expr))
+    this.columns = List.columns(...(columns as UnsureExpressions[]).map(expr => ensureConstant(expr)))
     // if (options?.from) this.from(...options.from)
     // if (options?.joins) this.$joins = options.joins
     // if (options?.columns) this.columns(...options.columns)
@@ -2190,7 +2205,7 @@ export class Insert extends Statement {
 
   table: Identifier
   fields: Identifier[]
-  rows: GroupValues[] | Select
+  rows: List[] | Select
 
   /**
    * 构造函数
@@ -2236,14 +2251,14 @@ export class Insert extends Statement {
       }
       // (row: UnsureExpressions[])
       if (_.isArray(args[0])) {
-        this.rows = [AST.list(...args[0])]
+        this.rows = [List.values(...args[0])]
         return this
       }
     }
 
     // (rows: UnsureExpressions[][])
     if (args.length > 1 && _.isArray(args[0])) {
-      this.rows = args.map(rowValues => AST.list(...rowValues))
+      this.rows = args.map(rowValues => List.values(...rowValues))
       return this
     }
 
@@ -2259,7 +2274,7 @@ export class Insert extends Statement {
 
     this.rows = (args).map(row => {
       const rowValues = this.fields.map(field => (row as ValuesObject)[field.name])
-      return AST.list(...rowValues)
+      return List.values(...rowValues)
     })
     return this
   }
@@ -2338,7 +2353,7 @@ export class Delete extends Fromable {
  */
 export class Execute extends Statement {
   proc: Identifier
-  args: Expressions[] | Parameter[] | Assignment[]
+  args: List
   constructor(proc: UnsureIdentity, args?: UnsureExpressions[])
   constructor(proc: UnsureIdentity, args?: Parameter[])
   constructor(proc: UnsureIdentity, args?: UnsureExpressions[] | Parameter[])
@@ -2346,11 +2361,11 @@ export class Execute extends Statement {
     super(SQL_SYMBOLE.EXECUTE)
     this.proc = ensureIdentity(proc)
     if (!args || args.length === 0) {
-      this.args = []
+      this.args
       return
     }
 
-    this.args = (args as any[]).map(expr => ensureConstant(expr))
+    this.args = List.invokeArgs(...args)
   }
 }
 

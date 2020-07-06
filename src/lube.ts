@@ -1,5 +1,5 @@
 import { Executor, QueryResult } from './executor'
-import { Parser, Ployfill } from './parser'
+import { Compiler, CompileOptions } from './compiler'
 import { URL } from 'url'
 import * as _ from 'lodash'
 import { ISOLATION_LEVEL } from './constants'
@@ -20,8 +20,8 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-  ployfill?: Ployfill
-  parser?: Parser
+  ployfill?: CompileOptions
+  compiler?: Compiler
   query(sql, params): Promise<QueryResult>
   beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction
   close(): Promise<void>
@@ -30,14 +30,18 @@ export interface IDbProvider {
 export class Lube extends Executor {
   private _provider: IDbProvider
 
-  constructor(provider: IDbProvider, options) {
-    let parser = provider.parser
-    if (!parser) {
-      parser = new Parser(provider.ployfill, options)
+  constructor(provider: IDbProvider, options: ConnectOptions) {
+    let compiler = provider.compiler
+    if (!compiler) {
+      let compileOptions: CompileOptions = {}
+      if (options.strict !== undefined) {
+        compileOptions.strict = options.strict
+      }
+      compiler = new Compiler(compileOptions)
     }
     super(function (...args) {
       return provider.query(...args)
-    }, parser)
+    }, compiler)
     this._provider = provider
   }
 
@@ -95,6 +99,7 @@ export interface ConnectOptions {
   poolMax: number
   poolMin: number
   idelTimeout: number
+  strict?: boolean
 }
 
 /**
@@ -158,5 +163,5 @@ export * from './constants'
 
 export * from './ast'
 
-export * from './parser'
+export * from './compiler'
 
