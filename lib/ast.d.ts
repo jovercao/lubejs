@@ -5,35 +5,25 @@ import { COMPUTE_OPERATOR, PARAMETER_DIRECTION, SQL_SYMBOLE, COMPARE_OPERATOR, S
  */
 export declare type JsConstant = String | Date | Boolean | null | undefined | Number | Buffer;
 /**
- * 带括号的查询条件
- */
-export declare type BracketConditions = Bracket<Conditions>;
-/**
- * 查询条件列表
- */
-export declare type Conditions = Condition | Bracket<Condition | BracketConditions>;
-/**
  * 未经确认的表达式
  */
-export declare type UnsureExpressions = Expressions | JsConstant;
+export declare type UnsureExpression = Expression | JsConstant;
 /**
  * 简化后的whereObject查询条件
  */
 export interface WhereObject {
     [field: string]: JsConstant | JsConstant[];
 }
-export declare type UnsureConditions = Conditions | WhereObject;
+export declare type UnsureConditions = Condition | WhereObject;
 export declare type SelectExpression = Bracket<Select>;
 /**
  * SELECT查询表达式
  */
 export declare type UnsureSelectExpressions = Select | Bracket<Select>;
-export declare type Expressions = BracketExpression | Expression | Bracket<AST>;
-export declare type GroupValues = Bracket<ValueList>;
 /**
  * 组数据
  */
-export declare type UnsureGroupValues = UnsureExpressions[] | Bracket<ValueList> | ValueList;
+export declare type UnsureGroupValues = UnsureExpression[] | List;
 export declare type UnsureIdentity = Identifier | string;
 /**
  * AST 基类
@@ -42,130 +32,147 @@ export declare abstract class AST {
     constructor(type: SQL_SYMBOLE);
     readonly type: SQL_SYMBOLE;
     static bracket<T extends AST>(context: T): Bracket<T>;
-    static list(...values: UnsureExpressions[]): Bracket<ValueList>;
 }
-export interface IExpression {
+/**
+ * 表达式基类，抽象类
+ */
+export declare abstract class Expression extends AST {
     /**
      * 加法运算
      */
-    add(expr: UnsureExpressions): Expression;
+    add(expr: UnsureExpression): BinaryExpression;
     /**
      * 减法运算
      */
-    sub(expr: UnsureExpressions): Expression;
+    sub(expr: UnsureExpression): BinaryExpression;
     /**
      * 乘法运算
      * @param expr 要与当前表达式相乘的表达式
      */
-    mul(expr: UnsureExpressions): Expression;
+    mul(expr: UnsureExpression): BinaryExpression;
     /**
      * 除法运算
      * @param expr 要与当前表达式相除的表达式
      * @returns 返回运算后的表达式
      */
-    div(expr: UnsureExpressions): Expression;
+    div(expr: UnsureExpression): BinaryExpression;
     /**
      * 算术运算 %
      * @param expr 要与当前表达式相除的表达式
      * @returns 返回运算后的表达式
      */
-    mod(expr: UnsureExpressions): Expression;
-    and(expr: UnsureExpressions): Expression;
-    or(expr: UnsureExpressions): Expression;
-    not(expr: UnsureExpressions): Expression;
+    mod(expr: UnsureExpression): BinaryExpression;
+    /**
+     * 位运算 &
+     * @param expr 要与当前表达式相除的表达式
+     * @returns 返回运算后的表达式
+     */
+    and(expr: UnsureExpression): BinaryExpression;
+    /**
+     * 位运算 |
+     * @param expr 要与当前表达式相除的表达式
+     * @returns 返回运算后的表达式
+     */
+    or(expr: UnsureExpression): BinaryExpression;
+    /**
+     * 位运算 ~
+     * @param expr 要与当前表达式相除的表达式
+     * @returns 返回运算后的表达式
+     */
+    not(expr: UnsureExpression): BinaryExpression;
     /**
      * 位运算 ^
      * @param expr 要与当前表达式相除的表达式
      * @returns 返回运算后的表达式
      */
-    xor(expr: UnsureExpressions): Expression;
+    xor(expr: UnsureExpression): BinaryExpression;
     /**
      * 位运算 <<
      * @param expr 要与当前表达式相除的表达式
      * @returns 返回运算后的表达式
      */
-    shl(expr: UnsureExpressions): Expression;
+    shl(expr: UnsureExpression): BinaryExpression;
     /**
      * 位运算 >>
      * @param expr 要与当前表达式相除的表达式
      * @returns 返回运算后的表达式
      */
-    shr(expr: UnsureExpressions): Expression;
+    shr(expr: UnsureExpression): BinaryExpression;
     /**
      * 比较是否相等 =
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    eq(expr: UnsureExpressions): Condition;
+    eq(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否不等于 <>
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    neq(expr: UnsureExpressions): Condition;
+    neq(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否小于 <
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    lt(expr: UnsureExpressions): Condition;
+    lt(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否小于等于 <=
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    lte(expr: UnsureExpressions): Condition;
+    lte(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否大于 >
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    gt(expr: UnsureExpressions): Condition;
+    gt(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否小于等于 >=
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    gte(expr: UnsureExpressions): Condition;
+    gte(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是相像 LIKE
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    like(expr: UnsureExpressions): Condition;
+    like(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否不想像 NOT LIKE
      * @param expr 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    notLike(expr: UnsureExpressions): Condition;
+    notLike(expr: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较是否不包含于 IN
      * @param values 要与当前表达式相比较的表达式数组
      * @returns 返回对比条件表达式
      */
-    in(...values: UnsureExpressions[]): Condition;
+    in(...values: UnsureExpression[]): BinaryCompareCondition;
     /**
      * 比较是否不包含于 NOT IN
      * @param values 要与当前表达式相比较的表达式
      * @returns 返回对比条件表达式
      */
-    notIn(...values: UnsureExpressions[]): Condition;
+    notIn(...values: UnsureExpression[]): BinaryCompareCondition;
     /**
      * 比较是否为空 IS NULL
      * @returns 返回对比条件表达式
      */
-    isNull(): Condition;
+    isNull(): IsNullCondition;
     /**
      * 比较是否为空 IS NOT NULL
      * @returns 返回对比条件表达式
      */
-    isNotNull(): Condition;
+    isNotNull(): IsNotNullCondition;
     /**
      * isNotNull 的简称别名
      * @returns 返回对比条件表达式
      */
-    notNull(): Condition;
+    notNull(): IsNotNullCondition;
     /**
      * 正序
      * @returns 返回对比条件表达式
@@ -180,161 +187,6 @@ export interface IExpression {
      * 为当前表达式添加别名
      */
     as(alias: string): Identifier;
-}
-/**
- * 表达式基类，抽象类
- */
-export declare abstract class Expression extends AST implements IExpression {
-    /**
-     * 加法运算
-     */
-    add: (expr: UnsureExpressions) => Expression;
-    /**
-     * 减法运算
-     */
-    sub: (expr: UnsureExpressions) => Expression;
-    /**
-     * 乘法运算
-     * @param expr 要与当前表达式相乘的表达式
-     */
-    mul: (expr: UnsureExpressions) => Expression;
-    /**
-     * 除法运算
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    div: (expr: UnsureExpressions) => Expression;
-    /**
-     * 算术运算 %
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    mod: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 &
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    and: (expr: UnsureExpressions) => Expression;
-    /**
-   * 位运算 |
-   * @param expr 要与当前表达式相除的表达式
-   * @returns 返回运算后的表达式
-   */
-    or: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 ~
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    not: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 ^
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    xor: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 <<
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    shl: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 >>
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    shr: (expr: UnsureExpressions) => Expression;
-    /**
-     * 比较是否相等 =
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    eq: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不等于 <>
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    neq: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于 <
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    lt: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于等于 <=
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    lte: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否大于 >
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    gt: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于等于 >=
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    gte: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是相像 LIKE
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    like: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不想像 NOT LIKE
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    notLike: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不包含于 IN
-     * @param values 要与当前表达式相比较的表达式数组
-     * @returns 返回对比条件表达式
-     */
-    in: (...values: UnsureExpressions[]) => Condition;
-    /**
-     * 比较是否不包含于 NOT IN
-     * @param values 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    notIn: (...values: UnsureExpressions[]) => Condition;
-    /**
-     * 比较是否为空 IS NULL
-     * @returns 返回对比条件表达式
-     */
-    isNull: () => Condition;
-    /**
-     * 比较是否为空 IS NOT NULL
-     * @returns 返回对比条件表达式
-     */
-    isNotNull: () => Condition;
-    /**
-     * isNotNull 的简称别名
-     * @returns 返回对比条件表达式
-     */
-    notNull: () => Condition;
-    /**
-     * 正序
-     * @returns 返回对比条件表达式
-     */
-    asc: () => SortInfo;
-    /**
-     * 倒序
-     * @returns 返回对比条件表达式
-     */
-    desc: () => SortInfo;
-    /**
-     * 为当前表达式添加别名
-     */
-    as: (alias: string) => Identifier;
     /**
      * 获取当前表达式是否为左值
      * @type {boolean}
@@ -437,7 +289,7 @@ export declare abstract class Expression extends AST implements IExpression {
      * @param name 变量名，不需要带前缀
      */
     static var(name: string): Variant;
-    static alias(expr: Expressions, name: string): Alias;
+    static alias(expr: Expression, name: string): Alias;
     /**
      * 任意字段 *
      * @param parent parent identifier
@@ -467,7 +319,7 @@ export declare abstract class Expression extends AST implements IExpression {
      * @param func 函数
      * @param params 参数
      */
-    static invoke(func: UnsureIdentity, params: (Expressions | JsConstant)[]): Invoke;
+    static invoke(func: UnsureIdentity, params: (Expression | JsConstant)[]): Invoke;
 }
 export interface ICondition {
     /**
@@ -475,25 +327,25 @@ export interface ICondition {
      * @param condition 下一个查询条件
      * @returns 返回新的查询条件
      */
-    and(condition: Conditions): Condition;
+    and(condition: Condition): Condition;
     /**
      * and连接，并在被连接的条件中加上括号 ()
      * @param condition 下一个查询条件
      * @returns 返回新的查询条件
      */
-    andGroup(condition: Conditions): Condition;
+    andGroup(condition: Condition): Condition;
     /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
-    or(condition: Conditions): Condition;
+    or(condition: Condition): Condition;
     /**
      * or 连接，并在被连接的条件中加上括号 ()
      * @param condition
      * @returns 返回新的查询条件
      */
-    orGroup(condition: Conditions): Condition;
+    orGroup(condition: Condition): Condition;
 }
 /**
  * 查询条件
@@ -504,44 +356,44 @@ export declare abstract class Condition extends AST implements ICondition {
      * @param condition 下一个查询条件
      * @returns 返回新的查询条件
      */
-    and: (condition: Conditions) => Condition;
+    and: (condition: Condition) => Condition;
     /**
      * and连接，并在被连接的条件中加上括号 ()
      * @param condition 下一个查询条件
      * @returns 返回新的查询条件
      */
-    andGroup: (condition: Conditions) => Condition;
+    andGroup: (condition: Condition) => Condition;
     /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
-    or: (condition: Conditions) => Condition;
+    or: (condition: Condition) => Condition;
     /**
      * or 连接，并在被连接的条件中加上括号 ()
      * @param condition
      * @returns 返回新的查询条件
      */
-    orGroup: (condition: Conditions) => Condition;
+    orGroup: (condition: Condition) => Condition;
     /**
      * 将多个查询条件通过 AND 合并成一个大查询条件
      * @static
      * @param conditions 查询条件列表
      * @returns 返回逻辑表达式
      */
-    static and(...conditions: Conditions[]): Conditions;
+    static and(...conditions: Condition[]): Condition;
     /**
      * 将多个查询条件通过 OR 合并成一个
      * @static
      * @param conditions 查询条件列表
      * @returns 返回逻辑表达式
      */
-    static or(...conditions: Conditions[]): Conditions;
+    static or(...conditions: Condition[]): Condition;
     /**
      * Not 逻辑运算
      * @param condition
      */
-    static not(condition: Conditions): UnaryLogicCondition;
+    static not(condition: Condition): UnaryLogicCondition;
     /**
      * 判断是否存在
      * @param select 查询语句
@@ -555,102 +407,102 @@ export declare abstract class Condition extends AST implements ICondition {
      * @param operator 运算符
      * @returns 返回比较运算对比条件
      */
-    static compare(left: UnsureExpressions, right: UnsureExpressions, operator?: COMPARE_OPERATOR): BinaryCompareCondition;
+    static compare(left: UnsureExpression, right: UnsureExpression | UnsureGroupValues, operator?: COMPARE_OPERATOR): BinaryCompareCondition;
     /**
      * 比较运算 =
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static eq(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static eq(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 <>
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static neq(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static neq(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 <
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static lt(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static lt(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 <=
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static lte(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static lte(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 >
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static gt(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static gt(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 >=
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static gte(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static gte(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 LIKE
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static like(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static like(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 NOT LIKE
      * @param left 左值
      * @param right 右值
      * @returns 返回比较运算对比条件
      */
-    static notLike(left: UnsureExpressions, right: UnsureExpressions): BinaryCompareCondition;
+    static notLike(left: UnsureExpression, right: UnsureExpression): BinaryCompareCondition;
     /**
      * 比较运算 IN
      * @param left 左值
      * @param values 要比较的值列表
      * @returns 返回比较运算对比条件
      */
-    static in(left: UnsureExpressions, values: UnsureGroupValues): BinaryCompareCondition;
+    static in(left: UnsureExpression, values: UnsureGroupValues): BinaryCompareCondition;
     /**
      * 比较运算 NOT IN
      * @param left 左值
      * @param values 要比较的值列表
      * @returns 返回比较运算对比条件
      */
-    static notIn(left: UnsureExpressions, values: UnsureGroupValues): BinaryCompareCondition;
+    static notIn(left: UnsureExpression, values: UnsureGroupValues): BinaryCompareCondition;
     /**
      * 比较运算 IS NULL
      * @returns 返回比较运算符
      * @param expr 表达式
      */
-    static isNull(expr: UnsureExpressions): IsNullCondition;
+    static isNull(expr: UnsureExpression): IsNullCondition;
     /**
      * 比较运算 IS NOT NULL
      * @param expr 表达式
      * @returns 返回比较运算符
      */
-    static isNotNull(expr: UnsureExpressions): IsNotNullCondition;
+    static isNotNull(expr: UnsureExpression): IsNotNullCondition;
     /**
      * 括号条件
      * @param condition 查询条件
      */
-    static quoted(condition: Conditions): BracketCondition;
+    static quoted(condition: Condition): QuotedCondition;
 }
 /**
  * 二元逻辑查询条件条件
  */
 export declare class BinaryLogicCondition extends Condition implements IBinary {
     operator: LOGIC_OPERATOR;
-    left: Conditions;
-    right: Conditions;
+    left: Condition;
+    right: Condition;
     /**
      * 创建二元逻辑查询条件实例
      */
@@ -661,7 +513,7 @@ export declare class BinaryLogicCondition extends Condition implements IBinary {
  */
 declare class UnaryLogicCondition extends Condition implements IUnary {
     operator: LOGIC_OPERATOR;
-    next: Conditions;
+    next: Condition;
     /**
      * 创建一元逻辑查询条件实例
      * @param operator
@@ -673,26 +525,26 @@ declare class UnaryLogicCondition extends Condition implements IUnary {
  * 二元比较条件
  */
 declare class BinaryCompareCondition extends Condition {
-    left: Expressions;
-    right: Expressions;
+    left: Expression;
+    right: Expression | UnsureGroupValues;
     operator: COMPARE_OPERATOR;
     /**
      * 构造函数
      */
-    constructor(operator: COMPARE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions);
+    constructor(operator: COMPARE_OPERATOR, left: UnsureExpression, right: UnsureExpression | UnsureGroupValues);
 }
 /**
  * 一元比较条件
  */
 declare class UnaryCompareCondition extends Condition implements IUnary {
-    next: Expressions;
+    next: Expression;
     operator: COMPARE_OPERATOR;
     /**
      * 一元比较运算符
      * @param operator 运算符
      * @param expr 查询条件
      */
-    constructor(operator: COMPARE_OPERATOR, expr: UnsureExpressions);
+    constructor(operator: COMPARE_OPERATOR, expr: UnsureExpression);
 }
 /**
  * IS NULL 运算
@@ -701,7 +553,7 @@ declare class IsNullCondition extends UnaryCompareCondition {
     /**
      * @param next 表达式
      */
-    constructor(next: UnsureExpressions);
+    constructor(next: UnsureExpression);
 }
 /**
  * 是否为空值条件
@@ -711,7 +563,7 @@ declare class IsNotNullCondition extends UnaryLogicCondition {
      * 是否空值
      * @param next 表达式
      */
-    constructor(next: UnsureExpressions);
+    constructor(next: UnsureExpression);
 }
 /**
  * 联接查询
@@ -720,14 +572,14 @@ export declare class Join extends AST {
     readonly type: SQL_SYMBOLE;
     left: boolean;
     table: Identifier;
-    on: Conditions;
+    on: Condition;
     /**
      * 创建一个表关联
      * @param table
      * @param on 关联条件
      * @param left 是否左联接
      */
-    constructor(table: UnsureIdentity, on: Conditions, left?: boolean);
+    constructor(table: UnsureIdentity, on: Condition, left?: boolean);
 }
 export declare class Raw extends AST {
     sql: string;
@@ -754,7 +606,7 @@ export declare class Identifier extends Expression {
      * 执行一个函数
      * @param params
      */
-    invoke(...params: (UnsureExpressions)[]): Invoke;
+    invoke(...params: (UnsureExpression)[]): Invoke;
     /**
      * 常规标识符
      */
@@ -780,13 +632,13 @@ export declare class Alias extends Identifier {
     /**
      * 表达式
      */
-    readonly expr: Expressions;
+    readonly expr: Expression;
     /**
      * 别名构造函数
      * @param expr 表达式或表名
      * @param name 别名
      */
-    constructor(expr: UnsureExpressions, name: string);
+    constructor(expr: UnsureExpression, name: string);
 }
 /**
  * 函数调用表达式
@@ -794,11 +646,11 @@ export declare class Alias extends Identifier {
 export declare class Invoke extends Expression {
     get lvalue(): boolean;
     func: Identifier;
-    params: Expressions[];
+    args: List;
     /**
      * 函数调用
      */
-    constructor(func: UnsureIdentity, params?: UnsureExpressions[]);
+    constructor(func: UnsureIdentity, args?: UnsureExpression[]);
 }
 /**
  * SQL 语句
@@ -825,27 +677,27 @@ export declare abstract class Statement extends AST {
      */
     static select(columns: KeyValueObject): Select;
     static select(columns: KeyValueObject): Select;
-    static select(...columns: UnsureExpressions[]): Select;
+    static select(...columns: UnsureExpression[]): Select;
     /**
      * 执行一个存储过程
      * @param proc
      * @param params
      */
-    static execute(proc: UnsureIdentity, params?: UnsureExpressions[]): any;
+    static execute(proc: UnsureIdentity, params?: UnsureExpression[]): any;
     static execute(proc: UnsureIdentity, params?: Parameter[]): any;
     /**
      * 执行一个存储过程，execute的别名
      * @param proc 存储过程
      * @param params 参数
      */
-    static exec(proc: UnsureIdentity, params: UnsureExpressions[]): any;
+    static exec(proc: UnsureIdentity, params: UnsureExpression[]): any;
     static exec(proc: UnsureIdentity, params: Parameter[]): any;
     /**
      * 赋值语句
      * @param left 左值
      * @param right 右值
      */
-    static assign(left: Expression, right: UnsureExpressions): Assignment;
+    static assign(left: Expression, right: UnsureExpression): Assignment;
     /**
      * 变量声明
      * @param declares 变量列表
@@ -856,31 +708,31 @@ export declare abstract class Statement extends AST {
      * @param expr
      * @param value
      */
-    static when(expr: UnsureExpressions, value?: UnsureExpressions): When;
-    static case(expr: UnsureExpressions): Case;
+    static when(expr: UnsureExpression, value?: UnsureExpression): When;
+    static case(expr: UnsureExpression): Case;
 }
 /**
  * When语句
  */
 export declare class When extends AST {
-    expr: Expressions;
-    value: Expressions;
-    constructor(expr: UnsureExpressions, value?: UnsureExpressions);
-    then(value: UnsureExpressions): void;
+    expr: Expression;
+    value: Expression;
+    constructor(expr: UnsureExpression, value?: UnsureExpression);
+    then(value: UnsureExpression): void;
 }
 /**
  * CASE表达式
  */
 export declare class Case extends Expression {
     get lvalue(): boolean;
-    expr: Expressions;
+    expr: Expression;
     whens: When[];
-    defaults?: Expressions;
+    defaults?: Expression;
     /**
      *
      * @param expr
      */
-    constructor(expr: UnsureExpressions);
+    constructor(expr: UnsureExpression);
     /**
      * ELSE语句
      * @param defaults
@@ -891,7 +743,7 @@ export declare class Case extends Expression {
      * @param expr
      * @param then
      */
-    when(expr: UnsureExpressions, then: any): this;
+    when(expr: UnsureExpression, then: any): this;
 }
 /**
  * 常量表达式
@@ -907,158 +759,28 @@ export declare class Constant extends Expression {
 /**
  * 值列表（不含括号）
  */
-export declare class ValueList extends AST {
-    items: Expressions[];
-    constructor(...values: UnsureExpressions[]);
+export declare class List extends AST {
+    items: Expression[];
+    private constructor();
+    static values(...values: UnsureExpression[]): List;
+    static columns(...exprs: UnsureExpression[]): List;
+    static invokeArgs(...exprs: UnsureExpression[]): List;
+    static execArgs(...exprs: UnsureExpression[]): List;
 }
 /**
  * 括号引用
  */
-export declare class Bracket<T extends AST> extends AST {
+export declare class Bracket<T extends AST> extends Expression {
+    get lvalue(): boolean;
     /**
      * 表达式
      */
     context: T;
     constructor(context: T);
 }
-export declare class BracketExpression extends Bracket<Expressions | ValueList | Select> implements IExpression {
-    /**
-     * 加法运算
-     */
-    add: (expr: UnsureExpressions) => Expression;
-    /**
-     * 减法运算
-     */
-    sub: (expr: UnsureExpressions) => Expression;
-    /**
-     * 乘法运算
-     * @param expr 要与当前表达式相乘的表达式
-     */
-    mul: (expr: UnsureExpressions) => Expression;
-    /**
-     * 除法运算
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    div: (expr: UnsureExpressions) => Expression;
-    /**
-     * 算术运算 %
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    mod: (expr: UnsureExpressions) => Expression;
-    and: (expr: UnsureExpressions) => Expression;
-    or: (expr: UnsureExpressions) => Expression;
-    not: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 ^
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    xor: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 <<
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    shl: (expr: UnsureExpressions) => Expression;
-    /**
-     * 位运算 >>
-     * @param expr 要与当前表达式相除的表达式
-     * @returns 返回运算后的表达式
-     */
-    shr: (expr: UnsureExpressions) => Expression;
-    /**
-     * 比较是否相等 =
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    eq: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不等于 <>
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    neq: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于 <
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    lt: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于等于 <=
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    lte: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否大于 >
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    gt: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否小于等于 >=
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    gte: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是相像 LIKE
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    like: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不想像 NOT LIKE
-     * @param expr 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    notLike: (expr: UnsureExpressions) => Condition;
-    /**
-     * 比较是否不包含于 IN
-     * @param values 要与当前表达式相比较的表达式数组
-     * @returns 返回对比条件表达式
-     */
-    in: (...values: UnsureExpressions[]) => Condition;
-    /**
-     * 比较是否不包含于 NOT IN
-     * @param values 要与当前表达式相比较的表达式
-     * @returns 返回对比条件表达式
-     */
-    notIn: (...values: UnsureExpressions[]) => Condition;
-    /**
-     * 比较是否为空 IS NULL
-     * @returns 返回对比条件表达式
-     */
-    isNull: () => Condition;
-    /**
-     * 比较是否为空 IS NOT NULL
-     * @returns 返回对比条件表达式
-     */
-    isNotNull: () => Condition;
-    /**
-     * isNotNull 的简称别名
-     * @returns 返回对比条件表达式
-     */
-    notNull: () => Condition;
-    /**
-     * 正序
-     * @returns 返回对比条件表达式
-     */
-    asc: () => SortInfo;
-    /**
-     * 倒序
-     * @returns 返回对比条件表达式
-     */
-    desc: () => SortInfo;
-    /**
-     * 为当前表达式添加别名
-     */
-    as: (alias: string) => Alias;
-}
-export declare class BracketCondition extends Bracket<Conditions> implements ICondition {
+export declare class QuotedCondition extends Condition implements ICondition {
+    context: Condition;
+    constructor(conditions: UnsureConditions);
     /**
      * and连接
      * @param condition 下一个查询条件
@@ -1070,30 +792,30 @@ export declare class BracketCondition extends Bracket<Conditions> implements ICo
      * @param condition 下一个查询条件
      * @returns 返回新的查询条件
      */
-    andGroup: (condition: Conditions) => Condition;
+    andGroup: (condition: Condition) => Condition;
     /**
      * OR语句
      * @param condition
      * @returns 返回新的查询条件
      */
-    or: (condition: Conditions) => Condition;
+    or: (condition: Condition) => Condition;
     /**
      * or 连接，并在被连接的条件中加上括号 ()
      * @param condition
      * @returns 返回新的查询条件
      */
-    orGroup: (condition: Conditions) => Condition;
+    orGroup: (condition: Condition) => Condition;
     /**
      * 返回括号表达式
      */
-    quoted: () => Bracket<Conditions>;
+    quoted: () => Bracket<Condition>;
 }
-export interface IBinary {
+export interface IBinary extends AST {
     operator: String;
     left: AST;
     right: AST;
 }
-export interface IUnary {
+export interface IUnary extends AST {
     operator: String;
     next: AST;
 }
@@ -1103,29 +825,29 @@ export interface IUnary {
 export declare class BinaryExpression extends Expression implements IBinary {
     get lvalue(): boolean;
     operator: COMPUTE_OPERATOR;
-    left: Expressions;
-    right: Expressions;
+    left: Expression;
+    right: Expression;
     /**
      * 名称
      * @param operator 运算符
      * @param left 左值
      * @param right 右值
      */
-    constructor(operator: COMPUTE_OPERATOR, left: UnsureExpressions, right: UnsureExpressions);
+    constructor(operator: COMPUTE_OPERATOR, left: UnsureExpression, right: UnsureExpression);
 }
 /**
  * - 运算符
  */
 export declare class UnaryExpression extends Expression implements IUnary {
     operator: COMPUTE_OPERATOR;
-    next: Expressions;
+    next: Expression;
     readonly type: SQL_SYMBOLE;
     get lvalue(): boolean;
     /**
      * 一元运算目前只支持负数运算符
      * @param expr
      */
-    constructor(operator: COMPUTE_OPERATOR, expr: UnsureExpressions);
+    constructor(operator: COMPUTE_OPERATOR, expr: UnsureExpression);
 }
 /**
  * 联接查询
@@ -1143,10 +865,10 @@ export declare class Union extends AST {
 export interface SortObject {
     [key: string]: SORT_DIRECTION;
 }
-export declare abstract class Fromable extends Statement {
+declare abstract class Fromable extends Statement {
     tables?: Identifier[];
     joins?: Join[];
-    filters?: Conditions;
+    filters?: Condition;
     /**
      * 从表中查询，可以查询多表
      * @param tables
@@ -1159,13 +881,13 @@ export declare abstract class Fromable extends Statement {
      * @param left
      * @memberof Select
      */
-    join(table: UnsureIdentity, on: Conditions, left?: boolean): this;
+    join(table: UnsureIdentity, on: Condition, left?: boolean): this;
     /**
      * 左联接
      * @param table
      * @param on
      */
-    leftJoin(table: UnsureIdentity, on: Conditions): this;
+    leftJoin(table: UnsureIdentity, on: Condition): this;
     /**
      * where查询条件
      * @param condition
@@ -1173,9 +895,9 @@ export declare abstract class Fromable extends Statement {
     where(condition: UnsureConditions): this;
 }
 export declare class SortInfo extends AST {
-    expr: Expressions;
+    expr: Expression;
     direction?: SORT_DIRECTION;
-    constructor(expr: UnsureExpressions, direction?: SORT_DIRECTION);
+    constructor(expr: UnsureExpression, direction?: SORT_DIRECTION);
 }
 /**
  * SELECT查询
@@ -1185,13 +907,13 @@ export declare class Select extends Fromable {
     offsets?: number;
     limits?: number;
     isDistinct?: boolean;
-    columns: Expressions[];
+    columns: List;
     sorts?: SortInfo[];
-    groups?: Expressions[];
-    havings?: Conditions;
+    groups?: Expression[];
+    havings?: Condition;
     unions?: Union;
     constructor(columns: object);
-    constructor(...columns: UnsureExpressions[]);
+    constructor(...columns: UnsureExpression[]);
     constructor(...columns: (object | UnsureConditions)[]);
     /**
      * 去除重复的
@@ -1207,12 +929,12 @@ export declare class Select extends Fromable {
      * @param sorts 排序信息
      */
     orderBy(sorts: SortObject): this;
-    orderBy(...sorts: (SortInfo | UnsureExpressions)[]): this;
+    orderBy(...sorts: (SortInfo | UnsureExpression)[]): this;
     /**
      * 分组查询
      * @param groups
      */
-    groupBy(...groups: UnsureExpressions[]): this;
+    groupBy(...groups: UnsureExpression[]): this;
     /**
      * Having 子句
      * @param condition
@@ -1237,7 +959,7 @@ export declare class Select extends Fromable {
      * 将本SELECT返回表达式
      * @returns 返回一个加()后的SELECT语句
      */
-    quoted(): BracketExpression;
+    quoted(): Bracket<this>;
     /**
      * 将本次查询，转换为Table行集
      * @param alias
@@ -1250,7 +972,7 @@ export declare class Select extends Fromable {
 export declare class Insert extends Statement {
     table: Identifier;
     fields: Identifier[];
-    rows: GroupValues[] | Select;
+    rows: List[] | Select;
     /**
      * 构造函数
      */
@@ -1262,12 +984,12 @@ export declare class Insert extends Statement {
     private _fields;
     values(select: Select): this;
     values(row: ValuesObject): this;
-    values(row: UnsureExpressions[]): this;
-    values(...rows: UnsureExpressions[][]): this;
+    values(row: UnsureExpression[]): this;
+    values(...rows: UnsureExpression[][]): this;
     values(...rows: ValuesObject[]): this;
 }
 export interface KeyValueObject {
-    [field: string]: UnsureExpressions;
+    [field: string]: UnsureExpression;
 }
 export declare type ValuesObject = KeyValueObject;
 export declare type AssignObject = KeyValueObject;
@@ -1290,18 +1012,18 @@ export declare class Delete extends Fromable {
  */
 export declare class Execute extends Statement {
     proc: Identifier;
-    params: Expressions[] | Parameter[] | Assignment[];
-    constructor(proc: UnsureIdentity, params?: UnsureExpressions[]);
-    constructor(proc: UnsureIdentity, params?: Parameter[]);
-    constructor(proc: UnsureIdentity, params?: UnsureExpressions[] | Parameter[]);
+    args: List;
+    constructor(proc: UnsureIdentity, args?: UnsureExpression[]);
+    constructor(proc: UnsureIdentity, args?: Parameter[]);
+    constructor(proc: UnsureIdentity, args?: UnsureExpression[] | Parameter[]);
 }
 /**
  * 赋值语句
  */
 export declare class Assignment extends Statement {
     left: Expression;
-    right: Expressions;
-    constructor(left: Expression, right: UnsureExpressions);
+    right: Expression;
+    constructor(left: Expression, right: UnsureExpression);
 }
 declare class VariantDeclare extends AST {
     constructor(name: string, dataType: string);

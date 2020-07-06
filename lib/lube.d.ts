@@ -1,5 +1,5 @@
 import { Executor, QueryResult } from './executor';
-import { Parser, Ployfill } from './parser';
+import { Compiler, CompileOptions } from './compiler';
 import { ISOLATION_LEVEL } from './constants';
 export declare type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>;
 /**
@@ -14,15 +14,15 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-    ployfill?: Ployfill;
-    parser?: Parser;
+    ployfill?: CompileOptions;
+    compiler?: Compiler;
     query(sql: any, params: any): Promise<QueryResult>;
     beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction;
     close(): Promise<void>;
 }
 export declare class Lube extends Executor {
     private _provider;
-    constructor(provider: IDbProvider, options: any);
+    constructor(provider: IDbProvider, options: ConnectOptions);
     /**
      * 开启一个事务并自动提交
      * @param {*} handler (exeutor, cancel) => false
@@ -48,6 +48,7 @@ export interface ConnectOptions {
     poolMax: number;
     poolMin: number;
     idelTimeout: number;
+    strict?: boolean;
 }
 /**
  * 连接数据库并返回一个连接池
@@ -58,4 +59,4 @@ export declare function connect(config: ConnectOptions): Promise<Lube>;
 export * from './builder';
 export * from './constants';
 export * from './ast';
-export * from './parser';
+export * from './compiler';

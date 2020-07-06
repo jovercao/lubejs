@@ -1,4 +1,4 @@
-import { Condition, Parameter, Identifier, AST, Statement, Expression, UnsureExpressions, Raw } from './ast';
+import { Condition, Parameter, Identifier, AST, Statement, Expression, UnsureExpression, Raw } from './ast';
 /**
  * not 查询条件运算
  */
@@ -82,8 +82,8 @@ export declare const $case: typeof Statement.case;
  * 创建一个UPDATE语句
  */
 export declare const update: typeof Statement.update;
-export declare const fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
-export declare const sp: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+export declare const fn: (...names: string[]) => (...args: UnsureExpression[]) => import("./ast").Invoke;
+export declare const sp: (...names: string[]) => (...args: UnsureExpression[]) => any;
 export declare const buildIn: typeof Identifier.buildIn;
 /**
  * 内建标识符，不会被 [] 包裹，buildIn的别名
@@ -94,7 +94,7 @@ export declare const sys: typeof Identifier.buildIn;
  * 内建函数
  * @param name
  */
-export declare const sysFn: (name: string) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
+export declare const sysFn: (name: string) => (...args: UnsureExpression[]) => import("./ast").Invoke;
 /**
  * 创建一个DELETE语句
  */
@@ -119,8 +119,8 @@ export declare const SQL: {
     when: typeof Statement.when;
     exists: typeof Condition.exists;
     invoke: typeof Expression.invoke;
-    fn: (...names: string[]) => (...args: UnsureExpressions[]) => import("./ast").Invoke;
-    sp: (...names: string[]) => (...args: UnsureExpressions[]) => any;
+    fn: (...names: string[]) => (...args: UnsureExpression[]) => import("./ast").Invoke;
+    sp: (...names: string[]) => (...args: UnsureExpression[]) => any;
     buildIn: typeof Identifier.buildIn;
     sys: typeof Identifier.buildIn;
     table: typeof Expression.table;

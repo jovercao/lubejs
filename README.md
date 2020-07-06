@@ -10,16 +10,37 @@ Supports list:
 
 ## Queick Start
 
+### Install
+
+Install with npm:
+
+```shell
+npm install lubejs --save
+
+# install dialect driver
+npm install lubejs-mssql
+```
+
+### Usage
+
 ```js
-const lube = require('lubejs')
+const { connect, select, update, insert, $delete, table, SQL } = require('lubejs')
+/**
+ * build-in objects import from driver package
+ */
+const { sum } = require('lubejs-mssql')
 
 async function action() {
-  const pool = await lube.connect('mssql://sa:password@127.0.0.1/test-db')
+  const pool = await connect('mssql://sa:password@127.0.0.1/test-db')
   // for oracle
-  // const pool = await lube.connect('oracle://user:password@127.0.0.1/sid')
+  // const pool = await lube.connect('oracledb://user:password@127.0.0.1/sid')
   // (Not recommended)query with template sql
   // const id = 1
   // const res = pool.query`select * from person where id = ${id}`
+
+  // affected rows
+  let affected = 0
+  let t, datas
 
   //---------------Insert Datas------------------
   /*
@@ -28,35 +49,65 @@ async function action() {
   * ('value1-2', 1, Convert(DateTime, '2019-11-18 00:00:00'))
   * ('value1-3', 45, Convert(DateTime, '2019-11-18 00:00:00'))
   */
-  const insertedCount = await pool.insert('table1', [
+  const insertSql = insert('table1').values([
     { field1: 'value1-1', field2: 2, field3: new Date() },
     { field1: 'value1-2', field2: 1, field3: new Date() },
     { field1: 'value1-3', field2: 45, field3: new Date() }
   ])
 
-  //---------------Update Data------------------
+  affected = await pool.query(insertSql)
+
+  //  You can also insert in this way
+  await pool.insert('table1', [
+    { field1: 'value1-1', field2: 2, field3: new Date() },
+    { field1: 'value1-2', field2: 1, field3: new Date() },
+    { field1: 'value1-3', field2: 45, field3: new Date() }
+  ])
+
+  //---------------Update Datas------------------
   // UPDATE table1 SET updatedAt = Convert(DateTime, '2019-11-18 00:00:00') WHERE id = 1
-  const updatedCount = await pool.update('table1', { updatedAt: new Date(), operator: 'your name' }, { id: 1 })
+  t = table('table1').as('t')
+  const updateSql = update(t).set({ updatedAt: new Date(), operator: 'your name' }).where(t.$id.eq(1))
+  await pool.query(updateSql)
 
-  //---------------Delete All Data-------------------
-  // DELETE table1
-  const deletedCount1 = await pool.delete('table1')
-  //---------------Delete By Id-----------------------
+  //  You can also update in this way
+  affected = await pool.update('table1', { updatedAt: new Date(), operator: 'your name' }, { id: 1 })
+
+  //---------------Delete Datas-------------------
+  // DELETE t FROM table1 WHERE t.id = 1
+  // Use $delete instead of delete because of keywords. Or use SQL.delete
+  t = table('table1').as('t')
+  let deleteSql = $delete(t).from(t).where(t.id.eq(1))
+  await pool.query(deleteSql)
+
+  //  You can also delete in this way
   // DELETE table1 WHERE id = 1
-  const deletedCount2 = await pool.delete('table1', { id: 1 })
+  affected = await pool.delete('table1', { id: 1 })
 
-  //----------------Select All Rows--------------------
-  // SELECT * FROM table1
-  const allRows = await pool.select('table1')
+  //----------------Select Datas--------------------
+  // SELECT t.* FROM table1 AS t WHERE t.id = 1 AND t.name = 'name1'
+  // use '$name' instead of 'name' because of name is property of Identity
+  t = table('table1').as('t')
+  selectSql = select(t.any()).from(t).where(and(t.id.eq(1), t.$name.eq('name1')))
+  await pool.query(selectSql)
+
+  //  You can also select in this way
+  // SELECT * FROM table1 WHERE id = 1 AND name = 'name1'
+  datas = await pool.select('table1', {
+    where: {
+      id: 1,
+      name: 'name1'
+    }
+  })
 
   //---------------A Complex queries (mssql)------------
   /*
   * SELECT
+  *     pay.year,
+  *     pay.month
   *     p.name,
   *     p.age,
-  *     pay.year,
-  *     pay,
-  *     month
+  *     sum(pay.amount) as total,
   * FROM pay
   * JOIN persion as p ON pay.persionId = p.id
   * WHERE p.age >= 18
@@ -65,7 +116,7 @@ async function action() {
   *     p.age,
   *     pay.year,
   *     pay.month
-  * HAVING SUM(pay.amount) >= 100000
+  * HAVING SUM(pay.amount) >= 100000.00
   * ORDER BY
   *     pay.year ASC,
   *     pay.month ASC,
@@ -74,28 +125,28 @@ async function action() {
   *  OFFSET 20 ROWS
   *  FETCH NEXT 50 ROWS ONLY
   */
-  const p = lube.table('person').as('p')
-  const pay = lube.table('pay')
-  const sql = lube.select(
+  const p = table('person').as('p')
+  const pay = table('pay')
+  const sql = select(
       pay.year,
       pay.month,
       p.name,
       p.age,
-      lube.sum(pay.amount).as('total')
+      sum(pay.amount).as('total')
     )
     .from(pay)
     .join(p, pay.persionId.eq(p.id))
     .where(p.age.lte(18))
-    .groupby(
-      pay.year,
-      pay.month,
+    .groupBy(
       p.name,
-      p.age
+      p.age,
+      pay.year,
+      pay.month
     )
     .having(
-      lube.sum(pay.amount).gte(100000.00)
+      sum(pay.amount).gte(100000.00)
     )
-    .orderby(
+    .orderBy(
       pay.year.asc(),
       pay.month.asc(),
       pay.amount.asc(),
@@ -104,43 +155,19 @@ async function action() {
     .offset(20)
     .limit(50)
 
-  const { rows } = await pool.query(sql)
-  console.log(rows)
+  const { rows: datas } = await pool.query(sql)
 
   // close connection pool
-  pool.close()
-})
+  await pool.close()
+}
+
+action()
 
 ```
-
-## Install
-
-Install with npm:
-
-```shell
-pm install lubejs --save
-```
-
-If use mssql, you need to run:
-
-```shell
-npm install mssql
-```
-
-At oracle db:
-
-```shell
-npm install oracledb
-```
-
-## Usage
-
-See [test](./test/index.test.js).
-<!--@import "./test/index.test.js"-->
 
 ## API
 
-Pls waite for update.
+[API DOC](./doc/globals.md)
 
 ## Updated Logs
 
