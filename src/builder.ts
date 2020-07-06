@@ -5,7 +5,7 @@ import {
   AST,
   Statement,
   Expression,
-  UnsureExpressions,
+  UnsureExpression,
   Raw
 } from './ast'
 
@@ -123,13 +123,13 @@ export const $case = Statement.case
 export const update = Statement.update
 
 export const fn = function(...names: string[]) {
-  return function(...args: UnsureExpressions[]) {
+  return function(...args: UnsureExpression[]) {
     return Expression.identifier(...names).invoke(...args)
   }
 }
 
 export const sp = function (...names: string[]) {
-  return function (...args: UnsureExpressions[]) {
+  return function (...args: UnsureExpression[]) {
     return Statement.execute(Expression.identifier(...names), args)
   }
 }
@@ -147,7 +147,7 @@ export const sys = buildIn
  * @param name
  */
 export const sysFn = function(name: string) {
-  return function (...args: UnsureExpressions[]) {
+  return function (...args: UnsureExpression[]) {
     return Identifier.buildIn(name).invoke(...args)
   }
 }

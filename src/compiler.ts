@@ -205,7 +205,7 @@ export class Compiler {
         return this.compileDelete(ast as Delete, params, parent)
       case SQL_SYMBOLE.DECLARE:
         return this.compileDeclare(ast as Declare, params, parent)
-      case SQL_SYMBOLE.BRACKET:
+      case SQL_SYMBOLE.BRACKET_EXPRESSION:
         return this.compileBracket(ast as Bracket<any>, params, parent)
       case SQL_SYMBOLE.CONSTANT:
         return this.compileConstant(ast as Constant, params, parent)

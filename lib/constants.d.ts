@@ -94,9 +94,12 @@ export declare enum SQL_SYMBOLE {
     INVOKE = "INVOKE",
     ASSIGNMENT = "ASSIGNMENT",
     CONSTANT = "CONSTANT",
-    CONDITION = "CONDITION",
     SORT = "SORT",
-    BRACKET = "BRACKET",
+    BRACKET_EXPRESSION = "BRACKET_EXPRESSION",
+    /**
+     * 条件组
+     */
+    QUOTED_CONDITION = "QUOTED_CONDITION",
     ALIAS = "ALIAS",
     BINARY = "BINARY",
     UNARY = "UNARY",

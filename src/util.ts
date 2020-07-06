@@ -1,18 +1,15 @@
 import * as _ from 'lodash'
 import {
   Condition,
-  Conditions,
   UnsureConditions,
-  UnsureExpressions,
+  UnsureExpression,
   UnsureGroupValues,
   Bracket,
   Expression,
-  Expressions,
   AST,
   Identifier,
   JsConstant,
-  List,
-  BracketExpression
+  List
 } from './ast'
 
 /**
@@ -29,7 +26,7 @@ export function assert(except: any, message: string) {
 /**
  * 返回表达式
  */
-export function ensureConstant(expr: UnsureExpressions): Expressions {
+export function ensureConstant(expr: UnsureExpression): Expression {
   if (!(expr instanceof AST)) {
     return Expression.constant(expr as JsConstant)
   }
@@ -55,7 +52,7 @@ export function ensureGroupValues(values: UnsureGroupValues): List {
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition(condition: UnsureConditions): Conditions {
+export function ensureCondition(condition: UnsureConditions): Condition {
   if (condition instanceof Condition) return condition
   assert(_.isPlainObject(condition), 'condition must typeof `Condition` or `plain object`')
   const compares = Object.entries(condition).map(([key, value]) => {

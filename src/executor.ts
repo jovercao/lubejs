@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpressions, SortInfo, Conditions, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
 import { Compiler } from './compiler'
 
 export interface QueryResult {
@@ -31,7 +31,7 @@ export interface SelectOptions {
   limit?: number,
   distinct?: boolean,
   fields?: string[],
-  sorts?: SortObject | (SortInfo | UnsureExpressions)[]
+  sorts?: SortObject | (SortInfo | UnsureExpression)[]
 }
 
 interface IExecuotor {
@@ -61,9 +61,9 @@ interface IExecuotor {
   insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select): Promise<number>
   insert(table: UnsureIdentity, rows: KeyValueObject[]): Promise<number>
   insert(table: UnsureIdentity, row: KeyValueObject): Promise<number>
-  insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpressions[][]): Promise<number>
+  insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][]): Promise<number>
 
-  find(table: UnsureIdentity, where: Conditions, fields?: string[]): Promise<object>
+  find(table: UnsureIdentity, where: Condition, fields?: string[]): Promise<object>
 
   /**
    * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
@@ -77,7 +77,7 @@ interface IExecuotor {
   update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
   update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>
 
-  execute(spname: UnsureIdentity, params: UnsureExpressions[]): Promise<number>
+  execute(spname: UnsureIdentity, params: UnsureExpression[]): Promise<number>
   execute(spname: UnsureIdentity, params: Parameter[]): Promise<number>
 
   /**
@@ -194,7 +194,7 @@ export class Executor extends EventEmitter implements IExecuotor {
   async insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select)
   async insert(table: UnsureIdentity, rows: KeyValueObject[])
   async insert(table: UnsureIdentity, row: KeyValueObject)
-  async insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpressions[][])
+  async insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][])
   async insert(table: UnsureIdentity, ...args) {
     let fields: UnsureIdentity[], rows
     if (args.length > 2) {
@@ -211,7 +211,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     }
 
     if (_.isArray(rows[0])) {
-      sql.values(...rows as UnsureExpressions[][])
+      sql.values(...rows as UnsureExpression[][])
     } else {
       sql.values(...rows as KeyValueObject[])
     }
@@ -219,8 +219,8 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async find(table: UnsureIdentity, where: Conditions, fields?: string[]) {
-    let columns: (UnsureExpressions)[]
+  async find(table: UnsureIdentity, where: Condition, fields?: string[]) {
+    let columns: (UnsureExpression)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
     } else {
@@ -242,7 +242,7 @@ export class Executor extends EventEmitter implements IExecuotor {
    */
   async select(table: UnsureIdentity, options: SelectOptions = {}) {
     const { where, sorts, offset, limit, fields } = options
-    let columns: UnsureExpressions[]
+    let columns: UnsureExpression[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
     } else {
@@ -290,9 +290,9 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async execute(spname: UnsureIdentity, params: UnsureExpressions[])
+  async execute(spname: UnsureIdentity, params: UnsureExpression[])
   async execute(spname: UnsureIdentity, params: Parameter[])
-  async execute(spname: UnsureIdentity, params: UnsureExpressions[] | Parameter[]) {
+  async execute(spname: UnsureIdentity, params: UnsureExpression[] | Parameter[]) {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res
