@@ -24,7 +24,10 @@ export declare type UnsureSelectExpressions = Select | Bracket<Select>;
  * 组数据
  */
 export declare type UnsureGroupValues = UnsureExpression[] | List;
-export declare type UnsureIdentity = Identifier | string;
+export declare type UnsureIdentifier = Identifier | string;
+export declare type ProxiedIdentifier = Identifier & {
+    [field: string]: Identifier;
+};
 /**
  * AST 基类
  */
@@ -186,7 +189,7 @@ export declare abstract class Expression extends AST {
     /**
      * 为当前表达式添加别名
      */
-    as(alias: string): Identifier;
+    as(alias: string): ProxiedIdentifier;
     /**
      * 获取当前表达式是否为左值
      * @type {boolean}
@@ -294,21 +297,22 @@ export declare abstract class Expression extends AST {
      * 任意字段 *
      * @param parent parent identifier
      */
-    static any(parent?: UnsureIdentity): Identifier;
+    static any(parent?: UnsureIdentifier): Identifier;
     /**
      * 标识符
      */
     static identifier(...names: string[]): Identifier;
+    ProxiedIdentify: any;
     /**
      * 代理化的identifier，可以自动接受字段名
      * @param name
      */
-    static proxyIdentifier(name: UnsureIdentity): Identifier;
+    static proxiedIdentifier(name: UnsureIdentifier): ProxiedIdentifier;
     /**
      * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
      * @param names
      */
-    static table(...names: string[]): Identifier;
+    static table(...names: string[]): ProxiedIdentifier;
     /**
      * 字段，实为 identifier(...names) 别名
      * @param names
@@ -319,7 +323,7 @@ export declare abstract class Expression extends AST {
      * @param func 函数
      * @param params 参数
      */
-    static invoke(func: UnsureIdentity, params: (Expression | JsConstant)[]): Invoke;
+    static invoke(func: UnsureIdentifier, params: (Expression | JsConstant)[]): Invoke;
 }
 export interface ICondition {
     /**
@@ -579,7 +583,7 @@ export declare class Join extends AST {
      * @param on 关联条件
      * @param left 是否左联接
      */
-    constructor(table: UnsureIdentity, on: Condition, left?: boolean);
+    constructor(table: UnsureIdentifier, on: Condition, left?: boolean);
 }
 export declare class Raw extends AST {
     sql: string;
@@ -594,13 +598,13 @@ export declare class Identifier extends Expression {
     /**
      * 标识符
      */
-    protected constructor(name: string, parent?: UnsureIdentity, type?: SQL_SYMBOLE);
+    protected constructor(name: string, parent?: UnsureIdentifier, type?: SQL_SYMBOLE);
     get lvalue(): boolean;
     /**
      * 访问下一节点
      * @param name
      */
-    dot(name: string): Identifier;
+    dot(name: string): ProxiedIdentifier;
     any(): Identifier;
     /**
      * 执行一个函数
@@ -618,7 +622,7 @@ export declare class Identifier extends Expression {
     /**
      * 内建标识符
      */
-    static any(parent?: UnsureIdentity): Identifier;
+    static any(parent?: UnsureIdentifier): Identifier;
 }
 export declare class Variant extends Expression {
     name: string;
@@ -650,7 +654,7 @@ export declare class Invoke extends Expression {
     /**
      * 函数调用
      */
-    constructor(func: UnsureIdentity, args?: UnsureExpression[]);
+    constructor(func: UnsureIdentifier, args?: UnsureExpression[]);
 }
 /**
  * SQL 语句
@@ -661,17 +665,17 @@ export declare abstract class Statement extends AST {
      * @param table
      * @param fields
      */
-    static insert(table: UnsureIdentity, fields?: UnsureIdentity[]): Insert;
+    static insert(table: UnsureIdentifier, fields?: UnsureIdentifier[]): Insert;
     /**
      * 更新一个表格
      * @param table
      */
-    static update(table: UnsureIdentity): Update;
+    static update(table: UnsureIdentifier): Update;
     /**
      * 删除一个表格
      * @param table 表格
      */
-    static delete(table: UnsureIdentity): Delete;
+    static delete(table: UnsureIdentifier): Delete;
     /**
      * 选择列
      */
@@ -683,15 +687,15 @@ export declare abstract class Statement extends AST {
      * @param proc
      * @param params
      */
-    static execute(proc: UnsureIdentity, params?: UnsureExpression[]): any;
-    static execute(proc: UnsureIdentity, params?: Parameter[]): any;
+    static execute(proc: UnsureIdentifier, params?: UnsureExpression[]): any;
+    static execute(proc: UnsureIdentifier, params?: Parameter[]): any;
     /**
      * 执行一个存储过程，execute的别名
      * @param proc 存储过程
      * @param params 参数
      */
-    static exec(proc: UnsureIdentity, params: UnsureExpression[]): any;
-    static exec(proc: UnsureIdentity, params: Parameter[]): any;
+    static exec(proc: UnsureIdentifier, params: UnsureExpression[]): any;
+    static exec(proc: UnsureIdentifier, params: Parameter[]): any;
     /**
      * 赋值语句
      * @param left 左值
@@ -881,13 +885,13 @@ declare abstract class Fromable extends Statement {
      * @param left
      * @memberof Select
      */
-    join(table: UnsureIdentity, on: Condition, left?: boolean): this;
+    join(table: UnsureIdentifier, on: Condition, left?: boolean): this;
     /**
      * 左联接
      * @param table
      * @param on
      */
-    leftJoin(table: UnsureIdentity, on: Condition): this;
+    leftJoin(table: UnsureIdentifier, on: Condition): this;
     /**
      * where查询条件
      * @param condition
@@ -964,7 +968,7 @@ export declare class Select extends Fromable {
      * 将本次查询，转换为Table行集
      * @param alias
      */
-    as(alias: any): Alias;
+    as(alias: any): ProxiedIdentifier;
 }
 /**
  * Insert 语句
@@ -976,7 +980,7 @@ export declare class Insert extends Statement {
     /**
      * 构造函数
      */
-    constructor(table: UnsureIdentity, fields?: UnsureIdentity[]);
+    constructor(table: UnsureIdentifier, fields?: UnsureIdentifier[]);
     /**
      * 字段列表
      * @param  {string[]|Field[]} fields
@@ -996,7 +1000,7 @@ export declare type AssignObject = KeyValueObject;
 export declare class Update extends Fromable {
     table: Identifier;
     sets: Assignment[];
-    constructor(table: UnsureIdentity);
+    constructor(table: UnsureIdentifier);
     /**
      * @param sets
      */
@@ -1005,7 +1009,7 @@ export declare class Update extends Fromable {
 }
 export declare class Delete extends Fromable {
     table: Identifier;
-    constructor(table: UnsureIdentity);
+    constructor(table: UnsureIdentifier);
 }
 /**
  * 存储过程执行
@@ -1013,9 +1017,9 @@ export declare class Delete extends Fromable {
 export declare class Execute extends Statement {
     proc: Identifier;
     args: List;
-    constructor(proc: UnsureIdentity, args?: UnsureExpression[]);
-    constructor(proc: UnsureIdentity, args?: Parameter[]);
-    constructor(proc: UnsureIdentity, args?: UnsureExpression[] | Parameter[]);
+    constructor(proc: UnsureIdentifier, args?: UnsureExpression[]);
+    constructor(proc: UnsureIdentifier, args?: Parameter[]);
+    constructor(proc: UnsureIdentifier, args?: UnsureExpression[] | Parameter[]);
 }
 /**
  * 赋值语句

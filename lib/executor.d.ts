@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { Parameter, Select, JsConstant, UnsureIdentity, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
+import { Parameter, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
 import { Compiler } from './compiler';
 export interface QueryResult {
     rows?: object[];
@@ -41,24 +41,24 @@ interface IExecuotor {
      * @param {array?} fields 字段列表，可空
      * @param {*} rows 可接受二维数组/对象，或者单行数组
      */
-    insert(table: UnsureIdentity, select: Select): Promise<number>;
-    insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select): Promise<number>;
-    insert(table: UnsureIdentity, rows: KeyValueObject[]): Promise<number>;
-    insert(table: UnsureIdentity, row: KeyValueObject): Promise<number>;
-    insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][]): Promise<number>;
-    find(table: UnsureIdentity, where: Condition, fields?: string[]): Promise<object>;
+    insert(table: UnsureIdentifier, select: Select): Promise<number>;
+    insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>;
+    insert(table: UnsureIdentifier, rows: KeyValueObject[]): Promise<number>;
+    insert(table: UnsureIdentifier, row: KeyValueObject): Promise<number>;
+    insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>;
+    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>;
     /**
      * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
      * @param table
      * @param where
      * @param options
      */
-    select(table: UnsureIdentity, options?: SelectOptions): Promise<object>;
-    update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): Promise<number>;
-    update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>;
-    update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>;
-    execute(spname: UnsureIdentity, params: UnsureExpression[]): Promise<number>;
-    execute(spname: UnsureIdentity, params: Parameter[]): Promise<number>;
+    select(table: UnsureIdentifier, options?: SelectOptions): Promise<object>;
+    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): Promise<number>;
+    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): Promise<number>;
+    update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>;
+    execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>;
+    execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>;
     /**
      * 执行存储过程
      * @param spname 存储过程名称
@@ -95,23 +95,23 @@ export declare class Executor extends EventEmitter implements IExecuotor {
      * @param {array?} fields 字段列表，可空
      * @param {*} rows 可接受二维数组/对象，或者单行数组
      */
-    insert(table: UnsureIdentity, select: Select): any;
-    insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select): any;
-    insert(table: UnsureIdentity, rows: KeyValueObject[]): any;
-    insert(table: UnsureIdentity, row: KeyValueObject): any;
-    insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][]): any;
-    find(table: UnsureIdentity, where: Condition, fields?: string[]): Promise<object>;
+    insert(table: UnsureIdentifier, select: Select): any;
+    insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): any;
+    insert(table: UnsureIdentifier, rows: KeyValueObject[]): any;
+    insert(table: UnsureIdentifier, row: KeyValueObject): any;
+    insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): any;
+    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>;
     /**
      * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
      * @param table
      * @param where
      * @param options
      */
-    select(table: UnsureIdentity, options?: SelectOptions): Promise<object[]>;
-    update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): any;
-    update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): any;
-    delete(table: UnsureIdentity, where?: UnsureConditions): Promise<number>;
-    execute(spname: UnsureIdentity, params: UnsureExpression[]): any;
-    execute(spname: UnsureIdentity, params: Parameter[]): any;
+    select(table: UnsureIdentifier, options?: SelectOptions): Promise<object[]>;
+    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): any;
+    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): any;
+    delete(table: UnsureIdentifier, where?: UnsureConditions): Promise<number>;
+    execute(spname: UnsureIdentifier, params: UnsureExpression[]): any;
+    execute(spname: UnsureIdentifier, params: Parameter[]): any;
 }
 export {};

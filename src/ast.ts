@@ -7,8 +7,8 @@ import {
   assert,
   ensureConstant,
   ensureCondition,
-  ensureIdentity,
-  makeProxyIdentity,
+  ensureIdentifier,
+  makeProxiedIdentifier,
   ensureGroupValues
   // assertType,
   // assertValue
@@ -56,8 +56,11 @@ export type UnsureSelectExpressions = Select | Bracket<Select>
  */
 export type UnsureGroupValues = UnsureExpression[] | List
 
-export type UnsureIdentity = Identifier | string
+export type UnsureIdentifier = Identifier | string
 
+export type ProxiedIdentifier = Identifier & {
+  [field: string]: Identifier
+}
 
 /**
  * AST 基类
@@ -474,12 +477,9 @@ export abstract class Expression extends AST {
   /**
    * 为当前表达式添加别名
    */
-  as(alias: string): Identifier {
+  as(alias: string): ProxiedIdentifier {
     const identifier = new Alias(this, alias)
-    if (identifier instanceof Identifier) {
-      return makeProxyIdentity(identifier)
-    }
-    return identifier
+    return makeProxiedIdentifier(identifier)
   }
 
   /**
@@ -638,7 +638,7 @@ export abstract class Expression extends AST {
    * 任意字段 *
    * @param parent parent identifier
    */
-  static any(parent?: UnsureIdentity) {
+  static any(parent?: UnsureIdentifier) {
     return Identifier.any(parent)
   }
 
@@ -648,23 +648,25 @@ export abstract class Expression extends AST {
   static identifier(...names: string[]): Identifier {
     assert(names.length > 0, 'must have one or more names')
     assert(names.length < 6, 'nodes deepth max 6 level')
-    let identity: Identifier
+    let identify: Identifier
     names.forEach(name => {
-      if (!identity) {
-        identity = Identifier.normal(name)
+      if (!identify) {
+        identify = Identifier.normal(name)
       } else {
-        identity = identity.dot(name)
+        identify = identify.dot(name)
       }
     })
-    return identity
+    return identify
   }
+
+  ProxiedIdentify
 
   /**
    * 代理化的identifier，可以自动接受字段名
    * @param name
    */
-  static proxyIdentifier(name: UnsureIdentity) {
-    return makeProxyIdentity(ensureIdentity(name))
+  static proxiedIdentifier(name: UnsureIdentifier) {
+    return makeProxiedIdentifier(ensureIdentifier(name))
   }
 
   /**
@@ -672,7 +674,7 @@ export abstract class Expression extends AST {
    * @param names
    */
   static table(...names: string[]) {
-    return Expression.proxyIdentifier(Expression.identifier(...names))
+    return Expression.proxiedIdentifier(Expression.identifier(...names))
   }
 
   /**
@@ -688,7 +690,7 @@ export abstract class Expression extends AST {
    * @param func 函数
    * @param params 参数
    */
-  static invoke(func: UnsureIdentity, params: (Expression | JsConstant)[]) {
+  static invoke(func: UnsureIdentifier, params: (Expression | JsConstant)[]) {
     return new Invoke(func, params)
   }
 }
@@ -1110,14 +1112,14 @@ export class Join extends AST {
    * @param on 关联条件
    * @param left 是否左联接
    */
-  constructor(table: UnsureIdentity, on: Condition, left: boolean = false) {
+  constructor(table: UnsureIdentifier, on: Condition, left: boolean = false) {
     super(SQL_SYMBOLE.JOIN)
 
     /**
      * 关联表
     * @type {Table}
     */
-    this.table = ensureIdentity(table)
+    this.table = ensureIdentifier(table)
     /**
      * 关联条件
     * @type {Condition}
@@ -1145,7 +1147,7 @@ export class Raw extends AST {
  */
 export class Identifier extends Expression {
 
-  // [name: string]: Identity
+  // [name: string]: Identifier
 
   public readonly name: string
   public readonly parent?: Identifier
@@ -1153,11 +1155,11 @@ export class Identifier extends Expression {
   /**
    * 标识符
    */
-  protected constructor(name: string, parent?: UnsureIdentity, type: SQL_SYMBOLE = SQL_SYMBOLE.IDENTIFIER) {
+  protected constructor(name: string, parent?: UnsureIdentifier, type: SQL_SYMBOLE = SQL_SYMBOLE.IDENTIFIER) {
     super(type)
     this.name = name
     if (parent) {
-      this.parent = ensureIdentity(parent)
+      this.parent = ensureIdentifier(parent)
     } else {
       this.parent = null
     }
@@ -1172,7 +1174,7 @@ export class Identifier extends Expression {
    * @param name
    */
   dot(name: string) {
-    return new Identifier(name, this)
+    return makeProxiedIdentifier(new Identifier(name, this))
   }
 
   any() {
@@ -1204,7 +1206,7 @@ export class Identifier extends Expression {
   /**
    * 内建标识符
    */
-  static any(parent?: UnsureIdentity) {
+  static any(parent?: UnsureIdentifier) {
     return new Identifier('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 }
@@ -1260,9 +1262,9 @@ export class Invoke extends Expression {
   /**
    * 函数调用
    */
-  constructor(func: UnsureIdentity, args?: UnsureExpression[]) {
+  constructor(func: UnsureIdentifier, args?: UnsureExpression[]) {
     super(SQL_SYMBOLE.INVOKE)
-    this.func = ensureIdentity(func)
+    this.func = ensureIdentifier(func)
     this.args = List.invokeArgs(...args)
   }
 }
@@ -1277,7 +1279,7 @@ export abstract class Statement extends AST {
    * @param table
    * @param fields
    */
-  static insert(table: UnsureIdentity, fields?: UnsureIdentity[]) {
+  static insert(table: UnsureIdentifier, fields?: UnsureIdentifier[]) {
     return new Insert(table, fields)
   }
 
@@ -1285,7 +1287,7 @@ export abstract class Statement extends AST {
    * 更新一个表格
    * @param table
    */
-  static update(table: UnsureIdentity) {
+  static update(table: UnsureIdentifier) {
     return new Update(table).from(table)
   }
 
@@ -1293,7 +1295,7 @@ export abstract class Statement extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  static delete(table: UnsureIdentity) {
+  static delete(table: UnsureIdentifier) {
     return new Delete(table)
   }
 
@@ -1312,9 +1314,9 @@ export abstract class Statement extends AST {
    * @param proc
    * @param params
    */
-  static execute(proc: UnsureIdentity, params?: UnsureExpression[])
-  static execute(proc: UnsureIdentity, params?: Parameter[])
-  static execute(proc: UnsureIdentity, params?: UnsureExpression[] | Parameter[]) {
+  static execute(proc: UnsureIdentifier, params?: UnsureExpression[])
+  static execute(proc: UnsureIdentifier, params?: Parameter[])
+  static execute(proc: UnsureIdentifier, params?: UnsureExpression[] | Parameter[]) {
     return new Execute(proc, params)
   }
 
@@ -1323,9 +1325,9 @@ export abstract class Statement extends AST {
    * @param proc 存储过程
    * @param params 参数
    */
-  static exec(proc: UnsureIdentity, params: UnsureExpression[])
-  static exec(proc: UnsureIdentity, params: Parameter[])
-  static exec(proc: UnsureIdentity, params: UnsureExpression[] | Parameter[]) {
+  static exec(proc: UnsureIdentifier, params: UnsureExpression[])
+  static exec(proc: UnsureIdentifier, params: Parameter[])
+  static exec(proc: UnsureIdentifier, params: UnsureExpression[] | Parameter[]) {
     return new Execute(proc, params)
   }
 
@@ -1787,7 +1789,7 @@ export class Union extends AST {
 }
 
 // export interface SelectOptions {
-//   from?: UnsureIdentity[],
+//   from?: UnsureIdentifier[],
 //   top?: number,
 //   offset?: number,
 //   limit?: number,
@@ -1814,7 +1816,7 @@ abstract class Fromable extends Statement {
    */
   from(...tables) {
     // assert(!this.$from, 'from已经声明')
-    this.tables = tables.map(table => ensureIdentity(table))
+    this.tables = tables.map(table => ensureIdentifier(table))
     return this
   }
 
@@ -1825,7 +1827,7 @@ abstract class Fromable extends Statement {
    * @param left
    * @memberof Select
    */
-  join(table: UnsureIdentity, on: Condition, left = false) {
+  join(table: UnsureIdentifier, on: Condition, left = false) {
     assert(this.tables, 'join must after from clause')
     if (!this.joins) {
       this.joins = []
@@ -1841,7 +1843,7 @@ abstract class Fromable extends Statement {
    * @param table
    * @param on
    */
-  leftJoin(table: UnsureIdentity, on: Condition) {
+  leftJoin(table: UnsureIdentifier, on: Condition) {
     return this.join(table, on, true)
   }
 
@@ -2014,7 +2016,7 @@ export class Select extends Fromable {
    * @param alias
    */
   as(alias) {
-    return new Alias(this.quoted(), alias)
+    return makeProxiedIdentifier(new Alias(this.quoted(), alias))
   }
 }
 
@@ -2030,10 +2032,10 @@ export class Insert extends Statement {
   /**
    * 构造函数
    */
-  constructor(table: UnsureIdentity, fields?: UnsureIdentity[]) {
+  constructor(table: UnsureIdentifier, fields?: UnsureIdentifier[]) {
     super(SQL_SYMBOLE.INSERT)
     assert(!this.table, 'The into clause is declared')
-    this.table = ensureIdentity(table)
+    this.table = ensureIdentifier(table)
     if (fields) {
       this._fields(...fields)
     }
@@ -2045,12 +2047,12 @@ export class Insert extends Statement {
    * 字段列表
    * @param  {string[]|Field[]} fields
    */
-  private _fields(...fields: UnsureIdentity[]) {
+  private _fields(...fields: UnsureIdentifier[]) {
     assert(fields.length > 0, 'fields not allow empty.')
     /**
      * 字段列表
      */
-    this.fields = fields.map(p => ensureIdentity(p))
+    this.fields = fields.map(p => ensureIdentifier(p))
     return this
   }
 
@@ -2101,7 +2103,7 @@ export class Insert extends Statement {
 }
 
 // export interface UpdateOptions {
-//   table?: UnsureIdentity
+//   table?: UnsureIdentifier
 //   sets?: object | Assignment[]
 //   joins?: Join[]
 //   where?: Conditions
@@ -2118,9 +2120,9 @@ export class Update extends Fromable {
   table: Identifier
   sets: Assignment[]
 
-  constructor(table: UnsureIdentity /*options?: UpdateOptions*/) {
+  constructor(table: UnsureIdentifier /*options?: UpdateOptions*/) {
     super(SQL_SYMBOLE.UPDATE)
-    this.table = ensureIdentity(table)
+    this.table = ensureIdentifier(table)
     // if (options?.table) this.from(options.table)
     // if (options?.sets) this.set(options.sets)
     // if (options?.where) this.where(options.where)
@@ -2149,7 +2151,7 @@ export class Update extends Fromable {
 }
 
 // export interface DeleteOptions {
-//   table?: UnsureIdentity
+//   table?: UnsureIdentifier
 //   sets?: object | Assignment[]
 //   joins?: Join[]
 //   where?: Conditions
@@ -2158,9 +2160,9 @@ export class Update extends Fromable {
 export class Delete extends Fromable {
   table: Identifier
 
-  constructor(table: UnsureIdentity /*options?: DeleteOptions*/) {
+  constructor(table: UnsureIdentifier /*options?: DeleteOptions*/) {
     super(SQL_SYMBOLE.DELETE)
-    this.table = ensureIdentity(table)
+    this.table = ensureIdentifier(table)
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
     // if (options?.where) this.where(options.where)
@@ -2174,12 +2176,12 @@ export class Delete extends Fromable {
 export class Execute extends Statement {
   proc: Identifier
   args: List
-  constructor(proc: UnsureIdentity, args?: UnsureExpression[])
-  constructor(proc: UnsureIdentity, args?: Parameter[])
-  constructor(proc: UnsureIdentity, args?: UnsureExpression[] | Parameter[])
-  constructor(proc: UnsureIdentity, args?: UnsureExpression[] | Parameter[]) {
+  constructor(proc: UnsureIdentifier, args?: UnsureExpression[])
+  constructor(proc: UnsureIdentifier, args?: Parameter[])
+  constructor(proc: UnsureIdentifier, args?: UnsureExpression[] | Parameter[])
+  constructor(proc: UnsureIdentifier, args?: UnsureExpression[] | Parameter[]) {
     super(SQL_SYMBOLE.EXECUTE)
-    this.proc = ensureIdentity(proc)
+    this.proc = ensureIdentifier(proc)
     if (!args || args.length === 0) {
       this.args
       return

@@ -9,7 +9,8 @@ import {
   AST,
   Identifier,
   JsConstant,
-  List
+  List,
+  ProxiedIdentifier
 } from './ast'
 
 /**
@@ -33,7 +34,7 @@ export function ensureConstant(expr: UnsureExpression): Expression {
   return expr
 }
 
-export function ensureIdentity(expr: string | Identifier): Identifier {
+export function ensureIdentifier(expr: string | Identifier): Identifier {
   if (_.isString(expr)) {
     return Identifier.normal(expr)
   }
@@ -82,7 +83,7 @@ export function ensureCondition(condition: UnsureConditions): Condition {
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxyIdentity(identifier: Identifier): Identifier {
+export function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier {
   return new Proxy(identifier, {
     get(target, prop) {
       if (Reflect.has(target, prop)) {
@@ -96,5 +97,5 @@ export function makeProxyIdentity(identifier: Identifier): Identifier {
         return identifier.dot(prop)
       }
     }
-  })
+  }) as ProxiedIdentifier
 }

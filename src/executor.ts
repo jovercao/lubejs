@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentity, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
 import { Compiler } from './compiler'
 
 export interface QueryResult {
@@ -57,13 +57,13 @@ interface IExecuotor {
    * @param {array?} fields 字段列表，可空
    * @param {*} rows 可接受二维数组/对象，或者单行数组
    */
-  insert(table: UnsureIdentity, select: Select): Promise<number>
-  insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select): Promise<number>
-  insert(table: UnsureIdentity, rows: KeyValueObject[]): Promise<number>
-  insert(table: UnsureIdentity, row: KeyValueObject): Promise<number>
-  insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][]): Promise<number>
+  insert(table: UnsureIdentifier, select: Select): Promise<number>
+  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
+  insert(table: UnsureIdentifier, rows: KeyValueObject[]): Promise<number>
+  insert(table: UnsureIdentifier, row: KeyValueObject): Promise<number>
+  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
 
-  find(table: UnsureIdentity, where: Condition, fields?: string[]): Promise<object>
+  find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>
 
   /**
    * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
@@ -71,14 +71,14 @@ interface IExecuotor {
    * @param where
    * @param options
    */
-  select(table: UnsureIdentity, options?: SelectOptions): Promise<object>
+  select(table: UnsureIdentifier, options?: SelectOptions): Promise<object>
 
-  update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions): Promise<number>
-  update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
-  update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>
 
-  execute(spname: UnsureIdentity, params: UnsureExpression[]): Promise<number>
-  execute(spname: UnsureIdentity, params: Parameter[]): Promise<number>
+  execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>
+  execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>
 
   /**
    * 执行存储过程
@@ -190,13 +190,13 @@ export class Executor extends EventEmitter implements IExecuotor {
    * @param {array?} fields 字段列表，可空
    * @param {*} rows 可接受二维数组/对象，或者单行数组
    */
-  async insert(table: UnsureIdentity, select: Select)
-  async insert(table: UnsureIdentity, fields: UnsureIdentity[], select: Select)
-  async insert(table: UnsureIdentity, rows: KeyValueObject[])
-  async insert(table: UnsureIdentity, row: KeyValueObject)
-  async insert(table: UnsureIdentity, fields: UnsureIdentity[], rows: UnsureExpression[][])
-  async insert(table: UnsureIdentity, ...args) {
-    let fields: UnsureIdentity[], rows
+  async insert(table: UnsureIdentifier, select: Select)
+  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select)
+  async insert(table: UnsureIdentifier, rows: KeyValueObject[])
+  async insert(table: UnsureIdentifier, row: KeyValueObject)
+  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][])
+  async insert(table: UnsureIdentifier, ...args) {
+    let fields: UnsureIdentifier[], rows
     if (args.length > 2) {
       fields = args[0]
       rows = args[1]
@@ -219,7 +219,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async find(table: UnsureIdentity, where: Condition, fields?: string[]) {
+  async find(table: UnsureIdentifier, where: Condition, fields?: string[]) {
     let columns: (UnsureExpression)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
@@ -240,7 +240,7 @@ export class Executor extends EventEmitter implements IExecuotor {
    * @param where
    * @param options
    */
-  async select(table: UnsureIdentity, options: SelectOptions = {}) {
+  async select(table: UnsureIdentifier, options: SelectOptions = {}) {
     const { where, sorts, offset, limit, fields } = options
     let columns: UnsureExpression[]
     if (fields) {
@@ -269,9 +269,9 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rows
   }
 
-  async update(table: UnsureIdentity, sets: Assignment[], where?: UnsureConditions)
-  async update(table: UnsureIdentity, sets: KeyValueObject, where?: UnsureConditions)
-  async update(table: UnsureIdentity, sets: KeyValueObject | Assignment[], where?: UnsureConditions) {
+  async update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions)
+  async update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions)
+  async update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions) {
     const sql = update(table)
     if (_.isArray(sets)) {
       sql.set(...sets)
@@ -283,16 +283,16 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async delete(table: UnsureIdentity, where?: UnsureConditions) {
+  async delete(table: UnsureIdentifier, where?: UnsureConditions) {
     const sql = del(table)
     if (where) sql.where(where)
     const res = await this.query(sql)
     return res.rowsAffected
   }
 
-  async execute(spname: UnsureIdentity, params: UnsureExpression[])
-  async execute(spname: UnsureIdentity, params: Parameter[])
-  async execute(spname: UnsureIdentity, params: UnsureExpression[] | Parameter[]) {
+  async execute(spname: UnsureIdentifier, params: UnsureExpression[])
+  async execute(spname: UnsureIdentifier, params: Parameter[])
+  async execute(spname: UnsureIdentifier, params: UnsureExpression[] | Parameter[]) {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res
