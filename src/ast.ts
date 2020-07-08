@@ -9,7 +9,8 @@ import {
   ensureCondition,
   ensureIdentifier,
   makeProxiedIdentifier,
-  ensureGroupValues
+  ensureGroupValues,
+  isJsConstant
   // assertType,
   // assertValue
 } from './util'
@@ -28,7 +29,7 @@ import {
 /**
  * JS常量类型
  */
-export type JsConstant = String | Date | Boolean | null | undefined | Number | Buffer;
+export type JsConstant = string | Date | boolean | null | number | Buffer | bigint;
 
 /**
  * 未经确认的表达式
@@ -39,10 +40,10 @@ export type UnsureExpression = Expression | JsConstant
  * 简化后的whereObject查询条件
  */
 export interface WhereObject {
-  [field: string]: JsConstant | JsConstant[]
+  [field: string]: Expression | JsConstant | JsConstant[]
 }
 
-export type UnsureConditions = Condition | WhereObject
+export type UnsureCondition = Condition | WhereObject
 
 export type SelectExpression = Bracket<Select>
 
@@ -999,7 +1000,7 @@ export class BinaryLogicCondition extends Condition implements IBinary {
   /**
    * 创建二元逻辑查询条件实例
    */
-  constructor(operator: LOGIC_OPERATOR, left: UnsureConditions, right: UnsureConditions) {
+  constructor(operator: LOGIC_OPERATOR, left: UnsureCondition, right: UnsureCondition) {
     super(SQL_SYMBOLE.BINARY)
     this.operator = operator
     /**
@@ -1357,7 +1358,7 @@ export abstract class Statement extends AST {
     return new When(expr, value)
   }
 
-  static case(expr: UnsureExpression) {
+  static case(expr?: UnsureExpression) {
     return new Case(expr)
   }
 }
@@ -1366,19 +1367,19 @@ export abstract class Statement extends AST {
  * When语句
  */
 export class When extends AST {
-  expr: Expression
+  expr: Expression | Condition
   value: Expression
 
-  constructor(expr: UnsureExpression, value?: UnsureExpression) {
+  constructor(expr: UnsureExpression | UnsureCondition, then: UnsureExpression) {
     super(SQL_SYMBOLE.WHEN)
-    this.expr = ensureConstant(expr)
-    if (value) {
-      this.value = ensureConstant(value)
+    if (expr instanceof Expression || expr instanceof Condition) {
+      this.expr = expr
+    } if (isJsConstant(expr)) {
+      this.expr = ensureConstant(expr as JsConstant)
+    } else {
+      this.expr = ensureCondition(expr as WhereObject)
     }
-  }
-
-  then(value: UnsureExpression) {
-    this.value = ensureConstant(value)
+    this.value = ensureConstant(then)
   }
 }
 
@@ -1391,7 +1392,7 @@ export class Case extends Expression {
     return false
   }
 
-  expr: Expression
+  expr: Expression | Condition
   whens: When[]
   defaults?: Expression
 
@@ -1399,9 +1400,11 @@ export class Case extends Expression {
    *
    * @param expr
    */
-  constructor(expr: UnsureExpression) {
+  constructor(expr?: UnsureExpression) {
     super(SQL_SYMBOLE.CASE)
-    this.expr = ensureConstant(expr)
+    if (expr !== undefined) {
+      this.expr = ensureConstant(expr)
+    }
     /**
      * @type {When[]}
      */
@@ -1422,9 +1425,9 @@ export class Case extends Expression {
    * @param expr
    * @param then
    */
-  when(expr: UnsureExpression, then): this {
+  when(expr: UnsureExpression | UnsureCondition, then): this {
     this.whens.push(
-      new When(ensureConstant(expr), then)
+      new When(expr, then)
     )
     return this
   }
@@ -1665,7 +1668,7 @@ export class Bracket<T extends AST> extends Expression {
 export class QuotedCondition extends Condition implements ICondition {
   context: Condition
 
-  constructor(conditions: UnsureConditions) {
+  constructor(conditions: UnsureCondition) {
     super(SQL_SYMBOLE.QUOTED_CONDITION)
     this.context = ensureCondition(conditions)
   }
@@ -1851,7 +1854,7 @@ abstract class Fromable extends Statement {
    * where查询条件
    * @param condition
    */
-  where(condition: UnsureConditions) {
+  where(condition: UnsureCondition) {
     assert(!this.filters, 'where is declared')
     if (_.isPlainObject(condition)) {
       condition = ensureCondition(condition)
@@ -1886,10 +1889,9 @@ export class Select extends Fromable {
   havings?: Condition
   unions?: Union
 
-  constructor(columns: object)
+  constructor(columns?: ValuesObject)
   constructor(...columns: UnsureExpression[])
-  constructor(...columns: (object | UnsureConditions)[])
-  constructor(...columns: (object | UnsureConditions)[]/*options?: SelectOptions*/) {
+  constructor(...columns: (ValuesObject | UnsureExpression)[]/*options?: SelectOptions*/) {
     super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]

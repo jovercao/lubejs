@@ -1,7 +1,7 @@
 import * as _ from 'lodash'
 import {
   Condition,
-  UnsureConditions,
+  UnsureCondition,
   UnsureExpression,
   UnsureGroupValues,
   Bracket,
@@ -53,7 +53,7 @@ export function ensureGroupValues(values: UnsureGroupValues): List {
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition(condition: UnsureConditions): Condition {
+export function ensureCondition(condition: UnsureCondition): Condition {
   if (condition instanceof Condition) return condition
   assert(_.isPlainObject(condition), 'condition must typeof `Condition` or `plain object`')
   const compares = Object.entries(condition).map(([key, value]) => {
@@ -98,4 +98,10 @@ export function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier
       }
     }
   }) as ProxiedIdentifier
+}
+
+export function isJsConstant(value: any): value is JsConstant {
+  return _.isString(value) || _.isBoolean(value) || typeof value === 'bigint' ||
+    _.isNumber(value) || _.isNull(value) ||
+    _.isDate(value) || _.isBuffer(value)
 }

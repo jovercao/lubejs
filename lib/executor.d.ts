@@ -1,9 +1,9 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { Parameter, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject } from './ast';
+import { Parameter, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject } from './ast';
 import { Compiler } from './compiler';
 export interface QueryResult {
-    rows?: object[];
+    rows?: any[];
     output?: {
         [key: string]: JsConstant;
     };
@@ -14,7 +14,7 @@ export interface QueryHandler {
     (sql: string, params: Parameter[]): Promise<QueryResult>;
 }
 export interface SelectOptions {
-    where?: UnsureConditions;
+    where?: UnsureCondition;
     top?: number;
     offset?: number;
     limit?: number;
@@ -54,9 +54,9 @@ interface IExecuotor {
      * @param options
      */
     select(table: UnsureIdentifier, options?: SelectOptions): Promise<object>;
-    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): Promise<number>;
-    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): Promise<number>;
-    update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>;
+    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>;
+    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): Promise<number>;
+    update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number>;
     execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>;
     execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>;
     /**
@@ -100,17 +100,17 @@ export declare class Executor extends EventEmitter implements IExecuotor {
     insert(table: UnsureIdentifier, rows: KeyValueObject[]): any;
     insert(table: UnsureIdentifier, row: KeyValueObject): any;
     insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): any;
-    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>;
+    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<any>;
     /**
      * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
      * @param table
      * @param where
      * @param options
      */
-    select(table: UnsureIdentifier, options?: SelectOptions): Promise<object[]>;
-    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): any;
-    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): any;
-    delete(table: UnsureIdentifier, where?: UnsureConditions): Promise<number>;
+    select(table: UnsureIdentifier, options?: SelectOptions): Promise<any[]>;
+    update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): any;
+    update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): any;
+    delete(table: UnsureIdentifier, where?: UnsureCondition): Promise<number>;
     execute(spname: UnsureIdentifier, params: UnsureExpression[]): any;
     execute(spname: UnsureIdentifier, params: Parameter[]): any;
 }

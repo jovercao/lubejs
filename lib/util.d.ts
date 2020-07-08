@@ -1,4 +1,4 @@
-import { Condition, UnsureConditions, UnsureExpression, UnsureGroupValues, Expression, Identifier, List, ProxiedIdentifier } from './ast';
+import { Condition, UnsureCondition, UnsureExpression, UnsureGroupValues, Expression, Identifier, JsConstant, List, ProxiedIdentifier } from './ast';
 /**
  * 断言
  * @param except 预期结果
@@ -16,8 +16,9 @@ export declare function ensureGroupValues(values: UnsureGroupValues): List;
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export declare function ensureCondition(condition: UnsureConditions): Condition;
+export declare function ensureCondition(condition: UnsureCondition): Condition;
 /**
  * 将制作table的代理，用于生成字段
  */
 export declare function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier;
+export declare function isJsConstant(value: any): value is JsConstant;

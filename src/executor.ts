@@ -2,11 +2,11 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureConditions, SortObject, ValuesObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject } from './ast'
 import { Compiler } from './compiler'
 
 export interface QueryResult {
-  rows?: object[]
+  rows?: any[]
   output?: {
     [key:string]: JsConstant
   }
@@ -25,7 +25,7 @@ export interface QueryHandler {
 }
 
 export interface SelectOptions {
-  where?: UnsureConditions,
+  where?: UnsureCondition,
   top?: number,
   offset?: number,
   limit?: number,
@@ -73,9 +73,9 @@ interface IExecuotor {
    */
   select(table: UnsureIdentifier, options?: SelectOptions): Promise<object>
 
-  update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions): Promise<number>
-  update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions): Promise<number>
-  update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions): Promise<number>
+  update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>
+  update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): Promise<number>
+  update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number>
 
   execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>
   execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>
@@ -269,9 +269,9 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rows
   }
 
-  async update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureConditions)
-  async update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureConditions)
-  async update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureConditions) {
+  async update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition)
+  async update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition)
+  async update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition) {
     const sql = update(table)
     if (_.isArray(sets)) {
       sql.set(...sets)
@@ -283,7 +283,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async delete(table: UnsureIdentifier, where?: UnsureConditions) {
+  async delete(table: UnsureIdentifier, where?: UnsureCondition) {
     const sql = del(table)
     if (where) sql.where(where)
     const res = await this.query(sql)

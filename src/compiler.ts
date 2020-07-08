@@ -151,7 +151,7 @@ export class Compiler {
 
   protected compileConstant(constant: Constant, params?: Set<Parameter>, parent?: AST) {
     const value = constant.value
-    if (value === null || value === undefined) {
+    if (value === null) {
       return 'NULL'
     }
 
@@ -176,6 +176,7 @@ export class Compiler {
       return '0x' + Buffer.from(value).toString('hex')
     }
     console.debug(value)
+    // @ts-ignore
     throw new Error('unsupport constant value type:' + value.toString())
   }
 
@@ -251,8 +252,8 @@ export class Compiler {
   protected compileExecute<T extends AST>(exec: Execute, params: Set<Parameter>, parent?: AST): string {
     const returnParam = Parameter.output(RETURN_VALUE_PARAMETER_NAME, Number)
     return 'EXECUTE ' + this.compileAST(returnParam, params, parent) +
-        ' = ' + this.compileAST(exec.proc, params, exec) + ' ' +
-        this.compileExecuteArgumentList(exec.args, params, exec)
+      ' = ' + this.compileAST(exec.proc, params, exec) + ' ' +
+      this.compileExecuteArgumentList(exec.args, params, exec)
   }
 
   protected compileBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>, parent?: AST): string {
@@ -290,7 +291,8 @@ export class Compiler {
   }
 
   protected compileCase(caseExpr: Case, params: Set<Parameter>, parent?: AST): string {
-    let fragment = 'CASE ' + this.compileAST(caseExpr.expr, params, parent)
+    let fragment = 'CASE'
+    if (caseExpr.expr) fragment += ' ' + this.compileAST(caseExpr.expr, params, parent)
     fragment += ' ' + caseExpr.whens.map(when => this.compileWhen(when, params, caseExpr))
     if (caseExpr.defaults) fragment += ' ELSE ' + this.compileAST(caseExpr.defaults, params, caseExpr)
     fragment += ' END'

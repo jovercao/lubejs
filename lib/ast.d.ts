@@ -3,7 +3,7 @@ import { COMPUTE_OPERATOR, PARAMETER_DIRECTION, SQL_SYMBOLE, COMPARE_OPERATOR, S
 /**
  * JS常量类型
  */
-export declare type JsConstant = String | Date | Boolean | null | undefined | Number | Buffer;
+export declare type JsConstant = string | Date | boolean | null | number | Buffer | bigint;
 /**
  * 未经确认的表达式
  */
@@ -12,9 +12,9 @@ export declare type UnsureExpression = Expression | JsConstant;
  * 简化后的whereObject查询条件
  */
 export interface WhereObject {
-    [field: string]: JsConstant | JsConstant[];
+    [field: string]: Expression | JsConstant | JsConstant[];
 }
-export declare type UnsureConditions = Condition | WhereObject;
+export declare type UnsureCondition = Condition | WhereObject;
 export declare type SelectExpression = Bracket<Select>;
 /**
  * SELECT查询表达式
@@ -510,7 +510,7 @@ export declare class BinaryLogicCondition extends Condition implements IBinary {
     /**
      * 创建二元逻辑查询条件实例
      */
-    constructor(operator: LOGIC_OPERATOR, left: UnsureConditions, right: UnsureConditions);
+    constructor(operator: LOGIC_OPERATOR, left: UnsureCondition, right: UnsureCondition);
 }
 /**
  * 一元逻辑查询条件
@@ -713,30 +713,29 @@ export declare abstract class Statement extends AST {
      * @param value
      */
     static when(expr: UnsureExpression, value?: UnsureExpression): When;
-    static case(expr: UnsureExpression): Case;
+    static case(expr?: UnsureExpression): Case;
 }
 /**
  * When语句
  */
 export declare class When extends AST {
-    expr: Expression;
+    expr: Expression | Condition;
     value: Expression;
-    constructor(expr: UnsureExpression, value?: UnsureExpression);
-    then(value: UnsureExpression): void;
+    constructor(expr: UnsureExpression | UnsureCondition, then: UnsureExpression);
 }
 /**
  * CASE表达式
  */
 export declare class Case extends Expression {
     get lvalue(): boolean;
-    expr: Expression;
+    expr: Expression | Condition;
     whens: When[];
     defaults?: Expression;
     /**
      *
      * @param expr
      */
-    constructor(expr: UnsureExpression);
+    constructor(expr?: UnsureExpression);
     /**
      * ELSE语句
      * @param defaults
@@ -747,7 +746,7 @@ export declare class Case extends Expression {
      * @param expr
      * @param then
      */
-    when(expr: UnsureExpression, then: any): this;
+    when(expr: UnsureExpression | UnsureCondition, then: any): this;
 }
 /**
  * 常量表达式
@@ -784,7 +783,7 @@ export declare class Bracket<T extends AST> extends Expression {
 }
 export declare class QuotedCondition extends Condition implements ICondition {
     context: Condition;
-    constructor(conditions: UnsureConditions);
+    constructor(conditions: UnsureCondition);
     /**
      * and连接
      * @param condition 下一个查询条件
@@ -896,7 +895,7 @@ declare abstract class Fromable extends Statement {
      * where查询条件
      * @param condition
      */
-    where(condition: UnsureConditions): this;
+    where(condition: UnsureCondition): this;
 }
 export declare class SortInfo extends AST {
     expr: Expression;
@@ -916,9 +915,8 @@ export declare class Select extends Fromable {
     groups?: Expression[];
     havings?: Condition;
     unions?: Union;
-    constructor(columns: object);
+    constructor(columns?: ValuesObject);
     constructor(...columns: UnsureExpression[]);
-    constructor(...columns: (object | UnsureConditions)[]);
     /**
      * 去除重复的
      */
