@@ -165,3 +165,4 @@ export * from './ast'
 
 export * from './compiler'
 
+export * from './executor'

@@ -34,12 +34,13 @@ export interface SelectOptions {
   sorts?: SortObject | (SortInfo | UnsureExpression)[]
 }
 
-interface IExecuotor {
+export interface IExecuotor {
 
   doQuery: QueryHandler
 
   query(sql: string, params: Parameter[]): Promise<QueryResult>
   query(sql: string, params: Object): Promise<QueryResult>
+  query(strs: TemplateStringsArray, ...params)
   query(sql: Statement | Document): Promise<QueryResult>
 
   /**
@@ -63,7 +64,7 @@ interface IExecuotor {
   insert(table: UnsureIdentifier, row: KeyValueObject): Promise<number>
   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
 
-  find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>
+  find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<object>
 
   /**
    * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
@@ -165,7 +166,7 @@ export class Executor extends EventEmitter implements IExecuotor {
   async query(sql: string, params: Parameter[]): Promise<QueryResult>
   async query(sql: string, params: Object): Promise<QueryResult>
   async query(sql: Statement | Document): Promise<QueryResult>
-  async query(sql: string[], ...params: any[]): Promise<QueryResult>
+  async query(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult>
   async query(...args) {
     return this._internalQuery(...args)
   }
@@ -219,7 +220,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async find(table: UnsureIdentifier, where: Condition, fields?: string[]) {
+  async find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]) {
     let columns: (UnsureExpression)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
