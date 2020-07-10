@@ -58,6 +58,9 @@ export function ensureCondition(condition: UnsureCondition): Condition {
   assert(_.isPlainObject(condition), 'condition must typeof `Condition` or `plain object`')
   const compares = Object.entries(condition).map(([key, value]) => {
     const field = Expression.identifier(key)
+    if (_.isNull(value)) {
+      return Condition.isNull(field)
+    }
     if (_.isArray(value)) {
       return Condition.in(field, value)
     }

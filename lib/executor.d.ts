@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from 'events';
-import { Parameter, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject } from './ast';
+import { Parameter, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject } from './ast';
 import { Compiler } from './compiler';
 export interface QueryResult {
     rows?: any[];
@@ -22,10 +22,11 @@ export interface SelectOptions {
     fields?: string[];
     sorts?: SortObject | (SortInfo | UnsureExpression)[];
 }
-interface IExecuotor {
+export interface IExecuotor {
     doQuery: QueryHandler;
     query(sql: string, params: Parameter[]): Promise<QueryResult>;
     query(sql: string, params: Object): Promise<QueryResult>;
+    query(strs: TemplateStringsArray, ...params: any[]): any;
     query(sql: Statement | Document): Promise<QueryResult>;
     /**
      * 执行一个查询并获取返回的第一个标量值
@@ -46,7 +47,7 @@ interface IExecuotor {
     insert(table: UnsureIdentifier, rows: KeyValueObject[]): Promise<number>;
     insert(table: UnsureIdentifier, row: KeyValueObject): Promise<number>;
     insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>;
-    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<object>;
+    find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<object>;
     /**
      * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
      * @param table
@@ -80,7 +81,7 @@ export declare class Executor extends EventEmitter implements IExecuotor {
     query(sql: string, params: Parameter[]): Promise<QueryResult>;
     query(sql: string, params: Object): Promise<QueryResult>;
     query(sql: Statement | Document): Promise<QueryResult>;
-    query(sql: string[], ...params: any[]): Promise<QueryResult>;
+    query(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult>;
     /**
      * 执行一个查询并获取返回的第一个标量值
      * @param sql
@@ -100,7 +101,7 @@ export declare class Executor extends EventEmitter implements IExecuotor {
     insert(table: UnsureIdentifier, rows: KeyValueObject[]): any;
     insert(table: UnsureIdentifier, row: KeyValueObject): any;
     insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): any;
-    find(table: UnsureIdentifier, where: Condition, fields?: string[]): Promise<any>;
+    find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<any>;
     /**
      * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
      * @param table
@@ -114,4 +115,3 @@ export declare class Executor extends EventEmitter implements IExecuotor {
     execute(spname: UnsureIdentifier, params: UnsureExpression[]): any;
     execute(spname: UnsureIdentifier, params: Parameter[]): any;
 }
-export {};
