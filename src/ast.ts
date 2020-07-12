@@ -2118,6 +2118,10 @@ export interface KeyValueObject {
 export type ValuesObject = KeyValueObject
 export type AssignObject = KeyValueObject
 
+export interface ResultObject {
+  [field: string]: JsConstant
+}
+
 export class Update extends Fromable {
   table: Identifier
   sets: Assignment[]

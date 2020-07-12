@@ -2,11 +2,11 @@ import * as _ from 'lodash'
 import { assert } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject } from './ast'
+import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject, ResultObject } from './ast'
 import { Compiler } from './compiler'
 
-export interface QueryResult {
-  rows?: any[]
+export interface QueryResult<T extends ResultObject = ResultObject> {
+  rows?: T[]
   output?: {
     [key:string]: JsConstant
   }
@@ -20,76 +20,85 @@ export interface QueryResult {
 //    direction?: ParameterDirection
 // }
 
-export interface QueryHandler {
-  (sql: string, params: Parameter[]): Promise<QueryResult>
+type FilterValue<T> = {
+  [TKey in keyof T]: T[TKey] extends JsConstant ? T[TKey] : never
 }
 
-export interface SelectOptions {
+
+type FilterKey<T> = {
+  [TKey in keyof T]: TKey extends string ? T[TKey] : never
+}
+
+export interface QueryHandler<T extends ResultObject = ResultObject> {
+  (sql: string, params: Parameter[]): Promise<QueryResult<T>>
+}
+
+export interface SelectOptions<TResult extends ResultObject = ResultObject> {
   where?: UnsureCondition,
   top?: number,
   offset?: number,
   limit?: number,
   distinct?: boolean,
-  fields?: string[],
+  fields?: (keyof FilterKey<TResult>)[],
   sorts?: SortObject | (SortInfo | UnsureExpression)[]
 }
 
-export interface IExecuotor {
+// export interface IExecuotor {
 
-  doQuery: QueryHandler
+//   doQuery: QueryHandler
 
-  query(sql: string, params: Parameter[]): Promise<QueryResult>
-  query(sql: string, params: Object): Promise<QueryResult>
-  query(strs: TemplateStringsArray, ...params)
-  query(sql: Statement | Document): Promise<QueryResult>
+//   query(sql: string, params: Parameter[]): Promise<QueryResult>
+//   query(sql: string, params: Object): Promise<QueryResult>
+//   query(strs: TemplateStringsArray, ...params)
+//   query(sql: Statement | Document): Promise<QueryResult>
 
-  /**
-   * 执行一个查询并获取返回的第一个标量值
-   * @param sql
-   */
-  queryScalar(sql: string, params: Parameter[]): Promise<JsConstant>
-  queryScalar(sql: string, params: Object): Promise<JsConstant>
-  queryScalar(sql: Statement | Document): Promise<JsConstant>
-  queryScalar(sql: string[], ...params: any[]): Promise<JsConstant>
+//   /**
+//    * 执行一个查询并获取返回的第一个标量值
+//    * @param sql
+//    */
+//   queryScalar(sql: string, params: Parameter[]): Promise<JsConstant>
+//   queryScalar(sql: string, params: Object): Promise<JsConstant>
+//   queryScalar(sql: Statement | Document): Promise<JsConstant>
+//   queryScalar(sql: string[], ...params: any[]): Promise<JsConstant>
 
-  /**
-   * 插入数据的快捷操作
-   * @param {*} table
-   * @param {array?} fields 字段列表，可空
-   * @param {*} rows 可接受二维数组/对象，或者单行数组
-   */
-  insert(table: UnsureIdentifier, select: Select): Promise<number>
-  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
-  insert(table: UnsureIdentifier, rows: KeyValueObject[]): Promise<number>
-  insert(table: UnsureIdentifier, row: KeyValueObject): Promise<number>
-  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
+//   /**
+//    * 插入数据的快捷操作
+//    * @param {*} table
+//    * @param {array?} fields 字段列表，可空
+//    * @param {*} rows 可接受二维数组/对象，或者单行数组
+//    */
+//   insert(table: UnsureIdentifier, select: Select): Promise<number>
+//   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
+//   insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, rows: T[]): Promise<number>
+//   insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, row: T): Promise<number>
+//   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
 
-  find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<object>
+//   find<T = any>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T>
 
-  /**
-   * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
-   * @param table
-   * @param where
-   * @param options
-   */
-  select(table: UnsureIdentifier, options?: SelectOptions): Promise<object>
+//   /**
+//    * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
+//    * @param table
+//    * @param where
+//    * @param options
+//    */
+//   select<T = any>(table: UnsureIdentifier, options?: SelectOptions): Promise<T[]>
 
-  update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>
-  update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): Promise<number>
-  update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number>
+//   update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>
+//   update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): Promise<number>
+//   update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number>
 
-  execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>
-  execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>
+//   execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>
+//   execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>
 
-  /**
-   * 执行存储过程
-   * @param spname 存储过程名称
-   * @param params
-   */
-  execute(spname, params): Promise<QueryResult>
-}
+//   /**
+//    * 执行存储过程
+//    * @param spname 存储过程名称
+//    * @param params
+//    */
+//   execute(spname, params): Promise<QueryResult>
+// }
 
-export class Executor extends EventEmitter implements IExecuotor {
+export class Executor extends EventEmitter {
   doQuery: QueryHandler
   protected parser: Compiler
 
@@ -163,10 +172,10 @@ export class Executor extends EventEmitter implements IExecuotor {
     }
   }
 
-  async query(sql: string, params: Parameter[]): Promise<QueryResult>
-  async query(sql: string, params: Object): Promise<QueryResult>
-  async query(sql: Statement | Document): Promise<QueryResult>
-  async query(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult>
+  async query<TResult extends ResultObject = never>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
+  async query<TResult extends ResultObject = never>(sql: string, params: Object): Promise<QueryResult<TResult>>
+  async query<TResult extends ResultObject = never>(sql: Statement | Document): Promise<QueryResult<TResult>>
+  async query<TResult extends ResultObject = never>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
   async query(...args) {
     return this._internalQuery(...args)
   }
@@ -175,28 +184,25 @@ export class Executor extends EventEmitter implements IExecuotor {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar(sql: string, params: Parameter[]): Promise<JsConstant>
-  async queryScalar(sql: string, params: Object): Promise<JsConstant>
-  async queryScalar(sql: Statement | Document): Promise<JsConstant>
-  async queryScalar(sql: string[], ...params: any[]): Promise<JsConstant>
+  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string, params: Parameter[]): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string, params: Object): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = JsConstant>(sql: Statement | Document): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string[], ...params: any[]): Promise<TResult>
   async queryScalar(...args) {
     const { rows: [row] } = await this._internalQuery(...args)
     assert(row, 'sql not return recordsets.')
     return row[Object.keys(row)[0]]
   }
 
+
   /**
    * 插入数据的快捷操作
-   * @param {*} table
-   * @param {array?} fields 字段列表，可空
-   * @param {*} rows 可接受二维数组/对象，或者单行数组
    */
-  async insert(table: UnsureIdentifier, select: Select)
-  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select)
-  async insert(table: UnsureIdentifier, rows: KeyValueObject[])
-  async insert(table: UnsureIdentifier, row: KeyValueObject)
-  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][])
-  async insert(table: UnsureIdentifier, ...args) {
+  insert(table: UnsureIdentifier, select: Select): Promise<number>
+  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
+  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
+  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, rows: T[]): Promise<number>
+  async insert(table: UnsureIdentifier, ...args): Promise<number> {
     let fields: UnsureIdentifier[], rows
     if (args.length > 2) {
       fields = args[0]
@@ -220,7 +226,7 @@ export class Executor extends EventEmitter implements IExecuotor {
     return res.rowsAffected
   }
 
-  async find(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]) {
+  async find<T extends ResultObject = ResultObject>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T> {
     let columns: (UnsureExpression)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
@@ -228,7 +234,7 @@ export class Executor extends EventEmitter implements IExecuotor {
       columns = [anyFields]
     }
     const sql = select(...columns).top(1).from(table).where(where)
-    const res = await this.query(sql)
+    const res = await this.query<T>(sql)
     if (res.rows && res.rows.length > 0) {
       return res.rows[0]
     }
@@ -241,11 +247,11 @@ export class Executor extends EventEmitter implements IExecuotor {
    * @param where
    * @param options
    */
-  async select(table: UnsureIdentifier, options: SelectOptions = {}) {
+  async select<TResult extends ResultObject = ResultObject>(table: UnsureIdentifier, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: UnsureExpression[]
     if (fields) {
-      columns = fields.map(fieldName => field(fieldName))
+      columns = fields.map(fieldName => field(fieldName as string))
     } else {
       columns = [anyFields]
     }
@@ -267,12 +273,12 @@ export class Executor extends EventEmitter implements IExecuotor {
       sql.limit(limit)
     }
     const res = await this.query(sql)
-    return res.rows
+    return res.rows as unknown as TResult[]
   }
 
-  async update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition)
-  async update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition)
-  async update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition) {
+  async update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>
+  async update<T extends ValuesObject = ValuesObject>(table: UnsureIdentifier, sets: T, where?: UnsureCondition): Promise<number>
+  async update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number> {
     const sql = update(table)
     if (_.isArray(sets)) {
       sql.set(...sets)

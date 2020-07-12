@@ -8,6 +8,9 @@
       "type": "node",
       "request": "launch",
       "name": "启动程序",
+      "skipFiles": [
+          "<node_internals>/**"
+      ],
       "runtimeExecutable": "npm",
       "restart": true,
       "protocol": "auto",
