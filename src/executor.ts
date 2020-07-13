@@ -1,7 +1,7 @@
 import * as _ from 'lodash'
-import { assert } from './util'
+import { assert, ensureIdentifier } from './util'
 import { EventEmitter } from 'events'
-import { insert, select, update, del, exec, input, field, anyFields } from './builder'
+import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
 import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject, ResultObject } from './ast'
 import { Compiler } from './compiler'
 
@@ -250,10 +250,11 @@ export class Executor extends EventEmitter {
   async select<TResult extends ResultObject = ResultObject>(table: UnsureIdentifier, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: UnsureExpression[]
+    const t = ensureIdentifier(table)
     if (fields) {
-      columns = fields.map(fieldName => field(fieldName as string))
+      columns = fields.map(expr => ensureIdentifier(expr as string))
     } else {
-      columns = [anyFields]
+      columns = [t.any()]
     }
     const sql = select(...columns).from(table)
     if (where) {

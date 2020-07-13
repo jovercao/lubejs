@@ -36,7 +36,11 @@ export function ensureConstant(expr: UnsureExpression): Expression {
 
 export function ensureIdentifier(expr: string | Identifier): Identifier {
   if (_.isString(expr)) {
-    return Identifier.normal(expr)
+    if (expr === '*') {
+      return Identifier.any()
+    } else {
+      return Identifier.normal(expr)
+    }
   }
   return expr
 }
