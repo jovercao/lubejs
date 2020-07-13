@@ -20,14 +20,6 @@ export interface QueryResult<T extends ResultObject = ResultObject> {
 //    direction?: ParameterDirection
 // }
 
-type FilterValue<T> = {
-  [TKey in keyof T]: T[TKey] extends JsConstant ? T[TKey] : never
-}
-
-
-type FilterKey<T> = {
-  [TKey in keyof T]: TKey extends string ? T[TKey] : never
-}
 
 export interface QueryHandler<T extends ResultObject = ResultObject> {
   (sql: string, params: Parameter[]): Promise<QueryResult<T>>
@@ -39,7 +31,7 @@ export interface SelectOptions<TResult extends ResultObject = ResultObject> {
   offset?: number,
   limit?: number,
   distinct?: boolean,
-  fields?: (keyof FilterKey<TResult>)[],
+  fields?: (keyof TResult)[],
   sorts?: SortObject | (SortInfo | UnsureExpression)[]
 }
 
