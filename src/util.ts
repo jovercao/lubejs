@@ -92,9 +92,9 @@ export function ensureCondition(condition: UnsureCondition): Condition {
  */
 export function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier {
   return new Proxy(identifier, {
-    get(target, prop) {
+    get(target, prop): any {
       if (Reflect.has(target, prop)) {
-        return target[prop]
+        return Reflect.get(target, prop)
       }
       if (_.isString(prop)) {
         // $开头，实为转义符，避免字段命名冲突，程序自动移除首个

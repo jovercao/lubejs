@@ -7,7 +7,7 @@ import {
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
   Variant, Join, IUnary, Execute,
-  IBinary, Union, List, SortInfo
+  IBinary, Union, List, SortInfo, UnaryLogic as UnaryLogic, UnaryCompare as UnaryCompare, UnaryCalculate, BinaryLogic as BinaryLogic, BinaryCompare, BinaryCalculate, ExistsCompare
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -225,10 +225,20 @@ export class Compiler {
         return this.compileInvoke(ast as Invoke, params, parent)
       case SQL_SYMBOLE.CASE:
         return this.compileCase(ast as Case, params, parent)
-      case SQL_SYMBOLE.BINARY:
-        return this.compileBinary(ast as unknown as IBinary, params, parent)
-      case SQL_SYMBOLE.UNARY:
-        return this.compileUnary(ast as unknown as IUnary, params, parent)
+      case SQL_SYMBOLE.BINARY_CALCULATE:
+        return this.compileBinaryCalculate(ast as BinaryCalculate, params, parent)
+      case SQL_SYMBOLE.BINARY_COMPARE:
+        return this.compileBinaryCompare(ast as BinaryCompare, params, parent)
+      case SQL_SYMBOLE.BINARY_LOGIC:
+        return this.compileBinaryLogic(ast as BinaryLogic, params, parent)
+      case SQL_SYMBOLE.EXISTS:
+        return this.compileExistsCompare(ast as ExistsCompare, params, parent)
+      case SQL_SYMBOLE.UNARY_COMPARE:
+        return this.compileUnaryCompare(ast as UnaryCompare, params, parent)
+      case SQL_SYMBOLE.UNARY_LOGIC:
+        return this.compileUnaryLogic(ast as UnaryLogic, params, parent)
+      case SQL_SYMBOLE.UNARY_CALCULATE:
+        return this.compileUnaryCalculate(ast as UnaryCalculate, params, parent)
       case SQL_SYMBOLE.PARAMETER:
         return this.compileParameter(ast as Parameter, params, parent)
       case SQL_SYMBOLE.VARAINT:
@@ -298,11 +308,31 @@ export class Compiler {
     return 'WHEN ' + this.compileAST(when.expr, params, when) + ' THEN ' + this.compileAST(when.value, params, when)
   }
 
-  protected compileBinary(expr: IBinary, params: Set<Parameter>, parent?: AST): string {
+  protected compileBinaryLogic(expr: BinaryLogic, params: Set<Parameter>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileUnary(expr: IUnary, params: Set<Parameter>, parent?: AST): string {
+  protected compileBinaryCompare(expr: BinaryCompare, params: Set<Parameter>, parent?: AST): string {
+    return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
+  }
+
+  protected compileBinaryCalculate(expr: BinaryCalculate, params: Set<Parameter>, parent?: AST): string {
+    return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
+  }
+
+  protected compileUnaryCompare(expr: UnaryCompare, params: Set<Parameter>, parent?: AST): string {
+    return this.compileAST(expr.next, params, expr) + ' ' + expr.operator
+  }
+
+  protected compileExistsCompare(expr: ExistsCompare, params: Set<Parameter>, parent?: AST): string {
+    return 'EXISTS' + this.compileAST(expr.expr, params, expr)
+  }
+
+  protected compileUnaryLogic(expr: UnaryLogic, params: Set<Parameter>, parent?: AST): string {
+    return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
+  }
+
+  protected compileUnaryCalculate(expr: UnaryCalculate, params: Set<Parameter>, parent?: AST): string {
     return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
   }
 
@@ -327,7 +357,7 @@ export class Compiler {
     return sql
   }
 
-  protected compileSelect(select: Select, params, parent?: AST): string {
+  protected compileSelect(select: Select, params: Set<Parameter>, parent?: AST): string {
     const { tables, top, joins, unions, columns, filters, sorts, groups, havings, offsets, limits, isDistinct } = select
     let sql = 'SELECT '
     if (isDistinct) {

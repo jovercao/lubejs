@@ -5,7 +5,7 @@ import { insert, select, update, del, table as sqlTable, exec, input, field, any
 import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject, ResultObject } from './ast'
 import { Compiler } from './compiler'
 
-export interface QueryResult<T extends ResultObject = ResultObject> {
+export interface QueryResult<T = any> {
   rows?: T[]
   output?: {
     [key:string]: JsConstant
@@ -21,11 +21,11 @@ export interface QueryResult<T extends ResultObject = ResultObject> {
 // }
 
 
-export interface QueryHandler<T extends ResultObject = ResultObject> {
+export interface QueryHandler<T = any> {
   (sql: string, params: Parameter[]): Promise<QueryResult<T>>
 }
 
-export interface SelectOptions<TResult extends ResultObject = ResultObject> {
+export interface SelectOptions<TResult = any> {
   where?: UnsureCondition,
   top?: number,
   offset?: number,
@@ -112,7 +112,7 @@ export class Executor extends EventEmitter {
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
   // async _internalQuery(sql: string, params: Object): Promise<QueryResult>
   // async _internalQuery(sql: string[], ...params: any[]): Promise<QueryResult>
-  async _internalQuery(...args) {
+  async _internalQuery(...args: any[]) {
     let sql: string, params: Parameter[]
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
@@ -164,11 +164,11 @@ export class Executor extends EventEmitter {
     }
   }
 
-  async query<TResult extends ResultObject = never>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
-  async query<TResult extends ResultObject = never>(sql: string, params: Object): Promise<QueryResult<TResult>>
-  async query<TResult extends ResultObject = never>(sql: Statement | Document): Promise<QueryResult<TResult>>
-  async query<TResult extends ResultObject = never>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
-  async query(...args) {
+  async query<TResult = any>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
+  async query<TResult = any>(sql: string, params: Object): Promise<QueryResult<TResult>>
+  async query<TResult = any>(sql: Statement | Document): Promise<QueryResult<TResult>>
+  async query<TResult = any>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
+  async query(...args: any[]) {
     return this._internalQuery(...args)
   }
 
@@ -176,11 +176,11 @@ export class Executor extends EventEmitter {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string, params: Parameter[]): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string, params: Object): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = JsConstant>(sql: Statement | Document): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = JsConstant>(sql: string[], ...params: any[]): Promise<TResult>
-  async queryScalar(...args) {
+  async queryScalar<TResult extends JsConstant = any>(sql: string, params: Parameter[]): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = any>(sql: string, params: Object): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = any>(sql: Statement | Document): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = any>(sql: string[], ...params: any[]): Promise<TResult>
+  async queryScalar(...args: any[]) {
     const { rows: [row] } = await this._internalQuery(...args)
     assert(row, 'sql not return recordsets.')
     return row[Object.keys(row)[0]]
@@ -190,11 +190,12 @@ export class Executor extends EventEmitter {
   /**
    * 插入数据的快捷操作
    */
+  insert(table: UnsureIdentifier, rows: UnsureExpression[][]): Promise<number>
   insert(table: UnsureIdentifier, select: Select): Promise<number>
   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
   insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, rows: T[]): Promise<number>
-  async insert(table: UnsureIdentifier, ...args): Promise<number> {
+  async insert(table: UnsureIdentifier, ...args: any[]): Promise<number> {
     let fields: UnsureIdentifier[], rows
     if (args.length > 2) {
       fields = args[0]
@@ -218,7 +219,7 @@ export class Executor extends EventEmitter {
     return res.rowsAffected
   }
 
-  async find<T extends ResultObject = ResultObject>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T> {
+  async find<T = any>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T> {
     let columns: (UnsureExpression)[]
     if (fields) {
       columns = fields.map(fieldName => field(fieldName))
@@ -239,7 +240,7 @@ export class Executor extends EventEmitter {
    * @param where
    * @param options
    */
-  async select<TResult extends ResultObject = ResultObject>(table: UnsureIdentifier, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
+  async select<TResult = any>(table: UnsureIdentifier, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: UnsureExpression[]
     const t = ensureIdentifier(table)
@@ -290,9 +291,9 @@ export class Executor extends EventEmitter {
     return res.rowsAffected
   }
 
-  async execute(spname: UnsureIdentifier, params: UnsureExpression[])
-  async execute(spname: UnsureIdentifier, params: Parameter[])
-  async execute(spname: UnsureIdentifier, params: UnsureExpression[] | Parameter[]) {
+  async execute<T = any>(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<QueryResult<T>>
+  async execute<T = any>(spname: UnsureIdentifier, params: Parameter[]): Promise<QueryResult<T>>
+  async execute<T = any>(spname: UnsureIdentifier, params: UnsureExpression[] | Parameter[]): Promise<QueryResult<T>> {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res

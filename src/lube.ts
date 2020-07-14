@@ -4,6 +4,7 @@ import { URL } from 'url'
 import * as _ from 'lodash'
 import { ISOLATION_LEVEL } from './constants'
 import { assert } from 'console'
+import { Parameter } from './ast'
 
 export type TransactionHandler = (executor: Executor, abort: () => Promise<void>) => Promise<any>
 
@@ -22,7 +23,7 @@ export interface ITransaction {
 export interface IDbProvider {
   ployfill?: CompileOptions
   compiler?: Compiler
-  query(sql, params): Promise<QueryResult>
+  query(sql: string, params: Parameter[]): Promise<QueryResult>
   beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction
   close(): Promise<void>
 }
@@ -50,7 +51,7 @@ export class Lube extends Executor {
    * @param {*} handler (exeutor, cancel) => false
    * @param {*} isolationLevel 事务隔离级别
    */
-  async trans(handler: TransactionHandler, isolationLevel) {
+  async trans(handler: TransactionHandler, isolationLevel: ISOLATION_LEVEL) {
     if (this.isTrans) {
       throw new Error('is in transaction now')
     }
@@ -113,7 +114,7 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
   if (typeof arg === 'string') {
     const url = new URL(arg)
     const params = url.searchParams
-    const options = {
+    const options: any = {
       poolMax: 100,
       // 最低保持0个连接
       poolMin: 0,
