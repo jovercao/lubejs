@@ -4,6 +4,8 @@ import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
 import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject, ResultObject } from './ast'
 import { Compiler } from './compiler'
+import { INSERT_MAXIMUM_ROWS } from './constants'
+import { Lube } from './lube'
 
 export interface QueryResult<T = any> {
   rows?: T[]
@@ -92,31 +94,31 @@ export interface SelectOptions<TResult = any> {
 
 export class Executor extends EventEmitter {
   doQuery: QueryHandler
-  protected parser: Compiler
+  readonly compiler: Compiler
 
   readonly isTrans: boolean
 
   /**
    * SQL执行器
    * @param {*} query 查询函数
-   * @param {*} parser 编译函数
+   * @param {*} compiler 编译函数
    */
-  protected constructor(query: QueryHandler, parser: Compiler, isTrans: boolean = false) {
+  protected constructor(query: QueryHandler, compiler: Compiler, isTrans: boolean = false) {
     super()
     // 是否启用严格模式，避免关键字等问题
     this.doQuery = query
-    this.parser = parser
+    this.compiler = compiler
     this.isTrans = isTrans
   }
 
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
   // async _internalQuery(sql: string, params: Object): Promise<QueryResult>
   // async _internalQuery(sql: string[], ...params: any[]): Promise<QueryResult>
-  async _internalQuery(...args: any[]) {
+  private async _internalQuery(...args: any[]) {
     let sql: string, params: Parameter[]
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
-      ({ sql, params } = this.parser.compile(args[0]))
+      ({ sql, params } = this.compiler.compile(args[0]))
       // eslint-disable-next-line brace-style
     }
     // 如果是模板字符串
@@ -128,7 +130,7 @@ export class Executor extends EventEmitter {
           const name = '__p__' + index
           const param = input(name, args[index + 1])
           params.push(param)
-          previous += this.parser.prepareParameterName(param)
+          previous += this.compiler.prepareParameterName(param)
         }
         return previous
       }, '')
@@ -164,6 +166,7 @@ export class Executor extends EventEmitter {
     }
   }
 
+  async query<TResult = any>(sql: string): Promise<QueryResult<TResult>>
   async query<TResult = any>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
   async query<TResult = any>(sql: string, params: Object): Promise<QueryResult<TResult>>
   async query<TResult = any>(sql: Statement | Document): Promise<QueryResult<TResult>>
@@ -176,8 +179,8 @@ export class Executor extends EventEmitter {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar<TResult extends JsConstant = any>(sql: string, params: Parameter[]): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = any>(sql: string, params: Object): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = any>(sql: string, params?: Parameter[]): Promise<TResult>
+  async queryScalar<TResult extends JsConstant = any>(sql: string, params?: Object): Promise<TResult>
   async queryScalar<TResult extends JsConstant = any>(sql: Statement | Document): Promise<TResult>
   async queryScalar<TResult extends JsConstant = any>(sql: string[], ...params: any[]): Promise<TResult>
   async queryScalar(...args: any[]) {
@@ -190,33 +193,51 @@ export class Executor extends EventEmitter {
   /**
    * 插入数据的快捷操作
    */
+  insert(table: UnsureIdentifier, row: UnsureExpression[]): Promise<number>
   insert(table: UnsureIdentifier, rows: UnsureExpression[][]): Promise<number>
   insert(table: UnsureIdentifier, select: Select): Promise<number>
   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
-  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, rows: T[]): Promise<number>
-  async insert(table: UnsureIdentifier, ...args: any[]): Promise<number> {
-    let fields: UnsureIdentifier[], rows
-    if (args.length > 2) {
-      fields = args[0]
-      rows = args[1]
+  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, items: T[]): Promise<number>
+  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, item: T): Promise<number>
+  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], items: T[]): Promise<number>
+  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], item: T): Promise<number>
+  async insert(table: UnsureIdentifier,
+    fieldsOrValues: Select | UnsureIdentifier[] | KeyValueObject | KeyValueObject[] | UnsureExpression[] | UnsureExpression[][],
+    valuesOrUndefined?: Select | KeyValueObject | KeyValueObject[] | UnsureExpression[] | UnsureExpression[][]): Promise<number> {
+    let fields: UnsureIdentifier[], values: any
+    if (valuesOrUndefined) {
+      fields = fieldsOrValues as UnsureIdentifier[]
+      values = valuesOrUndefined
     } else {
-      rows = args[0]
+      values = fieldsOrValues
     }
 
-    const sql = insert(table, fields)
-    // one row => rows
-    if (!_.isArray(rows) && !_.isArray(rows[0])) {
-      rows = [rows]
-    }
+    // // 确保装入数组里，以便 ...使用
+    // // UnsureExpression[] => UnsureExpression[][]
+    // // Object => Object[]
+    // if (!_.isArray(values) && !_.isArray(values[0])) {
+    //   values = [values]
+    // }
 
-    if (_.isArray(rows[0])) {
-      sql.values(...rows as UnsureExpression[][])
-    } else {
-      sql.values(...rows as KeyValueObject[])
+    const action = async function(executor: Executor): Promise<number> {
+      let i = 0
+      let rowsAffected = 0
+      while (true) {
+        if (i >= values.length) break;
+        const items = (values as any[]).slice(i, i + INSERT_MAXIMUM_ROWS)
+        i += INSERT_MAXIMUM_ROWS
+        const sql = insert(table, fields)
+        sql.values(...items)
+        const res = await executor.query(sql)
+        rowsAffected += res.rowsAffected
+      }
+      return rowsAffected
     }
-    const res = await this.query(sql)
-    return res.rowsAffected
+    if (this instanceof Lube && !this.isTrans) {
+      return await this.trans(action)
+    }
+    return await action(this)
   }
 
   async find<T = any>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T> {

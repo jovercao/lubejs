@@ -22,6 +22,7 @@ import {
   COMPARE_OPERATOR,
   SORT_DIRECTION,
   LOGIC_OPERATOR,
+  INSERT_MAXIMUM_ROWS
 } from './constants'
 
 // **********************************类型声明******************************************
@@ -1265,6 +1266,9 @@ export class Alias extends Identifier {
     super(name, null, SQL_SYMBOLE.ALIAS)
     assert(_.isString(name), 'The alias must type of string')
     // assertType(expr, [DbObject, Field, Constant, Select], 'alias must type of DbObject|Field|Constant|Bracket<Select>')
+    if (expr instanceof Alias) {
+      throw new Error('Aliases do not allow nesting')
+    }
     this.expr = ensureConstant(expr)
   }
 }
@@ -2082,43 +2086,82 @@ export class Insert extends Statement {
   values(select: Select): this
   values(row: ValuesObject): this
   values(row: UnsureExpression[]): this
+  values(rows: UnsureExpression[][]): this
+  values(rows: ValuesObject[]): this
   values(...rows: UnsureExpression[][]): this
   values(...rows: ValuesObject[]): this
   values(...args: any[]): this {
     assert(!this.rows, 'values is declared')
     assert(args.length > 0, 'rows must more than one elements.')
+    let items: ValuesObject[], rows: UnsureExpression[][]
     // 单个参数
     if (args.length === 1) {
-      // (select: Select)
-      if (args[0] instanceof Select) {
+      const values = args[0]
+      // values(Select)
+      if (values instanceof Select) {
         this.rows = args[0]
         return this
       }
-      // (row: UnsureExpressions[])
+      // values(UnsureExpression[] | ValuesObject[] | UnsureExpression[])
+      if (_.isArray(values)) {
+
+        // values(UnsureExpression[][])
+        if (_.isArray(values[0])) {
+          rows = args[0]
+        }
+        // values(UnsureExpression[])
+        else if (isJsConstant(values[0]) || values[0] === undefined || values[0] instanceof Expression) {
+          rows = [values]
+        }
+        // values(ValueObject[])
+        else if (_.isObject(values[0])){
+          items = values
+        } else {
+          throw new Error('invalid arguments！')
+        }
+      }
+      // values(ValueObject)
+      else if (_.isObject(values)) {
+        items = args
+      } else {
+        throw new Error('invalid arguments！')
+      }
+    } else {
       if (_.isArray(args[0])) {
-        this.rows = [List.values(...args[0])]
-        return this
+        // values(...UsureExpression[][])
+        rows = args
+      }
+      // values(...ValueObject[])
+      else if (_.isObject(args[0])) {
+        items = args
+      }
+      // invalid
+      else {
+        throw new Error('invalid arguments！')
       }
     }
 
-    // (rows: UnsureExpressions[][])
-    if (args.length > 1 && _.isArray(args[0])) {
-      this.rows = args.map(rowValues => List.values(...rowValues))
+    if ((rows || items).length > INSERT_MAXIMUM_ROWS) {
+      throw new Error('Insert statement values exceed the maximum rows.')
+    }
+
+    // values(rows: UnsureExpressions[][])
+    if (rows) {
+      this.rows = rows.map(row => List.values(...row))
       return this
     }
 
-    // (row: ValueObject)
-    // (rows: ValueObject[])
+    // values(items: ValueObject[])
     if (!this.fields) {
       const existsFields: { [key: string]: boolean } = {}
-      args.forEach(row => Object.keys(row).forEach(field => {
+      items.forEach(item => Object.keys(item).forEach(field => {
         if (!existsFields[field]) existsFields[field] = true
       }))
       this._fields(...Object.keys(existsFields))
     }
 
-    this.rows = (args).map(row => {
-      const rowValues = this.fields.map(field => (row as ValuesObject)[field.name])
+    this.rows = items.map(item => {
+      const rowValues = this.fields.map(field => (item as ValuesObject)[field.name])
       return List.values(...rowValues)
     })
     return this

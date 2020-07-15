@@ -129,3 +129,5 @@ export enum SQL_SYMBOLE {
   DECLARE = 'DECLARE',
   DOCUMENT = "DOCUMENT"
 }
+
+export const INSERT_MAXIMUM_ROWS = 1000

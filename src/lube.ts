@@ -51,7 +51,7 @@ export class Lube extends Executor {
    * @param {*} handler (exeutor, cancel) => false
    * @param {*} isolationLevel 事务隔离级别
    */
-  async trans(handler: TransactionHandler, isolationLevel: ISOLATION_LEVEL) {
+  async trans(handler: TransactionHandler, isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT) {
     if (this.isTrans) {
       throw new Error('is in transaction now')
     }
@@ -61,7 +61,7 @@ export class Lube extends Executor {
       canceled = true
       await rollback()
     }
-    const executor = new Executor(query, this.parser, true)
+    const executor = new Executor(query, this.compiler, true)
     executor.on('command', cmd => this.emit('command', cmd))
     executor.on('error', cmd => this.emit('error', cmd))
     try {

@@ -7,7 +7,7 @@ import {
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
   Variant, Join, IUnary, Execute,
-  IBinary, Union, List, SortInfo, UnaryLogic as UnaryLogic, UnaryCompare as UnaryCompare, UnaryCalculate, BinaryLogic as BinaryLogic, BinaryCompare, BinaryCalculate, ExistsCompare
+  Union, List, SortInfo, UnaryLogic as UnaryLogic, UnaryCompare as UnaryCompare, UnaryCalculate, BinaryLogic as BinaryLogic, BinaryCompare, BinaryCalculate, ExistsCompare
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -151,7 +151,8 @@ export class Compiler {
 
   protected compileConstant(constant: Constant, params?: Set<Parameter>, parent?: AST) {
     const value = constant.value
-    if (value === null) {
+    // 为方便JS，允许undefined进入，留给TS语法检查
+    if (value === null || value === undefined) {
       return 'NULL'
     }
 
@@ -177,7 +178,7 @@ export class Compiler {
     }
     console.debug(value)
     // @ts-ignore
-    throw new Error('unsupport constant value type:' + value.toString())
+    throw new Error('unsupport constant value type:' + typeof value)
   }
 
   public compile(ast: AST): Command {
@@ -404,8 +405,11 @@ export class Compiler {
     const { table, rows, fields } = insert
     let sql = 'INSERT INTO '
 
-    sql += this.compileAST(table, params, parent)
-
+    if (table instanceof Alias) {
+      sql += this.compileAST(table.expr, params, parent)
+    } else {
+      sql += this.compileAST(table, params, parent)
+    }
     if (fields) {
       sql += '(' + fields.map(field => this.compileAST(field, params, parent)).join(', ') + ')'
     }
