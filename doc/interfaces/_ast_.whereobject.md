@@ -10,6 +10,6 @@
 
 ## Indexable
 
-* \[ **field**: *string*\]: [JsConstant](../modules/_ast_.md#jsconstant) | [JsConstant](../modules/_ast_.md#jsconstant)[]
+* \[ **field**: *string*\]: [Expression](../classes/_ast_.expression.md) | [JsConstant](../modules/_ast_.md#jsconstant) | [JsConstant](../modules/_ast_.md#jsconstant)[]
 
 简化后的whereObject查询条件

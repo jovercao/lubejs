@@ -31,11 +31,11 @@
 
 ###  constructor
 
-\+ **new Join**(`table`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `on`: [Condition](_ast_.condition.md), `left`: boolean): *[Join](_ast_.join.md)*
+\+ **new Join**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `on`: [Condition](_ast_.condition.md), `left`: boolean): *[Join](_ast_.join.md)*
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1105
+Defined in src/ast.ts:1131
 
 创建一个表关联
 
@@ -43,7 +43,7 @@ Defined in src/ast.ts:1105
 
 Name | Type | Default | Description |
 ------ | ------ | ------ | ------ |
-`table` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) | - | - |
+`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - | - |
 `on` | [Condition](_ast_.condition.md) | - | 关联条件 |
 `left` | boolean | false | 是否左联接  |
 
@@ -55,7 +55,7 @@ Name | Type | Default | Description |
 
 • **left**: *boolean*
 
-Defined in src/ast.ts:1103
+Defined in src/ast.ts:1129
 
 ___
 
@@ -63,7 +63,7 @@ ___
 
 • **on**: *[Condition](_ast_.condition.md)*
 
-Defined in src/ast.ts:1105
+Defined in src/ast.ts:1131
 
 ___
 
@@ -71,7 +71,7 @@ ___
 
 • **table**: *[Identifier](_ast_.identifier.md)*
 
-Defined in src/ast.ts:1104
+Defined in src/ast.ts:1130
 
 ___
 
@@ -81,7 +81,7 @@ ___
 
 *Overrides [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:1102
+Defined in src/ast.ts:1128
 
 ## Methods
 
@@ -91,7 +91,7 @@ Defined in src/ast.ts:1102
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

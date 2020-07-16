@@ -1,14 +1,18 @@
-[lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [IsNullCondition](_ast_.isnullcondition.md)
+[lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [UnaryCompare](_ast_.unarycompare.md)
 
-# Class: IsNullCondition
+# Class: UnaryCompare
 
-IS NULL 运算
+一元比较条件
 
 ## Hierarchy
 
-  ↳ [UnaryCompare](_ast_.unarycompare.md)
+  ↳ [Condition](_ast_.condition.md)
 
-  ↳ **IsNullCondition**
+  ↳ **UnaryCompare**
+
+  ↳ [IsNullCondition](_ast_.isnullcondition.md)
+
+  ↳ [IsNotNullCondition](_ast_.isnotnullcondition.md)
 
 ## Implements
 
@@ -19,57 +23,60 @@ IS NULL 运算
 
 ### Constructors
 
-* [constructor](_ast_.isnullcondition.md#constructor)
+* [constructor](_ast_.unarycompare.md#constructor)
 
 ### Properties
 
-* [and](_ast_.isnullcondition.md#and)
-* [andGroup](_ast_.isnullcondition.md#andgroup)
-* [next](_ast_.isnullcondition.md#next)
-* [operator](_ast_.isnullcondition.md#operator)
-* [or](_ast_.isnullcondition.md#or)
-* [orGroup](_ast_.isnullcondition.md#orgroup)
-* [type](_ast_.isnullcondition.md#readonly-type)
+* [and](_ast_.unarycompare.md#and)
+* [andGroup](_ast_.unarycompare.md#andgroup)
+* [next](_ast_.unarycompare.md#next)
+* [operator](_ast_.unarycompare.md#operator)
+* [or](_ast_.unarycompare.md#or)
+* [orGroup](_ast_.unarycompare.md#orgroup)
+* [type](_ast_.unarycompare.md#readonly-type)
 
 ### Methods
 
-* [and](_ast_.isnullcondition.md#static-and)
-* [bracket](_ast_.isnullcondition.md#static-bracket)
-* [compare](_ast_.isnullcondition.md#static-private-compare)
-* [eq](_ast_.isnullcondition.md#static-eq)
-* [exists](_ast_.isnullcondition.md#static-exists)
-* [gt](_ast_.isnullcondition.md#static-gt)
-* [gte](_ast_.isnullcondition.md#static-gte)
-* [in](_ast_.isnullcondition.md#static-in)
-* [isNotNull](_ast_.isnullcondition.md#static-isnotnull)
-* [isNull](_ast_.isnullcondition.md#static-isnull)
-* [like](_ast_.isnullcondition.md#static-like)
-* [lt](_ast_.isnullcondition.md#static-lt)
-* [lte](_ast_.isnullcondition.md#static-lte)
-* [neq](_ast_.isnullcondition.md#static-neq)
-* [not](_ast_.isnullcondition.md#static-not)
-* [notIn](_ast_.isnullcondition.md#static-notin)
-* [notLike](_ast_.isnullcondition.md#static-notlike)
-* [or](_ast_.isnullcondition.md#static-or)
-* [quoted](_ast_.isnullcondition.md#static-quoted)
+* [and](_ast_.unarycompare.md#static-and)
+* [bracket](_ast_.unarycompare.md#static-bracket)
+* [compare](_ast_.unarycompare.md#static-private-compare)
+* [eq](_ast_.unarycompare.md#static-eq)
+* [exists](_ast_.unarycompare.md#static-exists)
+* [gt](_ast_.unarycompare.md#static-gt)
+* [gte](_ast_.unarycompare.md#static-gte)
+* [in](_ast_.unarycompare.md#static-in)
+* [isNotNull](_ast_.unarycompare.md#static-isnotnull)
+* [isNull](_ast_.unarycompare.md#static-isnull)
+* [like](_ast_.unarycompare.md#static-like)
+* [lt](_ast_.unarycompare.md#static-lt)
+* [lte](_ast_.unarycompare.md#static-lte)
+* [neq](_ast_.unarycompare.md#static-neq)
+* [not](_ast_.unarycompare.md#static-not)
+* [notIn](_ast_.unarycompare.md#static-notin)
+* [notLike](_ast_.unarycompare.md#static-notlike)
+* [or](_ast_.unarycompare.md#static-or)
+* [quoted](_ast_.unarycompare.md#static-quoted)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new IsNullCondition**(`next`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[IsNullCondition](_ast_.isnullcondition.md)*
+\+ **new UnaryCompare**(`operator`: [COMPARE_OPERATOR](../enums/_constants_.compare_operator.md), `expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[UnaryCompare](_ast_.unarycompare.md)*
 
-*Overrides [UnaryCompare](_ast_.unarycompare.md).[constructor](_ast_.unarycompare.md#constructor)*
+*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1102
+Defined in src/ast.ts:1069
+
+一元比较运算符
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`next` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 表达式  |
+`operator` | [COMPARE_OPERATOR](../enums/_constants_.compare_operator.md) | 运算符 |
+`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 查询条件  |
 
-**Returns:** *[IsNullCondition](_ast_.isnullcondition.md)*
+**Returns:** *[UnaryCompare](_ast_.unarycompare.md)*
 
 ## Properties
 
@@ -135,8 +142,6 @@ ___
 
 *Implementation of [IUnary](../interfaces/_ast_.iunary.md).[next](../interfaces/_ast_.iunary.md#next)*
 
-*Inherited from [UnaryCompare](_ast_.unarycompare.md).[next](_ast_.unarycompare.md#next)*
-
 Defined in src/ast.ts:1068
 
 ___
@@ -146,8 +151,6 @@ ___
 • **operator**: *[COMPARE_OPERATOR](../enums/_constants_.compare_operator.md)*
 
 *Implementation of [IUnary](../interfaces/_ast_.iunary.md).[operator](../interfaces/_ast_.iunary.md#operator)*
-
-*Inherited from [UnaryCompare](_ast_.unarycompare.md).[operator](_ast_.unarycompare.md#operator)*
 
 Defined in src/ast.ts:1069
 

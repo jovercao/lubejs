@@ -28,7 +28,7 @@
 
 • **database**: *string*
 
-Defined in src/lube.ts:98
+Defined in src/lube.ts:99
 
 ___
 
@@ -36,7 +36,7 @@ ___
 
 • **dialect**? : *string*
 
-Defined in src/lube.ts:89
+Defined in src/lube.ts:90
 
 数据库方言，必须安装相应的驱动才可正常使用
 
@@ -46,7 +46,7 @@ ___
 
 • **driver**? : *function*
 
-Defined in src/lube.ts:93
+Defined in src/lube.ts:94
 
 驱动程序，与dialect二选一
 
@@ -66,7 +66,7 @@ ___
 
 • **host**: *string*
 
-Defined in src/lube.ts:94
+Defined in src/lube.ts:95
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 • **idelTimeout**: *number*
 
-Defined in src/lube.ts:101
+Defined in src/lube.ts:102
 
 ___
 
@@ -82,7 +82,7 @@ ___
 
 • **password**: *string*
 
-Defined in src/lube.ts:97
+Defined in src/lube.ts:98
 
 ___
 
@@ -90,7 +90,7 @@ ___
 
 • **poolMax**: *number*
 
-Defined in src/lube.ts:99
+Defined in src/lube.ts:100
 
 ___
 
@@ -98,7 +98,7 @@ ___
 
 • **poolMin**: *number*
 
-Defined in src/lube.ts:100
+Defined in src/lube.ts:101
 
 ___
 
@@ -106,7 +106,7 @@ ___
 
 • **port**? : *number*
 
-Defined in src/lube.ts:95
+Defined in src/lube.ts:96
 
 ___
 
@@ -114,7 +114,7 @@ ___
 
 • **strict**? : *boolean*
 
-Defined in src/lube.ts:102
+Defined in src/lube.ts:103
 
 ___
 
@@ -122,4 +122,4 @@ ___
 
 • **user**: *string*
 
-Defined in src/lube.ts:96
+Defined in src/lube.ts:97

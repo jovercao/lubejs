@@ -24,10 +24,11 @@ AST到SQL的编译器
 * [compileAST](_compiler_.compiler.md#protected-compileast)
 * [compileAlias](_compiler_.compiler.md#protected-compilealias)
 * [compileAssignment](_compiler_.compiler.md#protected-compileassignment)
-* [compileBinary](_compiler_.compiler.md#protected-compilebinary)
+* [compileBinaryCalculate](_compiler_.compiler.md#protected-compilebinarycalculate)
+* [compileBinaryCompare](_compiler_.compiler.md#protected-compilebinarycompare)
+* [compileBinaryLogic](_compiler_.compiler.md#protected-compilebinarylogic)
 * [compileBoolean](_compiler_.compiler.md#protected-compileboolean)
 * [compileBracket](_compiler_.compiler.md#protected-compilebracket)
-* [compileBuildInIdntifier](_compiler_.compiler.md#protected-compilebuildinidntifier)
 * [compileCase](_compiler_.compiler.md#protected-compilecase)
 * [compileColumnList](_compiler_.compiler.md#protected-compilecolumnlist)
 * [compileConstant](_compiler_.compiler.md#protected-compileconstant)
@@ -36,6 +37,7 @@ AST到SQL的编译器
 * [compileDelete](_compiler_.compiler.md#protected-compiledelete)
 * [compileExecute](_compiler_.compiler.md#protected-compileexecute)
 * [compileExecuteArgumentList](_compiler_.compiler.md#protected-compileexecuteargumentlist)
+* [compileExistsCompare](_compiler_.compiler.md#protected-compileexistscompare)
 * [compileIdentifier](_compiler_.compiler.md#protected-compileidentifier)
 * [compileInsert](_compiler_.compiler.md#protected-compileinsert)
 * [compileInvoke](_compiler_.compiler.md#protected-compileinvoke)
@@ -45,7 +47,9 @@ AST到SQL的编译器
 * [compileSelect](_compiler_.compiler.md#protected-compileselect)
 * [compileSort](_compiler_.compiler.md#protected-compilesort)
 * [compileString](_compiler_.compiler.md#protected-compilestring)
-* [compileUnary](_compiler_.compiler.md#protected-compileunary)
+* [compileUnaryCalculate](_compiler_.compiler.md#protected-compileunarycalculate)
+* [compileUnaryCompare](_compiler_.compiler.md#protected-compileunarycompare)
+* [compileUnaryLogic](_compiler_.compiler.md#protected-compileunarylogic)
 * [compileUnion](_compiler_.compiler.md#protected-compileunion)
 * [compileUpdate](_compiler_.compiler.md#protected-compileupdate)
 * [compileValueList](_compiler_.compiler.md#protected-compilevaluelist)
@@ -85,7 +89,7 @@ Defined in src/compiler.ts:88
 
 ▸ **compile**(`ast`: [AST](_ast_.ast.md)): *[Command](../interfaces/_compiler_.command.md)*
 
-Defined in src/compiler.ts:182
+Defined in src/compiler.ts:184
 
 **Parameters:**
 
@@ -101,7 +105,7 @@ ___
 
 ▸ **compileAST**(`ast`: [AST](_ast_.ast.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:194
+Defined in src/compiler.ts:192
 
 **Parameters:**
 
@@ -119,7 +123,7 @@ ___
 
 ▸ **compileAlias**(`alias`: [Alias](_ast_.alias.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:288
+Defined in src/compiler.ts:295
 
 **Parameters:**
 
@@ -137,7 +141,7 @@ ___
 
 ▸ **compileAssignment**(`assign`: [Assignment](_ast_.assignment.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:396
+Defined in src/compiler.ts:427
 
 **Parameters:**
 
@@ -151,17 +155,53 @@ Name | Type |
 
 ___
 
-### `Protected` compileBinary
+### `Protected` compileBinaryCalculate
 
-▸ **compileBinary**(`expr`: [IBinary](../interfaces/_ast_.ibinary.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+▸ **compileBinaryCalculate**(`expr`: [BinaryCalculate](_ast_.binarycalculate.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:304
+Defined in src/compiler.ts:320
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [IBinary](../interfaces/_ast_.ibinary.md) |
+`expr` | [BinaryCalculate](_ast_.binarycalculate.md) |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
+`parent?` | [AST](_ast_.ast.md) |
+
+**Returns:** *string*
+
+___
+
+### `Protected` compileBinaryCompare
+
+▸ **compileBinaryCompare**(`expr`: [BinaryCompare](_ast_.binarycompare.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+
+Defined in src/compiler.ts:316
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [BinaryCompare](_ast_.binarycompare.md) |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
+`parent?` | [AST](_ast_.ast.md) |
+
+**Returns:** *string*
+
+___
+
+### `Protected` compileBinaryLogic
+
+▸ **compileBinaryLogic**(`expr`: [BinaryLogic](_ast_.binarylogic.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+
+Defined in src/compiler.ts:312
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [BinaryLogic](_ast_.binarylogic.md) |
 `params` | Set‹[Parameter](_ast_.parameter.md)› |
 `parent?` | [AST](_ast_.ast.md) |
 
@@ -189,7 +229,7 @@ ___
 
 ▸ **compileBracket**‹**T**›(`bracket`: [Bracket](_ast_.bracket.md)‹T›, `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:258
+Defined in src/compiler.ts:265
 
 **Type parameters:**
 
@@ -207,29 +247,11 @@ Name | Type |
 
 ___
 
-### `Protected` compileBuildInIdntifier
-
-▸ **compileBuildInIdntifier**(`ast`: [Identifier](_ast_.identifier.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
-
-Defined in src/compiler.ts:190
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`ast` | [Identifier](_ast_.identifier.md) |
-`params` | Set‹[Parameter](_ast_.parameter.md)› |
-`parent?` | [AST](_ast_.ast.md) |
-
-**Returns:** *string*
-
-___
-
 ### `Protected` compileCase
 
 ▸ **compileCase**(`caseExpr`: [Case](_ast_.case.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:292
+Defined in src/compiler.ts:299
 
 **Parameters:**
 
@@ -247,7 +269,7 @@ ___
 
 ▸ **compileColumnList**(`values`: [List](_ast_.list.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:266
+Defined in src/compiler.ts:273
 
 **Parameters:**
 
@@ -299,7 +321,7 @@ ___
 
 ▸ **compileDeclare**(`declare`: [Declare](_ast_.declare.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:401
+Defined in src/compiler.ts:432
 
 **Parameters:**
 
@@ -317,7 +339,7 @@ ___
 
 ▸ **compileDelete**(`del`: [Delete](_ast_.delete.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:429
+Defined in src/compiler.ts:460
 
 **Parameters:**
 
@@ -335,7 +357,7 @@ ___
 
 ▸ **compileExecute**‹**T**›(`exec`: [Execute](_ast_.execute.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:251
+Defined in src/compiler.ts:258
 
 **Type parameters:**
 
@@ -357,13 +379,31 @@ ___
 
 ▸ **compileExecuteArgumentList**(`values`: [List](_ast_.list.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:274
+Defined in src/compiler.ts:281
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
 `values` | [List](_ast_.list.md) |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
+`parent?` | [AST](_ast_.ast.md) |
+
+**Returns:** *string*
+
+___
+
+### `Protected` compileExistsCompare
+
+▸ **compileExistsCompare**(`expr`: [ExistsCompare](_ast_.existscompare.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+
+Defined in src/compiler.ts:328
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [ExistsCompare](_ast_.existscompare.md) |
 `params` | Set‹[Parameter](_ast_.parameter.md)› |
 `parent?` | [AST](_ast_.ast.md) |
 
@@ -395,7 +435,7 @@ ___
 
 ▸ **compileInsert**(`insert`: [Insert](_ast_.insert.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:376
+Defined in src/compiler.ts:404
 
 **Parameters:**
 
@@ -413,7 +453,7 @@ ___
 
 ▸ **compileInvoke**(`invoke`: [Invoke](_ast_.invoke.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:319
+Defined in src/compiler.ts:347
 
 函数调用
 
@@ -435,7 +475,7 @@ ___
 
 ▸ **compileInvokeArgumentList**(`values`: [List](_ast_.list.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:270
+Defined in src/compiler.ts:277
 
 **Parameters:**
 
@@ -453,7 +493,7 @@ ___
 
 ▸ **compileJoin**(`join`: [Join](_ast_.join.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:323
+Defined in src/compiler.ts:351
 
 **Parameters:**
 
@@ -489,16 +529,16 @@ ___
 
 ### `Protected` compileSelect
 
-▸ **compileSelect**(`select`: [Select](_ast_.select.md), `params`: any, `parent?`: [AST](_ast_.ast.md)): *string*
+▸ **compileSelect**(`select`: [Select](_ast_.select.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:333
+Defined in src/compiler.ts:361
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
 `select` | [Select](_ast_.select.md) |
-`params` | any |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
 `parent?` | [AST](_ast_.ast.md) |
 
 **Returns:** *string*
@@ -509,7 +549,7 @@ ___
 
 ▸ **compileSort**(`sort`: [SortInfo](_ast_.sortinfo.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:327
+Defined in src/compiler.ts:355
 
 **Parameters:**
 
@@ -539,17 +579,53 @@ Name | Type |
 
 ___
 
-### `Protected` compileUnary
+### `Protected` compileUnaryCalculate
 
-▸ **compileUnary**(`expr`: [IUnary](../interfaces/_ast_.iunary.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+▸ **compileUnaryCalculate**(`expr`: [UnaryCalculate](_ast_.unarycalculate.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:308
+Defined in src/compiler.ts:336
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [IUnary](../interfaces/_ast_.iunary.md) |
+`expr` | [UnaryCalculate](_ast_.unarycalculate.md) |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
+`parent?` | [AST](_ast_.ast.md) |
+
+**Returns:** *string*
+
+___
+
+### `Protected` compileUnaryCompare
+
+▸ **compileUnaryCompare**(`expr`: [UnaryCompare](_ast_.unarycompare.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+
+Defined in src/compiler.ts:324
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [UnaryCompare](_ast_.unarycompare.md) |
+`params` | Set‹[Parameter](_ast_.parameter.md)› |
+`parent?` | [AST](_ast_.ast.md) |
+
+**Returns:** *string*
+
+___
+
+### `Protected` compileUnaryLogic
+
+▸ **compileUnaryLogic**(`expr`: [UnaryLogic](_ast_.unarylogic.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
+
+Defined in src/compiler.ts:332
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [UnaryLogic](_ast_.unarylogic.md) |
 `params` | Set‹[Parameter](_ast_.parameter.md)› |
 `parent?` | [AST](_ast_.ast.md) |
 
@@ -561,7 +637,7 @@ ___
 
 ▸ **compileUnion**(`union`: [Union](_ast_.union.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:284
+Defined in src/compiler.ts:291
 
 **Parameters:**
 
@@ -579,7 +655,7 @@ ___
 
 ▸ **compileUpdate**(`update`: [Update](_ast_.update.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:405
+Defined in src/compiler.ts:436
 
 **Parameters:**
 
@@ -597,7 +673,7 @@ ___
 
 ▸ **compileValueList**(`values`: [List](_ast_.list.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:262
+Defined in src/compiler.ts:269
 
 **Parameters:**
 
@@ -633,7 +709,7 @@ ___
 
 ▸ **compileWhen**(`when`: [When](_ast_.when.md), `params`: Set‹[Parameter](_ast_.parameter.md)›, `parent?`: [AST](_ast_.ast.md)): *string*
 
-Defined in src/compiler.ts:300
+Defined in src/compiler.ts:308
 
 **Parameters:**
 

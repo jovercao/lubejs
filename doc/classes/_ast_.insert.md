@@ -18,7 +18,7 @@ Insert 语句
 
 ### Properties
 
-* [fields](_ast_.insert.md#fields)
+* [fields](_ast_.insert.md#optional-fields)
 * [rows](_ast_.insert.md#rows)
 * [table](_ast_.insert.md#table)
 * [type](_ast_.insert.md#readonly-type)
@@ -43,11 +43,11 @@ Insert 语句
 
 ###  constructor
 
-\+ **new Insert**(`table`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `fields?`: [UnsureIdentity](../modules/_ast_.md#unsureidentity)[]): *[Insert](_ast_.insert.md)*
+\+ **new Insert**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `fields?`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[]): *[Insert](_ast_.insert.md)*
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:2028
+Defined in src/ast.ts:2057
 
 构造函数
 
@@ -55,18 +55,18 @@ Defined in src/ast.ts:2028
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) |
-`fields?` | [UnsureIdentity](../modules/_ast_.md#unsureidentity)[] |
+`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |
+`fields?` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[] |
 
 **Returns:** *[Insert](_ast_.insert.md)*
 
 ## Properties
 
-###  fields
+### `Optional` fields
 
-• **fields**: *[Identifier](_ast_.identifier.md)[]*
+• **fields**? : *[Identifier](_ast_.identifier.md)[]*
 
-Defined in src/ast.ts:2027
+Defined in src/ast.ts:2056
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 • **rows**: *[List](_ast_.list.md)[] | [Select](_ast_.select.md)*
 
-Defined in src/ast.ts:2028
+Defined in src/ast.ts:2057
 
 ___
 
@@ -82,7 +82,7 @@ ___
 
 • **table**: *[Identifier](_ast_.identifier.md)*
 
-Defined in src/ast.ts:2026
+Defined in src/ast.ts:2055
 
 ___
 
@@ -92,15 +92,15 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
 ### `Private` _fields
 
-▸ **_fields**(...`fields`: [UnsureIdentity](../modules/_ast_.md#unsureidentity)[]): *this*
+▸ **_fields**(...`fields`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[]): *this*
 
-Defined in src/ast.ts:2048
+Defined in src/ast.ts:2077
 
 字段列表
 
@@ -108,7 +108,7 @@ Defined in src/ast.ts:2048
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`...fields` | [UnsureIdentity](../modules/_ast_.md#unsureidentity)[] |   |
+`...fields` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[] |   |
 
 **Returns:** *this*
 
@@ -118,7 +118,7 @@ ___
 
 ▸ **values**(`select`: [Select](_ast_.select.md)): *this*
 
-Defined in src/ast.ts:2057
+Defined in src/ast.ts:2086
 
 **Parameters:**
 
@@ -130,7 +130,7 @@ Name | Type |
 
 ▸ **values**(`row`: [ValuesObject](../modules/_ast_.md#valuesobject)): *this*
 
-Defined in src/ast.ts:2058
+Defined in src/ast.ts:2087
 
 **Parameters:**
 
@@ -142,7 +142,7 @@ Name | Type |
 
 ▸ **values**(`row`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *this*
 
-Defined in src/ast.ts:2059
+Defined in src/ast.ts:2088
 
 **Parameters:**
 
@@ -152,9 +152,33 @@ Name | Type |
 
 **Returns:** *this*
 
+▸ **values**(`rows`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[][]): *this*
+
+Defined in src/ast.ts:2089
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`rows` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[][] |
+
+**Returns:** *this*
+
+▸ **values**(`rows`: [ValuesObject](../modules/_ast_.md#valuesobject)[]): *this*
+
+Defined in src/ast.ts:2090
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`rows` | [ValuesObject](../modules/_ast_.md#valuesobject)[] |
+
+**Returns:** *this*
+
 ▸ **values**(...`rows`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[][]): *this*
 
-Defined in src/ast.ts:2060
+Defined in src/ast.ts:2091
 
 **Parameters:**
 
@@ -166,7 +190,7 @@ Name | Type |
 
 ▸ **values**(...`rows`: [ValuesObject](../modules/_ast_.md#valuesobject)[]): *this*
 
-Defined in src/ast.ts:2061
+Defined in src/ast.ts:2092
 
 **Parameters:**
 
@@ -184,7 +208,7 @@ ___
 
 *Inherited from [Statement](_ast_.statement.md).[assign](_ast_.statement.md#static-assign)*
 
-Defined in src/ast.ts:1337
+Defined in src/ast.ts:1365
 
 赋值语句
 
@@ -205,7 +229,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 
@@ -223,17 +247,17 @@ ___
 
 ### `Static` case
 
-▸ **case**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Case](_ast_.case.md)‹›*
+▸ **case**(`expr?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Case](_ast_.case.md)‹›*
 
 *Inherited from [Statement](_ast_.statement.md).[case](_ast_.statement.md#static-case)*
 
-Defined in src/ast.ts:1358
+Defined in src/ast.ts:1386
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr?` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
 
 **Returns:** *[Case](_ast_.case.md)‹›*
 
@@ -241,11 +265,11 @@ ___
 
 ### `Static` declare
 
-▸ **declare**(...`declares`: any[]): *[Declare](_ast_.declare.md)‹›*
+▸ **declare**(...`declares`: [VariantDeclare](_ast_.variantdeclare.md)[]): *[Declare](_ast_.declare.md)*
 
 *Inherited from [Statement](_ast_.statement.md).[declare](_ast_.statement.md#static-declare)*
 
-Defined in src/ast.ts:1345
+Defined in src/ast.ts:1373
 
 变量声明
 
@@ -253,19 +277,19 @@ Defined in src/ast.ts:1345
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`...declares` | any[] | 变量列表  |
+`...declares` | [VariantDeclare](_ast_.variantdeclare.md)[] | 变量列表  |
 
-**Returns:** *[Declare](_ast_.declare.md)‹›*
+**Returns:** *[Declare](_ast_.declare.md)*
 
 ___
 
 ### `Static` delete
 
-▸ **delete**(`table`: [UnsureIdentity](../modules/_ast_.md#unsureidentity)): *[Delete](_ast_.delete.md)‹›*
+▸ **delete**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Delete](_ast_.delete.md)‹›*
 
 *Inherited from [Statement](_ast_.statement.md).[delete](_ast_.statement.md#static-delete)*
 
-Defined in src/ast.ts:1296
+Defined in src/ast.ts:1325
 
 删除一个表格
 
@@ -273,7 +297,7 @@ Defined in src/ast.ts:1296
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`table` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) | 表格  |
+`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | 表格  |
 
 **Returns:** *[Delete](_ast_.delete.md)‹›*
 
@@ -281,11 +305,11 @@ ___
 
 ### `Static` exec
 
-▸ **exec**(`proc`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `params`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *any*
+▸ **exec**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[Execute](_ast_.execute.md)*
 
 *Inherited from [Statement](_ast_.statement.md).[exec](_ast_.statement.md#static-exec)*
 
-Defined in src/ast.ts:1326
+Defined in src/ast.ts:1354
 
 执行一个存储过程，execute的别名
 
@@ -293,35 +317,35 @@ Defined in src/ast.ts:1326
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`proc` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) | 存储过程 |
+`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | 存储过程 |
 `params` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] | 参数  |
 
-**Returns:** *any*
+**Returns:** *[Execute](_ast_.execute.md)*
 
-▸ **exec**(`proc`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `params`: [Parameter](_ast_.parameter.md)[]): *any*
+▸ **exec**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params`: [Parameter](_ast_.parameter.md)[]): *[Execute](_ast_.execute.md)*
 
 *Inherited from [Statement](_ast_.statement.md).[exec](_ast_.statement.md#static-exec)*
 
-Defined in src/ast.ts:1327
+Defined in src/ast.ts:1355
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`proc` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) |
+`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |
 `params` | [Parameter](_ast_.parameter.md)[] |
 
-**Returns:** *any*
+**Returns:** *[Execute](_ast_.execute.md)*
 
 ___
 
 ### `Static` execute
 
-▸ **execute**(`proc`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `params?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *any*
+▸ **execute**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[Execute](_ast_.execute.md)*
 
 *Inherited from [Statement](_ast_.statement.md).[execute](_ast_.statement.md#static-execute)*
 
-Defined in src/ast.ts:1315
+Defined in src/ast.ts:1343
 
 执行一个存储过程
 
@@ -329,35 +353,35 @@ Defined in src/ast.ts:1315
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`proc` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) | - |
+`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - |
 `params?` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] |   |
 
-**Returns:** *any*
+**Returns:** *[Execute](_ast_.execute.md)*
 
-▸ **execute**(`proc`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `params?`: [Parameter](_ast_.parameter.md)[]): *any*
+▸ **execute**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params?`: [Parameter](_ast_.parameter.md)[]): *[Execute](_ast_.execute.md)*
 
 *Inherited from [Statement](_ast_.statement.md).[execute](_ast_.statement.md#static-execute)*
 
-Defined in src/ast.ts:1316
+Defined in src/ast.ts:1344
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`proc` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) |
+`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |
 `params?` | [Parameter](_ast_.parameter.md)[] |
 
-**Returns:** *any*
+**Returns:** *[Execute](_ast_.execute.md)*
 
 ___
 
 ### `Static` insert
 
-▸ **insert**(`table`: [UnsureIdentity](../modules/_ast_.md#unsureidentity), `fields?`: [UnsureIdentity](../modules/_ast_.md#unsureidentity)[]): *[Insert](_ast_.insert.md)‹›*
+▸ **insert**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `fields?`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[]): *[Insert](_ast_.insert.md)‹›*
 
 *Inherited from [Statement](_ast_.statement.md).[insert](_ast_.statement.md#static-insert)*
 
-Defined in src/ast.ts:1280
+Defined in src/ast.ts:1309
 
 插入至表,into的别名
 
@@ -365,8 +389,8 @@ Defined in src/ast.ts:1280
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`table` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) | - |
-`fields?` | [UnsureIdentity](../modules/_ast_.md#unsureidentity)[] |   |
+`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - |
+`fields?` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[] |   |
 
 **Returns:** *[Insert](_ast_.insert.md)‹›*
 
@@ -378,23 +402,9 @@ ___
 
 *Inherited from [Statement](_ast_.statement.md).[select](_ast_.statement.md#static-select)*
 
-Defined in src/ast.ts:1303
+Defined in src/ast.ts:1332
 
 选择列
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`columns` | [KeyValueObject](../interfaces/_ast_.keyvalueobject.md) |
-
-**Returns:** *[Select](_ast_.select.md)*
-
-▸ **select**(`columns`: [KeyValueObject](../interfaces/_ast_.keyvalueobject.md)): *[Select](_ast_.select.md)*
-
-*Inherited from [Statement](_ast_.statement.md).[select](_ast_.statement.md#static-select)*
-
-Defined in src/ast.ts:1304
 
 **Parameters:**
 
@@ -408,7 +418,7 @@ Name | Type |
 
 *Inherited from [Statement](_ast_.statement.md).[select](_ast_.statement.md#static-select)*
 
-Defined in src/ast.ts:1305
+Defined in src/ast.ts:1333
 
 **Parameters:**
 
@@ -422,11 +432,11 @@ ___
 
 ### `Static` update
 
-▸ **update**(`table`: [UnsureIdentity](../modules/_ast_.md#unsureidentity)): *[Update](_ast_.update.md)‹›*
+▸ **update**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Update](_ast_.update.md)‹›*
 
 *Inherited from [Statement](_ast_.statement.md).[update](_ast_.statement.md#static-update)*
 
-Defined in src/ast.ts:1288
+Defined in src/ast.ts:1317
 
 更新一个表格
 
@@ -434,7 +444,7 @@ Defined in src/ast.ts:1288
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`table` | [UnsureIdentity](../modules/_ast_.md#unsureidentity) |   |
+`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |   |
 
 **Returns:** *[Update](_ast_.update.md)‹›*
 
@@ -446,7 +456,7 @@ ___
 
 *Inherited from [Statement](_ast_.statement.md).[when](_ast_.statement.md#static-when)*
 
-Defined in src/ast.ts:1354
+Defined in src/ast.ts:1382
 
 WHEN 语句块
 

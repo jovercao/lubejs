@@ -4,6 +4,11 @@
 
 ## Index
 
+### Type aliases
+
+* [Filter](_builder_.md#filter)
+* [InsertObject](_builder_.md#insertobject)
+
 ### Variables
 
 * [$case](_builder_.md#const-case)
@@ -46,13 +51,36 @@
 
 * [SQL](_builder_.md#const-sql)
 
+## Type aliases
+
+###  Filter
+
+Ƭ **Filter**: *object*
+
+Defined in src/builder.ts:167
+
+属性过滤器
+
+#### Type declaration:
+
+___
+
+###  InsertObject
+
+Ƭ **InsertObject**: *[Filter](_builder_.md#filter)‹T, [JsConstant](_ast_.md#jsconstant)›*
+
+Defined in src/builder.ts:175
+
+将类型不符合Insert语句(即KeyValueObject)的属性进行过滤,
+主要应用于主从表等类型
+
 ## Variables
 
 ### `Const` $case
 
 • **$case**: *[case](../classes/_ast_.statement.md#static-case)* = Statement.case
 
-Defined in src/builder.ts:118
+Defined in src/builder.ts:113
 
 ___
 
@@ -60,7 +88,7 @@ ___
 
 • **$delete**: *[delete](../classes/_ast_.statement.md#static-delete)* = Statement.delete
 
-Defined in src/builder.ts:160
+Defined in src/builder.ts:155
 
 ___
 
@@ -68,7 +96,7 @@ ___
 
 • **alias**: *[alias](../classes/_ast_.expression.md#static-alias)* = Expression.alias
 
-Defined in src/builder.ts:98
+Defined in src/builder.ts:93
 
 创建一个别名
 
@@ -78,7 +106,7 @@ ___
 
 • **and**: *[and](../classes/_ast_.condition.md#and)* = Condition.and
 
-Defined in src/builder.ts:30
+Defined in src/builder.ts:25
 
 使用and关联多个查询条件
 
@@ -96,7 +124,7 @@ ___
 
 • **any**: *[any](../classes/_ast_.expression.md#static-any)* = Expression.any
 
-Defined in src/builder.ts:162
+Defined in src/builder.ts:157
 
 ___
 
@@ -104,7 +132,7 @@ ___
 
 • **anyFields**: *[Identifier](../classes/_ast_.identifier.md)‹›* = Expression.any()
 
-Defined in src/builder.ts:167
+Defined in src/builder.ts:162
 
 任意字段
 
@@ -114,7 +142,7 @@ ___
 
 • **bracket**: *[bracket](../classes/_ast_.ast.md#static-bracket)* = AST.bracket
 
-Defined in src/builder.ts:78
+Defined in src/builder.ts:73
 
 ___
 
@@ -122,7 +150,7 @@ ___
 
 • **buildIn**: *[buildIn](../classes/_ast_.identifier.md#static-buildin)* = Identifier.buildIn
 
-Defined in src/builder.ts:137
+Defined in src/builder.ts:132
 
 ___
 
@@ -130,7 +158,7 @@ ___
 
 • **constant**: *[constant](../classes/_ast_.expression.md#static-constant)* = Expression.constant
 
-Defined in src/builder.ts:74
+Defined in src/builder.ts:69
 
 ___
 
@@ -138,7 +166,7 @@ ___
 
 • **del**: *[delete](../classes/_ast_.statement.md#static-delete)* = Statement.delete
 
-Defined in src/builder.ts:158
+Defined in src/builder.ts:153
 
 创建一个DELETE语句
 
@@ -148,7 +176,7 @@ ___
 
 • **exec**: *[exec](../classes/_ast_.statement.md#static-exec)* = Statement.exec
 
-Defined in src/builder.ts:51
+Defined in src/builder.ts:46
 
 ___
 
@@ -156,7 +184,7 @@ ___
 
 • **execute**: *[execute](../classes/_ast_.statement.md#static-execute)* = Statement.execute
 
-Defined in src/builder.ts:53
+Defined in src/builder.ts:48
 
 ___
 
@@ -164,7 +192,7 @@ ___
 
 • **exists**: *[exists](../classes/_ast_.condition.md#static-exists)* = Condition.exists
 
-Defined in src/builder.ts:47
+Defined in src/builder.ts:42
 
 exists语句
 
@@ -182,7 +210,7 @@ ___
 
 • **field**: *[field](../classes/_ast_.expression.md#static-field)* = Expression.field
 
-Defined in src/builder.ts:72
+Defined in src/builder.ts:67
 
 ___
 
@@ -190,7 +218,7 @@ ___
 
 • **identifier**: *[identifier](../classes/_ast_.expression.md#static-identifier)* = Expression.identifier
 
-Defined in src/builder.ts:61
+Defined in src/builder.ts:56
 
 标识符
 
@@ -202,7 +230,7 @@ ___
 
 • **input**: *[input](../classes/_ast_.parameter.md#static-input)* = Parameter.input
 
-Defined in src/builder.ts:83
+Defined in src/builder.ts:78
 
 input 参数
 
@@ -212,7 +240,7 @@ ___
 
 • **insert**: *[insert](../classes/_ast_.statement.md#static-insert)* = Statement.insert
 
-Defined in src/builder.ts:116
+Defined in src/builder.ts:111
 
 创建一个INSERT语句
 
@@ -222,7 +250,7 @@ ___
 
 • **invoke**: *[invoke](../classes/_ast_.expression.md#static-invoke)* = Expression.invoke
 
-Defined in src/builder.ts:49
+Defined in src/builder.ts:44
 
 ___
 
@@ -230,7 +258,7 @@ ___
 
 • **not**: *[not](../classes/_ast_.condition.md#static-not)* = Condition.not
 
-Defined in src/builder.ts:21
+Defined in src/builder.ts:16
 
 not 查询条件运算
 
@@ -240,7 +268,7 @@ ___
 
 • **or**: *[or](../classes/_ast_.condition.md#or)* = Condition.or
 
-Defined in src/builder.ts:38
+Defined in src/builder.ts:33
 
 使用or关联多个查询条件
 
@@ -258,7 +286,7 @@ ___
 
 • **output**: *[output](../classes/_ast_.parameter.md#static-output)* = Parameter.output
 
-Defined in src/builder.ts:88
+Defined in src/builder.ts:83
 
 output参数
 
@@ -268,7 +296,7 @@ ___
 
 • **quoted**: *[bracket](../classes/_ast_.ast.md#static-bracket)* = AST.bracket
 
-Defined in src/builder.ts:76
+Defined in src/builder.ts:71
 
 ___
 
@@ -276,7 +304,7 @@ ___
 
 • **select**: *[select](../classes/_ast_.statement.md#static-select)* = Statement.select
 
-Defined in src/builder.ts:103
+Defined in src/builder.ts:98
 
 创建一个SELECT语句
 
@@ -286,7 +314,7 @@ ___
 
 • **sys**: *[buildIn](../classes/_ast_.identifier.md#static-buildin)* = buildIn
 
-Defined in src/builder.ts:143
+Defined in src/builder.ts:138
 
 内建标识符，不会被 [] 包裹，buildIn的别名
 
@@ -298,7 +326,7 @@ ___
 
 • **table**: *[table](../classes/_ast_.expression.md#static-table)* = Expression.table
 
-Defined in src/builder.ts:70
+Defined in src/builder.ts:65
 
 创建一个表格标识
 
@@ -316,7 +344,7 @@ ___
 
 • **update**: *[update](../classes/_ast_.statement.md#static-update)* = Statement.update
 
-Defined in src/builder.ts:123
+Defined in src/builder.ts:118
 
 创建一个UPDATE语句
 
@@ -326,7 +354,7 @@ ___
 
 • **variant**: *[variant](../classes/_ast_.expression.md#static-variant)* = Expression.variant
 
-Defined in src/builder.ts:93
+Defined in src/builder.ts:88
 
 变量引用
 
@@ -336,7 +364,7 @@ ___
 
 • **when**: *[when](../classes/_ast_.statement.md#static-when)* = Statement.when
 
-Defined in src/builder.ts:55
+Defined in src/builder.ts:50
 
 ## Functions
 
@@ -344,7 +372,7 @@ Defined in src/builder.ts:55
 
 ▸ **fn**(...`names`: string[]): *(Anonymous function)*
 
-Defined in src/builder.ts:125
+Defined in src/builder.ts:120
 
 **Parameters:**
 
@@ -360,7 +388,7 @@ ___
 
 ▸ **raw**(`sql`: string): *[Raw](../classes/_ast_.raw.md)‹›*
 
-Defined in src/builder.ts:109
+Defined in src/builder.ts:104
 
 创建一个原始的SQL片段
 
@@ -378,7 +406,7 @@ ___
 
 ▸ **sp**(...`names`: string[]): *(Anonymous function)*
 
-Defined in src/builder.ts:131
+Defined in src/builder.ts:126
 
 **Parameters:**
 
@@ -394,7 +422,7 @@ ___
 
 ▸ **sysFn**(`name`: string): *(Anonymous function)*
 
-Defined in src/builder.ts:149
+Defined in src/builder.ts:144
 
 内建函数
 
@@ -412,7 +440,7 @@ Name | Type | Description |
 
 ### ▪ **SQL**: *object*
 
-Defined in src/builder.ts:172
+Defined in src/builder.ts:180
 
 语句
 
@@ -420,166 +448,166 @@ Defined in src/builder.ts:172
 
 • **alias**: *[alias](../classes/_ast_.expression.md#static-alias)*
 
-Defined in src/builder.ts:189
+Defined in src/builder.ts:197
 
 ###  and
 
 • **and**: *[and](../classes/_ast_.condition.md#and)*
 
-Defined in src/builder.ts:192
+Defined in src/builder.ts:200
 
 ###  any
 
 • **any**: *[any](../classes/_ast_.expression.md#static-any)*
 
-Defined in src/builder.ts:199
+Defined in src/builder.ts:207
 
 ###  anyFields
 
 • **anyFields**: *[Identifier](../classes/_ast_.identifier.md)‹›*
 
-Defined in src/builder.ts:200
+Defined in src/builder.ts:208
 
 ###  bracket
 
 • **bracket**: *[bracket](../classes/_ast_.ast.md#static-bracket)*
 
-Defined in src/builder.ts:196
+Defined in src/builder.ts:204
 
 ###  buildIn
 
 • **buildIn**: *[buildIn](../classes/_ast_.identifier.md#static-buildin)*
 
-Defined in src/builder.ts:185
+Defined in src/builder.ts:193
 
 ###  case
 
 • **case**: *[case](../classes/_ast_.statement.md#static-case)* = $case
 
-Defined in src/builder.ts:177
+Defined in src/builder.ts:185
 
 ###  delete
 
 • **delete**: *[delete](../classes/_ast_.statement.md#static-delete)* = $delete
 
-Defined in src/builder.ts:176
+Defined in src/builder.ts:184
 
 ###  exec
 
 • **exec**: *[exec](../classes/_ast_.statement.md#static-exec)*
 
-Defined in src/builder.ts:179
+Defined in src/builder.ts:187
 
 ###  execute
 
 • **execute**: *[execute](../classes/_ast_.statement.md#static-execute)*
 
-Defined in src/builder.ts:178
+Defined in src/builder.ts:186
 
 ###  exists
 
 • **exists**: *[exists](../classes/_ast_.condition.md#static-exists)*
 
-Defined in src/builder.ts:181
+Defined in src/builder.ts:189
 
 ###  field
 
 • **field**: *[field](../classes/_ast_.expression.md#static-field)*
 
-Defined in src/builder.ts:188
+Defined in src/builder.ts:196
 
 ###  fn
 
 • **fn**: *fn*
 
-Defined in src/builder.ts:183
+Defined in src/builder.ts:191
 
 ###  input
 
 • **input**: *[input](../classes/_ast_.parameter.md#static-input)*
 
-Defined in src/builder.ts:190
+Defined in src/builder.ts:198
 
 ###  insert
 
 • **insert**: *[insert](../classes/_ast_.statement.md#static-insert)*
 
-Defined in src/builder.ts:174
+Defined in src/builder.ts:182
 
 ###  invoke
 
 • **invoke**: *[invoke](../classes/_ast_.expression.md#static-invoke)*
 
-Defined in src/builder.ts:182
+Defined in src/builder.ts:190
 
 ###  or
 
 • **or**: *[or](../classes/_ast_.condition.md#or)*
 
-Defined in src/builder.ts:193
+Defined in src/builder.ts:201
 
 ###  output
 
 • **output**: *[output](../classes/_ast_.parameter.md#static-output)*
 
-Defined in src/builder.ts:191
+Defined in src/builder.ts:199
 
 ###  quoted
 
 • **quoted**: *[bracket](../classes/_ast_.ast.md#static-bracket)*
 
-Defined in src/builder.ts:197
+Defined in src/builder.ts:205
 
 ###  raw
 
 • **raw**: *raw*
 
-Defined in src/builder.ts:198
+Defined in src/builder.ts:206
 
 ###  select
 
 • **select**: *[select](../classes/_ast_.statement.md#static-select)*
 
-Defined in src/builder.ts:173
+Defined in src/builder.ts:181
 
 ###  sp
 
 • **sp**: *sp*
 
-Defined in src/builder.ts:184
+Defined in src/builder.ts:192
 
 ###  sys
 
 • **sys**: *[buildIn](../classes/_ast_.identifier.md#static-buildin)*
 
-Defined in src/builder.ts:186
+Defined in src/builder.ts:194
 
 ###  table
 
 • **table**: *[table](../classes/_ast_.expression.md#static-table)*
 
-Defined in src/builder.ts:187
+Defined in src/builder.ts:195
 
 ###  update
 
 • **update**: *[update](../classes/_ast_.statement.md#static-update)*
 
-Defined in src/builder.ts:175
+Defined in src/builder.ts:183
 
 ###  var
 
 • **var**: *[variant](../classes/_ast_.expression.md#static-variant)* = variant
 
-Defined in src/builder.ts:195
+Defined in src/builder.ts:203
 
 ###  variant
 
 • **variant**: *[variant](../classes/_ast_.expression.md#static-variant)*
 
-Defined in src/builder.ts:194
+Defined in src/builder.ts:202
 
 ###  when
 
 • **when**: *[when](../classes/_ast_.statement.md#static-when)*
 
-Defined in src/builder.ts:180
+Defined in src/builder.ts:188

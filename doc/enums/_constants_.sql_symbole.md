@@ -10,7 +10,9 @@ SQL运算符
 
 * [ALIAS](_constants_.sql_symbole.md#alias)
 * [ASSIGNMENT](_constants_.sql_symbole.md#assignment)
-* [BINARY](_constants_.sql_symbole.md#binary)
+* [BINARY_CALCULATE](_constants_.sql_symbole.md#binary_calculate)
+* [BINARY_COMPARE](_constants_.sql_symbole.md#binary_compare)
+* [BINARY_LOGIC](_constants_.sql_symbole.md#binary_logic)
 * [BRACKET_EXPRESSION](_constants_.sql_symbole.md#bracket_expression)
 * [BUILDIN_IDENTIFIER](_constants_.sql_symbole.md#buildin_identifier)
 * [CASE](_constants_.sql_symbole.md#case)
@@ -21,6 +23,7 @@ SQL运算符
 * [DOCUMENT](_constants_.sql_symbole.md#document)
 * [EXECUTE](_constants_.sql_symbole.md#execute)
 * [EXECUTE_ARGUMENT_LIST](_constants_.sql_symbole.md#execute_argument_list)
+* [EXISTS](_constants_.sql_symbole.md#exists)
 * [IDENTIFIER](_constants_.sql_symbole.md#identifier)
 * [INSERT](_constants_.sql_symbole.md#insert)
 * [INVOKE](_constants_.sql_symbole.md#invoke)
@@ -31,7 +34,9 @@ SQL运算符
 * [RAW](_constants_.sql_symbole.md#raw)
 * [SELECT](_constants_.sql_symbole.md#select)
 * [SORT](_constants_.sql_symbole.md#sort)
-* [UNARY](_constants_.sql_symbole.md#unary)
+* [UNARY_CALCULATE](_constants_.sql_symbole.md#unary_calculate)
+* [UNARY_COMPARE](_constants_.sql_symbole.md#unary_compare)
+* [UNARY_LOGIC](_constants_.sql_symbole.md#unary_logic)
 * [UNION](_constants_.sql_symbole.md#union)
 * [UPDATE](_constants_.sql_symbole.md#update)
 * [VALUE_LIST](_constants_.sql_symbole.md#value_list)
@@ -57,11 +62,27 @@ Defined in src/constants.ts:101
 
 ___
 
-###  BINARY
+###  BINARY_CALCULATE
 
-• **BINARY**: = "BINARY"
+• **BINARY_CALCULATE**: = "BINARY_CALCULATE"
 
-Defined in src/constants.ts:113
+Defined in src/constants.ts:118
+
+___
+
+###  BINARY_COMPARE
+
+• **BINARY_COMPARE**: = "BINARY_COMPARE"
+
+Defined in src/constants.ts:117
+
+___
+
+###  BINARY_LOGIC
+
+• **BINARY_LOGIC**: = "BINARY_LOGIC"
+
+Defined in src/constants.ts:119
 
 ___
 
@@ -87,7 +108,7 @@ ___
 
 • **CASE**: = "CASE"
 
-Defined in src/constants.ts:118
+Defined in src/constants.ts:128
 
 ___
 
@@ -111,7 +132,7 @@ ___
 
 • **DECLARE**: = "DECLARE"
 
-Defined in src/constants.ts:119
+Defined in src/constants.ts:129
 
 ___
 
@@ -127,7 +148,7 @@ ___
 
 • **DOCUMENT**: = "DOCUMENT"
 
-Defined in src/constants.ts:120
+Defined in src/constants.ts:130
 
 ___
 
@@ -144,6 +165,14 @@ ___
 • **EXECUTE_ARGUMENT_LIST**: = "EXECUTE_ARGUMENT_LIST"
 
 Defined in src/constants.ts:86
+
+___
+
+###  EXISTS
+
+• **EXISTS**: = "EXISTS"
+
+Defined in src/constants.ts:114
 
 ___
 
@@ -183,7 +212,7 @@ ___
 
 • **JOIN**: = "JOIN"
 
-Defined in src/constants.ts:115
+Defined in src/constants.ts:125
 
 ___
 
@@ -229,11 +258,27 @@ Defined in src/constants.ts:106
 
 ___
 
-###  UNARY
+###  UNARY_CALCULATE
 
-• **UNARY**: = "UNARY"
+• **UNARY_CALCULATE**: = "UNARY_CALCULATE"
 
-Defined in src/constants.ts:114
+Defined in src/constants.ts:123
+
+___
+
+###  UNARY_COMPARE
+
+• **UNARY_COMPARE**: = "UNARY_COMPARE"
+
+Defined in src/constants.ts:122
+
+___
+
+###  UNARY_LOGIC
+
+• **UNARY_LOGIC**: = "UNARY_LOGIC"
+
+Defined in src/constants.ts:124
 
 ___
 
@@ -241,7 +286,7 @@ ___
 
 • **UNION**: = "UNION"
 
-Defined in src/constants.ts:116
+Defined in src/constants.ts:126
 
 ___
 
@@ -281,4 +326,4 @@ ___
 
 • **WHEN**: = "WHEN"
 
-Defined in src/constants.ts:117
+Defined in src/constants.ts:127

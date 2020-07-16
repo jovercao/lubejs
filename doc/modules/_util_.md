@@ -10,8 +10,9 @@
 * [ensureCondition](_util_.md#ensurecondition)
 * [ensureConstant](_util_.md#ensureconstant)
 * [ensureGroupValues](_util_.md#ensuregroupvalues)
-* [ensureIdentity](_util_.md#ensureidentity)
-* [makeProxyIdentity](_util_.md#makeproxyidentity)
+* [ensureIdentifier](_util_.md#ensureidentifier)
+* [isJsConstant](_util_.md#isjsconstant)
+* [makeProxiedIdentifier](_util_.md#makeproxiedidentifier)
 
 ## Functions
 
@@ -19,7 +20,7 @@
 
 ▸ **assert**(`except`: any, `message`: string): *void*
 
-Defined in src/util.ts:20
+Defined in src/util.ts:21
 
 断言
 
@@ -36,9 +37,9 @@ ___
 
 ###  ensureCondition
 
-▸ **ensureCondition**(`condition`: [UnsureConditions](_ast_.md#unsureconditions)): *[Condition](../classes/_ast_.condition.md)*
+▸ **ensureCondition**(`condition`: [UnsureCondition](_ast_.md#unsurecondition)): *[Condition](../classes/_ast_.condition.md)*
 
-Defined in src/util.ts:55
+Defined in src/util.ts:60
 
 通过一个对象创建一个对查询条件
 亦可理解为：转换managodb的查询条件到 ast
@@ -47,7 +48,7 @@ Defined in src/util.ts:55
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`condition` | [UnsureConditions](_ast_.md#unsureconditions) | 条件表达式  |
+`condition` | [UnsureCondition](_ast_.md#unsurecondition) | 条件表达式  |
 
 **Returns:** *[Condition](../classes/_ast_.condition.md)*
 
@@ -57,7 +58,7 @@ ___
 
 ▸ **ensureConstant**(`expr`: [UnsureExpression](_ast_.md#unsureexpression)): *[Expression](../classes/_ast_.expression.md)*
 
-Defined in src/util.ts:29
+Defined in src/util.ts:30
 
 返回表达式
 
@@ -75,7 +76,7 @@ ___
 
 ▸ **ensureGroupValues**(`values`: [UnsureGroupValues](_ast_.md#unsuregroupvalues)): *[List](../classes/_ast_.list.md)*
 
-Defined in src/util.ts:43
+Defined in src/util.ts:48
 
 **Parameters:**
 
@@ -87,11 +88,11 @@ Name | Type |
 
 ___
 
-###  ensureIdentity
+###  ensureIdentifier
 
-▸ **ensureIdentity**(`expr`: string | [Identifier](../classes/_ast_.identifier.md)): *[Identifier](../classes/_ast_.identifier.md)*
+▸ **ensureIdentifier**(`expr`: string | [Identifier](../classes/_ast_.identifier.md)): *[Identifier](../classes/_ast_.identifier.md)*
 
-Defined in src/util.ts:36
+Defined in src/util.ts:37
 
 **Parameters:**
 
@@ -103,11 +104,27 @@ Name | Type |
 
 ___
 
-###  makeProxyIdentity
+###  isJsConstant
 
-▸ **makeProxyIdentity**(`identifier`: [Identifier](../classes/_ast_.identifier.md)): *[Identifier](../classes/_ast_.identifier.md)*
+▸ **isJsConstant**(`value`: any): *value is JsConstant*
 
-Defined in src/util.ts:85
+Defined in src/util.ts:110
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`value` | any |
+
+**Returns:** *value is JsConstant*
+
+___
+
+###  makeProxiedIdentifier
+
+▸ **makeProxiedIdentifier**(`identifier`: [Identifier](../classes/_ast_.identifier.md)): *[ProxiedIdentifier](_ast_.md#proxiedidentifier)*
+
+Defined in src/util.ts:93
 
 将制作table的代理，用于生成字段
 
@@ -117,4 +134,4 @@ Name | Type |
 ------ | ------ |
 `identifier` | [Identifier](../classes/_ast_.identifier.md) |
 
-**Returns:** *[Identifier](../classes/_ast_.identifier.md)*
+**Returns:** *[ProxiedIdentifier](_ast_.md#proxiedidentifier)*

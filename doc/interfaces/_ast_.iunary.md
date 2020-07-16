@@ -12,9 +12,9 @@
 
 * [IsNotNullCondition](../classes/_ast_.isnotnullcondition.md)
 * [IsNullCondition](../classes/_ast_.isnullcondition.md)
-* [UnaryCompareCondition](../classes/_ast_.unarycomparecondition.md)
-* [UnaryExpression](../classes/_ast_.unaryexpression.md)
-* [UnaryLogicCondition](../classes/_ast_.unarylogiccondition.md)
+* [UnaryCalculate](../classes/_ast_.unarycalculate.md)
+* [UnaryCompare](../classes/_ast_.unarycompare.md)
+* [UnaryLogic](../classes/_ast_.unarylogic.md)
 
 ## Index
 
@@ -40,7 +40,7 @@
 
 *Inherited from [AST](../classes/_ast_.ast.md).[constructor](../classes/_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:65
+Defined in src/ast.ts:68
 
 **Parameters:**
 
@@ -56,7 +56,7 @@ Name | Type |
 
 • **next**: *[AST](../classes/_ast_.ast.md)*
 
-Defined in src/ast.ts:1715
+Defined in src/ast.ts:1745
 
 ___
 
@@ -64,7 +64,7 @@ ___
 
 • **operator**: *String*
 
-Defined in src/ast.ts:1714
+Defined in src/ast.ts:1744
 
 ___
 
@@ -74,7 +74,7 @@ ___
 
 *Inherited from [AST](../classes/_ast_.ast.md).[type](../classes/_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -84,7 +84,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](../classes/_ast_.ast.md).[bracket](../classes/_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

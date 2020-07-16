@@ -1,6 +1,6 @@
-[lubejs](../README.md) › [Globals](../globals.md) › ["constants"](../modules/_constants_.md) › [COMPUTE_OPERATOR](_constants_.compute_operator.md)
+[lubejs](../README.md) › [Globals](../globals.md) › ["constants"](../modules/_constants_.md) › [CALCULATE_OPERATOR](_constants_.calculate_operator.md)
 
-# Enumeration: COMPUTE_OPERATOR
+# Enumeration: CALCULATE_OPERATOR
 
 算术运算符列表
 
@@ -8,18 +8,18 @@
 
 ### Enumeration members
 
-* [ADD](_constants_.compute_operator.md#add)
-* [BITAND](_constants_.compute_operator.md#bitand)
-* [BITNOT](_constants_.compute_operator.md#bitnot)
-* [BITOR](_constants_.compute_operator.md#bitor)
-* [BITXOR](_constants_.compute_operator.md#bitxor)
-* [DIV](_constants_.compute_operator.md#div)
-* [MOD](_constants_.compute_operator.md#mod)
-* [MUL](_constants_.compute_operator.md#mul)
-* [NEG](_constants_.compute_operator.md#neg)
-* [SHL](_constants_.compute_operator.md#shl)
-* [SHR](_constants_.compute_operator.md#shr)
-* [SUB](_constants_.compute_operator.md#sub)
+* [ADD](_constants_.calculate_operator.md#add)
+* [BITAND](_constants_.calculate_operator.md#bitand)
+* [BITNOT](_constants_.calculate_operator.md#bitnot)
+* [BITOR](_constants_.calculate_operator.md#bitor)
+* [BITXOR](_constants_.calculate_operator.md#bitxor)
+* [DIV](_constants_.calculate_operator.md#div)
+* [MOD](_constants_.calculate_operator.md#mod)
+* [MUL](_constants_.calculate_operator.md#mul)
+* [NEG](_constants_.calculate_operator.md#neg)
+* [SHL](_constants_.calculate_operator.md#shl)
+* [SHR](_constants_.calculate_operator.md#shr)
+* [SUB](_constants_.calculate_operator.md#sub)
 
 ## Enumeration members
 

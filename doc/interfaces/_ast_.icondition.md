@@ -8,15 +8,16 @@
 
 ## Implemented by
 
-* [BinaryCompareCondition](../classes/_ast_.binarycomparecondition.md)
-* [BinaryLogicCondition](../classes/_ast_.binarylogiccondition.md)
+* [BinaryCompare](../classes/_ast_.binarycompare.md)
+* [BinaryLogic](../classes/_ast_.binarylogic.md)
 * [Condition](../classes/_ast_.condition.md)
+* [ExistsCompare](../classes/_ast_.existscompare.md)
 * [IsNotNullCondition](../classes/_ast_.isnotnullcondition.md)
 * [IsNullCondition](../classes/_ast_.isnullcondition.md)
 * [QuotedCondition](../classes/_ast_.quotedcondition.md)
 * [QuotedCondition](../classes/_ast_.quotedcondition.md)
-* [UnaryCompareCondition](../classes/_ast_.unarycomparecondition.md)
-* [UnaryLogicCondition](../classes/_ast_.unarylogiccondition.md)
+* [UnaryCompare](../classes/_ast_.unarycompare.md)
+* [UnaryLogic](../classes/_ast_.unarylogic.md)
 
 ## Index
 
@@ -33,7 +34,7 @@
 
 ▸ **and**(`condition`: [Condition](../classes/_ast_.condition.md)): *[Condition](../classes/_ast_.condition.md)*
 
-Defined in src/ast.ts:702
+Defined in src/ast.ts:712
 
 and连接
 
@@ -53,7 +54,7 @@ ___
 
 ▸ **andGroup**(`condition`: [Condition](../classes/_ast_.condition.md)): *[Condition](../classes/_ast_.condition.md)*
 
-Defined in src/ast.ts:708
+Defined in src/ast.ts:718
 
 and连接，并在被连接的条件中加上括号 ()
 
@@ -73,7 +74,7 @@ ___
 
 ▸ **or**(`condition`: [Condition](../classes/_ast_.condition.md)): *[Condition](../classes/_ast_.condition.md)*
 
-Defined in src/ast.ts:715
+Defined in src/ast.ts:725
 
 OR语句
 
@@ -93,7 +94,7 @@ ___
 
 ▸ **orGroup**(`condition`: [Condition](../classes/_ast_.condition.md)): *[Condition](../classes/_ast_.condition.md)*
 
-Defined in src/ast.ts:722
+Defined in src/ast.ts:732
 
 or 连接，并在被连接的条件中加上括号 ()
 

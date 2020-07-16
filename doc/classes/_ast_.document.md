@@ -33,7 +33,7 @@ SQL 文档
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:2281
+Defined in src/ast.ts:2353
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ Name | Type |
 
 • **statements**: *[Statement](_ast_.statement.md)[]*
 
-Defined in src/ast.ts:2281
+Defined in src/ast.ts:2353
 
 ___
 
@@ -59,7 +59,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -69,7 +69,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

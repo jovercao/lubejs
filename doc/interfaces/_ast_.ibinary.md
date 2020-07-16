@@ -10,8 +10,8 @@
 
 ## Implemented by
 
-* [BinaryExpression](../classes/_ast_.binaryexpression.md)
-* [BinaryLogicCondition](../classes/_ast_.binarylogiccondition.md)
+* [BinaryCalculate](../classes/_ast_.binarycalculate.md)
+* [BinaryLogic](../classes/_ast_.binarylogic.md)
 
 ## Index
 
@@ -38,7 +38,7 @@
 
 *Inherited from [AST](../classes/_ast_.ast.md).[constructor](../classes/_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:65
+Defined in src/ast.ts:68
 
 **Parameters:**
 
@@ -54,7 +54,7 @@ Name | Type |
 
 • **left**: *[AST](../classes/_ast_.ast.md)*
 
-Defined in src/ast.ts:1709
+Defined in src/ast.ts:1739
 
 ___
 
@@ -62,7 +62,7 @@ ___
 
 • **operator**: *String*
 
-Defined in src/ast.ts:1708
+Defined in src/ast.ts:1738
 
 ___
 
@@ -70,7 +70,7 @@ ___
 
 • **right**: *[AST](../classes/_ast_.ast.md)*
 
-Defined in src/ast.ts:1710
+Defined in src/ast.ts:1740
 
 ___
 
@@ -80,7 +80,7 @@ ___
 
 *Inherited from [AST](../classes/_ast_.ast.md).[type](../classes/_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -90,7 +90,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](../classes/_ast_.ast.md).[bracket](../classes/_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

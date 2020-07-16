@@ -24,25 +24,24 @@ When语句
 
 ### Methods
 
-* [then](_ast_.when.md#then)
 * [bracket](_ast_.when.md#static-bracket)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new When**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `value?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[When](_ast_.when.md)*
+\+ **new When**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression) | [UnsureCondition](../modules/_ast_.md#unsurecondition), `then`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[When](_ast_.when.md)*
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1368
+Defined in src/ast.ts:1396
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
-`value?` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) &#124; [UnsureCondition](../modules/_ast_.md#unsurecondition) |
+`then` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
 
 **Returns:** *[When](_ast_.when.md)*
 
@@ -50,9 +49,9 @@ Name | Type |
 
 ###  expr
 
-• **expr**: *[Expression](_ast_.expression.md)*
+• **expr**: *[Expression](_ast_.expression.md) | [Condition](_ast_.condition.md)*
 
-Defined in src/ast.ts:1367
+Defined in src/ast.ts:1395
 
 ___
 
@@ -62,7 +61,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ___
 
@@ -70,25 +69,9 @@ ___
 
 • **value**: *[Expression](_ast_.expression.md)*
 
-Defined in src/ast.ts:1368
+Defined in src/ast.ts:1396
 
 ## Methods
-
-###  then
-
-▸ **then**(`value`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *void*
-
-Defined in src/ast.ts:1378
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`value` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
-
-**Returns:** *void*
-
-___
 
 ### `Static` bracket
 
@@ -96,7 +79,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

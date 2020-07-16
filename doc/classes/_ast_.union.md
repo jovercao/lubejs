@@ -30,18 +30,18 @@
 
 ###  constructor
 
-\+ **new Union**(`select`: any, `all`: any): *[Union](_ast_.union.md)*
+\+ **new Union**(`select`: [SelectExpression](../modules/_ast_.md#selectexpression), `all`: boolean): *[Union](_ast_.union.md)*
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1776
+Defined in src/ast.ts:1806
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`select` | any | SELECT语句 |
-`all` | any | 是否所有查询  |
+Name | Type | Default | Description |
+------ | ------ | ------ | ------ |
+`select` | [SelectExpression](../modules/_ast_.md#selectexpression) | - | SELECT语句 |
+`all` | boolean | false | 是否所有查询  |
 
 **Returns:** *[Union](_ast_.union.md)*
 
@@ -51,15 +51,15 @@ Name | Type | Description |
 
 • **all**: *boolean*
 
-Defined in src/ast.ts:1776
+Defined in src/ast.ts:1806
 
 ___
 
 ###  select
 
-• **select**: *[UnsureSelectExpressions](../modules/_ast_.md#unsureselectexpressions)*
+• **select**: *[SelectExpression](../modules/_ast_.md#selectexpression)*
 
-Defined in src/ast.ts:1775
+Defined in src/ast.ts:1805
 
 ___
 
@@ -69,7 +69,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -79,7 +79,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

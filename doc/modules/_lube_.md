@@ -12,11 +12,12 @@
 * [Alias](_lube_.md#alias)
 * [AssignObject](_lube_.md#assignobject)
 * [Assignment](_lube_.md#assignment)
-* [BinaryExpression](_lube_.md#binaryexpression)
-* [BinaryLogicCondition](_lube_.md#binarylogiccondition)
+* [BinaryCalculate](_lube_.md#binarycalculate)
+* [BinaryCompare](_lube_.md#binarycompare)
+* [BinaryLogic](_lube_.md#binarylogic)
 * [Bracket](_lube_.md#bracket)
+* [CALCULATE_OPERATOR](_lube_.md#calculate_operator)
 * [COMPARE_OPERATOR](_lube_.md#compare_operator)
-* [COMPUTE_OPERATOR](_lube_.md#compute_operator)
 * [Case](_lube_.md#case)
 * [Command](_lube_.md#command)
 * [CompileOptions](_lube_.md#compileoptions)
@@ -27,13 +28,18 @@
 * [Delete](_lube_.md#delete)
 * [Document](_lube_.md#document)
 * [Execute](_lube_.md#execute)
+* [Executor](_lube_.md#executor)
+* [ExistsCompare](_lube_.md#existscompare)
 * [Expression](_lube_.md#expression)
+* [Filter](_lube_.md#filter)
 * [IBinary](_lube_.md#ibinary)
 * [ICondition](_lube_.md#icondition)
+* [INSERT_MAXIMUM_ROWS](_lube_.md#insert_maximum_rows)
 * [ISOLATION_LEVEL](_lube_.md#isolation_level)
 * [IUnary](_lube_.md#iunary)
 * [Identifier](_lube_.md#identifier)
 * [Insert](_lube_.md#insert)
+* [InsertObject](_lube_.md#insertobject)
 * [Invoke](_lube_.md#invoke)
 * [Join](_lube_.md#join)
 * [JsConstant](_lube_.md#jsconstant)
@@ -42,24 +48,30 @@
 * [List](_lube_.md#list)
 * [PARAMETER_DIRECTION](_lube_.md#parameter_direction)
 * [Parameter](_lube_.md#parameter)
+* [ProxiedIdentifier](_lube_.md#proxiedidentifier)
+* [QueryHandler](_lube_.md#queryhandler)
+* [QueryResult](_lube_.md#queryresult)
 * [QuotedCondition](_lube_.md#quotedcondition)
 * [RETURN_VALUE_PARAMETER_NAME](_lube_.md#return_value_parameter_name)
 * [Raw](_lube_.md#raw)
+* [ResultObject](_lube_.md#resultobject)
 * [SORT_DIRECTION](_lube_.md#sort_direction)
 * [SQL](_lube_.md#sql)
 * [SQL_SYMBOLE](_lube_.md#sql_symbole)
 * [Select](_lube_.md#select)
 * [SelectExpression](_lube_.md#selectexpression)
+* [SelectOptions](_lube_.md#selectoptions)
 * [SortInfo](_lube_.md#sortinfo)
 * [SortObject](_lube_.md#sortobject)
 * [Statement](_lube_.md#statement)
-* [UnaryExpression](_lube_.md#unaryexpression)
+* [UnaryCalculate](_lube_.md#unarycalculate)
+* [UnaryCompare](_lube_.md#unarycompare)
+* [UnaryLogic](_lube_.md#unarylogic)
 * [Union](_lube_.md#union)
-* [UnsureConditions](_lube_.md#unsureconditions)
+* [UnsureCondition](_lube_.md#unsurecondition)
 * [UnsureExpression](_lube_.md#unsureexpression)
 * [UnsureGroupValues](_lube_.md#unsuregroupvalues)
-* [UnsureIdentity](_lube_.md#unsureidentity)
-* [UnsureSelectExpressions](_lube_.md#unsureselectexpressions)
+* [UnsureIdentifier](_lube_.md#unsureidentifier)
 * [Update](_lube_.md#update)
 * [ValuesObject](_lube_.md#valuesobject)
 * [Variant](_lube_.md#variant)
@@ -152,15 +164,21 @@ ___
 
 ___
 
-###  BinaryExpression
+###  BinaryCalculate
 
-• **BinaryExpression**:
+• **BinaryCalculate**:
 
 ___
 
-###  BinaryLogicCondition
+###  BinaryCompare
 
-• **BinaryLogicCondition**:
+• **BinaryCompare**:
+
+___
+
+###  BinaryLogic
+
+• **BinaryLogic**:
 
 ___
 
@@ -170,15 +188,15 @@ ___
 
 ___
 
-###  COMPARE_OPERATOR
+###  CALCULATE_OPERATOR
 
-• **COMPARE_OPERATOR**:
+• **CALCULATE_OPERATOR**:
 
 ___
 
-###  COMPUTE_OPERATOR
+###  COMPARE_OPERATOR
 
-• **COMPUTE_OPERATOR**:
+• **COMPARE_OPERATOR**:
 
 ___
 
@@ -242,9 +260,27 @@ ___
 
 ___
 
+###  Executor
+
+• **Executor**:
+
+___
+
+###  ExistsCompare
+
+• **ExistsCompare**:
+
+___
+
 ###  Expression
 
 • **Expression**:
+
+___
+
+###  Filter
+
+• **Filter**:
 
 ___
 
@@ -257,6 +293,12 @@ ___
 ###  ICondition
 
 • **ICondition**:
+
+___
+
+###  INSERT_MAXIMUM_ROWS
+
+• **INSERT_MAXIMUM_ROWS**:
 
 ___
 
@@ -281,6 +323,12 @@ ___
 ###  Insert
 
 • **Insert**:
+
+___
+
+###  InsertObject
+
+• **InsertObject**:
 
 ___
 
@@ -332,6 +380,24 @@ ___
 
 ___
 
+###  ProxiedIdentifier
+
+• **ProxiedIdentifier**:
+
+___
+
+###  QueryHandler
+
+• **QueryHandler**:
+
+___
+
+###  QueryResult
+
+• **QueryResult**:
+
+___
+
 ###  QuotedCondition
 
 • **QuotedCondition**:
@@ -347,6 +413,12 @@ ___
 ###  Raw
 
 • **Raw**:
+
+___
+
+###  ResultObject
+
+• **ResultObject**:
 
 ___
 
@@ -380,6 +452,12 @@ ___
 
 ___
 
+###  SelectOptions
+
+• **SelectOptions**:
+
+___
+
 ###  SortInfo
 
 • **SortInfo**:
@@ -398,9 +476,21 @@ ___
 
 ___
 
-###  UnaryExpression
+###  UnaryCalculate
 
-• **UnaryExpression**:
+• **UnaryCalculate**:
+
+___
+
+###  UnaryCompare
+
+• **UnaryCompare**:
+
+___
+
+###  UnaryLogic
+
+• **UnaryLogic**:
 
 ___
 
@@ -410,9 +500,9 @@ ___
 
 ___
 
-###  UnsureConditions
+###  UnsureCondition
 
-• **UnsureConditions**:
+• **UnsureCondition**:
 
 ___
 
@@ -428,15 +518,9 @@ ___
 
 ___
 
-###  UnsureIdentity
+###  UnsureIdentifier
 
-• **UnsureIdentity**:
-
-___
-
-###  UnsureSelectExpressions
-
-• **UnsureSelectExpressions**:
+• **UnsureIdentifier**:
 
 ___
 
@@ -654,7 +738,7 @@ ___
 
 Ƭ **TransactionHandler**: *function*
 
-Defined in src/lube.ts:8
+Defined in src/lube.ts:9
 
 #### Type declaration:
 
@@ -674,7 +758,7 @@ Defined in src/lube.ts:8
 
 ▸ **connect**(`url`: string): *Promise‹[Lube](../classes/_lube_.lube.md)›*
 
-Defined in src/lube.ts:109
+Defined in src/lube.ts:110
 
 连接数据库并返回一个连接池
 
@@ -688,7 +772,7 @@ Name | Type |
 
 ▸ **connect**(`config`: [ConnectOptions](../interfaces/_lube_.connectoptions.md)): *Promise‹[Lube](../classes/_lube_.lube.md)›*
 
-Defined in src/lube.ts:110
+Defined in src/lube.ts:111
 
 **Parameters:**
 

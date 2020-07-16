@@ -27,7 +27,7 @@
 
 • **compiler**? : *[Compiler](../classes/_compiler_.compiler.md)*
 
-Defined in src/lube.ts:24
+Defined in src/lube.ts:25
 
 ___
 
@@ -35,7 +35,7 @@ ___
 
 • **ployfill**? : *[CompileOptions](_compiler_.compileoptions.md)*
 
-Defined in src/lube.ts:23
+Defined in src/lube.ts:24
 
 ## Methods
 
@@ -43,7 +43,7 @@ Defined in src/lube.ts:23
 
 ▸ **beginTrans**(`isolationLevel`: [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md)): *[ITransaction](_lube_.itransaction.md)*
 
-Defined in src/lube.ts:26
+Defined in src/lube.ts:27
 
 **Parameters:**
 
@@ -59,7 +59,7 @@ ___
 
 ▸ **close**(): *Promise‹void›*
 
-Defined in src/lube.ts:27
+Defined in src/lube.ts:28
 
 **Returns:** *Promise‹void›*
 
@@ -67,15 +67,15 @@ ___
 
 ###  query
 
-▸ **query**(`sql`: any, `params`: any): *Promise‹[QueryResult](_executor_.queryresult.md)›*
+▸ **query**(`sql`: string, `params`: [Parameter](../classes/_ast_.parameter.md)[]): *Promise‹[QueryResult](_executor_.queryresult.md)›*
 
-Defined in src/lube.ts:25
+Defined in src/lube.ts:26
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`sql` | any |
-`params` | any |
+`sql` | string |
+`params` | [Parameter](../classes/_ast_.parameter.md)[] |
 
 **Returns:** *Promise‹[QueryResult](_executor_.queryresult.md)›*

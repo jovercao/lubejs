@@ -10,7 +10,6 @@
 
 ### Interfaces
 
-* [IExecuotor](../interfaces/_executor_.iexecuotor.md)
 * [QueryHandler](../interfaces/_executor_.queryhandler.md)
 * [QueryResult](../interfaces/_executor_.queryresult.md)
 * [SelectOptions](../interfaces/_executor_.selectoptions.md)

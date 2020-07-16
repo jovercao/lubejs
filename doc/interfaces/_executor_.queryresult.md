@@ -1,6 +1,10 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["executor"](../modules/_executor_.md) › [QueryResult](_executor_.queryresult.md)
 
-# Interface: QueryResult
+# Interface: QueryResult ‹**T**›
+
+## Type parameters
+
+▪ **T**
 
 ## Hierarchy
 
@@ -21,7 +25,7 @@
 
 • **output**? : *object*
 
-Defined in src/executor.ts:10
+Defined in src/executor.ts:12
 
 #### Type declaration:
 
@@ -33,15 +37,15 @@ ___
 
 • **returnValue**? : *any*
 
-Defined in src/executor.ts:14
+Defined in src/executor.ts:16
 
 ___
 
 ### `Optional` rows
 
-• **rows**? : *object[]*
+• **rows**? : *T[]*
 
-Defined in src/executor.ts:9
+Defined in src/executor.ts:11
 
 ___
 
@@ -49,4 +53,4 @@ ___
 
 • **rowsAffected**: *number*
 
-Defined in src/executor.ts:13
+Defined in src/executor.ts:15

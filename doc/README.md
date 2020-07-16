@@ -1,3 +1,7 @@
+[lubejs](README.md) › [Globals](globals.md)
+
+# lubejs
+
 # lubejs
 
 > Lubejs is a library who base on `node.js` to easlly use database with js.

@@ -1,6 +1,10 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["executor"](../modules/_executor_.md) › [SelectOptions](_executor_.selectoptions.md)
 
-# Interface: SelectOptions
+# Interface: SelectOptions ‹**TResult**›
+
+## Type parameters
+
+▪ **TResult**
 
 ## Hierarchy
 
@@ -24,15 +28,15 @@
 
 • **distinct**? : *boolean*
 
-Defined in src/executor.ts:32
+Defined in src/executor.ts:35
 
 ___
 
 ### `Optional` fields
 
-• **fields**? : *string[]*
+• **fields**? : *keyof TResult[]*
 
-Defined in src/executor.ts:33
+Defined in src/executor.ts:36
 
 ___
 
@@ -40,7 +44,7 @@ ___
 
 • **limit**? : *number*
 
-Defined in src/executor.ts:31
+Defined in src/executor.ts:34
 
 ___
 
@@ -48,15 +52,15 @@ ___
 
 • **offset**? : *number*
 
-Defined in src/executor.ts:30
+Defined in src/executor.ts:33
 
 ___
 
 ### `Optional` sorts
 
-• **sorts**? : *[SortObject](_ast_.sortobject.md) | String | Number | Boolean | [Expression](../classes/_ast_.expression.md)‹› | Date | Buffer‹› | [SortInfo](../classes/_ast_.sortinfo.md)‹›[]*
+• **sorts**? : *[SortObject](_ast_.sortobject.md) | string | number | bigint | false | true | [Expression](../classes/_ast_.expression.md)‹› | Date | Buffer‹› | [SortInfo](../classes/_ast_.sortinfo.md)‹›[]*
 
-Defined in src/executor.ts:34
+Defined in src/executor.ts:37
 
 ___
 
@@ -64,12 +68,12 @@ ___
 
 • **top**? : *number*
 
-Defined in src/executor.ts:29
+Defined in src/executor.ts:32
 
 ___
 
 ### `Optional` where
 
-• **where**? : *[UnsureConditions](../modules/_ast_.md#unsureconditions)*
+• **where**? : *[UnsureCondition](../modules/_ast_.md#unsurecondition)*
 
-Defined in src/executor.ts:28
+Defined in src/executor.ts:31

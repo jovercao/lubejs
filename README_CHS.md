@@ -1,36 +1,37 @@
 # lubejs
 
-> Lubejs is a library who base on `node.js` to easlly use database with js.
-> use js instead sql.
+> Lubejs 是一个用于 `node.js` 诣在方便使用SQL数据库连接.
+> 取名为lube意为润滑，即作为js与sql间的润滑剂般的存在，尽情使用 js 替代你的 sql 字符串吧.
 
-[简体中文](./README_CHS.md)
+[English](./README.md)
 
-Supports list:
+支持列表:
 
-- mssql - microsoft sqlserver 2012 or highter version, base on `node-mssql`.
+- mssql - 目前支持microsoft sqlserver 2012 或更高版本, 库基于 `node-mssql`开发.
 
 ## Queick Start
 
 ### Install
 
-Install with npm:
+使用 npm 安装:
 
 ```shell
+# 安装lugejs库
 npm install lubejs --save
 
-# install dialect driver
+# 安装MSSQL驱动
 npm install lubejs-mssql
 ```
 
-### Usage
+### 使用方法
 
 ```js
 const { connect, select, update, insert, $delete, table, SQL } = require('lubejs')
-/**
- * build-in objects import from driver package
- */
+
+// 数据库内建对象（如函数、系统变量等）请从对应的驱动库导入
 const { sum } = require('lubejs-mssql')
 
+// 这是一个范例
 async function action() {
   const pool = await connect('mssql://sa:password@127.0.0.1/test-db')
   // for oracle
@@ -43,7 +44,7 @@ async function action() {
   let affected = 0
   let t, datas
 
-  //---------------Insert Datas------------------
+  //---------------插入数据------------------
   /*
   * INSERT INTO table1 (field1, field2, field3)
   * VALUES ('value1-1', 2, Convert(DateTime, '2019-11-18 00:00:00'))
@@ -58,34 +59,34 @@ async function action() {
 
   affected = await pool.query(insertSql)
 
-  //  You can also insert in this way
+  // 你还以使用以下方式插入，等效于上面的写法
   await pool.insert('table1', [
     { field1: 'value1-1', field2: 2, field3: new Date() },
     { field1: 'value1-2', field2: 1, field3: new Date() },
     { field1: 'value1-3', field2: 45, field3: new Date() }
   ])
 
-  //---------------Update Datas------------------
+  //---------------更新数据------------------
   // UPDATE table1 SET updatedAt = Convert(DateTime, '2019-11-18 00:00:00') WHERE id = 1
   t = table('table1').as('t')
   const updateSql = update(t).set({ updatedAt: new Date(), operator: 'your name' }).where(t.$id.eq(1))
   await pool.query(updateSql)
 
-  //  You can also update in this way
+  // 你还以使用以下方式更新，等效于上面的写法
   affected = await pool.update('table1', { updatedAt: new Date(), operator: 'your name' }, { id: 1 })
 
-  //---------------Delete Datas-------------------
+  //---------------删除数据-------------------
   // DELETE t FROM table1 WHERE t.id = 1
-  // Use $delete instead of delete because of keywords. Or use SQL.delete
+  // 请使用 $delete或者SQL.delete 而非 delete，因为delete是js关键字，
   t = table('table1').as('t')
   let deleteSql = $delete(t).from(t).where(t.id.eq(1))
   await pool.query(deleteSql)
 
-  //  You can also delete in this way
+  // 你还以使用以下方式删除
   // DELETE table1 WHERE id = 1
   affected = await pool.delete('table1', { id: 1 })
 
-  //----------------Select Datas--------------------
+  //----------------查询数据--------------------
   // SELECT t.* FROM table1 AS t WHERE t.id = 1 AND t.name = 'name1'
   // use '$name' instead of 'name' because of name is property of Identity
   t = table('table1').as('t')
@@ -101,7 +102,7 @@ async function action() {
     }
   })
 
-  //---------------A Complex queries (mssql)------------
+  //---------------以下是一个复合查询 (mssql)------------
   /*
   * SELECT
   *     pay.year,

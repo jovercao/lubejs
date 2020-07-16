@@ -22,7 +22,7 @@
 
 ▸ **commit**(): *void*
 
-Defined in src/lube.ts:15
+Defined in src/lube.ts:16
 
 **Returns:** *void*
 
@@ -32,7 +32,7 @@ ___
 
 ▸ **query**(): *Promise‹[QueryResult](_executor_.queryresult.md)›*
 
-Defined in src/lube.ts:14
+Defined in src/lube.ts:15
 
 **Returns:** *Promise‹[QueryResult](_executor_.queryresult.md)›*
 
@@ -42,6 +42,6 @@ ___
 
 ▸ **rollback**(): *void*
 
-Defined in src/lube.ts:16
+Defined in src/lube.ts:17
 
 **Returns:** *void*

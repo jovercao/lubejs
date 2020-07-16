@@ -32,7 +32,7 @@
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1865
+Defined in src/ast.ts:1895
 
 **Parameters:**
 
@@ -49,7 +49,7 @@ Name | Type |
 
 • **direction**? : *[SORT_DIRECTION](../enums/_constants_.sort_direction.md)*
 
-Defined in src/ast.ts:1865
+Defined in src/ast.ts:1895
 
 ___
 
@@ -57,7 +57,7 @@ ___
 
 • **expr**: *[Expression](_ast_.expression.md)*
 
-Defined in src/ast.ts:1864
+Defined in src/ast.ts:1894
 
 ___
 
@@ -67,7 +67,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -77,7 +77,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 

@@ -37,7 +37,7 @@
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1455
+Defined in src/ast.ts:1485
 
 **Parameters:**
 
@@ -54,7 +54,7 @@ Name | Type |
 
 • **items**: *[Expression](_ast_.expression.md)[]*
 
-Defined in src/ast.ts:1455
+Defined in src/ast.ts:1485
 
 ___
 
@@ -64,7 +64,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -74,7 +74,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 
@@ -94,7 +94,7 @@ ___
 
 ▸ **columns**(...`exprs`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[List](_ast_.list.md)*
 
-Defined in src/ast.ts:1465
+Defined in src/ast.ts:1495
 
 **Parameters:**
 
@@ -110,7 +110,7 @@ ___
 
 ▸ **execArgs**(...`exprs`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[List](_ast_.list.md)*
 
-Defined in src/ast.ts:1473
+Defined in src/ast.ts:1503
 
 **Parameters:**
 
@@ -126,7 +126,7 @@ ___
 
 ▸ **invokeArgs**(...`exprs`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[List](_ast_.list.md)*
 
-Defined in src/ast.ts:1469
+Defined in src/ast.ts:1499
 
 **Parameters:**
 
@@ -142,7 +142,7 @@ ___
 
 ▸ **values**(...`values`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[List](_ast_.list.md)*
 
-Defined in src/ast.ts:1461
+Defined in src/ast.ts:1491
 
 **Parameters:**
 

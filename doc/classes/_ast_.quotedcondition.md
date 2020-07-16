@@ -55,17 +55,17 @@
 
 ###  constructor
 
-\+ **new QuotedCondition**(`conditions`: [UnsureConditions](../modules/_ast_.md#unsureconditions)): *[QuotedCondition](_ast_.quotedcondition.md)*
+\+ **new QuotedCondition**(`conditions`: [UnsureCondition](../modules/_ast_.md#unsurecondition)): *[QuotedCondition](_ast_.quotedcondition.md)*
 
 *Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
 
-Defined in src/ast.ts:1664
+Defined in src/ast.ts:1694
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`conditions` | [UnsureConditions](../modules/_ast_.md#unsureconditions) |
+`conditions` | [UnsureCondition](../modules/_ast_.md#unsurecondition) |
 
 **Returns:** *[QuotedCondition](_ast_.quotedcondition.md)*
 
@@ -79,7 +79,7 @@ Name | Type |
 
 *Overrides [Condition](_ast_.condition.md).[and](_ast_.condition.md#and)*
 
-Defined in src/ast.ts:1676
+Defined in src/ast.ts:1706
 
 and连接
 
@@ -89,13 +89,13 @@ and连接
 
 #### Type declaration:
 
-▸ (`condition`: any): *[Condition](_ast_.condition.md)*
+▸ (`condition`: [UnsureCondition](../modules/_ast_.md#unsurecondition)): *[Condition](_ast_.condition.md)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`condition` | any |
+`condition` | [UnsureCondition](../modules/_ast_.md#unsurecondition) |
 
 ___
 
@@ -107,7 +107,7 @@ ___
 
 *Overrides [Condition](_ast_.condition.md).[andGroup](_ast_.condition.md#andgroup)*
 
-Defined in src/ast.ts:1683
+Defined in src/ast.ts:1713
 
 and连接，并在被连接的条件中加上括号 ()
 
@@ -117,13 +117,13 @@ and连接，并在被连接的条件中加上括号 ()
 
 #### Type declaration:
 
-▸ (`condition`: [Condition](_ast_.condition.md)): *[Condition](_ast_.condition.md)*
+▸ (`condition`: [UnsureCondition](../modules/_ast_.md#unsurecondition)): *[Condition](_ast_.condition.md)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`condition` | [Condition](_ast_.condition.md) |
+`condition` | [UnsureCondition](../modules/_ast_.md#unsurecondition) |
 
 ___
 
@@ -131,7 +131,7 @@ ___
 
 • **context**: *[Condition](_ast_.condition.md)*
 
-Defined in src/ast.ts:1664
+Defined in src/ast.ts:1694
 
 ___
 
@@ -143,7 +143,7 @@ ___
 
 *Overrides [Condition](_ast_.condition.md).[or](_ast_.condition.md#or)*
 
-Defined in src/ast.ts:1690
+Defined in src/ast.ts:1720
 
 OR语句
 
@@ -153,13 +153,13 @@ OR语句
 
 #### Type declaration:
 
-▸ (`condition`: [Condition](_ast_.condition.md)): *[Condition](_ast_.condition.md)*
+▸ (`condition`: [UnsureCondition](../modules/_ast_.md#unsurecondition)): *[Condition](_ast_.condition.md)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`condition` | [Condition](_ast_.condition.md) |
+`condition` | [UnsureCondition](../modules/_ast_.md#unsurecondition) |
 
 ___
 
@@ -171,7 +171,7 @@ ___
 
 *Overrides [Condition](_ast_.condition.md).[orGroup](_ast_.condition.md#orgroup)*
 
-Defined in src/ast.ts:1697
+Defined in src/ast.ts:1727
 
 or 连接，并在被连接的条件中加上括号 ()
 
@@ -181,13 +181,13 @@ or 连接，并在被连接的条件中加上括号 ()
 
 #### Type declaration:
 
-▸ (`condition`: [Condition](_ast_.condition.md)): *[Condition](_ast_.condition.md)*
+▸ (`condition`: [UnsureCondition](../modules/_ast_.md#unsurecondition)): *[Condition](_ast_.condition.md)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`condition` | [Condition](_ast_.condition.md) |
+`condition` | [UnsureCondition](../modules/_ast_.md#unsurecondition) |
 
 ___
 
@@ -195,7 +195,7 @@ ___
 
 • **quoted**: *function*
 
-Defined in src/ast.ts:1702
+Defined in src/ast.ts:1732
 
 返回括号表达式
 
@@ -211,7 +211,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -221,7 +221,7 @@ Defined in src/ast.ts:70
 
 *Inherited from [Condition](_ast_.condition.md).[and](_ast_.condition.md#and)*
 
-Defined in src/ast.ts:806
+Defined in src/ast.ts:816
 
 将多个查询条件通过 AND 合并成一个大查询条件
 
@@ -245,7 +245,7 @@ ___
 
 *Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 
@@ -263,11 +263,11 @@ ___
 
 ### `Static` `Private` compare
 
-▸ **compare**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression) | [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues), `operator`: [COMPARE_OPERATOR](../enums/_constants_.compare_operator.md)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **compare**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression) | [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues), `operator`: [COMPARE_OPERATOR](../enums/_constants_.compare_operator.md)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[compare](_ast_.condition.md#static-private-compare)*
 
-Defined in src/ast.ts:857
+Defined in src/ast.ts:867
 
 比较运算
 
@@ -279,7 +279,7 @@ Name | Type | Default | Description |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) &#124; [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues) | - | 右值 |
 `operator` | [COMPARE_OPERATOR](../enums/_constants_.compare_operator.md) | COMPARE_OPERATOR.EQ | 运算符 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -287,11 +287,11 @@ ___
 
 ### `Static` eq
 
-▸ **eq**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **eq**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[eq](_ast_.condition.md#static-eq)*
 
-Defined in src/ast.ts:867
+Defined in src/ast.ts:877
 
 比较运算 =
 
@@ -302,7 +302,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -310,11 +310,11 @@ ___
 
 ### `Static` exists
 
-▸ **exists**(`select`: [UnsureSelectExpressions](../modules/_ast_.md#unsureselectexpressions)): *[UnaryCompareCondition](_ast_.unarycomparecondition.md)‹›*
+▸ **exists**(`select`: [SelectExpression](../modules/_ast_.md#selectexpression)): *[ExistsCompare](_ast_.existscompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[exists](_ast_.condition.md#static-exists)*
 
-Defined in src/ast.ts:845
+Defined in src/ast.ts:855
 
 判断是否存在
 
@@ -322,19 +322,19 @@ Defined in src/ast.ts:845
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`select` | [UnsureSelectExpressions](../modules/_ast_.md#unsureselectexpressions) | 查询语句  |
+`select` | [SelectExpression](../modules/_ast_.md#selectexpression) | 查询语句  |
 
-**Returns:** *[UnaryCompareCondition](_ast_.unarycomparecondition.md)‹›*
+**Returns:** *[ExistsCompare](_ast_.existscompare.md)‹›*
 
 ___
 
 ### `Static` gt
 
-▸ **gt**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **gt**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[gt](_ast_.condition.md#static-gt)*
 
-Defined in src/ast.ts:907
+Defined in src/ast.ts:917
 
 比较运算 >
 
@@ -345,7 +345,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -353,11 +353,11 @@ ___
 
 ### `Static` gte
 
-▸ **gte**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **gte**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[gte](_ast_.condition.md#static-gte)*
 
-Defined in src/ast.ts:917
+Defined in src/ast.ts:927
 
 比较运算 >=
 
@@ -368,7 +368,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -376,11 +376,11 @@ ___
 
 ### `Static` in
 
-▸ **in**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `values`: [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **in**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `values`: [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[in](_ast_.condition.md#static-in)*
 
-Defined in src/ast.ts:947
+Defined in src/ast.ts:957
 
 比较运算 IN
 
@@ -391,7 +391,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `values` | [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues) | 要比较的值列表 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -403,7 +403,7 @@ ___
 
 *Inherited from [Condition](_ast_.condition.md).[isNotNull](_ast_.condition.md#static-isnotnull)*
 
-Defined in src/ast.ts:975
+Defined in src/ast.ts:985
 
 比较运算 IS NOT NULL
 
@@ -425,7 +425,7 @@ ___
 
 *Inherited from [Condition](_ast_.condition.md).[isNull](_ast_.condition.md#static-isnull)*
 
-Defined in src/ast.ts:966
+Defined in src/ast.ts:976
 
 比较运算 IS NULL
 
@@ -443,11 +443,11 @@ ___
 
 ### `Static` like
 
-▸ **like**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **like**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[like](_ast_.condition.md#static-like)*
 
-Defined in src/ast.ts:927
+Defined in src/ast.ts:937
 
 比较运算 LIKE
 
@@ -458,7 +458,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -466,11 +466,11 @@ ___
 
 ### `Static` lt
 
-▸ **lt**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **lt**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[lt](_ast_.condition.md#static-lt)*
 
-Defined in src/ast.ts:887
+Defined in src/ast.ts:897
 
 比较运算 <
 
@@ -481,7 +481,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -489,11 +489,11 @@ ___
 
 ### `Static` lte
 
-▸ **lte**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **lte**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[lte](_ast_.condition.md#static-lte)*
 
-Defined in src/ast.ts:897
+Defined in src/ast.ts:907
 
 比较运算 <=
 
@@ -504,7 +504,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -512,11 +512,11 @@ ___
 
 ### `Static` neq
 
-▸ **neq**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **neq**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[neq](_ast_.condition.md#static-neq)*
 
-Defined in src/ast.ts:877
+Defined in src/ast.ts:887
 
 比较运算 <>
 
@@ -527,7 +527,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -535,11 +535,11 @@ ___
 
 ### `Static` not
 
-▸ **not**(`condition`: [Condition](_ast_.condition.md)): *[UnaryLogicCondition](_ast_.unarylogiccondition.md)‹›*
+▸ **not**(`condition`: [Condition](_ast_.condition.md)): *[UnaryLogic](_ast_.unarylogic.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[not](_ast_.condition.md#static-not)*
 
-Defined in src/ast.ts:834
+Defined in src/ast.ts:844
 
 Not 逻辑运算
 
@@ -549,17 +549,17 @@ Name | Type | Description |
 ------ | ------ | ------ |
 `condition` | [Condition](_ast_.condition.md) |   |
 
-**Returns:** *[UnaryLogicCondition](_ast_.unarylogiccondition.md)‹›*
+**Returns:** *[UnaryLogic](_ast_.unarylogic.md)‹›*
 
 ___
 
 ### `Static` notIn
 
-▸ **notIn**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `values`: [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **notIn**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `values`: [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[notIn](_ast_.condition.md#static-notin)*
 
-Defined in src/ast.ts:957
+Defined in src/ast.ts:967
 
 比较运算 NOT IN
 
@@ -570,7 +570,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `values` | [UnsureGroupValues](../modules/_ast_.md#unsuregroupvalues) | 要比较的值列表 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -578,11 +578,11 @@ ___
 
 ### `Static` notLike
 
-▸ **notLike**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+▸ **notLike**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 *Inherited from [Condition](_ast_.condition.md).[notLike](_ast_.condition.md#static-notlike)*
 
-Defined in src/ast.ts:937
+Defined in src/ast.ts:947
 
 比较运算 NOT LIKE
 
@@ -593,7 +593,7 @@ Name | Type | Description |
 `left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
 `right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
 
-**Returns:** *[BinaryCompareCondition](_ast_.binarycomparecondition.md)‹›*
+**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
 
 返回比较运算对比条件
 
@@ -605,7 +605,7 @@ ___
 
 *Inherited from [Condition](_ast_.condition.md).[or](_ast_.condition.md#or)*
 
-Defined in src/ast.ts:821
+Defined in src/ast.ts:831
 
 将多个查询条件通过 OR 合并成一个
 
@@ -629,7 +629,7 @@ ___
 
 *Inherited from [Condition](_ast_.condition.md).[quoted](_ast_.condition.md#static-quoted)*
 
-Defined in src/ast.ts:983
+Defined in src/ast.ts:993
 
 括号条件
 

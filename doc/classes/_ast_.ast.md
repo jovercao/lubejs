@@ -54,7 +54,7 @@ AST 基类
 
 \+ **new AST**(`type`: [SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)): *[AST](_ast_.ast.md)*
 
-Defined in src/ast.ts:65
+Defined in src/ast.ts:68
 
 **Parameters:**
 
@@ -70,7 +70,7 @@ Name | Type |
 
 • **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
 
-Defined in src/ast.ts:70
+Defined in src/ast.ts:73
 
 ## Methods
 
@@ -78,7 +78,7 @@ Defined in src/ast.ts:70
 
 ▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
 
-Defined in src/ast.ts:72
+Defined in src/ast.ts:75
 
 **Type parameters:**
 
