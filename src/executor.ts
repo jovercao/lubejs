@@ -1,5 +1,5 @@
 import * as _ from 'lodash'
-import { assert, ensureIdentifier } from './util'
+import { assert, ensureIdentifier, isJsConstant } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
 import { Parameter, AST, Select, JsConstant, UnsureIdentifier, UnsureExpression, SortInfo, Condition, Statement, Assignment, KeyValueObject, UnsureCondition, SortObject, ValuesObject, ResultObject } from './ast'
@@ -193,15 +193,16 @@ export class Executor extends EventEmitter {
   /**
    * 插入数据的快捷操作
    */
-  insert(table: UnsureIdentifier, row: UnsureExpression[]): Promise<number>
-  insert(table: UnsureIdentifier, rows: UnsureExpression[][]): Promise<number>
-  insert(table: UnsureIdentifier, select: Select): Promise<number>
-  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
-  insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
-  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, items: T[]): Promise<number>
-  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, item: T): Promise<number>
-  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], items: T[]): Promise<number>
-  insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], item: T): Promise<number>
+  async insert(table: UnsureIdentifier, select: Select): Promise<number>
+  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
+  async insert(table: UnsureIdentifier, rows: UnsureExpression[][]): Promise<number>
+  async insert(table: UnsureIdentifier, row: UnsureExpression[]): Promise<number>
+  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], row: UnsureExpression[]): Promise<number>
+  async insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
+  async insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, items: T[]): Promise<number>
+  async insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, item: T): Promise<number>
+  async insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], items: T[]): Promise<number>
+  async insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, fields: UnsureIdentifier[], item: T): Promise<number>
   async insert(table: UnsureIdentifier,
     fieldsOrValues: Select | UnsureIdentifier[] | KeyValueObject | KeyValueObject[] | UnsureExpression[] | UnsureExpression[][],
     valuesOrUndefined?: Select | KeyValueObject | KeyValueObject[] | UnsureExpression[] | UnsureExpression[][]): Promise<number> {
@@ -213,12 +214,12 @@ export class Executor extends EventEmitter {
       values = fieldsOrValues
     }
 
-    // // 确保装入数组里，以便 ...使用
-    // // UnsureExpression[] => UnsureExpression[][]
-    // // Object => Object[]
-    // if (!_.isArray(values) && !_.isArray(values[0])) {
-    //   values = [values]
-    // }
+    // 确保装入数组里，以便 使用
+    // UnsureExpression[] => UnsureExpression[][]
+    // Object => Object[]
+    if (!_.isArray(values) || (!_.isArray(values[0]) && isJsConstant(values[0]))) {
+      values = [values]
+    }
 
     const action = async function(executor: Executor): Promise<number> {
       let i = 0
