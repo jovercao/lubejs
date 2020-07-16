@@ -1,16 +1,16 @@
 {
-    "compilerOptions": {
-        "module": "commonjs",
-        "target": "ESNext",
-        "jsx": "preserve",
-        "sourceMap": true,
-        "declaration": true,
-        "outDir": "lib",
-        "noImplicitAny": true
-    },
-    "exclude": [
-        "node_modules",
-        "lib",
-        "**/node_modules/*"
-    ]
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ESNext",
+    "jsx": "preserve",
+    "sourceMap": true,
+    "declaration": true,
+    "outDir": "lib",
+    "noImplicitAny": true
+  },
+  "exclude": [
+    "node_modules",
+    "lib",
+    "**/node_modules/*"
+  ]
 }
