@@ -101,6 +101,10 @@ export interface ConnectOptions {
   poolMin: number
   idelTimeout: number
   strict?: boolean
+  /**
+   * 其它配置项，针对各种数据的专门配置
+   */
+  [key: string]: any
 }
 
 /**
