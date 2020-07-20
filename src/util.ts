@@ -34,13 +34,9 @@ export function ensureConstant(expr: UnsureExpression): Expression {
   return expr
 }
 
-export function ensureIdentifier(expr: string | Identifier): Identifier {
+export function ensureIdentifier<T = void>(expr: string | Identifier<any>): Identifier<T> {
   if (_.isString(expr)) {
-    if (expr === '*') {
-      return Identifier.any()
-    } else {
-      return Identifier.normal(expr)
-    }
+    return Identifier.normal<T>(expr)
   }
   return expr
 }
@@ -90,7 +86,7 @@ export function ensureCondition(condition: UnsureCondition): Condition {
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier {
+export function makeProxiedIdentifier<T = any>(identifier: Identifier<T>): ProxiedIdentifier<T> {
   return new Proxy(identifier, {
     get(target, prop): any {
       if (Reflect.has(target, prop)) {
@@ -101,10 +97,10 @@ export function makeProxiedIdentifier(identifier: Identifier): ProxiedIdentifier
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return identifier.dot(prop)
+        return identifier.dot(prop as keyof T)
       }
     }
-  }) as ProxiedIdentifier
+  }) as ProxiedIdentifier<T>
 }
 
 export function isJsConstant(value: any): value is JsConstant {

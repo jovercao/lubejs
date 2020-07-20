@@ -24,6 +24,7 @@ import {
   LOGIC_OPERATOR,
   INSERT_MAXIMUM_ROWS
 } from './constants'
+import { extend } from 'lodash';
 
 // **********************************类型声明******************************************
 
@@ -56,10 +57,12 @@ export type SelectExpression = Select | Bracket<Select> | Bracket<SelectExpressi
  */
 export type UnsureGroupValues = UnsureExpression[] | List
 
-export type UnsureIdentifier = Identifier | string
+export type UnsureIdentifier = Identifier<any, any> | string
 
-export type ProxiedIdentifier = Identifier & {
-  [field: string]: Identifier
+export type ProxiedIdentifier<T = any, TParent = any> = Identifier<T, TParent> & {
+  readonly [K in keyof T]: Identifier<void, TParent>
+} & {
+  readonly [key: string]: Identifier<void, TParent>
 }
 
 /**
@@ -477,9 +480,8 @@ export abstract class Expression extends AST {
   /**
    * 为当前表达式添加别名
    */
-  as(alias: string): ProxiedIdentifier {
-    const identifier = new Alias(this, alias)
-    return makeProxiedIdentifier(identifier)
+  as<T = void>(alias: string): ProxiedIdentifier<T> {
+    return makeProxiedIdentifier(new Alias<T>(this, alias))
   }
 
   /**
@@ -655,15 +657,15 @@ export abstract class Expression extends AST {
   /**
    * 标识符
    */
-  static identifier(...names: string[]): Identifier {
+  static identifier<T = void>(...names: string[]): Identifier<T> {
     assert(names.length > 0, 'must have one or more names')
     assert(names.length < 6, 'nodes deepth max 6 level')
-    let identify: Identifier
+    let identify: Identifier<any>
     names.forEach(name => {
       if (!identify) {
-        identify = Identifier.normal(name)
+        identify = Identifier.normal<any>(name)
       } else {
-        identify = identify.dot(name)
+        identify = identify.dot<any>(name)
       }
     })
     return identify
@@ -673,23 +675,23 @@ export abstract class Expression extends AST {
    * 代理化的identifier，可以自动接受字段名
    * @param name
    */
-  static proxiedIdentifier(name: UnsureIdentifier) {
-    return makeProxiedIdentifier(ensureIdentifier(name))
+  static proxiedIdentifier<T = any>(name: UnsureIdentifier) {
+    return makeProxiedIdentifier<T>(ensureIdentifier<T>(name))
   }
 
   /**
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
-  static table(...names: string[]) {
-    return Expression.proxiedIdentifier(Expression.identifier(...names))
+  static table<T extends object = any>(...names: string[]): ProxiedIdentifier<T> {
+    return Expression.proxiedIdentifier<T>(Expression.identifier(...names))
   }
 
   /**
    * 字段，实为 identifier(...names) 别名
    * @param names
    */
-  static field(...names: string[]) {
+  static field(...names: string[]): Identifier<void> {
     return Expression.identifier(...names)
   }
 
@@ -1127,7 +1129,7 @@ class IsNotNullCondition extends UnaryCompare {
 export class Join extends AST {
   readonly type: SQL_SYMBOLE
   left: boolean
-  table: Identifier
+  table: Identifier<any>
   on: Condition
 
   /**
@@ -1169,12 +1171,12 @@ export class Raw extends AST {
 /**
  * 标识符，可以多级，如表名等
  */
-export class Identifier extends Expression {
+export class Identifier<T = void, TParent = void> extends Expression {
 
   // [name: string]: Identifier
 
   public readonly name: string
-  public readonly parent?: Identifier
+  public readonly parent?: Identifier<TParent>
 
   /**
    * 标识符
@@ -1195,13 +1197,24 @@ export class Identifier extends Expression {
 
   /**
    * 访问下一节点
-   * @param name
+   * @param next
    */
-  dot(name: string) {
-    return makeProxiedIdentifier(new Identifier(name, this))
+  dot<TNext = void>(next: keyof T): Identifier<TNext, T> {
+    if (typeof next === 'string') {
+      return new Identifier<TNext, T>(next, this)
+    }
+    throw new Error('Invalid property type')
   }
 
-  any() {
+  /**
+   * 访问下一节点，并返回代理后的Identitfier
+   * @param name
+   */
+  xdot<TProperty = any>(name: keyof T): ProxiedIdentifier<TProperty, T> {
+    return makeProxiedIdentifier(this.dot<TProperty>(name))
+  }
+
+  any(): Identifier<void> {
     return Identifier.any(this)
   }
 
@@ -1209,29 +1222,37 @@ export class Identifier extends Expression {
    * 执行一个函数
    * @param params
    */
-  invoke(...params: (UnsureExpression)[]) {
+  invoke(...params: (UnsureExpression)[]): Invoke {
     return new Invoke(this, params)
+  }
+
+  /**
+   * 为当前表达式添加别名
+   * 默认类型为
+   */
+  as<TT = T>(alias: string): ProxiedIdentifier<TT> {
+    return super.as<TT>(alias)
   }
 
   /**
    * 常规标识符
    */
-  static normal(name: string) {
-    return new Identifier(name)
+  static normal<T = void>(name: string) {
+    return new Identifier<T>(name)
   }
 
   /**
    * 内建标识符
    */
-  static buildIn(name: string) {
-    return new Identifier(name, null, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
+  static buildIn<T = void>(name: string) {
+    return new Identifier<T>(name, null, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 
   /**
    * 内建标识符
    */
-  static any(parent?: UnsureIdentifier) {
-    return new Identifier('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
+  static any(parent?: UnsureIdentifier): Identifier<void> {
+    return new Identifier<void>('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 }
 
@@ -1251,7 +1272,7 @@ export class Variant extends Expression {
 /**
  * 别名表达式
  */
-export class Alias extends Identifier {
+export class Alias<T = void> extends Identifier<T> {
   /**
    * 表达式
    */
@@ -1282,7 +1303,7 @@ export class Invoke extends Expression {
     return false
   }
 
-  func: Identifier
+  func: Identifier<void>
 
   args: List
 
@@ -1834,7 +1855,7 @@ export interface SortObject {
 }
 
 abstract class Fromable extends Statement {
-  tables?: Identifier[]
+  tables?: Identifier<any>[]
   joins?: Join[]
   filters?: Condition
 
@@ -2050,10 +2071,10 @@ export class Select extends Fromable {
 /**
  * Insert 语句
  */
-export class Insert extends Statement {
+export class Insert<T = any> extends Statement {
 
-  table: Identifier
-  fields?: Identifier[]
+  table: Identifier<T>
+  fields?: Identifier<void>[]
   rows: List[] | Select
 
   /**
@@ -2068,7 +2089,6 @@ export class Insert extends Statement {
     }
     return this
   }
-
 
   /**
    * 字段列表
@@ -2186,8 +2206,8 @@ export interface ResultObject {
   [field: string]: JsConstant
 }
 
-export class Update extends Fromable {
-  table: Identifier
+export class Update<T = any> extends Fromable {
+  table: Identifier<T>
   sets: Assignment[]
 
   constructor(table: UnsureIdentifier /*options?: UpdateOptions*/) {
@@ -2227,8 +2247,8 @@ export class Update extends Fromable {
 //   where?: Conditions
 // }
 
-export class Delete extends Fromable {
-  table: Identifier
+export class Delete<T = any> extends Fromable {
+  table: Identifier<T>
 
   constructor(table: UnsureIdentifier /*options?: DeleteOptions*/) {
     super(SQL_SYMBOLE.DELETE)
@@ -2244,7 +2264,7 @@ export class Delete extends Fromable {
  * 存储过程执行
  */
 export class Execute extends Statement {
-  proc: Identifier
+  proc: Identifier<void>
   args: List
   constructor(proc: UnsureIdentifier, args?: UnsureExpression[])
   constructor(proc: UnsureIdentifier, args?: Parameter[])

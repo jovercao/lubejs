@@ -95,7 +95,7 @@ export class Compiler {
    * 解析标识符
    * @param identifier 标识符
    */
-  protected compileIdentifier(identifier: Identifier, params?: Set<Parameter>, parent?: AST): string {
+  protected compileIdentifier(identifier: Identifier<any>, params?: Set<Parameter>, parent?: AST): string {
     const sql = identifier.type === SQL_SYMBOLE.BUILDIN_IDENTIFIER ? identifier.name : this.quoted(identifier.name)
     const parentNode = Reflect.get(identifier, 'parent')
     if (parentNode) {
@@ -219,7 +219,7 @@ export class Compiler {
         return this.compileAlias(ast as Alias, params, parent)
       case SQL_SYMBOLE.IDENTIFIER:
       case SQL_SYMBOLE.BUILDIN_IDENTIFIER:
-        return this.compileIdentifier(ast as Identifier, params, parent)
+        return this.compileIdentifier(ast as Identifier<any>, params, parent)
       case SQL_SYMBOLE.EXECUTE:
         return this.compileExecute(ast as Execute, params, parent)
       case SQL_SYMBOLE.INVOKE:
