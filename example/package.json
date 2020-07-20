@@ -1,0 +1,18 @@
+{
+  "name": "lubejs-example",
+  "version": "1.0.0",
+  "description": "A example for lubejs.",
+  "main": "demo.js",
+  "scripts": {
+    "test": "node demo"
+  },
+  "keywords": [
+    "lubejs"
+  ],
+  "author": "Jover Cao",
+  "license": "MIT",
+  "dependencies": {
+    "lubejs": "^1.0.0-beta15",
+    "lubejs-mssql": "^1.0.0-beta15"
+  }
+}

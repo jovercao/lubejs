@@ -12,6 +12,12 @@ async function action() {
   // const id = 1
   // const res = pool.query`select * from person where id = ${id}`
 
+  await pool.query`
+    CREATE TABLE table1([id] int primary key identity(1, 1), field1 nvarchar(100), field2 int, field3 DateTime(8), operator: nvarchar(100), updatedAt DateTime(8))
+
+    CREATE TABLE person(name nvarchar(100), age int, birthday datetime(8))
+  `
+
   // affected rows
   let affected = 0
   let t, datas

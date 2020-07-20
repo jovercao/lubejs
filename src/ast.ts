@@ -34,18 +34,45 @@ import { extend } from 'lodash';
 export type JsConstant = string | Date | boolean | null | number | Buffer | bigint;
 
 /**
- * 未经确认的表达式
+ * 属性过滤器
  */
-export type Expressions = Expression | JsConstant
+export type Filter<T, V> = {
+  [P in keyof T]: T[P] extends V ? T[P] : never
+}
+
+export type Fields<T> = keyof Filter<T, JsConstant>
 
 /**
  * 简化后的whereObject查询条件
  */
-export interface WhereObject {
-  [field: string]: Expression | JsConstant | JsConstant[]
+export type WhereObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]?: Expression | T[K] | T[K][]
 }
 
-export type Conditions = Condition | WhereObject
+/**
+ * 键值对列表
+ */
+export type KeyValueObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]: T[K] | Expression
+}
+
+/**
+ * 值列表，用于传递Insert 的 values 键值对
+ */
+export type ValuesObject<T = any> = KeyValueObject<T>
+
+/**
+ * 赋值语句对象，用于传递Update的sets键值对
+ */
+export type AssignObject<T = any> = KeyValueObject<T>
+
+/**
+ * 未经确认的表达式
+ */
+export type Expressions = Expression | JsConstant
+
+
+export type Conditions = Condition | WhereObject<any>
 
 /**
  * SELECT查询表达式
@@ -59,12 +86,12 @@ export type GroupValues = Expressions[] | List
 
 export type Identifiers = Identifier<any, any> | string
 
-export type PropsIdentifier<T = any> = {
-  readonly [K in keyof T]: ProxiedIdentifier<T[K] extends object ? T[K] : void, T>
+export type PropertiedIdentifier<T = any> = {
+  readonly [K in keyof Filter<T, JsConstant>]: ProxiedIdentifier<T[K] extends object ? T[K] : void, T>
 }
 
 export type ProxiedIdentifier<T = any, TParent = any> =
-  Identifier<T, TParent> & PropsIdentifier<T> & {
+  Identifier<T, TParent> & PropertiedIdentifier<T> & {
     [key: string]: Identifier<any, any>
   }
 
@@ -1200,11 +1227,11 @@ export class Identifier<T = void, TParent = void> extends Expression {
 
   /**
    * 访问下一节点
-   * @param next
+   * @param name 节点名称
    */
-  dot<TNext = void>(next: keyof T): Identifier<TNext, T> {
-    if (typeof next === 'string') {
-      return new Identifier<TNext, T>(next, this)
+  dot<TNext = void>(name: Fields<T>): Identifier<TNext, T> {
+    if (typeof name === 'string') {
+      return new Identifier<TNext, T>(name, this)
     }
     throw new Error('Invalid property type')
   }
@@ -1213,7 +1240,7 @@ export class Identifier<T = void, TParent = void> extends Expression {
    * 访问下一节点，并返回代理后的Identitfier
    * @param name
    */
-  xdot<TProperty = any>(name: keyof T): ProxiedIdentifier<TProperty, T> {
+  dotx<TProperty = any>(name: Fields<T>): ProxiedIdentifier<TProperty, T> {
     return makeProxiedIdentifier(this.dot<TProperty>(name))
   }
 
@@ -1853,8 +1880,8 @@ export class Union extends AST {
 //   groupBy?: UnsureExpressions[]
 // }
 
-export interface SortObject {
-  [key: string]: SORT_DIRECTION
+export type SortObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]?: SORT_DIRECTION
 }
 
 abstract class Fromable extends Statement {
@@ -2020,7 +2047,7 @@ export class Select extends Fromable {
     if (!(condition instanceof Condition)) {
       condition = ensureCondition(condition)
     }
-    this.havings = condition
+    this.havings = condition as Condition
     return this
   }
 
@@ -2198,17 +2225,9 @@ export class Insert<T = any> extends Statement {
 //   where?: Conditions
 // }
 
-export interface KeyValueObject {
-  [field: string]: Expressions
-}
-
-export type ValuesObject = KeyValueObject
-export type AssignObject = KeyValueObject
-
-export interface ResultObject {
-  [field: string]: JsConstant
-}
-
+/**
+ * Update 语句
+ */
 export class Update<T = any> extends Fromable {
   table: Identifier<T>
   sets: Assignment[]
@@ -2225,9 +2244,9 @@ export class Update<T = any> extends Fromable {
   /**
    * @param sets
    */
-  set(sets: AssignObject): this
+  set(sets: AssignObject<T>): this
   set(...sets: Assignment[]): this
-  set(...sets: AssignObject[] | Assignment[]): this {
+  set(...sets: AssignObject<T>[] | Assignment[]): this {
     assert(!this.sets, 'set statement is declared')
     assert(sets.length > 0, 'sets must have more than 0 items')
     if (sets.length > 1 || sets[0] instanceof Assignment) {
@@ -2237,10 +2256,17 @@ export class Update<T = any> extends Fromable {
 
     const obj = sets[0]
     this.sets = Object.entries(obj).map(
-      ([key, value]) => new Assignment(Identifier.normal(key), ensureConstant(value))
+      // TODO: 未排除多余属性，可能超出字段范围
+      ([key, value]) => new Assignment(this.table.dot(key as Fields<T>), ensureConstant(value as Expressions))
     )
     return this
   }
+
+  // where(condition: WhereObject<T>): this
+  // where(condition: Condition): this
+  // where(condition: Conditions): this {
+  //   return super.where(condition)
+  // }
 }
 
 // export interface DeleteOptions {
@@ -2261,6 +2287,11 @@ export class Delete<T = any> extends Fromable {
     // if (options?.where) this.where(options.where)
   }
 
+  where(condition: WhereObject<T>): this
+  where(condition: Condition): this
+  where(condition: Conditions): this {
+    return super.where(condition)
+  }
 }
 
 /**

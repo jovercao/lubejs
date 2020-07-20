@@ -162,19 +162,6 @@ export const any = Expression.any
 export const anyFields = Expression.any()
 
 /**
- * 属性过滤器
- */
-export type Filter<T, V> = {
-  [P in keyof T]: T[P] extends V ? T[P] : never
-}
-
-/**
- * 将类型不符合Insert语句(即KeyValueObject)的属性进行过滤,
- * 主要应用于主从表等类型
- */
-export type InsertObject<T> = Filter<T, JsConstant>
-
-/**
  * 语句
  */
 export const SQL = {
