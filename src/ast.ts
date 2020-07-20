@@ -59,10 +59,10 @@ export type UnsureGroupValues = UnsureExpression[] | List
 
 export type UnsureIdentifier = Identifier<any, any> | string
 
-export type ProxiedIdentifier<T = any, TParent = any> = Identifier<T, TParent> & {
-  readonly [K in keyof T]: Identifier<void, TParent>
-} & {
-  readonly [key: string]: Identifier<void, TParent>
+export type ProxiedIdentifier<T = any, TParent = any> = {
+  readonly [K in keyof T]: ProxiedIdentifier<T[K] extends object ? T[K] : void, T>
+} & Identifier<T, TParent> & {
+  [key: string]: Identifier<any, any>
 }
 
 /**
@@ -2134,7 +2134,7 @@ export class Insert<T = any> extends Statement {
           rows = [values]
         }
         // values(ValueObject[])
-        else if (_.isObject(values[0])){
+        else if (_.isObject(values[0])) {
           items = values
         } else {
           throw new Error('invalid arguments！')
