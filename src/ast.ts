@@ -50,21 +50,32 @@ export type WhereObject<T = any> = {
 }
 
 /**
- * 键值对列表
+ * 值列表，用于传递Insert 的 values 键值对
  */
-export type KeyValueObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]: T[K] | Expression
+export type InsertObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]: Expression | T[K] | T[K][]
 }
 
 /**
- * 值列表，用于传递Insert 的 values 键值对
+ * SELECT语句查询返回的对象
  */
-export type ValuesObject<T = any> = KeyValueObject<T>
+export type ResultObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]: T[K]
+}
+
+/**
+ * 查询列对象，用于记录查询列的对象
+ */
+export type SelectObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]: Expression | T[K] | T[K][]
+}
 
 /**
  * 赋值语句对象，用于传递Update的sets键值对
  */
-export type AssignObject<T = any> = KeyValueObject<T>
+export type UpdateObject<T = any> = {
+  [K in keyof Filter<T, JsConstant>]?: T[K] | Expression
+}
 
 /**
  * 未经确认的表达式
@@ -1380,7 +1391,7 @@ export abstract class Statement extends AST {
   /**
    * 选择列
    */
-  static select(columns: KeyValueObject): Select
+  static select(columns: ResultObject): Select
   static select(...columns: Expressions[]): Select
   static select(...args: any[]) {
     return new Select(...args)
@@ -1965,9 +1976,9 @@ export class Select extends Fromable {
   havings?: Condition
   unions?: Union
 
-  constructor(columns?: ValuesObject)
+  constructor(columns?: InsertObject)
   constructor(...columns: Expressions[])
-  constructor(...columns: (ValuesObject | Expressions)[]/*options?: SelectOptions*/) {
+  constructor(...columns: (InsertObject | Expressions)[]/*options?: SelectOptions*/) {
     super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]
@@ -2134,16 +2145,16 @@ export class Insert<T = any> extends Statement {
   }
 
   values(select: Select): this
-  values(row: ValuesObject): this
+  values(row: InsertObject): this
   values(row: Expressions[]): this
   values(rows: Expressions[][]): this
-  values(rows: ValuesObject[]): this
+  values(rows: InsertObject[]): this
   values(...rows: Expressions[][]): this
-  values(...rows: ValuesObject[]): this
+  values(...rows: InsertObject[]): this
   values(...args: any[]): this {
     assert(!this.rows, 'values is declared')
     assert(args.length > 0, 'rows must more than one elements.')
-    let items: ValuesObject[], rows: Expressions[][]
+    let items: InsertObject[], rows: Expressions[][]
     // 单个参数
     if (args.length === 1) {
       const values = args[0]
@@ -2211,7 +2222,7 @@ export class Insert<T = any> extends Statement {
     }
 
     this.rows = items.map(item => {
-      const rowValues = this.fields.map(field => (item as ValuesObject)[field.name])
+      const rowValues = this.fields.map(field => (item as InsertObject)[field.name])
       return List.values(...rowValues)
     })
     return this
@@ -2244,9 +2255,9 @@ export class Update<T = any> extends Fromable {
   /**
    * @param sets
    */
-  set(sets: AssignObject<T>): this
+  set(sets: UpdateObject<T>): this
   set(...sets: Assignment[]): this
-  set(...sets: AssignObject<T>[] | Assignment[]): this {
+  set(...sets: UpdateObject<T>[] | Assignment[]): this {
     assert(!this.sets, 'set statement is declared')
     assert(sets.length > 0, 'sets must have more than 0 items')
     if (sets.length > 1 || sets[0] instanceof Assignment) {

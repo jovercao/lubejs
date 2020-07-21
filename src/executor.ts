@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert, ensureIdentifier, isJsConstant } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, KeyValueObject, Conditions, SortObject, ValuesObject, WhereObject, Identifier, AssignObject, Filter, Fields } from './ast'
+import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, InsertObject, WhereObject, Identifier, UpdateObject, Fields } from './ast'
 import { Compiler } from './compiler'
 import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
@@ -195,34 +195,28 @@ export class Executor extends EventEmitter {
    * 插入数据的快捷操作
    */
   // 不指定字段 Select
-  async insert(table: string, select: Select): Promise<number>
-  async insert<T = any>(table: Identifier<T>, select: Select): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, select: Select): Promise<number>
   // 指定字段 Select
-  async insert<T = any>(table: Identifier<T>, fields: Identifier<void, T>[], select: Select): Promise<number>
-  async insert<T = any>(table: string, fields: Fields<T>[], select: Select): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
 
   // 不指定字段 Expressions
   async insert<T = any>(table: Identifier<T> | string, row: Expressions[]): Promise<number>
   async insert<T = any>(table: Identifier<T> | string, rows: Expressions[][]): Promise<number>
 
   // 指定字段 Expressions
-  async insert<T = any>(table: Identifier<T>, fields: Identifier<void, T>[], row: Expressions[]): Promise<number>
-  async insert<T = any>(table: string, fields: Fields<T>[], row: Expressions[]): Promise<number>
-  async insert<T = any>(table: Identifier<T> , fields: Identifier<T>[], rows: Expressions[][]): Promise<number>
-  async insert<T = any>(table: string, fields: Fields<T>[], rows: Expressions[][]): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, fields: Identifier<T>[] | Fields<T>[], row: Expressions[]): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, fields: Identifier<T>[] | Fields<T>[], rows: Expressions[][]): Promise<number>
 
   // 不指定字段 ValuesObject
-  async insert<T = any>(table: Identifier<T> | string, items: ValuesObject<T>[]): Promise<number>
-  async insert<T = any>(table: Identifier<T> | string, item: ValuesObject<T>): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, items: InsertObject<T>[]): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, item: InsertObject<T>): Promise<number>
 
   // 指定字段 ValuesObject
-  async insert<T = any>(table: Identifier<T>, fields: Identifier<void, T>[], items: ValuesObject<T>[]): Promise<number>
-  async insert<T = any>(table: Identifier<T>, fields: Identifier<void, T>[], item: ValuesObject<T>): Promise<number>
-  async insert<T = any>(table: string, fields: Fields<T>[], items: ValuesObject<T>[]): Promise<number>
-  async insert<T = any>(table: string, fields: Fields<T>[], item: ValuesObject<T>): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, fields: Identifier<void, T>[] | Fields<T>[], item: InsertObject<T>): Promise<number>
+  async insert<T = any>(table: Identifier<T> | string, fields: Identifier<void, T>[] | Fields<T>[], items: InsertObject<T>[]): Promise<number>
   async insert(table: Identifiers,
-    fieldsOrValues: Select | Identifiers[] | KeyValueObject | KeyValueObject[] | Expressions[] | Expressions[][],
-    valuesOrUndefined?: Select | KeyValueObject | KeyValueObject[] | Expressions[] | Expressions[][]): Promise<number> {
+    fieldsOrValues: Select | Identifiers[] | InsertObject | InsertObject[] | Expressions[] | Expressions[][],
+    valuesOrUndefined?: Select | InsertObject | InsertObject[] | Expressions[] | Expressions[][]): Promise<number> {
     let fields: Identifiers[], values: any
     if (valuesOrUndefined) {
       fields = fieldsOrValues as Identifiers[]
@@ -258,8 +252,15 @@ export class Executor extends EventEmitter {
     return await action(this)
   }
 
-  async find<T = any>(table: string, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+
+  async find<T = any>(table: Identifier<T>, where: Condition, fields?: Fields<T>[]): Promise<T>
   async find<T = any>(table: Identifier<T>, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T = any>(table: Identifier<T>, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T = any>(table: Identifier<T>, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T = any>(table: string, where: Condition, fields?: Fields<T>[]): Promise<T>
+  async find<T = any>(table: string, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T = any>(table: string, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T = any>(table: string, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
   async find<T = any>(table: Identifier<T> | string, where: Condition | WhereObject<T>, fields?: Fields<T>[] | Identifier<void, T>[]): Promise<T> {
     let columns: (Expressions)[]
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
@@ -281,9 +282,7 @@ export class Executor extends EventEmitter {
    * @param where
    * @param options
    */
-  async select<TResult = any>(table: Identifier<TResult>, options?: SelectOptions<TResult>): Promise<TResult[]>
-  async select<TResult = any>(table: string, options?: SelectOptions<TResult>): Promise<TResult[]>
-  async select<TResult = any>(table: Identifiers, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
+  async select<TResult = any>(table: Identifier<TResult> | string, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: Expressions[]
     const t = ensureIdentifier(table)
@@ -313,15 +312,15 @@ export class Executor extends EventEmitter {
     return res.rows as unknown as TResult[]
   }
 
-  async update<T = any>(table: Identifier<T>, sets: AssignObject<T>, where?: WhereObject<T>): Promise<number>
-  async update<T = any>(table: Identifier<T>, sets: AssignObject<T>, where?: Condition): Promise<number>
-  async update<T = any>(table: Identifier<T>, sets: Assignment[], where?: Condition): Promise<number>
-  async update<T = any>(table: Identifier<T>, sets: Assignment[], where?: WhereObject<T>): Promise<number>
-  async update<T = any>(table: string, sets: AssignObject<T>, where?: WhereObject<T>): Promise<number>
-  async update<T = any>(table: string, sets: AssignObject<T>, where?: Conditions): Promise<number>
+  async update<T = any>(table: string, sets: UpdateObject<T>, where?: WhereObject<T>): Promise<number>
   async update<T = any>(table: string, sets: Assignment[], where?: WhereObject<T>): Promise<number>
-  async update<T = any>(table: string, sets: Assignment[], where?: Conditions): Promise<number>
-  async update<T = any>(table: string | Identifier<T>, sets: AssignObject<T> | Assignment[], where?: WhereObject<T> | Condition): Promise<number> {
+  async update<T = any>(table: string, sets: Assignment[], where?: Condition): Promise<number>
+  async update<T = any>(table: string, sets: UpdateObject<T> , where?: Condition): Promise<number>
+  async update<T = any>(table: Identifier<T>, sets: UpdateObject<T>, where?: WhereObject<T>): Promise<number>
+  async update<T = any>(table: Identifier<T>, sets: UpdateObject<T>, where?: Condition): Promise<number>
+  async update<T = any>(table: Identifier<T>, sets: Assignment[], where?: WhereObject<T>): Promise<number>
+  async update<T = any>(table: Identifier<T>, sets: Assignment[], where?: Condition): Promise<number>
+  async update<T = any>(table: string | Identifier<T>, sets: UpdateObject<T> | Assignment[], where?: WhereObject<T> | Condition): Promise<number> {
     const sql = update(table)
     if (_.isArray(sets)) {
       sql.set(...sets)
@@ -337,16 +336,14 @@ export class Executor extends EventEmitter {
   async delete<T = any>(table: Identifier<T>, where?: Condition): Promise<number>
   async delete<T = any>(table: string, where?: WhereObject<T>): Promise<number>
   async delete<T = any>(table: string, where?: Condition): Promise<number>
-  async delete(table: Identifiers, where?: Conditions): Promise<number> {
+  async delete<T = any>(table: Identifier<T> | string, where?: WhereObject<T> | Condition): Promise<number> {
     const sql = del(table)
     if (where) sql.where(where)
     const res = await this.query(sql)
     return res.rowsAffected
   }
 
-  async execute<T = any>(spname: Identifiers, params: Expressions[]): Promise<QueryResult<T>>
-  async execute<T = any>(spname: Identifiers, params: Parameter[]): Promise<QueryResult<T>>
-  async execute<T = any>(spname: Identifiers, params: Expressions[] | Parameter[]): Promise<QueryResult<T>> {
+  async execute<T = any>(spname: Identifier<void> | string, params: Expressions[] | Parameter[]): Promise<QueryResult<T>> {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res
