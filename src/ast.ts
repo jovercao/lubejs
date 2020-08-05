@@ -57,6 +57,20 @@ export type InsertObject<T = any> = {
 }
 
 /**
+ * 键值对象，用于 insert update where中
+ */
+export type ValueObject = {
+  [K: string]: JsConstant | Expression
+}
+
+/**
+ * 从数据库返回的对象，与ResultObject对应
+ */
+export type RowObject = {
+  [K: string]: JsConstant
+}
+
+/**
  * SELECT语句查询返回的对象
  */
 export type ResultObject<T = any> = {
