@@ -98,12 +98,12 @@ export type GroupValues = Expressions[] | List
 export type Identifiers = Identifier<any, any> | string
 
 export type PropertiedIdentifier<T = any> = {
-  readonly [K in keyof Filter<T, JsConstant>]: ProxiedIdentifier<T[K] extends object ? T[K] : void, T>
+  readonly [K in keyof Filter<T, JsConstant>]: T[K] extends JsConstant ? Identifier<void, T> : never
 }
 
-export type ProxiedIdentifier<T = any, TParent = any> =
+export type ProxiedIdentifier<T = void, TParent = void> =
   Identifier<T, TParent> & PropertiedIdentifier<T> & {
-    [key: string]: Identifier<any, any>
+    [key: string]: Identifier<void, T>
   }
 
 /**
@@ -1245,6 +1245,10 @@ export class Identifier<T = void, TParent = void> extends Expression {
       return new Identifier<TNext, T>(name, this)
     }
     throw new Error('Invalid property type')
+  }
+
+  $<TNext = void>(name: Fields<T>): Identifier<TNext, T> {
+    return this.dot(name)
   }
 
   /**

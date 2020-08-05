@@ -86,9 +86,9 @@ export function ensureCondition(condition: Conditions): Condition {
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedIdentifier<T = any>(identifier: Identifier<T>): ProxiedIdentifier<T> {
+export function makeProxiedIdentifier<T = void, TParent = void>(identifier: Identifier<T, TParent>): ProxiedIdentifier<T, TParent> {
   return new Proxy(identifier, {
-    get(target, prop): any {
+    get(target: Identifier<T, TParent>, prop): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
@@ -99,8 +99,9 @@ export function makeProxiedIdentifier<T = any>(identifier: Identifier<T>): Proxi
         }
         return identifier.dot(prop as keyof T)
       }
+      return undefined
     }
-  }) as ProxiedIdentifier<T>
+  }) as any
 }
 
 export function isJsConstant(value: any): value is JsConstant {
