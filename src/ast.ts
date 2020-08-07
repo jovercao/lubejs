@@ -43,53 +43,42 @@ export type Filter<T, V> = {
 export type Fields<T> = keyof Filter<T, JsConstant>
 
 /**
- * 简化后的whereObject查询条件
+ * 键值对象，用于 输入SQL语句的的对象
  */
-export type WhereObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]?: Expression | T[K] | T[K][]
-}
-
-/**
- * 值列表，用于传递Insert 的 values 键值对
- */
-export type InsertObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]: Expression | T[K] | T[K][]
-}
-
-/**
- * 键值对象，用于 insert update where中
- */
-export type ValueObject = {
+export type InputObject = {
   [K: string]: JsConstant | Expression
 }
-
 /**
- * 从数据库返回的对象，与ResultObject对应
+ * 从数据库输出的对象
  */
-export type RowObject = {
+export type OutputObject = {
   [K: string]: JsConstant
 }
 
 /**
- * SELECT语句查询返回的对象
+ * 简化后的whereObject查询条件
  */
-export type ResultObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]: T[K]
+export type WhereObject<T = void> = T extends void ? InputObject : {
+  [K in keyof Filter<T, JsConstant>]?: Expression | T[K] | T[K][]
 }
 
 /**
- * 查询列对象，用于记录查询列的对象
+ * 值列表，用于传递Select、Insert、Update 的键值对
  */
-export type SelectObject<T = any> = {
+export type ValueObject<T = void> = T extends void ? InputObject : {
   [K in keyof Filter<T, JsConstant>]: Expression | T[K] | T[K][]
 }
 
+export type RowObject<T = void> = T extends void ? OutputObject : T
+
 /**
- * 赋值语句对象，用于传递Update的sets键值对
+ * SELECT语句查询返回的对象
  */
-export type UpdateObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]?: T[K] | Expression
+export type ResultObject<T = void> = T extends void ? OutputObject : {
+  [K in keyof Filter<T, JsConstant>]: T[K]
 }
+
+export type ParameterValues = RowObject
 
 /**
  * 未经确认的表达式
@@ -1409,7 +1398,7 @@ export abstract class Statement extends AST {
   /**
    * 选择列
    */
-  static select(columns: ResultObject): Select
+  static select(columns: ValueObject): Select
   static select(...columns: Expressions[]): Select
   static select(...args: any[]) {
     return new Select(...args)
@@ -1994,9 +1983,9 @@ export class Select extends Fromable {
   havings?: Condition
   unions?: Union
 
-  constructor(columns?: InsertObject)
+  constructor(columns?: ValueObject)
   constructor(...columns: Expressions[])
-  constructor(...columns: (InsertObject | Expressions)[]/*options?: SelectOptions*/) {
+  constructor(...columns: (ValueObject | Expressions)[]/*options?: SelectOptions*/) {
     super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]
@@ -2163,16 +2152,16 @@ export class Insert<T = any> extends Statement {
   }
 
   values(select: Select): this
-  values(row: InsertObject): this
+  values(row: ValueObject): this
   values(row: Expressions[]): this
   values(rows: Expressions[][]): this
-  values(rows: InsertObject[]): this
+  values(rows: ValueObject[]): this
   values(...rows: Expressions[][]): this
-  values(...rows: InsertObject[]): this
+  values(...rows: ValueObject[]): this
   values(...args: any[]): this {
     assert(!this.rows, 'values is declared')
     assert(args.length > 0, 'rows must more than one elements.')
-    let items: InsertObject[], rows: Expressions[][]
+    let items: ValueObject[], rows: Expressions[][]
     // 单个参数
     if (args.length === 1) {
       const values = args[0]
@@ -2240,7 +2229,7 @@ export class Insert<T = any> extends Statement {
     }
 
     this.rows = items.map(item => {
-      const rowValues = this.fields.map(field => (item as InsertObject)[field.name])
+      const rowValues = this.fields.map(field => (item as ValueObject)[field.name])
       return List.values(...rowValues)
     })
     return this
@@ -2273,9 +2262,9 @@ export class Update<T = any> extends Fromable {
   /**
    * @param sets
    */
-  set(sets: UpdateObject<T>): this
+  set(sets: ValueObject<T>): this
   set(...sets: Assignment[]): this
-  set(...sets: UpdateObject<T>[] | Assignment[]): this {
+  set(...sets: ValueObject<T>[] | Assignment[]): this {
     assert(!this.sets, 'set statement is declared')
     assert(sets.length > 0, 'sets must have more than 0 items')
     if (sets.length > 1 || sets[0] instanceof Assignment) {
