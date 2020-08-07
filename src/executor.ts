@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert, ensureIdentifier, isJsConstant } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, Fields, RowObject, ParameterValues } from './ast'
+import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, Fields, RowObject, ParameterValues, ItemType } from './ast'
 import { Compiler } from './compiler'
 import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
@@ -167,11 +167,11 @@ export class Executor extends EventEmitter {
     }
   }
 
-  async query<TResult = any>(sql: string): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: string, params: Object): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: Statement | Document): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
+  async query<TResult extends ItemType = any>(sql: string): Promise<QueryResult<TResult>>
+  async query<TResult extends ItemType = any>(sql: string, params: Parameter[]): Promise<QueryResult<TResult>>
+  async query<TResult extends ItemType = any>(sql: string, params: Object): Promise<QueryResult<TResult>>
+  async query<TResult extends ItemType = any>(sql: Statement | Document): Promise<QueryResult<TResult>>
+  async query<TResult extends ItemType = any>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
   async query(...args: any[]) {
     return this._internalQuery(...args)
   }
@@ -202,18 +202,18 @@ export class Executor extends EventEmitter {
   async insert(table: string, rows: Expressions[][]): Promise<number>
   async insert(table: string, select: Select): Promise<number>
   async insert(table: string, fields: string[], select: Select): Promise<number>
-  async insert<T>(table: string, items: ValueObject<T>[]): Promise<number>
-  async insert<T>(table: string, item: ValueObject<T>): Promise<number>
-  async insert<T>(table: string, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
-  async insert<T>(table: string, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
-  async insert<T>(table: string, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
-  async insert<T>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], row: Expressions[]): Promise<number>
-  async insert<T>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], rows: Expressions[][]): Promise<number>
-  async insert<T>(table: Identifier<T, any>, items: ValueObject<T>[]): Promise<number>
-  async insert<T>(table: Identifier<T, any>, item: ValueObject<T>): Promise<number>
-  async insert<T>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
+  async insert<T extends ItemType>(table: string, items: ValueObject<T>[]): Promise<number>
+  async insert<T extends ItemType>(table: string, item: ValueObject<T>): Promise<number>
+  async insert<T extends ItemType>(table: string, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
+  async insert<T extends ItemType>(table: string, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
+  async insert<T extends ItemType>(table: string, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], row: Expressions[]): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], rows: Expressions[][]): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, items: ValueObject<T>[]): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, item: ValueObject<T>): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
+  async insert<T extends ItemType>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
   async insert(table: Identifier<any, any>, fields: string[], row: Expressions[]): Promise<number>
   async insert(table: Identifier<any, any>, fields: string[], rows: Expressions[][]): Promise<number>
   async insert(table: Identifier<any, any>, item: ValueObject): Promise<number>
@@ -261,17 +261,17 @@ export class Executor extends EventEmitter {
 
   async find(table: string, where: Condition, fields?: string[]): Promise<RowObject>
   async find(table: string, where: WhereObject, fields?: string[]): Promise<RowObject>
-  async find<T>(table: string, where: Condition, fields?: Fields<T>[]): Promise<T>
-  async find<T>(table: string, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T>(table: string, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
-  async find<T>(table: string, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T>(table: Identifier<T, any>, where: Condition, fields?: Fields<T>[]): Promise<T>
-  async find<T>(table: Identifier<T, any>, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
-  async find<T>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T extends ItemType>(table: string, where: Condition, fields?: Fields<T>[]): Promise<T>
+  async find<T extends ItemType>(table: string, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T extends ItemType>(table: string, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T extends ItemType>(table: string, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T extends ItemType>(table: Identifier<T, any>, where: Condition, fields?: Fields<T>[]): Promise<T>
+  async find<T extends ItemType>(table: Identifier<T, any>, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
+  async find<T extends ItemType>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T extends ItemType>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
   async find(table: Identifier<any, any>, where: Condition, fields?: string[]): Promise<RowObject>
   async find(table: Identifier<any, any>, where: WhereObject, fields?: string[]): Promise<RowObject>
-  async find<T = any>(table: Identifier<T> | string,
+  async find<T extends ItemType = any>(table: Identifier<T> | string,
     where: Condition | WhereObject<T>,
     fields?: Fields<T>[] | Identifier<void, T>[]): Promise<T> {
     let columns: (Expressions)[]
@@ -295,10 +295,10 @@ export class Executor extends EventEmitter {
    * @param options
    */
   async select(table: string, options?: SelectOptions): Promise<RowObject[]>
-  async select<TResult>(table: Identifier<TResult, any>, options: SelectOptions<TResult>): Promise<TResult[]>
-  async select<TResult>(table: string, options?: SelectOptions<TResult>): Promise<TResult[]>
+  async select<TResult extends {}>(table: Identifier<TResult, any>, options: SelectOptions<TResult>): Promise<TResult[]>
+  async select<TResult extends {}>(table: string, options?: SelectOptions<TResult>): Promise<TResult[]>
   async select(table: Identifier<any, any>, options?: SelectOptions): Promise<RowObject[]>
-  async select<TResult = any>(table: Identifier<TResult, any> | string, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
+  async select<TResult extends ItemType = any>(table: Identifier<TResult, any> | string, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: Expressions[]
     const t = ensureIdentifier(table)
@@ -338,21 +338,21 @@ export class Executor extends EventEmitter {
   async update(table: string, sets: ValueObject, where?: WhereObject): Promise<number>
   async update(table: string, sets: Assignment[], where?: WhereObject): Promise<number>
   async update(table: string, sets: Assignment[], where?: Condition): Promise<number>
-  async update<T>(table: string, sets: ValueObject<T>, where?: WhereObject<T>): Promise<number>
-  async update<T>(table: string, sets: ValueObject<T>, where?: WhereObject): Promise<number>
-  async update<T>(table: string, sets: ValueObject<T>, where?: Condition): Promise<number>
-  async update<T>(table: string, sets: ValueObject, where: WhereObject<T>): Promise<number>
-  async update<T>(table: string, sets: Assignment[], where: WhereObject<T>): Promise<number>
-  async update<T>(table: Identifier<T, any>, sets: ValueObject<T>, where: WhereObject<T>): Promise<number>
-  async update<T>(table: Identifier<T, any>, sets: ValueObject<T>, where?: WhereObject): Promise<number>
-  async update<T>(table: Identifier<T, any>, sets: ValueObject<T>, where?: Condition): Promise<number>
-  async update<T>(table: Identifier<T, any>, sets: ValueObject, where: WhereObject<T>): Promise<number>
-  async update<T>(table: Identifier<T, any>, sets: Assignment[], where: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: string, sets: ValueObject<T>, where?: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: string, sets: ValueObject<T>, where?: WhereObject): Promise<number>
+  async update<T extends ItemType>(table: string, sets: ValueObject<T>, where?: Condition): Promise<number>
+  async update<T extends ItemType>(table: string, sets: ValueObject, where: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: string, sets: Assignment[], where: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: Identifier<T, any>, sets: ValueObject<T>, where: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: Identifier<T, any>, sets: ValueObject<T>, where?: WhereObject): Promise<number>
+  async update<T extends ItemType>(table: Identifier<T, any>, sets: ValueObject<T>, where?: Condition): Promise<number>
+  async update<T extends ItemType>(table: Identifier<T, any>, sets: ValueObject, where: WhereObject<T>): Promise<number>
+  async update<T extends ItemType>(table: Identifier<T, any>, sets: Assignment[], where: WhereObject<T>): Promise<number>
   async update(table: Identifier<any, any>, sets: ValueObject, where?: WhereObject): Promise<number>
   async update(table: Identifier<any, any>, sets: ValueObject, where?: Condition): Promise<number>
   async update(table: Identifier<any, any>, sets: Assignment[], where?: WhereObject): Promise<number>
   async update(table: Identifier<any, any>, sets: Assignment[], where?: Condition): Promise<number>
-  async update<T = any>(table: string | Identifier<TemplateStringsArray, any>,
+  async update<T extends ItemType = any>(table: string | Identifier<TemplateStringsArray, any>,
     sets: ValueObject<T> | Assignment[] | ValueObject<any>,
     where?: WhereObject<T> | Condition | WhereObject): Promise<number> {
     const sql = update(table)
@@ -368,13 +368,13 @@ export class Executor extends EventEmitter {
 
   async delete(table: string, where?: WhereObject): Promise<number>
   async delete(table: string, where?: Condition): Promise<number>
-  async delete<T>(table: Identifier<T, any>, where?: WhereObject<T>): Promise<number>
-  async delete<T>(table: Identifier<T, any>, where?: Condition): Promise<number>
-  async delete<T>(table: string, where?: WhereObject<T>): Promise<number>
-  async delete<T>(table: string, where?: Condition): Promise<number>
+  async delete<T extends ItemType>(table: Identifier<T, any>, where?: WhereObject<T>): Promise<number>
+  async delete<T extends ItemType>(table: Identifier<T, any>, where?: Condition): Promise<number>
+  async delete<T extends ItemType>(table: string, where?: WhereObject<T>): Promise<number>
+  async delete<T extends ItemType>(table: string, where?: Condition): Promise<number>
   async delete(table: Identifier<any, any>, where?: WhereObject): Promise<number>
   async delete(table: Identifier<any, any>, where?: Condition): Promise<number>
-  async delete<T = any>(table: Identifier<T, any> | string, where?: WhereObject<T> | Condition | WhereObject): Promise<number> {
+  async delete<T extends ItemType = any>(table: Identifier<T, any> | string, where?: WhereObject<T> | Condition | WhereObject): Promise<number> {
     const sql = del(table)
     if (where) sql.where(where)
     const res = await this.query(sql)

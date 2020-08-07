@@ -71,6 +71,8 @@ export type ValueObject<T = void> = T extends void ? InputObject : {
 
 export type RowObject<T = void> = T extends void ? OutputObject : T
 
+export type ItemType = {}
+
 /**
  * SELECT语句查询返回的对象
  */
