@@ -88,7 +88,7 @@ export type ParameterValues = RowObject
 export type Expressions = Expression | JsConstant
 
 
-export type Conditions = Condition | WhereObject<any>
+export type Conditions = Condition | WhereObject | WhereObject<any>
 
 /**
  * SELECT查询表达式
@@ -107,9 +107,9 @@ export type PropertiedIdentifier<T = any> = {
 }
 
 export type ProxiedIdentifier<T = void, TParent = void> =
-  Identifier<T, TParent> & PropertiedIdentifier<T> & {
+  Identifier<T, TParent> & T extends void ? {
     [key: string]: Identifier<void, T>
-  }
+  } : PropertiedIdentifier<T>
 
 /**
  * AST 基类
