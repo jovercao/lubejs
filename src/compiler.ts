@@ -6,7 +6,7 @@ import {
   AST, Parameter, Identifier, Constant, When,
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
-  Variant, Join, IUnary, Execute,
+  Variant, Join, IUnary, Execute, Document,
   Union, List, SortInfo, UnaryLogic as UnaryLogic, UnaryCompare as UnaryCompare, UnaryCalculate, BinaryLogic as BinaryLogic, BinaryCompare, BinaryCalculate, ExistsCompare
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
@@ -250,9 +250,15 @@ export class Compiler {
         return this.compileUnion(ast as Union, params, parent)
       case SQL_SYMBOLE.SORT:
         return this.compileSort(ast as SortInfo, params, parent)
+      case SQL_SYMBOLE.DOCUMENT:
+        return this.compileDocument(ast as Document, params)
       default:
         throw new Error('Error AST type: ' + ast.type)
     }
+  }
+
+  protected compileDocument(doc: Document, params: Set<Parameter>) {
+    return doc.statements.map(statement => this.compileAST(statement, params, doc)).join('\n')
   }
 
   protected compileExecute<T extends AST>(exec: Execute, params: Set<Parameter>, parent?: AST): string {

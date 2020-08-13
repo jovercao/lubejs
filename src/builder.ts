@@ -1,6 +1,7 @@
 import {
   Condition,
   Parameter,
+  Document,
   Identifier,
   AST,
   Statement,
@@ -103,6 +104,14 @@ export const select = Statement.select
  */
 export const raw = function(sql: string) {
   return new Raw(sql)
+}
+
+/**
+ * 创建一个SQL文档，包含多条SQL语句、
+ * @param statements SQL语句
+ */
+export const doc = function(...statements: Statement[]) {
+  return new Document(...statements)
 }
 
 /**
