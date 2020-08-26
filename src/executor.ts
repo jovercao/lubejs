@@ -3,7 +3,7 @@ import { assert, ensureIdentifier, isJsConstant } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
 import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, Fields, RowObject, ParameterValues, ItemType } from './ast'
-import { Compiler } from './compiler'
+import { Compiler, Command } from './compiler'
 import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
 import { stringify } from 'querystring'
@@ -110,6 +110,26 @@ export class Executor extends EventEmitter {
     this.doQuery = query
     this.compiler = compiler
     this.isTrans = isTrans
+  }
+
+  on(event: 'command', listener: (cmd: Command) => void): this
+  on(event: 'commit', listener: (executor: Executor) => void): this
+  on(event: 'rollback', listener: (executor: Executor) => void): this
+  on(event: 'error', listener: (error: Error) => any): this
+  on(event: string, listener: (...args: any[]) => any): this {
+    return super.on(event, listener)
+  }
+
+  off(event: 'command', listener?: (cmd: Command) => void): this
+  off(event: 'commit', listener?: (executor: Executor) => void): this
+  off(event: 'rollback', listener?: (executor: Executor) => void): this
+  off(event: 'error', listener?: (error: Error) => any): this
+  off(event: string, listener?: (...args: any[]) => any): this {
+    if (!listener) {
+      return super.removeAllListeners(event)
+    } else {
+      return super.off(event, listener)
+    }
   }
 
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>

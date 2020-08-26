@@ -1,5 +1,5 @@
 import { Executor, QueryResult } from './executor'
-import { Compiler, CompileOptions } from './compiler'
+import { Compiler, CompileOptions, Command } from './compiler'
 import { URL } from 'url'
 import * as _ from 'lodash'
 import { ISOLATION_LEVEL } from './constants'
@@ -57,22 +57,27 @@ export class Lube extends Executor {
     }
     let canceled = false
     const { query, commit, rollback } = await this._provider.beginTrans(isolationLevel)
-    const abort = async function () {
+    const executor = new Executor(query, this.compiler, true)
+    const abort = async () => {
       canceled = true
       await rollback()
+      executor.emit('rollback', executor)
     }
-    const executor = new Executor(query, this.compiler, true)
+    const complete = async () => {
+      await commit()
+      executor.emit('commit', executor)
+    }
     executor.on('command', cmd => this.emit('command', cmd))
     executor.on('error', cmd => this.emit('error', cmd))
     try {
       const res = await handler(executor, abort)
       if (!canceled) {
-        await commit()
+        await complete()
       }
       return res
     } catch (ex) {
       if (!canceled) {
-        await rollback()
+        await abort()
       }
       throw ex
     }
