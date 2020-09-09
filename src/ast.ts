@@ -103,11 +103,11 @@ export type GroupValues = Expressions[] | List
 export type Identifiers = Identifier<any, any> | string
 
 export declare type ProxiedIdentifier<T = void, TParent = void> = Identifier<T, TParent> &
-  (unknown extends T ? {
+  (keyof T extends never ? {
     readonly [key: string]: ProxiedIdentifier<unknown, T>
   } : {
-      readonly [K in keyof T]: T[K] extends JsConstant ? Identifier<void, T> : ProxiedIdentifier<T[K], T>;
-    })
+    readonly [K in keyof T]: T[K] extends JsConstant ? Identifier<void, T> : ProxiedIdentifier<T[K], T>;
+  })
 
 /**
  * AST 基类
