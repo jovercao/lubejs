@@ -719,7 +719,7 @@ export abstract class Expression extends AST {
    * 代理化的identifier，可以自动接受字段名
    * @param name
    */
-  static proxiedIdentifier<T = any>(name: Identifiers) {
+  static proxiedIdentifier<T = object>(name: Identifiers) {
     return makeProxiedIdentifier<T>(ensureIdentifier<T>(name))
   }
 
@@ -727,7 +727,7 @@ export abstract class Expression extends AST {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
-  static table<T extends object = any>(...names: string[]): ProxiedIdentifier<T> {
+  static table<T extends object = object>(...names: string[]): ProxiedIdentifier<T> {
     return Expression.proxiedIdentifier<T>(Expression.identifier(...names))
   }
 
