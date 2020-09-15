@@ -13,7 +13,7 @@ import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
 export interface Command {
   sql: string
-  params: Parameter[]
+  params: Parameter<unknown>[]
 }
 
 /**
@@ -21,7 +21,7 @@ export interface Command {
  */
 interface CommandBuilder {
   sql: string[],
-  params: Set<Parameter>
+  params: Set<Parameter<unknown>>
 }
 
 // TODO: 使用命令生成器优化SQL字符串拼接
@@ -95,7 +95,7 @@ export class Compiler {
    * 解析标识符
    * @param identifier 标识符
    */
-  protected compileIdentifier(identifier: Identifier<any>, params?: Set<Parameter>, parent?: AST): string {
+  protected compileIdentifier(identifier: Identifier<any>, params?: Set<Parameter<unknown>>, parent?: AST): string {
     const sql = identifier.type === SQL_SYMBOLE.BUILDIN_IDENTIFIER ? identifier.name : this.quoted(identifier.name)
     const parentNode = Reflect.get(identifier, 'parent')
     if (parentNode) {
@@ -120,12 +120,12 @@ export class Compiler {
    * @param {array} values 参数列表
    * @param {any} value 参数值
    */
-  protected compileParameter(param: Parameter, params: Set<Parameter>, parent: AST = null): string {
+  protected compileParameter(param: Parameter<unknown>, params: Set<Parameter<unknown>>, parent: AST = null): string {
     params.add(param)
     return this.prepareParameterName(param)
   }
 
-  public prepareParameterName(p: Parameter) {
+  public prepareParameterName(p: Parameter<unknown>) {
     return this.options.parameterPrefix + (p.name || '')
   }
 
@@ -133,7 +133,7 @@ export class Compiler {
     return this.options.variantPrefix + name
   }
 
-  protected compileVariant(variant: Variant, params: Set<Parameter>, parent?: AST): string {
+  protected compileVariant(variant: Variant<any>, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.properVariantName(variant.name)
   }
 
@@ -149,7 +149,7 @@ export class Compiler {
     return `'${value.replace(/'/g, "''")}'`
   }
 
-  protected compileConstant(constant: Constant, params?: Set<Parameter>, parent?: AST) {
+  protected compileConstant(constant: Constant<any>, params?: Set<Parameter<unknown>>, parent?: AST) {
     const value = constant.value
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
@@ -182,14 +182,14 @@ export class Compiler {
   }
 
   public compile(ast: AST): Command {
-    const params = new Set<Parameter>()
+    const params = new Set<Parameter<unknown>>()
     return {
       sql: this.compileAST(ast, params),
       params: Array.from(params)
     }
   }
 
-  protected compileAST(ast: AST, params: Set<Parameter>, parent?: AST): string {
+  protected compileAST(ast: AST, params: Set<Parameter<unknown>>, parent?: AST): string {
     switch (ast.type) {
       case SQL_SYMBOLE.SELECT:
         return this.compileSelect(ast as Select, params, parent)
@@ -206,7 +206,7 @@ export class Compiler {
       case SQL_SYMBOLE.BRACKET_EXPRESSION:
         return this.compileBracket(ast as Bracket<any>, params, parent)
       case SQL_SYMBOLE.CONSTANT:
-        return this.compileConstant(ast as Constant, params, parent)
+        return this.compileConstant(ast as Constant<any>, params, parent)
       case SQL_SYMBOLE.INVOKE_ARGUMENT_LIST:
         return this.compileInvokeArgumentList(ast as List, params, parent)
       case SQL_SYMBOLE.COLUMN_LIST:
@@ -225,7 +225,7 @@ export class Compiler {
       case SQL_SYMBOLE.INVOKE:
         return this.compileInvoke(ast as Invoke, params, parent)
       case SQL_SYMBOLE.CASE:
-        return this.compileCase(ast as Case, params, parent)
+        return this.compileCase(ast as Case<any>, params, parent)
       case SQL_SYMBOLE.BINARY_CALCULATE:
         return this.compileBinaryCalculate(ast as BinaryCalculate, params, parent)
       case SQL_SYMBOLE.BINARY_COMPARE:
@@ -241,9 +241,9 @@ export class Compiler {
       case SQL_SYMBOLE.UNARY_CALCULATE:
         return this.compileUnaryCalculate(ast as UnaryCalculate, params, parent)
       case SQL_SYMBOLE.PARAMETER:
-        return this.compileParameter(ast as Parameter, params, parent)
+        return this.compileParameter(ast as Parameter<unknown>, params, parent)
       case SQL_SYMBOLE.VARAINT:
-        return this.compileVariant(ast as Variant, params, parent)
+        return this.compileVariant(ast as Variant<any>, params, parent)
       case SQL_SYMBOLE.JOIN:
         return this.compileJoin(ast as Join, params, parent)
       case SQL_SYMBOLE.UNION:
@@ -257,52 +257,52 @@ export class Compiler {
     }
   }
 
-  protected compileDocument(doc: Document, params: Set<Parameter>) {
+  protected compileDocument(doc: Document, params: Set<Parameter<unknown>>) {
     return doc.statements.map(statement => this.compileAST(statement, params, doc)).join('\n')
   }
 
-  protected compileExecute<T extends AST>(exec: Execute, params: Set<Parameter>, parent?: AST): string {
+  protected compileExecute<T extends AST>(exec: Execute, params: Set<Parameter<unknown>>, parent?: AST): string {
     const returnParam = Parameter.output(RETURN_VALUE_PARAMETER_NAME, Number)
     return 'EXECUTE ' + this.compileAST(returnParam, params, parent) +
       ' = ' + this.compileAST(exec.proc, params, exec) + ' ' +
       this.compileExecuteArgumentList(exec.args, params, exec)
   }
 
-  protected compileBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter>, parent?: AST): string {
+  protected compileBracket<T extends AST>(bracket: Bracket<T>, params: Set<Parameter<unknown>>, parent?: AST): string {
     return '(' + this.compileAST(bracket.context, params, bracket) + ')'
   }
 
-  protected compileValueList(values: List, params: Set<Parameter>, parent?: AST): string {
+  protected compileValueList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
     return '(' + values.items.map(ast => this.compileAST(ast, params, values)).join(', ') + ')'
   }
 
-  protected compileColumnList(values: List, params: Set<Parameter>, parent?: AST): string {
+  protected compileColumnList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
     return values.items.map(ast => this.compileAST(ast, params, values)).join(', ')
   }
 
-  protected compileInvokeArgumentList(values: List, params: Set<Parameter>, parent?: AST): string {
+  protected compileInvokeArgumentList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
     return values.items.map(ast => this.compileAST(ast, params, values)).join(', ')
   }
 
-  protected compileExecuteArgumentList(values: List, params: Set<Parameter>, parent?: AST): string {
+  protected compileExecuteArgumentList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
     return values.items.map(ast => {
       let sql = this.compileAST(ast, params, values)
-      if (ast.type === 'PARAMETER' && (ast as Parameter).direction === PARAMETER_DIRECTION.OUTPUT) {
+      if (ast.type === 'PARAMETER' && (ast as Parameter<unknown>).direction === PARAMETER_DIRECTION.OUTPUT) {
         sql += ' OUTPUT'
       }
       return sql
     }).join(', ')
   }
 
-  protected compileUnion(union: Union, params: Set<Parameter>, parent?: AST): string {
+  protected compileUnion(union: Union, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'UNION ' + union.all ? 'ALL ' : '' + this.compileAST(union.select, params, union)
   }
 
-  protected compileAlias(alias: Alias, params: Set<Parameter>, parent?: AST): string {
+  protected compileAlias(alias: Alias, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(alias.expr, params, alias) + ' AS ' + this.quoted(alias.name)
   }
 
-  protected compileCase(caseExpr: Case, params: Set<Parameter>, parent?: AST): string {
+  protected compileCase(caseExpr: Case<any>, params: Set<Parameter<unknown>>, parent?: AST): string {
     let fragment = 'CASE'
     if (caseExpr.expr) fragment += ' ' + this.compileAST(caseExpr.expr, params, parent)
     fragment += ' ' + caseExpr.whens.map(when => this.compileWhen(when, params, caseExpr))
@@ -311,35 +311,35 @@ export class Compiler {
     return fragment
   }
 
-  protected compileWhen(when: When, params: Set<Parameter>, parent?: AST): string {
+  protected compileWhen(when: When<any>, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'WHEN ' + this.compileAST(when.expr, params, when) + ' THEN ' + this.compileAST(when.value, params, when)
   }
 
-  protected compileBinaryLogic(expr: BinaryLogic, params: Set<Parameter>, parent?: AST): string {
+  protected compileBinaryLogic(expr: BinaryLogic, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileBinaryCompare(expr: BinaryCompare, params: Set<Parameter>, parent?: AST): string {
+  protected compileBinaryCompare(expr: BinaryCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileBinaryCalculate(expr: BinaryCalculate, params: Set<Parameter>, parent?: AST): string {
+  protected compileBinaryCalculate(expr: BinaryCalculate, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileUnaryCompare(expr: UnaryCompare, params: Set<Parameter>, parent?: AST): string {
+  protected compileUnaryCompare(expr: UnaryCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.next, params, expr) + ' ' + expr.operator
   }
 
-  protected compileExistsCompare(expr: ExistsCompare, params: Set<Parameter>, parent?: AST): string {
+  protected compileExistsCompare(expr: ExistsCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'EXISTS' + this.compileAST(expr.expr, params, expr)
   }
 
-  protected compileUnaryLogic(expr: UnaryLogic, params: Set<Parameter>, parent?: AST): string {
+  protected compileUnaryLogic(expr: UnaryLogic, params: Set<Parameter<unknown>>, parent?: AST): string {
     return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
   }
 
-  protected compileUnaryCalculate(expr: UnaryCalculate, params: Set<Parameter>, parent?: AST): string {
+  protected compileUnaryCalculate(expr: UnaryCalculate, params: Set<Parameter<unknown>>, parent?: AST): string {
     return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
   }
 
@@ -350,21 +350,21 @@ export class Compiler {
    * @returns
    * @memberof Executor
    */
-  protected compileInvoke(invoke: Invoke, params: Set<Parameter>, parent?: AST): string {
+  protected compileInvoke(invoke: Invoke, params: Set<Parameter<unknown>>, parent?: AST): string {
     return `${this.compileAST(invoke.func, params, invoke)}(${(invoke.args.items || []).map(v => this.compileAST(v, params, invoke)).join(', ')})`
   }
 
-  protected compileJoin(join: Join, params: Set<Parameter>, parent?: AST): string {
+  protected compileJoin(join: Join, params: Set<Parameter<unknown>>, parent?: AST): string {
     return (join.left ? 'LEFT ' : '') + 'JOIN ' + this.compileAST(join.table, params, join) + ' ON ' + this.compileAST(join.on, params, join)
   }
 
-  protected compileSort(sort: SortInfo, params: Set<Parameter>, parent?: AST): string {
+  protected compileSort(sort: SortInfo, params: Set<Parameter<unknown>>, parent?: AST): string {
     let sql = this.compileAST(sort.expr, params, sort)
     if (sort.direction) sql += ' ' + sort.direction
     return sql
   }
 
-  protected compileSelect(select: Select, params: Set<Parameter>, parent?: AST): string {
+  protected compileSelect(select: Select, params: Set<Parameter<unknown>>, parent?: AST): string {
     const { tables, top, joins, unions, columns, filters, sorts, groups, havings, offsets, limits, isDistinct } = select
     let sql = 'SELECT '
     if (isDistinct) {
@@ -407,7 +407,7 @@ export class Compiler {
     return sql
   }
 
-  protected compileInsert(insert: Insert, params: Set<Parameter>, parent?: AST): string {
+  protected compileInsert(insert: Insert, params: Set<Parameter<unknown>>, parent?: AST): string {
     const { table, rows, fields } = insert
     let sql = 'INSERT INTO '
 
@@ -430,16 +430,16 @@ export class Compiler {
     return sql
   }
 
-  protected compileAssignment(assign: Assignment, params: Set<Parameter>, parent?: AST): string {
+  protected compileAssignment(assign: Assignment, params: Set<Parameter<unknown>>, parent?: AST): string {
     const { left, right } = assign
     return this.compileAST(left, params, parent) + ' = ' + this.compileAST(right, params, parent)
   }
 
-  protected compileDeclare(declare: Declare, params: Set<Parameter>, parent?: AST): string {
+  protected compileDeclare(declare: Declare, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'DECLARE ' + declare.declares.map(varDec => this.properVariantName(varDec.name) + ' ' + varDec.dataType).join(', ')
   }
 
-  protected compileUpdate(update: Update, params: Set<Parameter>, parent?: AST): string {
+  protected compileUpdate(update: Update, params: Set<Parameter<unknown>>, parent?: AST): string {
     const { table, sets, filters, tables, joins } = update
     assert(table, 'table is required by update statement')
     assert(sets, 'set statement un declared')
@@ -463,7 +463,7 @@ export class Compiler {
     return sql
   }
 
-  protected compileDelete(del: Delete, params: Set<Parameter>, parent?: AST): string {
+  protected compileDelete(del: Delete, params: Set<Parameter<unknown>>, parent?: AST): string {
     const { table, tables, joins, filters } = del
     let sql = 'DELETE '
     if (table) sql += this.compileAST(table, params, parent)

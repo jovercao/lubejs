@@ -6,11 +6,13 @@ import {
   GroupValues,
   Bracket,
   Expression,
+  Fields,
   AST,
   Identifier,
   JsConstant,
   List,
-  ProxiedIdentifier
+  ProxiedIdentifier,
+  ExpressionType
 } from './ast'
 
 /**
@@ -27,11 +29,11 @@ export function assert(except: any, message: string) {
 /**
  * 返回表达式
  */
-export function ensureConstant(expr: Expressions): Expression {
+export function ensureConstant<T extends Expressions>(expr: T): Expression<ExpressionType<T>> {
   if (!(expr instanceof AST)) {
     return Expression.constant(expr as JsConstant)
   }
-  return expr
+  return expr as any
 }
 
 export function ensureIdentifier<T = void>(expr: string | Identifier<any>): Identifier<T> {
@@ -97,7 +99,7 @@ export function makeProxiedIdentifier<T = void, TParent = void>(identifier: Iden
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return identifier.dot(prop as keyof T)
+        return identifier.dot(prop as Fields<T>)
       }
       return undefined
     }

@@ -57,6 +57,7 @@ export enum COMPARE_OPERATOR {
  * 算术运算符列表
  */
 export enum CALCULATE_OPERATOR {
+  JOIN = '+',
   ADD = '+',
   SUB = '-',
   MUL = '*',

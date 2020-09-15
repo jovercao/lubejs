@@ -23,7 +23,7 @@ export interface ITransaction {
 export interface IDbProvider {
   ployfill?: CompileOptions
   compiler?: Compiler
-  query(sql: string, params: Parameter[]): Promise<QueryResult>
+  query(sql: string, params: Parameter<unknown>[]): Promise<QueryResult>
   beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction
   close(): Promise<void>
 }
