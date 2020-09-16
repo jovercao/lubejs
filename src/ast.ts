@@ -77,14 +77,14 @@ export type RowObject<T = unknown> = keyof(T) extends never ? OutputObject : T
  * 表达式自身类型
  */
 export type ExpressionType<T extends Expressions<any>> = T extends JsConstant ? T : (
-  T extends Expression<infer X> ? X : JsConstant
+  T extends Expression<infer X> ? X : never
 )
 
 /**
  * SELECT语句查询返回的对象
  */
 export type ResultObject<T = unknown> = keyof(T) extends never ? OutputObject : {
-  [P in keyof T]: ExpressionType<T[P]>
+  [P in keyof Filter<T, Expressions<JsConstant>>]: ExpressionType<T[P]>
 }
 
 export type ParameterValues = RowObject
@@ -1221,13 +1221,6 @@ export class Join extends AST {
   }
 }
 
-export class Raw extends AST {
-  sql: string
-  constructor(sql: string) {
-    super(SQL_SYMBOLE.RAW)
-    this.sql = sql
-  }
-}
 
 /**
  * 标识符，可以多级，如表名等
@@ -1472,6 +1465,7 @@ export abstract class Statement extends AST {
     return new Case(expr)
   }
 }
+
 
 /**
  * When语句
@@ -2437,5 +2431,30 @@ export class Document extends AST {
   constructor(...statements: Statement[]) {
     super(SQL_SYMBOLE.DOCUMENT)
     this.statements = statements
+  }
+}
+
+
+export class Raw<T = any> extends Expression<T> implements Statement, Document {
+  sql: string
+  private _lvalue: boolean;
+  constructor(sql: string) {
+    super(SQL_SYMBOLE.RAW)
+    this.sql = sql
+  }
+
+  get statements(): Statement[] {
+    return [this]
+  };
+
+  get lvalue(): boolean {
+    if (this._lvalue === null || this._lvalue === undefined) {
+      throw new Error('Unset lvalue!')
+    }
+    return this._lvalue
+  }
+
+  set lvalue(value: boolean) {
+    this._lvalue = value
   }
 }

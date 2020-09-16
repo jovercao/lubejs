@@ -8,7 +8,7 @@ import {
   Expression,
   Expressions,
   Raw,
-  JsConstant
+  JsConstant,
 } from './ast'
 
 /**
@@ -102,8 +102,10 @@ export const select = Statement.select
  * 创建一个原始的SQL片段
  * @param sql 原始SQL
  */
-export const raw = function(sql: string) {
-  return new Raw(sql)
+export function raw<T = any>(sql: string, lvalue?: boolean): Raw<T> {
+  const v =  new Raw<T>(sql)
+  v.lvalue = lvalue
+  return v
 }
 
 /**
