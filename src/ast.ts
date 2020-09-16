@@ -355,7 +355,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  and(expr: Expressions): Expression<number> {
+  bitAnd(expr: Expressions): Expression<number> {
     return Expression.and(this, expr)
   }
 
@@ -364,7 +364,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  or(expr: Expressions): Expression<number> {
+  bitOr(expr: Expressions): Expression<number> {
     return Expression.or(this, expr)
   }
 
@@ -373,7 +373,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  not(expr: Expressions): Expression<number> {
+  bitNot(expr: Expressions): Expression<number> {
     return Expression.not(this, expr)
   }
 
@@ -382,7 +382,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  xor(expr: Expressions): Expression<number> {
+  bitXor(expr: Expressions): Expression<number> {
     return Expression.xor(this, expr)
   }
 
@@ -554,11 +554,11 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static neg(expr: Expressions): Expression<number> {
-    return new UnaryCalculate(CALCULATE_OPERATOR.NEG, expr)
+    return new UnaryExpression(CALCULATE_OPERATOR.NEG, expr)
   }
 
   static join(left: Expressions, right: Expressions): Expression<string> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.JOIN, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.JOIN, left, right)
   }
 
   /**
@@ -568,7 +568,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static add(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.ADD, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.ADD, left, right)
   }
 
   /**
@@ -578,7 +578,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static sub(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.SUB, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.SUB, left, right)
   }
 
   /**
@@ -588,7 +588,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static mul(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.MUL, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.MUL, left, right)
   }
 
   /**
@@ -598,7 +598,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static div(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.DIV, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.DIV, left, right)
   }
 
   /**
@@ -608,7 +608,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static mod(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.MOD, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.MOD, left, right)
   }
 
   /**
@@ -618,7 +618,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static and(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.BITAND, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.BITAND, left, right)
   }
 
   /**
@@ -628,7 +628,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static or(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.BITOR, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.BITOR, left, right)
   }
 
   /**
@@ -638,7 +638,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static xor(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.BITXOR, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.BITXOR, left, right)
   }
 
   /**
@@ -648,7 +648,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static not(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.BITNOT, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.BITNOT, left, right)
   }
 
   /**
@@ -658,7 +658,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static shl(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.SHL, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.SHL, left, right)
   }
 
   /**
@@ -668,7 +668,7 @@ export abstract class Expression<T = unknown> extends AST {
    * @returns 返回算术运算表达式
    */
   static shr(left: Expressions, right: Expressions): Expression<number> {
-    return new BinaryCalculate(CALCULATE_OPERATOR.SHR, left, right)
+    return new BinaryExpression(CALCULATE_OPERATOR.SHR, left, right)
   }
 
   /**
@@ -803,7 +803,7 @@ const ConditionPrototype: ICondition = {
    */
   and(condition: Condition): Condition {
     condition = ensureCondition(condition)
-    return new BinaryLogic(LOGIC_OPERATOR.AND, this, condition)
+    return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, condition)
   },
 
   /**
@@ -813,7 +813,7 @@ const ConditionPrototype: ICondition = {
    */
   andGroup(condition: Condition): Condition {
     condition = ensureCondition(condition)
-    return new BinaryLogic(LOGIC_OPERATOR.AND, this, Condition.quoted(condition))
+    return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, Condition.quoted(condition))
   },
 
   /**
@@ -823,7 +823,7 @@ const ConditionPrototype: ICondition = {
    */
   or(condition: Condition): Condition {
     condition = ensureCondition(condition)
-    return new BinaryLogic(LOGIC_OPERATOR.OR, this, condition)
+    return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, condition)
   },
 
 
@@ -834,7 +834,7 @@ const ConditionPrototype: ICondition = {
    */
   orGroup(condition: Condition): Condition {
     condition = ensureCondition(condition)
-    return new BinaryLogic(LOGIC_OPERATOR.OR, this, Condition.quoted(condition))
+    return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, Condition.quoted(condition))
   }
 }
 
@@ -881,7 +881,7 @@ export abstract class Condition extends AST implements ICondition {
     return conditions.reduce((previous, current) => {
       current = ensureCondition(current)
       if (!previous) return current
-      return new BinaryLogic(LOGIC_OPERATOR.AND, previous, current)
+      return new BinaryLogicCondition(LOGIC_OPERATOR.AND, previous, current)
     })
   }
 
@@ -896,7 +896,7 @@ export abstract class Condition extends AST implements ICondition {
     return conditions.reduce((previous, current, index) => {
       current = ensureCondition(current)
       if (!previous) return current
-      return new BinaryLogic(LOGIC_OPERATOR.OR, previous, current)
+      return new BinaryLogicCondition(LOGIC_OPERATOR.OR, previous, current)
     })
   }
 
@@ -906,7 +906,7 @@ export abstract class Condition extends AST implements ICondition {
    */
   static not(condition: Condition): Condition {
     condition = ensureCondition(condition)
-    return new UnaryLogic(LOGIC_OPERATOR.NOT, condition)
+    return new UnaryLogicCondition(LOGIC_OPERATOR.NOT, condition)
   }
 
 
@@ -916,7 +916,7 @@ export abstract class Condition extends AST implements ICondition {
    * @param select 查询语句
    */
   static exists(select: SelectExpression): Condition {
-    return new ExistsCompare(AST.bracket(select))
+    return new ExistsCompareCondition(AST.bracket(select))
   }
 
   /**
@@ -928,7 +928,7 @@ export abstract class Condition extends AST implements ICondition {
    * @returns 返回比较运算对比条件
    */
   static compare(left: Expressions, right: Expressions | GroupValues, operator: COMPARE_OPERATOR = COMPARE_OPERATOR.EQ): Condition {
-    return new BinaryCompare(operator, left, right)
+    return new BinaryCompareCondition(operator, left, right)
   }
 
   /**
@@ -1063,7 +1063,7 @@ Object.assign(Condition.prototype, ConditionPrototype)
 /**
  * 二元逻辑查询条件条件
  */
-export class BinaryLogic extends Condition implements IBinary {
+export class BinaryLogicCondition extends Condition implements IBinary {
   operator: LOGIC_OPERATOR
   left: Condition
   right: Condition
@@ -1087,7 +1087,7 @@ export class BinaryLogic extends Condition implements IBinary {
 /**
  * 一元逻辑查询条件
  */
-export class UnaryLogic extends Condition implements IUnary {
+export class UnaryLogicCondition extends Condition implements IUnary {
   operator: LOGIC_OPERATOR
   next: Condition
   /**
@@ -1105,7 +1105,7 @@ export class UnaryLogic extends Condition implements IUnary {
 /**
  * 二元比较条件
  */
-export class BinaryCompare extends Condition {
+export class BinaryCompareCondition extends Condition {
   left: Expression
   right: Expression | List
   operator: COMPARE_OPERATOR
@@ -1127,7 +1127,7 @@ export class BinaryCompare extends Condition {
 /**
  * 一元比较条件
  */
-export class UnaryCompare extends Condition implements IUnary {
+export class UnaryCompareCondition extends Condition implements IUnary {
   next: Expression<unknown>
   operator: COMPARE_OPERATOR
   /**
@@ -1147,7 +1147,7 @@ export class UnaryCompare extends Condition implements IUnary {
 /**
  * 一元比较条件
  */
-export class ExistsCompare extends Condition {
+export class ExistsCompareCondition extends Condition {
   expr: SelectExpression
   /**
    * EXISTS子句
@@ -1162,7 +1162,7 @@ export class ExistsCompare extends Condition {
 /**
  * IS NULL 运算
  */
-class IsNullCondition extends UnaryCompare {
+class IsNullCondition extends UnaryCompareCondition {
   /**
    * @param next 表达式
    */
@@ -1174,7 +1174,7 @@ class IsNullCondition extends UnaryCompare {
 /**
  * 是否为空值条件
  */
-class IsNotNullCondition extends UnaryCompare {
+class IsNotNullCondition extends UnaryCompareCondition {
   /**
    * 是否空值
    * @param next 表达式
@@ -1827,7 +1827,7 @@ export interface IUnary extends AST {
 /**
  * 二元运算表达式
  */
-export class BinaryCalculate extends Expression<number> implements IBinary {
+export class BinaryExpression extends Expression<number> implements IBinary {
 
   get lvalue() {
     return false
@@ -1857,7 +1857,7 @@ export class BinaryCalculate extends Expression<number> implements IBinary {
 /**
  * - 运算符
  */
-export class UnaryCalculate extends Expression<number> implements IUnary {
+export class UnaryExpression extends Expression<number> implements IUnary {
 
   readonly operator: CALCULATE_OPERATOR.NEG
   readonly next: Expression<any>
@@ -2435,13 +2435,17 @@ export class Document extends AST {
 }
 
 
-export class Raw<T = any> extends Expression<T> implements Statement, Document {
+export class Raw<T = any> extends Expression<T> implements Statement, Document, Condition {
   sql: string
   private _lvalue: boolean;
   constructor(sql: string) {
     super(SQL_SYMBOLE.RAW)
     this.sql = sql
   }
+  and: (condition: Condition) => Condition;
+  or: (condition: Condition) => Condition;
+  andGroup: (condition: Condition) => Condition;
+  orGroup: (condition: Condition) => Condition;
 
   get statements(): Statement[] {
     return [this]
@@ -2458,3 +2462,5 @@ export class Raw<T = any> extends Expression<T> implements Statement, Document {
     this._lvalue = value
   }
 }
+
+Object.assign(Raw, ConditionPrototype)

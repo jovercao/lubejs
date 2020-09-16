@@ -7,7 +7,7 @@ import {
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
   Variant, Join, IUnary, Execute, Document,
-  Union, List, SortInfo, UnaryLogic as UnaryLogic, UnaryCompare as UnaryCompare, UnaryCalculate, BinaryLogic as BinaryLogic, BinaryCompare, BinaryCalculate, ExistsCompare
+  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -227,19 +227,19 @@ export class Compiler {
       case SQL_SYMBOLE.CASE:
         return this.compileCase(ast as Case<any>, params, parent)
       case SQL_SYMBOLE.BINARY_CALCULATE:
-        return this.compileBinaryCalculate(ast as BinaryCalculate, params, parent)
+        return this.compileBinaryExpression(ast as BinaryExpression, params, parent)
       case SQL_SYMBOLE.BINARY_COMPARE:
-        return this.compileBinaryCompare(ast as BinaryCompare, params, parent)
+        return this.compileBinaryCompareCondition(ast as BinaryCompareCondition, params, parent)
       case SQL_SYMBOLE.BINARY_LOGIC:
-        return this.compileBinaryLogic(ast as BinaryLogic, params, parent)
+        return this.compileBinaryLogicCondition(ast as BinaryLogicCondition, params, parent)
       case SQL_SYMBOLE.EXISTS:
-        return this.compileExistsCompare(ast as ExistsCompare, params, parent)
+        return this.compileExistsCompare(ast as ExistsCompareCondition, params, parent)
       case SQL_SYMBOLE.UNARY_COMPARE:
-        return this.compileUnaryCompare(ast as UnaryCompare, params, parent)
+        return this.compileUnaryCompareCondition(ast as UnaryCompareCondition, params, parent)
       case SQL_SYMBOLE.UNARY_LOGIC:
-        return this.compileUnaryLogic(ast as UnaryLogic, params, parent)
+        return this.compileUnaryLogic(ast as UnaryLogicCondition, params, parent)
       case SQL_SYMBOLE.UNARY_CALCULATE:
-        return this.compileUnaryCalculate(ast as UnaryCalculate, params, parent)
+        return this.compileUnaryCalculate(ast as UnaryExpression, params, parent)
       case SQL_SYMBOLE.PARAMETER:
         return this.compileParameter(ast as Parameter<unknown>, params, parent)
       case SQL_SYMBOLE.VARAINT:
@@ -315,31 +315,31 @@ export class Compiler {
     return 'WHEN ' + this.compileAST(when.expr, params, when) + ' THEN ' + this.compileAST(when.value, params, when)
   }
 
-  protected compileBinaryLogic(expr: BinaryLogic, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileBinaryLogicCondition(expr: BinaryLogicCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileBinaryCompare(expr: BinaryCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileBinaryCompareCondition(expr: BinaryCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileBinaryCalculate(expr: BinaryCalculate, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileBinaryExpression(expr: BinaryExpression, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
   }
 
-  protected compileUnaryCompare(expr: UnaryCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileUnaryCompareCondition(expr: UnaryCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(expr.next, params, expr) + ' ' + expr.operator
   }
 
-  protected compileExistsCompare(expr: ExistsCompare, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileExistsCompare(expr: ExistsCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'EXISTS' + this.compileAST(expr.expr, params, expr)
   }
 
-  protected compileUnaryLogic(expr: UnaryLogic, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileUnaryLogic(expr: UnaryLogicCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
     return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
   }
 
-  protected compileUnaryCalculate(expr: UnaryCalculate, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileUnaryCalculate(expr: UnaryExpression, params: Set<Parameter<unknown>>, parent?: AST): string {
     return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
   }
 
