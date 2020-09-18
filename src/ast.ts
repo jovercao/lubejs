@@ -40,7 +40,15 @@ export type Filter<T, V> = {
   [P in keyof T]: T[P] extends V ? T[P] : never
 }
 
-export type Fields<T> = T extends JsConstant ? never : keyof Filter<T, JsConstant>
+/**
+ * 获取类型的键，排除never类型属性
+ */
+export type KeyOf<T> = ({ [P in keyof T]: T[P] extends never ? never : P })[keyof T]
+
+/**
+ * 获取数据库有效字段列表
+ */
+export type RowFields<T> = T extends JsConstant ? never :  KeyOf<Filter<T, JsConstant>>
 
 /**
  * 键值对象，用于 输入SQL语句的的对象
@@ -76,7 +84,7 @@ export type RowObject<T = unknown> = keyof(T) extends never ? OutputObject : T
 /**
  * 表达式自身类型
  */
-export type ExpressionType<T extends Expressions<any>> = T extends JsConstant ? T : (
+export type ExpressionType<T> = T extends JsConstant ? T : (
   T extends Expression<infer X> ? X : never
 )
 
@@ -84,7 +92,28 @@ export type ExpressionType<T extends Expressions<any>> = T extends JsConstant ? 
  * SELECT语句查询返回的对象
  */
 export type ResultObject<T = unknown> = keyof(T) extends never ? OutputObject : {
-  [P in keyof Filter<T, Expressions<JsConstant>>]: ExpressionType<T[P]>
+  [P in keyof T]: ExpressionType<T[P]>
+}
+
+/**
+ * 从 SELECT(...Identitfier) 中查询的属性及类型
+ */
+type PickFields<T> = T extends Identifier<infer TModel, infer TParent, infer TName> ? (
+  TName extends AnyFields ? TParent : { [P in TName]: TModel }
+) : unknown
+
+// /**
+//  * 合并两个类型，当有相同字段时，会被合并成一个数组
+//  * T1: { a: string } T2: { a: number } => { a: [string, number] }
+//  */
+// type MergeColumns<T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14> = {
+//   [K1 in keyof T1]: K1 extends keyof T2 ? [T1[K1], T2[K1]] : T1[K1]
+// } & {
+//   [K2 in keyof T2]: K2 extends keyof T1 ? unknown : T2[K2]
+// }
+
+export type ResultObjectByColumns<TColumns extends Identifier<any, any, any>[]> = {
+  [I in keyof TColumns]: PickFields<TColumns[I]>
 }
 
 export type ParameterValues = RowObject
@@ -100,21 +129,26 @@ export type Conditions = Condition | WhereObject | WhereObject<any>
 /**
  * SELECT查询表达式
  */
-export type SelectExpression<T = any> = Select<T> | Bracket<Select<T>> | Bracket<SelectExpression<T>>
+export type SelectExpression = Select | Bracket<Select> | Bracket<SelectExpression, never>
+
+export type FieldsOf<T> = Exclude<keyof T, number | symbol>
 
 /**
  * 组数据
  */
 export type GroupValues = Expressions[] | List
 
-export type Identifiers = Identifier<any, any> | string
+export type Identifiers<T = any> = Identifier<T, any, any> | string
 
-export declare type ProxiedIdentifier<T = void, TParent = void> = Identifier<T, TParent> &
-  (keyof T extends never ? {
-    readonly [key: string]: ProxiedIdentifier<unknown, T>
-  } : {
-    readonly [K in keyof T]: T[K] extends JsConstant ? Identifier<void, T> : ProxiedIdentifier<T[K], T>;
-  })
+export type ProxiedIdentifier<T extends Identifier<any, any, any>> = T extends Identifier<infer TModel, any, any> ? (
+  T & (
+      keyof TModel extends never ? {
+      readonly [K in FieldsOf<any>]: ProxiedIdentifier<Identifier<any, any, K>>
+    } : {
+      readonly [K in FieldsOf<TModel>]: TModel[K] extends JsConstant ? Identifier<TModel[K], TModel, K> : Identifier<never, TModel, K>
+    }
+  )
+) : never
 
 /**
  * AST 基类
@@ -130,6 +164,9 @@ export abstract class AST {
     return new Bracket(context)
   }
 }
+
+export type ModelConstructor<T extends object = object> = new (...args: any) => T
+export type ModelType<T> = T extends new (...args: any) => infer TModel ? TModel : never
 
 // export interface IExpression {
 //   /**
@@ -306,7 +343,7 @@ export abstract class Expression<T = unknown> extends AST {
   /**
    * 字符串连接运算
    */
-  join(expr: Expression<string>): Expression<T> {
+  join(expr: Expression<string>): Expression<string> {
     return Expression.join(this, expr)
   }
 
@@ -537,8 +574,8 @@ export abstract class Expression<T = unknown> extends AST {
   /**
    * 为当前表达式添加别名
    */
-  as<T = void>(alias: string): ProxiedIdentifier<T> {
-    return makeProxiedIdentifier(new Alias<T>(this, alias))
+  asColumn<TName extends string>(alias: TName): Alias<T, TName> {
+    return new Alias<T, TName>(this, alias)
   }
 
   /**
@@ -703,22 +740,26 @@ export abstract class Expression<T = unknown> extends AST {
     return Expression.variant(name)
   }
 
-  static alias<T>(expr: Expression<T>, name: string) {
-    return new Alias<T>(expr, name)
+  static alias<T, TName extends string>(expr: Expression<T>, name: TName): Alias<T, TName> {
+    return new Alias(expr, name)
   }
 
   /**
    * 任意字段 *
    * @param parent parent identifier
    */
-  static any(parent?: Identifiers): Identifier<void> {
+  static any<TParent>(parent?: Identifier<TParent>): Identifier<void> {
     return Identifier.any(parent)
   }
 
   /**
    * 标识符
    */
-  static identifier<T = void>(...names: string[]): Identifier<T> {
+  static identifier<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static identifier<T, TName extends string>(parent: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static identifier<T, TName extends string>(p1: string, p2: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static identifier<T, TName extends string>(p1: string, p2: string, p3: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static identifier(...names: string[]): any {
     assert(names.length > 0, 'must have one or more names')
     assert(names.length < 6, 'nodes deepth max 6 level')
     let identify: Identifier<any>
@@ -726,34 +767,68 @@ export abstract class Expression<T = unknown> extends AST {
       if (!identify) {
         identify = Identifier.normal<any>(name)
       } else {
-        identify = identify.dot<any>(name)
+        identify = identify.$(name)
       }
     })
-    return identify
-  }
-
-  /**
-   * 代理化的identifier，可以自动接受字段名
-   * @param name
-   */
-  static proxiedIdentifier<T = object>(name: Identifiers) {
-    return makeProxiedIdentifier<T>(ensureIdentifier<T>(name))
+    return makeProxiedIdentifier(identify)
   }
 
   /**
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
-  static table<T extends object = object>(...names: string[]): ProxiedIdentifier<T> {
-    return Expression.proxiedIdentifier<T>(Expression.identifier(...names))
+  static table<T extends object>(modelClass: ModelConstructor<T>): ProxiedIdentifier<Identifier<T, any, any>>
+  static table<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<T, TName extends string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<T, TName extends string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table(...args: any[]): any {
+    if (typeof args[0] === 'function') {
+      return Expression.identifier(args[0].name)
+    }
+    return (Expression.identifier as Function)(...args)
+  }
+
+  /**
+   * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+   * @param names
+   */
+  static fn<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn<T, TName extends string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn<T, TName extends string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn(...args: any[]): any {
+    if (typeof args[0] === 'function') {
+      return Expression.identifier(args[0].name)
+    }
+    return (Expression.identifier as Function)(...args)
+  }
+
+  /**
+   * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+   * @param names
+   */
+  static sp<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static sp<T, TName extends string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static sp<T, TName extends string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static sp(...args: any[]): any {
+    if (typeof args[0] === 'function') {
+      return Expression.identifier(args[0].name)
+    }
+    return (Expression.identifier as Function)(...args)
   }
 
   /**
    * 字段，实为 identifier(...names) 别名
    * @param names
    */
-  static field(...names: string[]): Identifier<void> {
-    return Expression.identifier(...names)
+  static field<T, TName extends string>(field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string>(table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string>(schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string>(database: string, schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field(...args: any[]): any {
+    if (typeof args[0] === 'function') {
+      return Expression.identifier(args[0].name)
+    }
+    return (Expression.identifier as Function)(...args)
   }
 
   /**
@@ -1221,21 +1296,26 @@ export class Join extends AST {
   }
 }
 
+export type AnyFields = '*'
 
 /**
  * 标识符，可以多级，如表名等
  */
-export class Identifier<T = void, TParent = void> extends Expression<T> {
+export class Identifier<
+  TModel = void,
+  TParent = any,
+  TName extends FieldsOf<TParent> | AnyFields = any
+> extends Expression<TModel extends JsConstant ? TModel : never> {
 
   // [name: string]: Identifier
 
-  public readonly name: string
+  public readonly name: TName
   public readonly parent?: Identifier<TParent>
 
   /**
    * 标识符
    */
-  protected constructor(name: string, parent?: Identifiers, type: SQL_SYMBOLE = SQL_SYMBOLE.IDENTIFIER) {
+  protected constructor(name: TName, parent?: Identifiers<TParent>, type: SQL_SYMBOLE = SQL_SYMBOLE.IDENTIFIER) {
     super(type)
     this.name = name
     if (parent) {
@@ -1253,27 +1333,16 @@ export class Identifier<T = void, TParent = void> extends Expression<T> {
    * 访问下一节点
    * @param name 节点名称
    */
-  dot<TNext = void>(name: Fields<T>): Identifier<TNext, T> {
+  $<TProperty extends FieldsOf<TModel> | AnyFields>(name: TProperty):
+    Identifier<TModel[Exclude<TProperty, AnyFields>], TModel, TProperty> {
     if (typeof name === 'string') {
-      return new Identifier<TNext, T>(name, this)
+      return makeProxiedIdentifier(new Identifier(name, this))
     }
     throw new Error('Invalid property type')
   }
 
-  $<TNext = void>(name: Fields<T>): Identifier<TNext, T> {
-    return this.dot(name)
-  }
-
-  /**
-   * 访问下一节点，并返回代理后的Identitfier
-   * @param name
-   */
-  dotx<TProperty = any>(name: Fields<T>): ProxiedIdentifier<TProperty, T> {
-    return makeProxiedIdentifier(this.dot<TProperty>(name))
-  }
-
-  any(): Identifier<void> {
-    return Identifier.any(this)
+  any(): Identifier<void, TModel, AnyFields> {
+    return new Identifier('*', this, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 
   /**
@@ -1288,8 +1357,8 @@ export class Identifier<T = void, TParent = void> extends Expression<T> {
    * 为当前表达式添加别名
    * 默认类型为
    */
-  as<TT = T>(alias: string): ProxiedIdentifier<TT> {
-    return super.as<TT>(alias)
+  as<TName extends string>(alias: TName): ProxiedIdentifier<Identifier<TModel, any, TName>> {
+    return makeProxiedIdentifier(new Alias(this, alias))
   }
 
   /**
@@ -1309,8 +1378,8 @@ export class Identifier<T = void, TParent = void> extends Expression<T> {
   /**
    * 内建标识符
    */
-  static any(parent?: Identifiers): Identifier<void> {
-    return new Identifier<void>('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
+  static any<TParent>(parent?: Identifier<TParent>): Identifier<void> {
+    return new Identifier<never, TParent, AnyFields>('*', parent, SQL_SYMBOLE.BUILDIN_IDENTIFIER)
   }
 }
 
@@ -1330,25 +1399,25 @@ export class Variant<T> extends Expression<T> {
 /**
  * 别名表达式
  */
-export class Alias<T = void> extends Identifier<T> {
+export class Alias<T = any, TName extends string = string> extends Identifier<T, never, TName> {
   /**
    * 表达式
    */
-  readonly expr: Expression
+  readonly expr: Expression<T>
 
   /**
    * 别名构造函数
    * @param expr 表达式或表名
    * @param name 别名
    */
-  constructor(expr: Expressions, name: string) {
+  constructor(expr: Expressions<T>, name: TName) {
     super(name, null, SQL_SYMBOLE.ALIAS)
     assert(_.isString(name), 'The alias must type of string')
     // assertType(expr, [DbObject, Field, Constant, Select], 'alias must type of DbObject|Field|Constant|Bracket<Select>')
     if (expr instanceof Alias) {
       throw new Error('Aliases do not allow nesting')
     }
-    this.expr = ensureConstant(expr)
+    this.expr = ensureConstant(expr as Expressions<any>)
   }
 }
 
@@ -1490,14 +1559,14 @@ export class When<T> extends AST {
 /**
  * CASE表达式
  */
-export class Case<T> extends Expression<T> {
+export class Case<T = any> extends Expression<T> {
 
   get lvalue() {
     return false
   }
 
   expr: Expression<any> | Condition
-  whens: When<T>[]
+  whens: When<any>[]
   defaults?: Expression<T>
 
   /**
@@ -1519,9 +1588,10 @@ export class Case<T> extends Expression<T> {
    * ELSE语句
    * @param defaults
    */
-  else<T extends Expressions>(defaults: T): Case<ExpressionType<T>> {
-    this.defaults = ensureConstant(defaults)
-    return this
+  else<T>(defaults: Expressions<T>): Case<T> {
+    const self: Case<T> = this as any
+    self.defaults = ensureConstant(defaults as Expressions<any>)
+    return self
   }
 
   /**
@@ -1529,11 +1599,11 @@ export class Case<T> extends Expression<T> {
    * @param expr
    * @param then
    */
-  when<T extends Expressions>(expr: Expressions | Conditions, then: T): Case<ExpressionType<T>> {
+  when<T>(expr: Expressions | Conditions, then: Expressions<T>): Case<T> {
     this.whens.push(
-      new When<T>(expr, then)
+      new When(expr, then)
     )
-    return this
+    return this as any
   }
 }
 
@@ -1587,7 +1657,7 @@ export class List extends AST {
 /**
  * 括号引用
  */
-export class Bracket<T extends AST> extends Expression<T> {
+export class Bracket<T extends AST, TValue = ExpressionType<T>> extends Expression<TValue> {
   get lvalue() {
     return false
   }
@@ -1827,15 +1897,15 @@ export interface IUnary extends AST {
 /**
  * 二元运算表达式
  */
-export class BinaryExpression extends Expression<number> implements IBinary {
+export class BinaryExpression extends Expression<any> implements IBinary {
 
   get lvalue() {
     return false
   }
 
   operator: CALCULATE_OPERATOR
-  left: Expression<any>
-  right: Expression<any>
+  left: Expression
+  right: Expression
 
   /**
    * 名称
@@ -1913,7 +1983,7 @@ export type SortObject<T = any> = {
 }
 
 abstract class Fromable extends Statement {
-  tables?: Identifier<any>[]
+  tables?: Identifier<any, any, any>[]
   joins?: Join[]
   filters?: Condition
 
@@ -1921,9 +1991,14 @@ abstract class Fromable extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: Identifiers[]): this {
+  from<T extends object>(table: Identifiers<T>): this
+  from<T1 extends object, T2 extends object>(table1: Identifier<T1> | string, table2: Identifier<T2> | string): this
+  from<T1 extends object, T2 extends object, T3 extends object>(table1: Identifiers<T1>, table2: Identifiers<T2>, table3: Identifiers<T3>): this
+  from<T1 extends object, T2 extends object, T3 extends object, T4 extends object>(table1: Identifiers<T1>, table2: Identifiers<T2>, table3: Identifiers<T3>, table4: Identifiers<T4>): this
+  from<T1 extends object, T2 extends object, T3 extends object, T4 extends object, T5 extends object>(table1: Identifiers<T1>, table2: Identifiers<T2>, table3: Identifiers<T3>, table4: Identifiers<T4>, table5: Identifiers<T5>): this
+  from(...tables: any): this {
     // assert(!this.$from, 'from已经声明')
-    this.tables = tables.map(table => ensureIdentifier(table))
+    this.tables = tables.map((table: Identifier<any>) => ensureIdentifier(table))
     return this
   }
 
@@ -1999,7 +2074,7 @@ export class Select<T = any> extends Fromable {
     super(SQL_SYMBOLE.SELECT)
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const obj = columns[0]
-      this.columns = List.columns(...Object.entries(obj).map(([alias, expr]) => new Alias(ensureConstant(expr), alias)))
+      this.columns = List.columns(...Object.entries(obj).map(([alias, expr]: [string, Expressions]) => new Alias(ensureConstant(expr), alias)))
       return
     }
     // 实例化
@@ -2113,7 +2188,7 @@ export class Select<T = any> extends Fromable {
    * 将本SELECT返回表达式
    * @returns 返回一个加()后的SELECT语句
    */
-  quoted() {
+  quoted(): Expression<T> {
     return new Bracket(this)
   }
 
@@ -2122,7 +2197,7 @@ export class Select<T = any> extends Fromable {
    * @param alias
    */
   as(alias: string) {
-    return makeProxiedIdentifier<T>(new Alias(this.quoted(), alias))
+    return makeProxiedIdentifier(new Alias(this.quoted(), alias))
   }
 }
 
@@ -2285,7 +2360,7 @@ export class Update<T = any> extends Fromable {
     const obj = sets[0]
     this.sets = Object.entries(obj).map(
       // TODO: 未排除多余属性，可能超出字段范围
-      ([key, value]) => new Assignment(this.table.dot(key as Fields<T>), ensureConstant(value as Expressions))
+      ([key, value]) => new Assignment(this.table.$(key as any), ensureConstant(value as Expressions))
     )
     return this
   }

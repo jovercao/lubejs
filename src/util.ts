@@ -6,7 +6,7 @@ import {
   GroupValues,
   Bracket,
   Expression,
-  Fields,
+  RowFields,
   AST,
   Identifier,
   JsConstant,
@@ -29,14 +29,14 @@ export function assert(except: any, message: string) {
 /**
  * 返回表达式
  */
-export function ensureConstant<T extends Expressions>(expr: T): Expression<ExpressionType<T>> {
+export function ensureConstant<T extends JsConstant>(expr: Expressions<T>): Expression<T> {
   if (!(expr instanceof AST)) {
-    return Expression.constant(expr as JsConstant)
+    return Expression.constant(expr)
   }
-  return expr as any
+  return expr
 }
 
-export function ensureIdentifier<T = void>(expr: string | Identifier<any>): Identifier<T> {
+export function ensureIdentifier<T = void>(expr: string | Identifier<T>): Identifier<T> {
   if (_.isString(expr)) {
     return Identifier.normal<T>(expr)
   }
@@ -88,9 +88,9 @@ export function ensureCondition(condition: Conditions): Condition {
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedIdentifier<T = void, TParent = void>(identifier: Identifier<T, TParent>): ProxiedIdentifier<T, TParent> {
+export function makeProxiedIdentifier<T extends Identifier<any, any, any>>(identifier: T): ProxiedIdentifier<T> {
   return new Proxy(identifier, {
-    get(target: Identifier<T, TParent>, prop): any {
+    get(target: T, prop): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
@@ -99,7 +99,7 @@ export function makeProxiedIdentifier<T = void, TParent = void>(identifier: Iden
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return identifier.dot(prop as Fields<T>)
+        return identifier.$(prop)
       }
       return undefined
     }
