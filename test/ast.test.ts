@@ -1,4 +1,4 @@
-const { table, select, update, insert, del, $case, } = require('..')
+import { table, select, update, insert, del, $case, } from '../src/lube'
 const assert = require('assert')
 
 const ployfill = {
@@ -42,10 +42,28 @@ const ployfill = {
 
   executeKeyword: 'EXECUTE'
 }
+
+class Table1 {
+  id: number;
+  name: string;
+  date: Date;
+}
+
 describe('AST test', function () {
   it('select', () => {
-    const t = table('table1').as('t')
-    const sql = select(t.$name, t.$abc).from(t).where(t.$id.eq(1))
+    const t = table(Table1).as('t')
+
+    const nameField = t.$('name')
+
+    const sql = select({
+      id: 'abc',
+      name: t.$('name'),
+      date: t.date
+    })
+    .from(t)
+    .where(t.id.eq(1))
+
+    const sql2 = select(t.$('name'), t.date).from(t).where(t.id.eq(1))
 
     assert.deepEqual(sql, {
       "type": "SELECT",

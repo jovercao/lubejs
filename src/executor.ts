@@ -2,7 +2,7 @@ import * as _ from 'lodash'
 import { assert, ensureIdentifier, isJsConstant } from './util'
 import { EventEmitter } from 'events'
 import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, Fields, RowObject, ParameterValues } from './ast'
+import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, RowFields, RowObject, ParameterValues } from './ast'
 import { Compiler, Command } from './compiler'
 import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
@@ -224,16 +224,16 @@ export class Executor extends EventEmitter {
   async insert(table: string, fields: string[], select: Select): Promise<number>
   async insert<T extends object>(table: string, items: ValueObject<T>[]): Promise<number>
   async insert<T extends object>(table: string, item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], select: Select): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], row: Expressions[]): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | Fields<T>[], rows: Expressions[][]): Promise<number>
+  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], items: ValueObject<T>[]): Promise<number>
+  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], select: Select): Promise<number>
+  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], item: ValueObject<T>): Promise<number>
+  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], select: Select): Promise<number>
+  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | RowFields<T>[], row: Expressions[]): Promise<number>
+  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | RowFields<T>[], rows: Expressions[][]): Promise<number>
   async insert<T extends object>(table: Identifier<T, any>, items: ValueObject<T>[]): Promise<number>
   async insert<T extends object>(table: Identifier<T, any>, item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | Fields<T>[], items: ValueObject<T>[]): Promise<number>
+  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], item: ValueObject<T>): Promise<number>
+  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], items: ValueObject<T>[]): Promise<number>
   async insert(table: Identifier<any, any>, fields: string[], row: Expressions[]): Promise<number>
   async insert(table: Identifier<any, any>, fields: string[], rows: Expressions[][]): Promise<number>
   async insert(table: Identifier<any, any>, item: ValueObject): Promise<number>
@@ -281,19 +281,19 @@ export class Executor extends EventEmitter {
 
   async find(table: string, where: Condition, fields?: string[]): Promise<RowObject>
   async find(table: string, where: WhereObject, fields?: string[]): Promise<RowObject>
-  async find<T extends object>(table: string, where: Condition, fields?: Fields<T>[]): Promise<T>
+  async find<T extends object>(table: string, where: Condition, fields?: RowFields<T>[]): Promise<T>
   async find<T extends object>(table: string, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: string, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T extends object>(table: string, where: WhereObject<T>, fields?: RowFields<T>[]): Promise<T>
   async find<T extends object>(table: string, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: Condition, fields?: Fields<T>[]): Promise<T>
+  async find<T extends object>(table: Identifier<T, any>, where: Condition, fields?: RowFields<T>[]): Promise<T>
   async find<T extends object>(table: Identifier<T, any>, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Fields<T>[]): Promise<T>
+  async find<T extends object>(table: Identifier<T, any>, where: WhereObject<T>, fields?: RowFields<T>[]): Promise<T>
   async find<T extends object>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
   async find(table: Identifier<any, any>, where: Condition, fields?: string[]): Promise<RowObject>
   async find(table: Identifier<any, any>, where: WhereObject, fields?: string[]): Promise<RowObject>
   async find<T extends object = any>(table: Identifier<T> | string,
     where: Condition | WhereObject<T>,
-    fields?: Fields<T>[] | Identifier<void, T>[]): Promise<T> {
+    fields?: RowFields<T>[] | Identifier<void, T>[]): Promise<T> {
     let columns: (Expressions)[]
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
       columns = (fields as string[]).map(fieldName => field(fieldName))
