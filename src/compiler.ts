@@ -365,13 +365,13 @@ export class Compiler {
   }
 
   protected compileSelect(select: Select, params: Set<Parameter<unknown>>, parent?: AST): string {
-    const { tables, top, joins, unions, columns, filters, sorts, groups, havings, offsets, limits, isDistinct } = select
+    const { tables, tops, joins, unions, columns, filters, sorts, groups, havings, offsets, limits, isDistinct } = select
     let sql = 'SELECT '
     if (isDistinct) {
       sql += 'DISTINCT '
     }
-    if (_.isNumber(top)) {
-      sql += `TOP ${top} `
+    if (_.isNumber(tops)) {
+      sql += `TOP ${tops} `
     }
     sql += columns.items.map(expr => this.compileAST(expr, params, columns)).join(', ')
     if (tables) {

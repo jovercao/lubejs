@@ -316,6 +316,7 @@ export class Executor extends EventEmitter {
    */
   async select(table: string, options?: SelectOptions): Promise<RowObject[]>
   async select<TResult extends object>(table: Identifier<TResult, any>, options: SelectOptions<TResult>): Promise<TResult[]>
+  async select<TResult extends object>(table: Identifier<any, any>, options: SelectOptions<TResult>): Promise<TResult[]>
   async select<TResult extends object>(table: string, options?: SelectOptions<TResult>): Promise<TResult[]>
   async select(table: Identifier<any, any>, options?: SelectOptions): Promise<RowObject[]>
   async select<TResult extends object = any>(table: Identifier<TResult, any> | string, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
