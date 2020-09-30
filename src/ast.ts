@@ -2009,7 +2009,7 @@ abstract class Fromable extends Statement {
    * @param left
    * @memberof Select
    */
-  join(table: Identifiers, on: Condition, left = false) {
+  join<T extends object>(table: Identifier<T> | string, on: Condition, left?: boolean): this {
     assert(this.tables, 'join must after from clause')
     if (!this.joins) {
       this.joins = []
@@ -2025,7 +2025,7 @@ abstract class Fromable extends Statement {
    * @param table
    * @param on
    */
-  leftJoin(table: Identifiers, on: Condition) {
+  leftJoin<T extends object>(table: Identifier<T> | string, on: Condition): this {
     return this.join(table, on, true)
   }
 
