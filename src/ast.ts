@@ -777,10 +777,10 @@ export abstract class Expression<T = unknown> extends AST {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
+  static table<TName extends string, T>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<TName extends string, T>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<TName extends string, T>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
   static table<T extends object>(modelClass: ModelConstructor<T>): ProxiedIdentifier<Identifier<T, any, any>>
-  static table<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static table<T, TName extends string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static table<T, TName extends string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
   static table(...args: any[]): any {
     if (typeof args[0] === 'function') {
       return Expression.identifier(args[0].name)
@@ -820,10 +820,10 @@ export abstract class Expression<T = unknown> extends AST {
    * 字段，实为 identifier(...names) 别名
    * @param names
    */
-  static field<T, TName extends string>(field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static field<T, TName extends string>(table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static field<T, TName extends string>(schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static field<T, TName extends string>(database: string, schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string = string>(field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string = string>(table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string = string>(schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static field<T, TName extends string = string>(database: string, schema: string, table: string, field: TName): ProxiedIdentifier<Identifier<T, any, TName>>
   static field(...args: any[]): any {
     if (typeof args[0] === 'function') {
       return Expression.identifier(args[0].name)
