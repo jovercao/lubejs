@@ -2178,6 +2178,7 @@ export class Select<T = any> extends Fromable {
    */
   union(select: SelectExpression, all = false) {
     this.unions = new Union(select, all)
+    return this
   }
 
   unionAll(select: SelectExpression) {
