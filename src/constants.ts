@@ -128,7 +128,8 @@ export enum SQL_SYMBOLE {
   WHEN = 'WHEN',
   CASE = 'CASE',
   DECLARE = 'DECLARE',
-  DOCUMENT = "DOCUMENT"
+  DOCUMENT = "DOCUMENT",
+  WITH = 'WITH'
 }
 
 export const INSERT_MAXIMUM_ROWS = 1000

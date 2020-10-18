@@ -123,6 +123,8 @@ export const insert = Statement.insert
 
 export const $case = Statement.case
 
+export const $with = Statement.with
+
 /**
  * 创建一个UPDATE语句
  */
@@ -184,6 +186,7 @@ export const SQL = {
   update,
   delete: $delete,
   case: $case,
+  with: $with,
   execute,
   exec,
   when,

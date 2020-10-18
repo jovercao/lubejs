@@ -7,7 +7,7 @@ import {
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
   Variant, Join, IUnary, Execute, Document,
-  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition, Raw, QuotedCondition
+  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition, Raw, QuotedCondition, With
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -256,9 +256,14 @@ export class Compiler {
         return this.compileDocument(ast as Document, params)
       case SQL_SYMBOLE.RAW:
         return (ast as Raw).sql;
+      case SQL_SYMBOLE.WITH:
+        return this.compileWith(ast as With, params, parent)
       default:
         throw new Error('Error AST type: ' + ast.type)
     }
+  }
+  compileWith(withs: With, params: Set<Parameter<unknown>>, parent: AST): string {
+    return 'WITH ' + Object.entries(withs.items).map(([alias, select]) => `${this.quoted(alias)} AS (${this.compileAST(select, params, parent)})`).join(', ')
   }
 
   protected compileDocument(doc: Document, params: Set<Parameter<unknown>>) {

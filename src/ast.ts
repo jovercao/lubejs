@@ -133,6 +133,8 @@ export type SelectExpression = Select | Bracket<Select> | Bracket<SelectExpressi
 
 export type FieldsOf<T> = Exclude<keyof T, number | symbol>
 
+export type WithItems = { [alias: string]: SelectExpression }
+
 /**
  * 组数据
  */
@@ -1453,6 +1455,11 @@ export class Invoke<T = unknown> extends Expression<T> {
 export abstract class Statement extends AST {
 
   /**
+   * with语句
+   */
+  withs: With
+
+  /**
    * 插入至表,into的别名
    * @param table
    * @param fields
@@ -1536,6 +1543,12 @@ export abstract class Statement extends AST {
 
   static case(expr?: Expressions) {
     return new Case(expr)
+  }
+
+  static with(withs: {
+    [alias: string]: SelectExpression
+  }) {
+
   }
 }
 
@@ -2545,4 +2558,49 @@ export class Raw<T = any> extends Expression<T> implements Statement, Document, 
 
 Object.assign(Raw, ConditionPrototype)
 
-// TODO: with子句支持
+export class With extends AST {
+  constructor(items: WithItems) {
+    super(SQL_SYMBOLE.WITH)
+    this.items = items
+  }
+  items: WithItems
+
+  select<T>(results: ValueObject<T>): Select<ResultObject<T>>
+  select<T = any>(...columns: Expressions[]): Select<T>
+  select(...args: any) {
+    const sql = Statement.select(...args)
+    sql.withs = this
+    return sql
+  }
+
+
+  /**
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
+   */
+  insert<T extends object>(table: Identifiers<T>, fields?: Identifiers[]) {
+    const sql = Statement.insert(table, fields)
+    sql.withs = this
+    return sql
+  }
+
+  /**
+   * 更新一个表格
+   * @param table
+   */
+  update<T extends object>(table: Identifiers<T>) {
+    const sql = Statement.update(table)
+    sql.withs = this
+    return sql
+  }
+
+  /**
+   * 删除一个表格
+   * @param table 表格
+   */
+  delete<T extends object>(table: Identifiers<T>) {
+    const sql = Statement.delete(table)
+    sql.withs = this
+  }
+}
