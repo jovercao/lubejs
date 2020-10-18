@@ -128,12 +128,13 @@ export const $case = Statement.case
  */
 export const update = Statement.update
 
-export const fn = Expression.fn
-// function(...names: string[]) {
-//   return function(...args: Expressions[]) {
-//     return Expression.identifier(...names).invoke(...args)
-//   }
-// }
+export const neg = Expression.neg
+
+export const fn = function(...names: string[]) {
+  return function(...args: Expressions[]) {
+    return Expression.identifier(...names).invoke(...args)
+  }
+}
 
 export const sp = Expression.sp
 // function (...names: string[]) {

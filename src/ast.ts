@@ -777,9 +777,9 @@ export abstract class Expression<T = unknown> extends AST {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
-  static table<TName extends string, T>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static table<TName extends string, T>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static table<TName extends string, T>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<T extends object = any, TName extends string = string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<T extends object = any, TName extends string = string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static table<T extends object = any, TName extends string = string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
   static table<T extends object>(modelClass: ModelConstructor<T>): ProxiedIdentifier<Identifier<T, any, any>>
   static table(...args: any[]): any {
     if (typeof args[0] === 'function') {
@@ -788,13 +788,17 @@ export abstract class Expression<T = unknown> extends AST {
     return (Expression.identifier as Function)(...args)
   }
 
+  static model<T extends object>(modelClass: ModelConstructor<T>): ProxiedIdentifier<Identifier<T, any, any>> {
+    return Expression.identifier(modelClass.name)
+  }
+
   /**
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param names
    */
-  static fn<T, TName extends string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static fn<T, TName extends string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
-  static fn<T, TName extends string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn<T = any, TName extends string = string>(name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn<T = any, TName extends string = string>(schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
+  static fn<T = any, TName extends string = string>(database: string, schema: string, name: TName): ProxiedIdentifier<Identifier<T, any, TName>>
   static fn(...args: any[]): any {
     if (typeof args[0] === 'function') {
       return Expression.identifier(args[0].name)
@@ -1453,7 +1457,7 @@ export abstract class Statement extends AST {
    * @param table
    * @param fields
    */
-  static insert(table: Identifiers, fields?: Identifiers[]) {
+  static insert<T extends object>(table: Identifiers<T>, fields?: Identifiers[]) {
     return new Insert(table, fields)
   }
 
@@ -1461,7 +1465,7 @@ export abstract class Statement extends AST {
    * 更新一个表格
    * @param table
    */
-  static update(table: Identifiers) {
+  static update<T extends object>(table: Identifiers<T>) {
     return new Update(table).from(table)
   }
 
@@ -1469,7 +1473,7 @@ export abstract class Statement extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  static delete(table: Identifiers) {
+  static delete<T extends object>(table: Identifiers<T>) {
     return new Delete(table)
   }
 
@@ -1487,9 +1491,9 @@ export abstract class Statement extends AST {
    * @param proc
    * @param params
    */
-  static execute(proc: Identifiers, params?: Expressions[]): Execute
-  static execute(proc: Identifiers, params?: Parameter[]): Execute
-  static execute(proc: Identifiers, params?: Expressions[] | Parameter[]): Execute {
+  static execute(proc: Identifiers<void>, params?: Expressions[]): Execute
+  static execute(proc: Identifiers<void>, params?: Parameter[]): Execute
+  static execute(proc: Identifiers<void>, params?: Expressions[] | Parameter[]): Execute {
     return new Execute(proc, params)
   }
 
@@ -2178,6 +2182,7 @@ export class Select<T = any> extends Fromable {
    */
   union(select: SelectExpression, all = false) {
     this.unions = new Union(select, all)
+    return this
   }
 
   unionAll(select: SelectExpression) {

@@ -299,7 +299,7 @@ export class Compiler {
   }
 
   protected compileUnion(union: Union, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return 'UNION ' + union.all ? 'ALL ' : '' + this.compileAST(union.select, params, union)
+    return 'UNION ' + (union.all ? 'ALL ' : '') + this.compileAST(union.select, params, union)
   }
 
   protected compileAlias(alias: Alias, params: Set<Parameter<unknown>>, parent?: AST): string {
@@ -409,7 +409,7 @@ export class Compiler {
     }
 
     if (unions) {
-      sql += ' ' + this.compileUnion(unions, params, parent)
+      sql += ' ' + this.compileUnion(unions, params, select)
     }
 
     return sql
