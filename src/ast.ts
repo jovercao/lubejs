@@ -2544,3 +2544,5 @@ export class Raw<T = any> extends Expression<T> implements Statement, Document, 
 }
 
 Object.assign(Raw, ConditionPrototype)
+
+// TODO: with子句支持
