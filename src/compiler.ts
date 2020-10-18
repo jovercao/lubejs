@@ -7,7 +7,7 @@ import {
   Bracket, Alias, Declare, Delete, Insert,
   Assignment, Update, Select, Invoke, Case,
   Variant, Join, IUnary, Execute, Document,
-  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition
+  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition, Raw, QuotedCondition
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -228,6 +228,8 @@ export class Compiler {
         return this.compileCase(ast as Case<any>, params, parent)
       case SQL_SYMBOLE.BINARY_CALCULATE:
         return this.compileBinaryExpression(ast as BinaryExpression, params, parent)
+      case SQL_SYMBOLE.QUOTED_CONDITION:
+        return this.compileQuotedCondition(ast as QuotedCondition, params, parent)
       case SQL_SYMBOLE.BINARY_COMPARE:
         return this.compileBinaryCompareCondition(ast as BinaryCompareCondition, params, parent)
       case SQL_SYMBOLE.BINARY_LOGIC:
@@ -252,6 +254,8 @@ export class Compiler {
         return this.compileSort(ast as SortInfo, params, parent)
       case SQL_SYMBOLE.DOCUMENT:
         return this.compileDocument(ast as Document, params)
+      case SQL_SYMBOLE.RAW:
+        return (ast as Raw).sql;
       default:
         throw new Error('Error AST type: ' + ast.type)
     }
@@ -313,6 +317,10 @@ export class Compiler {
 
   protected compileWhen(when: When<any>, params: Set<Parameter<unknown>>, parent?: AST): string {
     return 'WHEN ' + this.compileAST(when.expr, params, when) + ' THEN ' + this.compileAST(when.value, params, when)
+  }
+
+  protected compileQuotedCondition(expr: QuotedCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
+    return '(' + this.compileAST(expr.context, params, expr) + ')'
   }
 
   protected compileBinaryLogicCondition(expr: BinaryLogicCondition, params: Set<Parameter<unknown>>, parent?: AST): string {

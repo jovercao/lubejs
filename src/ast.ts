@@ -160,7 +160,7 @@ export abstract class AST {
 
   readonly type: SQL_SYMBOLE
 
-  static bracket<T extends AST>(context: T) {
+  static bracket<T extends AST>(context: T): Bracket<T> {
     return new Bracket(context)
   }
 }
@@ -953,11 +953,11 @@ export abstract class Condition extends AST implements ICondition {
    */
   static and(...conditions: Condition[]): Condition {
     assert(_.isArray(conditions) && conditions.length > 1, 'Conditions must type of Array & have two or more elements.')
-    return conditions.reduce((previous, current) => {
+    return Condition.quoted(conditions.reduce((previous, current) => {
       current = ensureCondition(current)
       if (!previous) return current
       return new BinaryLogicCondition(LOGIC_OPERATOR.AND, previous, current)
-    })
+    }))
   }
 
   /**
@@ -968,11 +968,11 @@ export abstract class Condition extends AST implements ICondition {
    */
   static or(...conditions: Condition[]): Condition {
     assert(_.isArray(conditions) && conditions.length > 1, 'Conditions must type of Array & have two or more elements.')
-    return conditions.reduce((previous, current, index) => {
+    return Condition.quoted(conditions.reduce((previous, current, index) => {
       current = ensureCondition(current)
       if (!previous) return current
       return new BinaryLogicCondition(LOGIC_OPERATOR.OR, previous, current)
-    })
+    }))
   }
 
   /**
