@@ -2603,4 +2603,5 @@ export class With extends AST {
     const sql = Statement.delete(table)
     sql.withs = this
   }
+
 }
