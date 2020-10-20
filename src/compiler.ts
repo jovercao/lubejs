@@ -4,10 +4,10 @@ import * as _ from 'lodash'
 
 import {
   AST, Parameter, Identifier, Constant, When,
-  Bracket, Alias, Declare, Delete, Insert,
-  Assignment, Update, Select, Invoke, Case,
+  Bracket, Column, Declare, Delete, Insert,
+  Assignment, Update, Select, ScalarFuncInvoke, Case,
   Variant, Join, IUnary, Execute, Document,
-  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryExpression, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryExpression, ExistsCompareCondition, Raw, QuotedCondition, With
+  Union, List, SortInfo, UnaryLogicCondition as UnaryLogicCondition, UnaryCompareCondition as UnaryCompareCondition, UnaryOperation, BinaryLogicCondition as BinaryLogicCondition, BinaryCompareCondition, BinaryOperation, ExistsCondition, Raw, QuotedCondition, With
 } from './ast'
 import { SQL_SYMBOLE, PARAMETER_DIRECTION } from './constants'
 
@@ -96,7 +96,7 @@ export class Compiler {
    * @param identifier 标识符
    */
   protected compileIdentifier(identifier: Identifier<any>, params?: Set<Parameter<unknown>>, parent?: AST): string {
-    const sql = identifier.type === SQL_SYMBOLE.BUILDIN_IDENTIFIER ? identifier.name : this.quoted(identifier.name)
+    const sql = identifier.$type === SQL_SYMBOLE.BUILDIN_IDENTIFIER ? identifier.$name : this.quoted(identifier.$name)
     const parentNode = Reflect.get(identifier, 'parent')
     if (parentNode) {
       return this.compileIdentifier(parentNode, params, identifier) + '.' + sql
@@ -126,7 +126,7 @@ export class Compiler {
   }
 
   public prepareParameterName(p: Parameter<unknown>) {
-    return this.options.parameterPrefix + (p.name || '')
+    return this.options.parameterPrefix + (p.$name || '')
   }
 
   protected properVariantName(name: string) {
@@ -150,7 +150,7 @@ export class Compiler {
   }
 
   protected compileConstant(constant: Constant<any>, params?: Set<Parameter<unknown>>, parent?: AST) {
-    const value = constant.value
+    const value = constant.$value
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
       return 'NULL'
@@ -190,7 +190,7 @@ export class Compiler {
   }
 
   protected compileAST(ast: AST, params: Set<Parameter<unknown>>, parent?: AST): string {
-    switch (ast.type) {
+    switch (ast.$type) {
       case SQL_SYMBOLE.SELECT:
         return this.compileSelect(ast as Select, params, parent)
       case SQL_SYMBOLE.UPDATE:
@@ -216,18 +216,18 @@ export class Compiler {
       case SQL_SYMBOLE.EXECUTE_ARGUMENT_LIST:
         return this.compileExecuteArgumentList(ast as List, params, parent)
       case SQL_SYMBOLE.ALIAS:
-        return this.compileAlias(ast as Alias, params, parent)
+        return this.compileAlias(ast as Column, params, parent)
       case SQL_SYMBOLE.IDENTIFIER:
       case SQL_SYMBOLE.BUILDIN_IDENTIFIER:
         return this.compileIdentifier(ast as Identifier<any>, params, parent)
       case SQL_SYMBOLE.EXECUTE:
         return this.compileExecute(ast as Execute, params, parent)
-      case SQL_SYMBOLE.INVOKE:
-        return this.compileInvoke(ast as Invoke, params, parent)
+      case SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE:
+        return this.compileInvoke(ast as ScalarFuncInvoke, params, parent)
       case SQL_SYMBOLE.CASE:
         return this.compileCase(ast as Case<any>, params, parent)
       case SQL_SYMBOLE.BINARY_CALCULATE:
-        return this.compileBinaryExpression(ast as BinaryExpression, params, parent)
+        return this.compileBinaryExpression(ast as BinaryOperation, params, parent)
       case SQL_SYMBOLE.QUOTED_CONDITION:
         return this.compileQuotedCondition(ast as QuotedCondition, params, parent)
       case SQL_SYMBOLE.BINARY_COMPARE:
@@ -235,13 +235,13 @@ export class Compiler {
       case SQL_SYMBOLE.BINARY_LOGIC:
         return this.compileBinaryLogicCondition(ast as BinaryLogicCondition, params, parent)
       case SQL_SYMBOLE.EXISTS:
-        return this.compileExistsCompare(ast as ExistsCompareCondition, params, parent)
+        return this.compileExistsCompare(ast as ExistsCondition, params, parent)
       case SQL_SYMBOLE.UNARY_COMPARE:
         return this.compileUnaryCompareCondition(ast as UnaryCompareCondition, params, parent)
       case SQL_SYMBOLE.UNARY_LOGIC:
         return this.compileUnaryLogic(ast as UnaryLogicCondition, params, parent)
       case SQL_SYMBOLE.UNARY_CALCULATE:
-        return this.compileUnaryCalculate(ast as UnaryExpression, params, parent)
+        return this.compileUnaryCalculate(ast as UnaryOperation, params, parent)
       case SQL_SYMBOLE.PARAMETER:
         return this.compileParameter(ast as Parameter<unknown>, params, parent)
       case SQL_SYMBOLE.VARAINT:
@@ -259,7 +259,7 @@ export class Compiler {
       case SQL_SYMBOLE.WITH:
         return this.compileWith(ast as With, params, parent)
       default:
-        throw new Error('Error AST type: ' + ast.type)
+        throw new Error('Error AST type: ' + ast.$type)
     }
   }
   compileWith(withs: With, params: Set<Parameter<unknown>>, parent: AST): string {
@@ -282,21 +282,21 @@ export class Compiler {
   }
 
   protected compileValueList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return '(' + values.items.map(ast => this.compileAST(ast, params, values)).join(', ') + ')'
+    return '(' + values.$items.map(ast => this.compileAST(ast, params, values)).join(', ') + ')'
   }
 
   protected compileColumnList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return values.items.map(ast => this.compileAST(ast, params, values)).join(', ')
+    return values.$items.map(ast => this.compileAST(ast, params, values)).join(', ')
   }
 
   protected compileInvokeArgumentList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return values.items.map(ast => this.compileAST(ast, params, values)).join(', ')
+    return values.$items.map(ast => this.compileAST(ast, params, values)).join(', ')
   }
 
   protected compileExecuteArgumentList(values: List, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return values.items.map(ast => {
+    return values.$items.map(ast => {
       let sql = this.compileAST(ast, params, values)
-      if (ast.type === 'PARAMETER' && (ast as Parameter<unknown>).direction === PARAMETER_DIRECTION.OUTPUT) {
+      if (ast.type === 'PARAMETER' && (ast as Parameter<unknown>).$direction === PARAMETER_DIRECTION.OUTPUT) {
         sql += ' OUTPUT'
       }
       return sql
@@ -307,7 +307,7 @@ export class Compiler {
     return 'UNION ' + (union.all ? 'ALL ' : '') + this.compileAST(union.select, params, union)
   }
 
-  protected compileAlias(alias: Alias, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileAlias(alias: Column, params: Set<Parameter<unknown>>, parent?: AST): string {
     return this.compileAST(alias.expr, params, alias) + ' AS ' + this.quoted(alias.name)
   }
 
@@ -329,31 +329,31 @@ export class Compiler {
   }
 
   protected compileBinaryLogicCondition(expr: BinaryLogicCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
+    return this.compileAST(expr.$left, params, expr) + ' ' + expr.$operator + ' ' + this.compileAST(expr.$right, params, expr)
   }
 
   protected compileBinaryCompareCondition(expr: BinaryCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
+    return this.compileAST(expr.$left, params, expr) + ' ' + expr.$operator + ' ' + this.compileAST(expr.$right, params, expr)
   }
 
-  protected compileBinaryExpression(expr: BinaryExpression, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return this.compileAST(expr.left, params, expr) + ' ' + expr.operator + ' ' + this.compileAST(expr.right, params, expr)
+  protected compileBinaryExpression(expr: BinaryOperation, params: Set<Parameter<unknown>>, parent?: AST): string {
+    return this.compileAST(expr.$left, params, expr) + ' ' + expr.$operator + ' ' + this.compileAST(expr.$right, params, expr)
   }
 
   protected compileUnaryCompareCondition(expr: UnaryCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return this.compileAST(expr.next, params, expr) + ' ' + expr.operator
+    return this.compileAST(expr.$expr, params, expr) + ' ' + expr.$operator
   }
 
-  protected compileExistsCompare(expr: ExistsCompareCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return 'EXISTS' + this.compileAST(expr.expr, params, expr)
+  protected compileExistsCompare(expr: ExistsCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
+    return 'EXISTS' + this.compileAST(expr.$select, params, expr)
   }
 
   protected compileUnaryLogic(expr: UnaryLogicCondition, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
+    return expr.$operator + ' ' + this.compileAST(expr.$condition, params, expr)
   }
 
-  protected compileUnaryCalculate(expr: UnaryExpression, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return expr.operator + ' ' + this.compileAST(expr.next, params, expr)
+  protected compileUnaryCalculate(expr: UnaryOperation, params: Set<Parameter<unknown>>, parent?: AST): string {
+    return expr.$operator + ' ' + this.compileAST(expr.$next, params, expr)
   }
 
   /**
@@ -363,12 +363,12 @@ export class Compiler {
    * @returns
    * @memberof Executor
    */
-  protected compileInvoke(invoke: Invoke, params: Set<Parameter<unknown>>, parent?: AST): string {
+  protected compileInvoke(invoke: ScalarFuncInvoke, params: Set<Parameter<unknown>>, parent?: AST): string {
     return `${this.compileAST(invoke.func, params, invoke)}(${(invoke.args.items || []).map(v => this.compileAST(v, params, invoke)).join(', ')})`
   }
 
   protected compileJoin(join: Join, params: Set<Parameter<unknown>>, parent?: AST): string {
-    return (join.left ? 'LEFT ' : '') + 'JOIN ' + this.compileAST(join.table, params, join) + ' ON ' + this.compileAST(join.on, params, join)
+    return (join.$left ? 'LEFT ' : '') + 'JOIN ' + this.compileAST(join.$table, params, join) + ' ON ' + this.compileAST(join.$on, params, join)
   }
 
   protected compileSort(sort: SortInfo, params: Set<Parameter<unknown>>, parent?: AST): string {
@@ -386,7 +386,7 @@ export class Compiler {
     if (_.isNumber(tops)) {
       sql += `TOP ${tops} `
     }
-    sql += columns.items.map(expr => this.compileAST(expr, params, columns)).join(', ')
+    sql += columns.$items.map(expr => this.compileAST(expr, params, columns)).join(', ')
     if (tables) {
       sql += ' FROM ' + tables.map(table => this.compileAST(table, params, parent)).join(', ')
     }
@@ -421,11 +421,11 @@ export class Compiler {
   }
 
   protected compileInsert(insert: Insert, params: Set<Parameter<unknown>>, parent?: AST): string {
-    const { table, rows, fields } = insert
+    const { $table: table, $rows: rows, $fields: fields } = insert
     let sql = 'INSERT INTO '
 
-    if (table instanceof Alias) {
-      sql += this.compileAST(table.expr, params, parent)
+    if (table instanceof Column) {
+      sql += this.compileAST(table.$expr, params, parent)
     } else {
       sql += this.compileAST(table, params, parent)
     }
@@ -477,7 +477,7 @@ export class Compiler {
   }
 
   protected compileDelete(del: Delete, params: Set<Parameter<unknown>>, parent?: AST): string {
-    const { table, tables, joins, filters } = del
+    const { table, $froms: tables, $joins: joins, $where: filters } = del
     let sql = 'DELETE '
     if (table) sql += this.compileAST(table, params, parent)
     if (tables && tables.length > 0) {

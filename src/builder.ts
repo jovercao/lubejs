@@ -8,8 +8,9 @@ import {
   Expression,
   Expressions,
   Raw,
-  JsConstant,
+  JsConstant,, BinaryOperation, UnaryOperation, Constant, ModelConstructor
 } from './ast'
+import { CALCULATE_OPERATOR } from './constants'
 
 /**
  * not 查询条件运算
@@ -56,18 +57,6 @@ export const when = Statement.when
  */
 export const identifier = Expression.identifier
 
-/**
- * 创建一个表格标识
- * @param names 表标识限定，如果有多级，请传多个参数
- * @returns
- * @example table(database, schema, tableName) => Identity
- * @example table(tableName) => Identity
- */
-export const table = Expression.table
-
-export const field = Expression.field
-
-export const constant = Expression.constant
 
 export const quoted = AST.bracket
 
@@ -83,15 +72,6 @@ export const input = Parameter.input
  */
 export const output = Parameter.output
 
-/**
- * 变量引用
- */
-export const variant = Expression.variant
-
-/**
- * 创建一个别名
- */
-export const alias = Expression.alias
 
 /**
  * 创建一个SELECT语句
@@ -103,7 +83,7 @@ export const select = Statement.select
  * @param sql 原始SQL
  */
 export function raw<T = any>(sql: string, lvalue?: boolean): Raw<T> {
-  const v =  new Raw<T>(sql)
+  const v = new Raw<T>(sql)
   v.lvalue = lvalue
   return v
 }
@@ -112,7 +92,7 @@ export function raw<T = any>(sql: string, lvalue?: boolean): Raw<T> {
  * 创建一个SQL文档，包含多条SQL语句、
  * @param statements SQL语句
  */
-export const doc = function(...statements: Statement[]) {
+export const doc = function (...statements: Statement[]) {
   return new Document(...statements)
 }
 
@@ -130,11 +110,11 @@ export const $with = Statement.with
  */
 export const update = Statement.update
 
-export const neg = Expression.neg
 
-export const fn = function(...names: string[]) {
-  return function(...args: Expressions[]) {
-    return Expression.identifier(...names).invoke(...args)
+
+export const fn = function (...names: string[]) {
+  return function (...args: Expressions[]) {
+    return Expression.identifier.call(Expression.identifier, ...names).invoke(...args)
   }
 }
 
@@ -157,7 +137,7 @@ export const sys = buildIn
  * 内建函数
  * @param name
  */
-export const sysFn = function(name: string) {
+export const sysFn = function (name: string) {
   return function (...args: Expressions[]) {
     return Identifier.buildIn(name).invoke(...args)
   }
@@ -170,12 +150,87 @@ export const del = Statement.delete
 
 export const $delete = Statement.delete
 
-export const any = Expression.any
+
+
 
 /**
- * 任意字段
+ * 常量
+ * @param value 常量值
  */
-export const anyFields = Expression.any()
+export function constant<T extends JsConstant>(value: T): Expression<T> {
+  return new Constant(value)
+}
+
+/**
+ * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+ * @param names
+ */
+export function table<T extends object = any, TName extends string = string>(name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function table<T extends object = any, TName extends string = string>(schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function table<T extends object = any, TName extends string = string>(database: string, schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function table<T extends object>(modelClass: ModelConstructor<T>): ProxiedTable<Identifier<T, any, any>>
+export function table(...args: any[]): any {
+  if (typeof args[0] === 'function') {
+    return Expression.identifier(args[0].name)
+  }
+  return (Expression.identifier as Function)(...args)
+}
+
+export function model<T extends object>(modelClass: ModelConstructor<T>): ProxiedTable<Identifier<T, any, any>> {
+  return Expression.identifier(modelClass.name)
+}
+
+/**
+ * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+ * @param names
+ */
+export function fn<T = any, TName extends string = string>(name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function fn<T = any, TName extends string = string>(schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function fn<T = any, TName extends string = string>(database: string, schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function fn(...args: any[]): any {
+  if (typeof args[0] === 'function') {
+    return Expression.identifier(args[0].name)
+  }
+  return (Expression.identifier as Function)(...args)
+}
+
+/**
+ * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
+ * @param names
+ */
+export function sp<T, TName extends string>(name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function sp<T, TName extends string>(schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function sp<T, TName extends string>(database: string, schema: string, name: TName): ProxiedTable<Identifier<T, any, TName>>
+export function sp(...args: any[]): any {
+  if (typeof args[0] === 'function') {
+    return Expression.identifier(args[0].name)
+  }
+  return (Expression.identifier as Function)(...args)
+}
+
+/**
+ * 字段，实为 identifier(...names) 别名
+ * @param names
+ */
+export function field<T, TName extends string = string>(field: TName): ProxiedTable<Identifier<T, any, TName>>
+export function field<T, TName extends string = string>(table: string, field: TName): ProxiedTable<Identifier<T, any, TName>>
+export function field<T, TName extends string = string>(schema: string, table: string, field: TName): ProxiedTable<Identifier<T, any, TName>>
+export function field<T, TName extends string = string>(database: string, schema: string, table: string, field: TName): ProxiedTable<Identifier<T, any, TName>>
+export function field(...args: any[]): any {
+  if (typeof args[0] === 'function') {
+    return Expression.identifier(args[0].name)
+  }
+  return (Expression.identifier as Function)(...args)
+}
+
+/**
+ * 调用表达式
+ * @param func 函数
+ * @param params 参数
+ */
+export function invoke(func: Identifiers, params: (Expression | JsConstant)[]) {
+  return new ScalarFuncInvoke(func, params)
+}
 
 /**
  * 语句

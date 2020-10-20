@@ -1,19 +1,14 @@
-import * as _ from 'lodash'
 import {
   Condition,
   Conditions,
   Expressions,
-  GroupValues,
-  Bracket,
   Expression,
-  RowFields,
   AST,
-  Identifier,
   JsConstant,
-  List,
-  ProxiedIdentifier,
-  ExpressionType
+  ProxiedTable,
+  Name, Table, Field, ScalarFunction, TableFunction
 } from './ast'
+import { constant } from './builder'
 
 /**
  * 断言
@@ -29,25 +24,45 @@ export function assert(except: any, message: string) {
 /**
  * 返回表达式
  */
-export function ensureConstant<T extends JsConstant>(expr: Expressions<T>): Expression<T> {
+export function ensureExpression<T extends JsConstant>(expr: Expressions<T>): Expression<T> {
   if (!(expr instanceof AST)) {
-    return Expression.constant(expr)
+    return constant(expr)
   }
   return expr
 }
 
-export function ensureIdentifier<T = void>(expr: string | Identifier<T>): Identifier<T> {
-  if (_.isString(expr)) {
-    return Identifier.normal<T>(expr)
+/**
+ * 确保字段类型
+ */
+export function ensureField<TName extends string, T extends JsConstant>(name: Name<TName> | Field<TName, T>): Field<TName, T> {
+  if (!(name instanceof AST)) {
+    return new Field(name)
   }
-  return expr
+  return name
 }
 
-export function ensureGroupValues(values: GroupValues): List {
-  if (_.isArray(values)) {
-    return List.values(...values)
-  }
-  return values
+/**
+ * 确保表格类型
+ */
+export function ensureTable<TName extends string, TModel extends object>(name: Name<TName> | Table<TName, TModel>): Table<TName, TModel> {
+  if (name instanceof Table) return name
+  return new Table(name)
+}
+
+/**
+ * 确保标题函数类型
+ */
+export function ensureScalarFunction<TName extends string, TReturn extends JsConstant>(name: Name<TName> | ScalarFunction<TName, TReturn>): ScalarFunction<TName, TReturn> {
+  if (name instanceof AST) return name
+  return new ScalarFunction(name)
+}
+
+/**
+ * 确保标题函数类型
+ */
+export function ensureTableFunction<TName extends string, TReturn extends object>(name: Name<TName> | TableFunction<TName, TReturn>): TableFunction<TName, TReturn> {
+  if (name instanceof AST) return name
+  return new TableFunction(name)
 }
 
 /**
@@ -55,15 +70,14 @@ export function ensureGroupValues(values: GroupValues): List {
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition(condition: Conditions): Condition {
+export function ensureCondition<T extends object>(condition: Conditions<T>): Condition {
   if (condition instanceof Condition) return condition
-  assert(_.isPlainObject(condition), 'condition must typeof `Condition` or `plain object`')
   const compares = Object.entries(condition).map(([key, value]) => {
-    const field = Expression.identifier(key)
-    if (_.isNull(value)) {
+    const field = new Field(key)
+    if (value === null || value === undefined) {
       return Condition.isNull(field)
     }
-    if (_.isArray(value)) {
+    if (Array.isArray(value)) {
       return Condition.in(field, value)
     }
     return Condition.eq(field, value)
@@ -72,34 +86,21 @@ export function ensureCondition(condition: Conditions): Condition {
   return compares.length >= 2 ? Condition.and(...compares) : compares[0]
 }
 
-// /**
-//  * 混入器
-//  * @param derivedCtor
-//  * @param baseCtors
-//  */
-// export function applyMixins(derivedCtor: any, baseCtors: any[]) {
-//   baseCtors.forEach(baseCtor => {
-//     Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
-//       derivedCtor.prototype[name] = baseCtor.prototype[name]
-//     })
-//   })
-// }
-
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedIdentifier<T extends Identifier<any, any, any>>(identifier: T): ProxiedIdentifier<T> {
-  return new Proxy(identifier, {
-    get(target: T, prop): any {
+export function makeProxiedTable<TName extends string, TModel extends object>(table: Table<TName, TModel>): ProxiedTable<TName, TModel> {
+  return new Proxy(table, {
+    get (target: Table<TName, TModel>, prop: any): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
-      if (_.isString(prop)) {
+      if (typeof prop === 'string') {
         // $开头，实为转义符，避免字段命名冲突，程序自动移除首个
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return identifier.$(prop)
+        return table.$field(prop)
       }
       return undefined
     }
@@ -107,7 +108,48 @@ export function makeProxiedIdentifier<T extends Identifier<any, any, any>>(ident
 }
 
 export function isJsConstant(value: any): value is JsConstant {
-  return _.isString(value) || _.isBoolean(value) || typeof value === 'bigint' ||
-    _.isNumber(value) || _.isNull(value) ||
-    _.isDate(value) || _.isBuffer(value)
+  return typeof value === 'string' || typeof value === 'boolean' || typeof value === 'bigint' ||
+    typeof value === 'number' || value === null || value === undefined || value instanceof Date || value instanceof Uint8Array
+}
+
+export type Constructor<T> = {
+  new (...args: any): T
+}
+
+export type MixinedConstructor<A, B, C = unknown, D = unknown, E = unknown> = {
+  new (): A & B & C & D & E
+}
+
+/**
+ * 混入
+ */
+export function mixins<Base, A>(baseCls: Constructor<Base>, extend1: Constructor<A>): MixinedConstructor<Base, A>
+export function mixins<Base, A, B>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>): MixinedConstructor<Base, A, B>
+export function mixins<Base, A, B, C>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>, extend3: Constructor<C>): MixinedConstructor<Base, A, B, C>
+export function mixins<Base, A, B, C, D>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>, extend3: Constructor<C>, extend4: Constructor<D>): MixinedConstructor<Base, A, B, C, D>
+export function mixins(...classes: Constructor<any>[]): any {
+  const cls = class MixinedClass extends classes[0] {}
+  const proto: any = cls.prototype
+  classes.forEach(fn => {
+    Object.getOwnPropertyNames(fn.prototype).forEach(name => {
+      /**
+       * 不改变构造函数
+       */
+      if (name !== 'constructor') {
+        if (proto[name]) {
+          throw new Error(`在混入合并时，发现属性冲突！属性名：${name}`)
+        }
+        proto[name] = fn.prototype[name]
+      }
+    })
+  })
+  return cls
+}
+
+export function applyMixins(derivedCtor: any, baseCtors: any[]) {
+  baseCtors.forEach(baseCtor => {
+      Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
+          derivedCtor.prototype[name] = baseCtor.prototype[name];
+      })
+  });
 }

@@ -170,9 +170,9 @@ export class Executor extends EventEmitter {
       // 如果有输出参数
       if (res.output) {
         Object.entries(res.output).forEach(([name, value]) => {
-          const p = params.find(p => p.name === name)
-          p.value = value
-          if (p.name === '_ReturnValue_') {
+          const p = params.find(p => p.$name === name)
+          p.$value = value
+          if (p.$name === '_ReturnValue_') {
             res.returnValue = value
           }
         })

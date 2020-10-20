@@ -35,11 +35,13 @@ export enum LOGIC_OPERATOR {
 }
 
 /**
+ * 比较运算符
+ */
+export type COMPARE_OPERATOR = UNARY_COMPARE_OPERATOR | BINARY_COMPARE_OPERATOR
+/**
  * 比较运算符列表
  */
-export enum COMPARE_OPERATOR {
-  IS_NULL = 'IS NULL',
-  IS_NOT_NULL = 'IS NOT NULL',
+export enum BINARY_COMPARE_OPERATOR {
   IN = 'IN',
   NOT_IN = 'NOT IN',
   EQ = '=',
@@ -49,28 +51,37 @@ export enum COMPARE_OPERATOR {
   LT = '<',
   LTE = '<=',
   LIKE = 'LIKE',
-  NOT_LIKE = 'NOT LIKE',
-  EXISTS = 'EXISTS'
+  NOT_LIKE = 'NOT LIKE'
 }
 
-/**
- * 算术运算符列表
- */
-export enum CALCULATE_OPERATOR {
-  JOIN = '+',
+export enum UNARY_COMPARE_OPERATOR {
+  IS_NULL = 'IS NULL',
+  IS_NOT_NULL = 'IS NOT NULL'
+}
+
+export enum BINARY_CALCULATE_OPERATOR {
+  CONCAT = '+',
   ADD = '+',
   SUB = '-',
   MUL = '*',
   DIV = '/',
   MOD = '%',
-  BITAND = '&',
-  BITOR = '|',
-  BITNOT = '~',
-  BITXOR = '^',
+  AND = '&',
+  OR = '|',
+  XOR = '^',
   SHR = '>>',
   SHL = '<<',
-  NEG = '-',
 }
+
+export enum UNARY_CALCULATE_OPERATOR {
+  NOT = '~',
+  NEG = '-'
+}
+
+/**
+ * 算术运算符列表
+ */
+export type CALCULATE_OPERATOR = BINARY_CALCULATE_OPERATOR | UNARY_CALCULATE_OPERATOR
 
 /**
  * SQL运算符
@@ -79,10 +90,10 @@ export enum CALCULATE_OPERATOR {
  * SQL运算符
  */
 export enum SQL_SYMBOLE {
+  STAR = 'STAR',
+  FUNCTION = 'FUNCTION',
   RAW = 'RAW',
   // ANY = '*',
-  VALUE_LIST = 'VALUE_LIST',
-  COLUMN_LIST = 'COLUMN_LIST',
   INVOKE_ARGUMENT_LIST = 'INVOKE_ARGUMENT_LIST',
   EXECUTE_ARGUMENT_LIST = 'EXECUTE_ARGUMENT_LIST',
   VARAINT_DECLARE = 'VARAINT_DECLARE',
@@ -92,13 +103,14 @@ export enum SQL_SYMBOLE {
    */
   BUILDIN_IDENTIFIER = 'BUILDIN_IDENTIFIER',
   PARAMETER = 'PARAMETER',
-  VARAINT = 'VARAINT',
+  TABLE_VARIANT = 'TABLE_VARIANT',
   SELECT = 'SELECT',
   UPDATE = 'UPDATE',
   INSERT = 'INSERT',
   DELETE = 'DELETE',
   EXECUTE = 'EXECUTE',
-  INVOKE = 'INVOKE',
+  SCALAR_FUNCTION_INVOKE = 'SCALAR_FUNCTION_INVOKE',
+  TABLE_FUNCTION_INVOKE = 'TABLE_FUNCTION_INVOKE',
   ASSIGNMENT = 'ASSIGNMENT',
   CONSTANT = 'CONSTANT',
   // CONDITION = 'CONDITION',
@@ -129,7 +141,46 @@ export enum SQL_SYMBOLE {
   CASE = 'CASE',
   DECLARE = 'DECLARE',
   DOCUMENT = "DOCUMENT",
-  WITH = 'WITH'
+  WITH = 'WITH',
+  WITH_ITEM = 'WITH_ITEM'
+}
+
+export enum IDENTOFIER_KIND {
+  /**
+   * 表
+   */
+  TABLE = 'TABLE',
+  /**
+   * 字段
+   */
+  FIELD = 'FIELD',
+  /**
+   * 函数
+   */
+  FUNCTION = 'FUNCITON',
+  /**
+   * 存储过程
+   */
+  PROCEDURE = 'PROCEDURE',
+
+  PARAMETER = 'PARAMETER',
+  /**
+   * 内建标识
+   */
+  BUILD_IN  = 'BUILD_IN',
+  /**
+   * 列
+   */
+  COLUMN = 'COLUMN',
+  /**
+   * 变量
+   */
+  VARIANT = 'VARIANT'
+}
+
+export enum FUNCTION_TYPE {
+  SCALAR = 'SCALAR',
+  TABLE = 'TABLE'
 }
 
 export const INSERT_MAXIMUM_ROWS = 1000
