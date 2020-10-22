@@ -59,7 +59,7 @@ export enum UNARY_COMPARE_OPERATOR {
   IS_NOT_NULL = 'IS NOT NULL'
 }
 
-export enum BINARY_CALCULATE_OPERATOR {
+export enum BINARY_OPERATION_OPERATOR {
   CONCAT = '+',
   ADD = '+',
   SUB = '-',
@@ -70,10 +70,10 @@ export enum BINARY_CALCULATE_OPERATOR {
   OR = '|',
   XOR = '^',
   SHR = '>>',
-  SHL = '<<',
+  SHL = '<<'
 }
 
-export enum UNARY_CALCULATE_OPERATOR {
+export enum UNARY_OPERATION_OPERATOR {
   NOT = '~',
   NEG = '-'
 }
@@ -81,7 +81,9 @@ export enum UNARY_CALCULATE_OPERATOR {
 /**
  * 算术运算符列表
  */
-export type CALCULATE_OPERATOR = BINARY_CALCULATE_OPERATOR | UNARY_CALCULATE_OPERATOR
+export type OPERATION_OPERATOR =
+  | BINARY_OPERATION_OPERATOR
+  | UNARY_OPERATION_OPERATOR
 
 /**
  * SQL运算符
@@ -89,6 +91,7 @@ export type CALCULATE_OPERATOR = BINARY_CALCULATE_OPERATOR | UNARY_CALCULATE_OPE
 /**
  * SQL运算符
  */
+
 export enum SQL_SYMBOLE {
   STAR = 'STAR',
   FUNCTION = 'FUNCTION',
@@ -98,12 +101,6 @@ export enum SQL_SYMBOLE {
   EXECUTE_ARGUMENT_LIST = 'EXECUTE_ARGUMENT_LIST',
   VARAINT_DECLARE = 'VARAINT_DECLARE',
   IDENTIFIER = 'IDENTIFIER',
-  /**
-   * 系统内建标识符，如COUNT, SUM等系统函数
-   */
-  BUILDIN_IDENTIFIER = 'BUILDIN_IDENTIFIER',
-  PARAMETER = 'PARAMETER',
-  TABLE_VARIANT = 'TABLE_VARIANT',
   SELECT = 'SELECT',
   UPDATE = 'UPDATE',
   INSERT = 'INSERT',
@@ -113,36 +110,32 @@ export enum SQL_SYMBOLE {
   TABLE_FUNCTION_INVOKE = 'TABLE_FUNCTION_INVOKE',
   ASSIGNMENT = 'ASSIGNMENT',
   CONSTANT = 'CONSTANT',
-  // CONDITION = 'CONDITION',
-  // EXPRESSION = 'EXPRESSION',
-  // DATATYPE = 'DATATYPE',
   SORT = 'SORT',
-  BRACKET_EXPRESSION = 'BRACKET_EXPRESSION',
-  /**
-   * 条件组
-   */
-  QUOTED_CONDITION = 'QUOTED_CONDITION',
-  ALIAS = 'ALIAS',
-
-  EXISTS = 'EXISTS',
-
-  // BINARY = 'BINARY',
-  BINARY_COMPARE = 'BINARY_COMPARE',
-  BINARY_CALCULATE = 'BINARY_CALCULATE',
-  BINARY_LOGIC = 'BINARY_LOGIC',
-
-  // UNARY = 'UNARY',
-  UNARY_COMPARE = 'UNARY_COMPARE',
-  UNARY_CALCULATE = 'UNARY_CALCULATE',
-  UNARY_LOGIC = 'UNARY_LOGIC',
   JOIN = 'JOIN',
   UNION = 'UNION',
   WHEN = 'WHEN',
   CASE = 'CASE',
   DECLARE = 'DECLARE',
-  DOCUMENT = "DOCUMENT",
+  DOCUMENT = 'DOCUMENT',
   WITH = 'WITH',
-  WITH_ITEM = 'WITH_ITEM'
+  NAMED_SELECT = 'NAMED_SELECT',
+  WITH_SELECT = 'WITH_SELECT',
+  CONDITION = 'CONDITION',
+  OPERATION = 'OPERATION'
+}
+
+export enum CONDITION_KIND {
+  GROUP = 'GROUP',
+  UNARY_COMPARE = 'UNARY_COMPARE',
+  BINARY_COMPARE = 'BINARY_COMPARE',
+  BINARY_LOGIC = 'BINARY_LOGIC',
+  UNARY_LOGIC = 'UNARY_LOGIC',
+  EXISTS = 'EXISTS'
+}
+
+export enum OPERATION_KIND {
+  BINARY = 'BINARY_CALCULATE',
+  UNARY = 'UNARY_CALCULATE'
 }
 
 export enum IDENTOFIER_KIND {
@@ -158,6 +151,14 @@ export enum IDENTOFIER_KIND {
    * 函数
    */
   FUNCTION = 'FUNCITON',
+  // /**
+  //  * 标量函数
+  //  */
+  // SCALAR_FUNCTION ='SCALAR_FUNCTION',
+  // /**
+  //  * 表值函数
+  //  */
+  // TABLE_FUNCTION = 'TABLE_FUNCTION',
   /**
    * 存储过程
    */
@@ -167,7 +168,11 @@ export enum IDENTOFIER_KIND {
   /**
    * 内建标识
    */
-  BUILD_IN  = 'BUILD_IN',
+  BUILD_IN = 'BUILD_IN',
+  /**
+   * 别名
+   */
+  ALIAS = 'ALIAS',
   /**
    * 列
    */
@@ -175,12 +180,23 @@ export enum IDENTOFIER_KIND {
   /**
    * 变量
    */
-  VARIANT = 'VARIANT'
-}
-
-export enum FUNCTION_TYPE {
-  SCALAR = 'SCALAR',
-  TABLE = 'TABLE'
+  VARIANT = 'VARIANT',
+  /**
+   * 表变量
+   */
+  TABLE_VARIANT = 'TABLE_VARIANT'
+  // /**
+  //  * 命名参数
+  //  */
+  // NAMED_ARGUMENT = 'NAMED_ARGUMENT',
 }
 
 export const INSERT_MAXIMUM_ROWS = 1000
+
+// /**
+//  * 函数类型
+//  */
+// export enum FUNCTION_TYPE {
+//   SCALAR = 'SCALAR',
+//   TABLE = 'TABLE'
+// }

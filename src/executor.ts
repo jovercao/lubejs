@@ -8,13 +8,21 @@ import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
 import { stringify } from 'querystring'
 
-export interface QueryResult<T = RowObject> {
-  rows?: T[]
+export interface QueryResult<R1 extends object, R2 extends object = never, R3 extends object = never, V extends JsConstant = never> {
+  rows?: RowObject<R1>[]
   output?: {
     [key: string]: JsConstant
   }
   rowsAffected: number
-  returnValue?: any
+  returnValue?: V
+  /**
+   * 仅支持mssql
+   */
+  rowsets: [
+    RowObject<R1>[],
+    R2 extends never ? never : RowObject<R2>[],
+    R3 extends never ? never : RowObject<R3>[]
+  ]
 }
 
 // interface QueryParameter {
@@ -23,8 +31,8 @@ export interface QueryResult<T = RowObject> {
 //    direction?: ParameterDirection
 // }
 
-export interface QueryHandler<T = any> {
-  (sql: string, params: Parameter<unknown>[]): Promise<QueryResult<T>>
+export interface QueryHandler<T extends object = any> {
+  (sql: string, params: Parameter<string, JsConstant>[]): Promise<QueryResult<T>>
 }
 
 export interface SelectOptions<T = any> {
@@ -150,7 +158,7 @@ export class Executor extends EventEmitter {
           const name = '__p__' + index
           const param = input(name, args[index + 1])
           params.push(param)
-          previous += this.compiler.prepareParameterName(param)
+          previous += this.compiler.pretreatmentParameterName(param)
         }
         return previous
       }, '')

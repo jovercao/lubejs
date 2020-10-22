@@ -10,7 +10,7 @@ import {
   Raw,
   JsConstant,, BinaryOperation, UnaryOperation, Constant, ModelConstructor
 } from './ast'
-import { CALCULATE_OPERATOR } from './constants'
+import { OPERATION_OPERATOR } from './constants'
 
 /**
  * not 查询条件运算
@@ -150,9 +150,6 @@ export const del = Statement.delete
 
 export const $delete = Statement.delete
 
-
-
-
 /**
  * 常量
  * @param value 常量值
@@ -268,3 +265,14 @@ export const SQL = {
 }
 
 export default SQL
+
+
+// TODO: 建立命令查询器，针对model的
+/**
+ * 命令生成器
+ * 用于深度查询
+ */
+export interface CommandBuilder {
+  sql: string[];
+  params: Set<Parameter>;
+}

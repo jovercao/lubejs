@@ -5,10 +5,14 @@ import {
   Expression,
   AST,
   JsConstant,
-  ProxiedTable,
-  Name, Table, Field, ScalarFunction, TableFunction
+  ProxiedRowset,
+  Func,
+  Name,
+  Table,
+  Field
 } from './ast'
 import { constant } from './builder'
+import { PathedName, Procedure, Rowset } from './lube'
 
 /**
  * 断言
@@ -34,7 +38,7 @@ export function ensureExpression<T extends JsConstant>(expr: Expressions<T>): Ex
 /**
  * 确保字段类型
  */
-export function ensureField<TName extends string, T extends JsConstant>(name: Name<TName> | Field<TName, T>): Field<TName, T> {
+export function ensureField<T extends JsConstant, N extends string>(name: Name<N> | Field<T, N>): Field<T, N> {
   if (!(name instanceof AST)) {
     return new Field(name)
   }
@@ -44,25 +48,25 @@ export function ensureField<TName extends string, T extends JsConstant>(name: Na
 /**
  * 确保表格类型
  */
-export function ensureTable<TName extends string, TModel extends object>(name: Name<TName> | Table<TName, TModel>): Table<TName, TModel> {
-  if (name instanceof Table) return name
+export function ensureRowset<TModel extends object>(name: Name<string> | Rowset<TModel>): Rowset<TModel> {
+  if (name instanceof AST) return name
   return new Table(name)
 }
 
 /**
- * 确保标题函数类型
+ * 确保函数类型
  */
-export function ensureScalarFunction<TName extends string, TReturn extends JsConstant>(name: Name<TName> | ScalarFunction<TName, TReturn>): ScalarFunction<TName, TReturn> {
+export function ensureFunction<TName extends string>(name: Name<TName> | Func<TName>): Func<TName> {
   if (name instanceof AST) return name
-  return new ScalarFunction(name)
+  return new Func(name)
 }
 
 /**
  * 确保标题函数类型
  */
-export function ensureTableFunction<TName extends string, TReturn extends object>(name: Name<TName> | TableFunction<TName, TReturn>): TableFunction<TName, TReturn> {
+export function ensureProcedure<T extends object, N extends string>(name: Name<N> | Procedure<T, N>): Procedure<T, N> {
   if (name instanceof AST) return name
-  return new TableFunction(name)
+  return new Procedure(name)
 }
 
 /**
@@ -89,9 +93,9 @@ export function ensureCondition<T extends object>(condition: Conditions<T>): Con
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedTable<TName extends string, TModel extends object>(table: Table<TName, TModel>): ProxiedTable<TName, TModel> {
+export function makeProxiedRowset<TModel extends object>(table: Rowset<TModel>): ProxiedRowset<TModel> {
   return new Proxy(table, {
-    get (target: Table<TName, TModel>, prop: any): any {
+    get (target: Rowset<TModel>, prop: any): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
@@ -152,4 +156,18 @@ export function applyMixins(derivedCtor: any, baseCtors: any[]) {
           derivedCtor.prototype[name] = baseCtor.prototype[name];
       })
   });
+}
+
+export function pickName(name: Name<string>): string {
+  if (typeof name === 'string') {
+    return name
+  }
+  return name[name.length - 1]
+}
+
+export function pathName<T extends string>(name: Name<T>): PathedName<T> {
+  if (typeof name === 'string') {
+    return [name]
+  }
+  return name
 }

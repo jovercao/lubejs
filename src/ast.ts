@@ -7,17 +7,19 @@ import {
   assert,
   ensureExpression,
   ensureCondition,
-  makeProxiedTable,
+  makeProxiedRowset,
   isJsConstant,
   applyMixins,
-  ensureTable,
+  ensureRowset,
   ensureField,
-  ensureScalarFunction,
-  ensureTableFunction,
+  ensureFunction,
+  ensureProcedure,
+  pickName,
+  pathName,
 } from "./util";
 
 import {
-  CALCULATE_OPERATOR,
+  OPERATION_OPERATOR,
   PARAMETER_DIRECTION,
   SQL_SYMBOLE,
   BINARY_COMPARE_OPERATOR,
@@ -25,14 +27,19 @@ import {
   LOGIC_OPERATOR,
   INSERT_MAXIMUM_ROWS,
   IDENTOFIER_KIND,
-  BINARY_CALCULATE_OPERATOR,
-  UNARY_CALCULATE_OPERATOR,
+  BINARY_OPERATION_OPERATOR,
+  UNARY_OPERATION_OPERATOR,
   UNARY_COMPARE_OPERATOR,
-  FUNCTION_TYPE,
+  CONDITION_KIND,
+  OPERATION_KIND,
+  // FUNCTION_TYPE,
 } from "./constants";
 import { identifier } from "./builder";
+import { QueryResult } from "./lube";
 
 // **********************************类型声明******************************************
+
+export type Binary = ArrayBuffer | SharedArrayBuffer;
 
 /**
  * JS常量类型
@@ -43,7 +50,7 @@ export type JsConstant =
   | boolean
   | null
   | number
-  | Uint8Array
+  | Binary
   | bigint;
 
 /**
@@ -101,11 +108,11 @@ export type ExpressionType<T> = T extends JsConstant
  */
 export type PickFields<T> = T extends undefined
   ? {}
-  : T extends Field<infer TName, infer TValue>
+  : T extends Field<infer TValue, infer TName>
   ? {
       [key in TName]: TValue;
     }
-  : T extends Column<infer TName, infer TValue>
+  : T extends Column<infer TValue, infer TName>
   ? {
       [key in TName]: TValue;
     }
@@ -115,9 +122,12 @@ export type PickFields<T> = T extends undefined
     }
   : {};
 
-export type SelectColumn =
-  | Field<string, JsConstant>
-  | Column<string, JsConstant>
+/**
+ * select语句可以接收的列
+ */
+export type SelectCloumn =
+  | Field<JsConstant, string>
+  | Column<JsConstant, string>
   | Star<object>;
 
 export type ResultObjectByColumns<
@@ -185,11 +195,6 @@ export type Expressions<T extends JsConstant> = Expression<T> | T;
 export type Conditions<T extends object> = Condition | WhereObject<T>;
 
 /**
- * 所有行集类型的兼容类型
- */
-export type Rowsets<T extends object = object> = Rowset<T> | Bracket<Rowset<T>>;
-
-/**
  * 取数据库有效字段，类型为JsConstant的字段列表
  */
 export type FieldsOf<T extends object> = Exclude<
@@ -199,12 +204,9 @@ export type FieldsOf<T extends object> = Exclude<
   number | symbol
 >;
 
-export type ProxiedTable<TName extends string, TModel extends object> = Table<
-  TName,
-  TModel
-> &
+export type ProxiedRowset<TModel extends object> = Rowset<TModel> &
   {
-    [P in FieldsOf<TModel>]: Field<P, TModel[P]>;
+    [P in FieldsOf<TModel>]: Field<TModel[P], P>;
   };
 
 /**
@@ -212,10 +214,6 @@ export type ProxiedTable<TName extends string, TModel extends object> = Table<
  */
 export abstract class AST {
   readonly $type: SQL_SYMBOLE;
-
-  static bracket<T extends AST>(context: T): Bracket<T> {
-    return new Bracket(context);
-  }
 }
 
 export type ModelConstructor<T extends object = object> = new (
@@ -226,9 +224,12 @@ export type ModelType<T> = T extends new (...args: any) => infer TModel
   : never;
 
 /**
- * 表达式基类，抽象类
+ * 表达式基类，抽象类，
+ * 所有表达式类均从该类型继承，
+ * 可以直接使用 instanceof 来判断是否为expression
  */
 export abstract class Expression<T extends JsConstant> extends AST {
+  $type: SQL_SYMBOLE.IDENTIFIER | SQL_SYMBOLE.OPERATION | SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE | SQL_SYMBOLE.CASE | SQL_SYMBOLE.CONSTANT
   /**
    * 字符串连接运算
    */
@@ -463,8 +464,8 @@ export abstract class Expression<T extends JsConstant> extends AST {
   /**
    * 为当前表达式添加别名
    */
-  as<TName extends string>(alias: TName): Column<TName, T> {
-    return new Column<TName, T>(alias, this);
+  as<TName extends string>(alias: TName): Column<T, TName> {
+    return new Column<T, TName>(alias, this);
   }
 }
 
@@ -472,6 +473,8 @@ export abstract class Expression<T extends JsConstant> extends AST {
  * 查询条件
  */
 export abstract class Condition extends AST {
+  readonly $type: SQL_SYMBOLE.CONDITION = SQL_SYMBOLE.CONDITION;
+  readonly $kind: CONDITION_KIND;
   /**
    * and连接
    * @param condition 下一个查询条件
@@ -492,7 +495,7 @@ export abstract class Condition extends AST {
     return new BinaryLogicCondition(
       LOGIC_OPERATOR.AND,
       this,
-      Condition.quoted(condition)
+      Condition.group(condition)
     );
   }
 
@@ -516,7 +519,7 @@ export abstract class Condition extends AST {
     return new BinaryLogicCondition(
       LOGIC_OPERATOR.OR,
       this,
-      Condition.quoted(condition)
+      Condition.group(condition)
     );
   }
 
@@ -531,7 +534,7 @@ export abstract class Condition extends AST {
       _.isArray(conditions) && conditions.length > 1,
       "Conditions must type of Array & have two or more elements."
     );
-    return Condition.quoted(
+    return Condition.group(
       conditions.reduce((previous, current) => {
         current = ensureCondition(current);
         if (!previous) return current;
@@ -551,7 +554,7 @@ export abstract class Condition extends AST {
       _.isArray(conditions) && conditions.length > 1,
       "Conditions must type of Array & have two or more elements."
     );
-    return Condition.quoted(
+    return Condition.group(
       conditions.reduce((previous, current, index) => {
         current = ensureCondition(current);
         if (!previous) return current;
@@ -745,8 +748,8 @@ export abstract class Condition extends AST {
    * 将查询条件用括号包括
    * @param condition 查询条件
    */
-  static quoted(condition: Condition): Condition {
-    return new QuotedCondition(condition);
+  static group(condition: Conditions<any>): Condition {
+    return new GroupCondition(condition);
   }
 }
 
@@ -757,7 +760,8 @@ export class BinaryLogicCondition extends Condition {
   $operator: LOGIC_OPERATOR;
   $left: Condition;
   $right: Condition;
-  $type: SQL_SYMBOLE.BINARY_LOGIC = SQL_SYMBOLE.BINARY_LOGIC;
+  $type: SQL_SYMBOLE.CONDITION = SQL_SYMBOLE.CONDITION;
+  $kind: CONDITION_KIND.BINARY_LOGIC = CONDITION_KIND.BINARY_LOGIC;
   /**
    * 创建二元逻辑查询条件实例
    */
@@ -785,9 +789,9 @@ export type LogicCondition = UnaryLogicCondition | BinaryLogicCondition;
  * 一元逻辑查询条件
  */
 export class UnaryLogicCondition extends Condition {
-  $type: SQL_SYMBOLE.UNARY_LOGIC = SQL_SYMBOLE.UNARY_LOGIC;
   $operator: LOGIC_OPERATOR;
   $condition: Condition;
+  $kind: CONDITION_KIND.UNARY_LOGIC = CONDITION_KIND.UNARY_LOGIC;
 
   /**
    * 创建一元逻辑查询条件实例
@@ -810,7 +814,7 @@ export class BinaryCompareCondition extends Condition {
   $left: Expression<JsConstant>;
   $right: Expression<JsConstant> | Expression<JsConstant>[];
   $operator: BINARY_COMPARE_OPERATOR;
-  $type: SQL_SYMBOLE.BINARY_COMPARE = SQL_SYMBOLE.BINARY_COMPARE;
+  $kind: CONDITION_KIND.BINARY_COMPARE = CONDITION_KIND.BINARY_COMPARE;
 
   /**
    * 构造函数
@@ -837,7 +841,7 @@ export class BinaryCompareCondition extends Condition {
 export class UnaryCompareCondition extends Condition {
   $expr: Expression<JsConstant>;
   $operator: UNARY_COMPARE_OPERATOR;
-  $type: SQL_SYMBOLE.UNARY_COMPARE = SQL_SYMBOLE.UNARY_COMPARE;
+  $kind: CONDITION_KIND.UNARY_COMPARE = CONDITION_KIND.UNARY_COMPARE;
 
   /**
    * 一元比较运算符
@@ -856,8 +860,8 @@ export class UnaryCompareCondition extends Condition {
  * 一元比较条件
  */
 export class ExistsCondition extends Condition {
-  $select: Select<object>;
-  $type: SQL_SYMBOLE.EXISTS = SQL_SYMBOLE.EXISTS;
+  $statement: Select<object>;
+  $kind: CONDITION_KIND.EXISTS;
 
   /**
    * EXISTS子句
@@ -865,17 +869,17 @@ export class ExistsCondition extends Condition {
    */
   constructor(expr: Select<object>) {
     super();
-    this.$select = expr;
+    this.$statement = expr;
   }
 }
 
 /**
  * 联接查询
  */
-export class Join<TName extends string, TModel extends object> extends AST {
+export class Join extends AST {
   readonly $type: SQL_SYMBOLE.JOIN = SQL_SYMBOLE.JOIN;
   $left: boolean;
-  $table: Table<TName, TModel>;
+  $table: Rowset<object>;
   $on: Condition;
 
   /**
@@ -885,13 +889,13 @@ export class Join<TName extends string, TModel extends object> extends AST {
    * @param left 是否左联接
    */
   constructor(
-    table: Table<TName, TModel>,
+    table: Name<string> | Rowset<object>,
     on: Condition,
     left: boolean = false
   ) {
     super();
 
-    this.$table = table;
+    this.$table = ensureRowset(table);
     this.$on = on;
     this.$left = left;
   }
@@ -900,16 +904,22 @@ export class Join<TName extends string, TModel extends object> extends AST {
 /**
  * 标识符，可以多级，如表名等
  */
-export abstract class Identifier<TName extends string = string> extends AST {
-  constructor(name: Name<TName>) {
+export abstract class Identifier<TName extends string> extends AST {
+  constructor(name: Name<TName>, buildIn: boolean) {
     super();
     this.$name = name;
+    this.$buildin = buildIn;
   }
   readonly $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   /**
-   * 标签符名称
+   * 标识符名称
    */
-  $name: Name<TName>;
+  readonly $name: Name<TName>;
+
+  /**
+   * 是否内建标识
+   */
+  readonly $buildin: boolean;
 
   /**
    * 标识符类别
@@ -917,100 +927,130 @@ export abstract class Identifier<TName extends string = string> extends AST {
   readonly $kind: IDENTOFIER_KIND;
 }
 
-export abstract class Func<TName extends string> extends Identifier<TName> {
-  $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
-  $ftype: FUNCTION_TYPE;
+export class BuildInIdentifier<TName extends string> extends Identifier<TName> {
+  $name: TName;
+  $kind: IDENTOFIER_KIND.BUILD_IN;
+  readonly $buildin: true;
+  constructor(name: TName) {
+    super(name, true);
+  }
 }
 
-export class ScalarFunction<
-  TName extends string,
-  TReturn extends JsConstant
-> extends Func<TName> {
-  $ftype: FUNCTION_TYPE.SCALAR = FUNCTION_TYPE.SCALAR;
+export class FieldName<N extends string> extends Identifier<N> {
+  $name: N;
+  $kind: IDENTOFIER_KIND.FIELD;
+  constructor(name: N) {
+    super(name, false);
+  }
+}
+
+export class Alias<N extends string> extends Identifier<N> {
+  $name: N;
+  $kind: IDENTOFIER_KIND.ALIAS;
+  constructor(name: N) {
+    super(name, false);
+  }
+}
+
+export class Func<
+  N extends string
+  // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
+> extends Identifier<N> {
+  $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
+
+  // /**
+  //  * 函数类型
+  //  */
+  // $ftype: K
 
   /**
-   * 执行一个函数
-   * @param args
+   * 如果未传函数类型，则使用标题函数作为默认类型
    */
-  $invoke(...args: Expressions<JsConstant>[]): Expression<TReturn> {
+  constructor(
+    name: Name<N>,
+    buildIn: boolean = false
+    // type?: K
+  ) {
+    super(name, buildIn);
+    // this.$ftype = type || (FUNCTION_TYPE.SCALAR as K)
+  }
+
+  callAsTable<T extends object>(...args: Expressions<JsConstant>[]): Rowset<T> {
+    return new TableFuncInvoke(this, args);
+  }
+
+  callAsCalar<T extends JsConstant>(
+    ...args: Expressions<JsConstant>[]
+  ): Expression<T> {
     return new ScalarFuncInvoke(this, args);
   }
 }
 
-export class TableFunction<
-  TName extends string,
-  TResult extends object
-> extends Identifier<TName> {
-  /**
-   * 执行一个函数
-   * @param args
-   */
-  $invoke(...args: Expressions<JsConstant>[]): Rowset<TResult> {
-    return new TableFuncInvoke(this, args);
-  }
-}
+export type PathedName<T extends string> =
+  | [T]
+  | [string, T]
+  | [string, string, T]
+  | [string, string, string, T]
+  | [string, string, string, string, T];
 
-export type Name<TName> =
-  | TName
-  | [TName]
-  | [string, TName]
-  | [string, string, TName]
-  | [string, string, string, TName]
-  | [string, string, string, string, TName];
+export type Name<T extends string> = T | PathedName<T>;
 
 export abstract class Assignable<T extends JsConstant> extends Expression<T> {
-  leftValue: true = true;
+  readonly $lvalue: true = true;
   /**
    * 赋值操作
    * @param left 左值
    * @param right 右值
    */
-  assign<TValue extends JsConstant>(
-    value: Expressions<TValue>
-  ): Assignment<T, TValue> {
+  assign(value: Expressions<T>): Assignment<T> {
     return new Assignment(this, value);
   }
 }
 
-export class Field<TName extends string, T extends JsConstant>
+export class Field<T extends JsConstant, N extends string>
   extends Assignable<T>
-  implements Identifier<TName> {
-  constructor(name: Name<TName>) {
+  implements Identifier<N> {
+  constructor(name: Name<N>) {
     super();
     this.$name = name;
   }
+  $buildin: false = false;
 
-  readonly $name: Name<TName>;
+  readonly $name: Name<N>;
   readonly $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   readonly $kind: IDENTOFIER_KIND.FIELD = IDENTOFIER_KIND.FIELD;
 }
 
-applyMixins(Field, [Assignable]);
+applyMixins(Field, [Identifier]);
 
 /**
  * SQL *，查询所有字段时使用
  */
-export class Star<TModel extends object = any> extends AST {
+export class Star<T extends object> extends AST {
   readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
 
-  constructor(parent?: Rowset<TModel>) {
+  constructor(parent?: Rowset<T>) {
     super();
-    this.parent = parent;
+    this.$parent = parent;
   }
 
-  parent?: Rowset<TModel>;
+  $parent?: Rowset<T>;
 }
 
 /**
  * 数据库行集，混入类型
  */
-export abstract class Rowset<TModel extends object> extends AST {
-  $alias?: string;
+export abstract class Rowset<T extends object> extends AST {
+  /**
+   * 别名
+   */
+  $alias?: Alias<string>;
+
   /**
    * 为当前表添加别名
    */
   $as(alias: string): Rowset<any> {
-    this.$alias = alias;
+    this.$alias = new Alias(alias);
     return this;
   }
 
@@ -1018,11 +1058,14 @@ export abstract class Rowset<TModel extends object> extends AST {
    * 访问下一节点
    * @param name 节点名称
    */
-  $field<TProperty extends FieldsOf<TModel>>(
+  $field<TProperty extends FieldsOf<T>>(
     name: TProperty
-  ): Field<TProperty, any> {
-    // @ts-ignore
-    return new Field<TProperty, TModel[TProperty]>([...this.$name, name]);
+  ): Field<T[TProperty], TProperty> {
+    if (this.$alias) {
+      return new Field<T[TProperty], TProperty>([this.$alias.$name, name]);
+    } else {
+      return new Field<T[TProperty], TProperty>(name);
+    }
   }
 
   /**
@@ -1033,34 +1076,43 @@ export abstract class Rowset<TModel extends object> extends AST {
   }
 }
 
-export type Tables<TName extends string, TModel extends object> =
-  | TName
-  | Table<TName, TModel>;
+export type Tables<T extends object, N extends string> =
+  | Name<string>
+  | Table<T, N>;
 
-export class Table<TName extends string, TModel extends object>
-  extends Identifier<TName>
-  implements Rowset<TModel> {
-  constructor(name: Name<TName>) {
-    super(name);
+export class Table<T extends object, N extends string>
+  extends Rowset<T>
+  implements Identifier<N> {
+  constructor(name: Name<N>, buildIn = false) {
+    super()
+    Identifier.call(this, name, buildIn)
   }
-
+  $name: Name<N>;
+  $buildin: boolean;
+  $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.TABLE = IDENTOFIER_KIND.TABLE;
 
-  $alias: string;
-  $as: (alias: string) => Rowset<TModel>;
-
   /**
-   * 访问下一节点
+   * 访问字段
    * @param name 节点名称
    */
-  $field: <TProperty extends FieldsOf<TModel>>(
+  $field<TProperty extends FieldsOf<T>>(
     name: TProperty
-  ) => Field<TProperty, TModel[TProperty]>;
+  ): Field<T[TProperty], TProperty> {
+    // @ts-ignore
+    if (this.$alias) {
+      return new Field<T[TProperty], TProperty>([this.$alias.$name, name]);
+    }
+    return new Field<T[TProperty], TProperty>([
+      ...pathName(this.$name),
+      name,
+    ] as any);
+  }
 
   /**
    * 获取所有字段
    */
-  $star: () => Star<TModel>;
+  $star: () => Star<T>;
 }
 
 applyMixins(Table, [Rowset]);
@@ -1068,30 +1120,31 @@ applyMixins(Table, [Rowset]);
 /**
  * 标量变量，暂不支持表变量
  */
-export class Variant<TName extends string, T extends JsConstant>
-  extends Expression<T>
-  implements Identifier<TName> {
+export class Variant<T extends JsConstant, N extends string = string>
+  extends Assignable<T>
+  implements Identifier<N> {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.VARIANT;
-  constructor(name: TName) {
+  constructor(name: N) {
     super();
     this.$name = name;
   }
-  $name: TName;
+  $buildin: boolean;
+  $name: N;
 }
 
 applyMixins(Variant, [Identifier]);
 
 // TODO 表变量支持
 
-// export class TableVariant<TName extends string, T extends object> extends Rowset<T> {
+// export class TableVariant<N extends string, T extends object> extends Rowset<T> {
 //   $name: string
 
 //   $schema: {
 
 //   }
 
-//   constructor(name: TName) {
+//   constructor(name: N) {
 //     super(SQL_SYMBOLE.TABLE_VARIANT)
 //   }
 // }
@@ -1099,14 +1152,13 @@ applyMixins(Variant, [Identifier]);
 /**
  * 列表达式
  */
-export class Column<
-  TName extends string,
-  T extends JsConstant
-> extends Identifier<TName> {
+export class Column<T extends JsConstant, N extends string> extends Identifier<
+  N
+> {
   /**
    * 列名称
    */
-  $name: TName;
+  $name: N;
 
   /**
    * 表达式
@@ -1119,122 +1171,61 @@ export class Column<
    * @param expr 表达式或表名
    * @param name 别名
    */
-  constructor(name: TName, expr: Expression<T>) {
-    super(name);
+  constructor(name: N, expr: Expression<T>) {
+    super(name, false);
     // assertType(expr, [DbObject, Field, Constant, Select], 'alias must type of DbObject|Field|Constant|Bracket<Select>')
     this.$expr = expr;
   }
 }
 
 /**
- * 函数调用表达式
+ * SELECT函数签名
  */
-export class ScalarFuncInvoke<TReturn extends JsConstant> extends Expression<
-  TReturn
-> {
-  $func: ScalarFunction<string, TReturn>;
-  $args: Expression<JsConstant>[];
-  readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
-    SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
-  constructor(
-    func: string | ScalarFunction<string, TReturn>,
-    args: Expressions<JsConstant>[]
-  ) {
-    super();
-    this.$func = ensureScalarFunction(func);
-    this.$args = args.map((expr) => ensureExpression(expr));
-  }
-}
-
-export class TableFuncInvoke<TReturn extends object> extends Rowset<TReturn> {
-  readonly $func: TableFunction<string, TReturn>;
-  readonly $args: Expression<JsConstant>[];
-  readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
-    SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
-  $alias?: string;
-
-  constructor(
-    func: string | TableFunction<string, TReturn>,
-    args: Expressions<JsConstant>[]
-  ) {
-    super();
-    this.$func = ensureTableFunction(func);
-    this.$args = args.map((expr) => ensureExpression(expr));
-  }
-}
-
-/**
- * SQL 语句
- */
-export abstract class Statement extends AST {
-  /**
-   * 插入至表,into的别名
-   * @param table
-   * @param fields
-   */
-  static insert<TName extends string, T extends object>(
-    table: Tables<TName, T>,
-    fields?: FieldsOf<T>[] | Field<FieldsOf<T>, JsConstant>[]
-  ): Insert<TName, T> {
-    return new Insert(table, fields);
-  }
-
-  /**
-   * 更新一个表格
-   * @param table
-   */
-  static update<TName extends string, T extends object>(
-    table: Tables<TName, T>
-  ) {
-    return new Update(table).from(table);
-  }
-
-  /**
-   * 删除一个表格
-   * @param table 表格
-   */
-  static delete<TName extends string, T extends object>(
-    table: Tables<TName, T>
-  ) {
-    return new Delete(table);
-  }
-
+export type SelectAction = {
   /**
    * 选择列
    */
-  static select<T extends object>(
-    results: ValueObject<T>
-  ): Select<RowObject<T>>;
-  static select<A extends SelectColumn>(a: A): Select<ResultObjectByColumns<A>>;
-  static select<A extends SelectColumn, B extends SelectColumn>(
+  <T extends object>(results: ValueObject<T>): Select<RowObject<T>>;
+  <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
+  <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
+    ResultObjectByColumns<A, B>
+  >;
+  <A extends SelectCloumn, B extends SelectCloumn, C extends SelectCloumn>(
     a: A,
-    b: B
-  ): Select<ResultObjectByColumns<A, B>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn
-  >(a: A, b?: B, d?: C): Select<ResultObjectByColumns<A, B, C>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn
-  >(a: A, b: B, c: C, d: D): Select<ResultObjectByColumns<A, B, C, D>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn
-  >(a: A, b: B, c: C, d: D, e: E): Select<ResultObjectByColumns<A, B, C, D, E>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn
+    b?: B,
+    d?: C
+  ): Select<ResultObjectByColumns<A, B, C>>;
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn
+  >(
+    a: A,
+    b: B,
+    c: C,
+    d: D
+  ): Select<ResultObjectByColumns<A, B, C, D>>;
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn
+  >(
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+    e: E
+  ): Select<ResultObjectByColumns<A, B, C, D, E>>;
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1243,14 +1234,14 @@ export abstract class Statement extends AST {
     e: E,
     f: F
   ): Select<ResultObjectByColumns<A, B, C, D, E, F>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1260,15 +1251,15 @@ export abstract class Statement extends AST {
     f: F,
     g: G
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1279,16 +1270,16 @@ export abstract class Statement extends AST {
     g: G,
     h: H
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1300,17 +1291,17 @@ export abstract class Statement extends AST {
     h: H,
     i: I
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1323,18 +1314,18 @@ export abstract class Statement extends AST {
     i: I,
     j: J
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1348,19 +1339,19 @@ export abstract class Statement extends AST {
     j: J,
     k: K
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1375,20 +1366,20 @@ export abstract class Statement extends AST {
     k: K,
     l: L
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1404,21 +1395,21 @@ export abstract class Statement extends AST {
     l: L,
     m: M
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1435,22 +1426,22 @@ export abstract class Statement extends AST {
     m: M,
     n: N
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1466,27 +1457,25 @@ export abstract class Statement extends AST {
     l: L,
     m: M,
     n: N,
-    o: O,
-    p: P,
-    q: Q
+    o: O
   ): Select<ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>>;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1507,24 +1496,24 @@ export abstract class Statement extends AST {
   ): Select<
     ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1546,25 +1535,25 @@ export abstract class Statement extends AST {
   ): Select<
     ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1587,26 +1576,26 @@ export abstract class Statement extends AST {
   ): Select<
     ResultObjectByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1650,27 +1639,27 @@ export abstract class Statement extends AST {
       S
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1716,28 +1705,28 @@ export abstract class Statement extends AST {
       T
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1785,29 +1774,29 @@ export abstract class Statement extends AST {
       U
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn,
-    V extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn,
+    V extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1857,30 +1846,30 @@ export abstract class Statement extends AST {
       V
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn,
-    V extends SelectColumn,
-    W extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn,
+    V extends SelectCloumn,
+    W extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -1932,31 +1921,31 @@ export abstract class Statement extends AST {
       W
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn,
-    V extends SelectColumn,
-    W extends SelectColumn,
-    X extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn,
+    V extends SelectCloumn,
+    W extends SelectCloumn,
+    X extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -2010,32 +1999,32 @@ export abstract class Statement extends AST {
       X
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn,
-    V extends SelectColumn,
-    W extends SelectColumn,
-    X extends SelectColumn,
-    Y extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn,
+    V extends SelectCloumn,
+    W extends SelectCloumn,
+    X extends SelectCloumn,
+    Y extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -2091,33 +2080,33 @@ export abstract class Statement extends AST {
       Y
     >
   >;
-  static select<
-    A extends SelectColumn,
-    B extends SelectColumn,
-    C extends SelectColumn,
-    D extends SelectColumn,
-    E extends SelectColumn,
-    F extends SelectColumn,
-    G extends SelectColumn,
-    H extends SelectColumn,
-    I extends SelectColumn,
-    J extends SelectColumn,
-    K extends SelectColumn,
-    L extends SelectColumn,
-    M extends SelectColumn,
-    N extends SelectColumn,
-    O extends SelectColumn,
-    P extends SelectColumn,
-    Q extends SelectColumn,
-    R extends SelectColumn,
-    S extends SelectColumn,
-    T extends SelectColumn,
-    U extends SelectColumn,
-    V extends SelectColumn,
-    W extends SelectColumn,
-    X extends SelectColumn,
-    Y extends SelectColumn,
-    Z extends SelectColumn
+  <
+    A extends SelectCloumn,
+    B extends SelectCloumn,
+    C extends SelectCloumn,
+    D extends SelectCloumn,
+    E extends SelectCloumn,
+    F extends SelectCloumn,
+    G extends SelectCloumn,
+    H extends SelectCloumn,
+    I extends SelectCloumn,
+    J extends SelectCloumn,
+    K extends SelectCloumn,
+    L extends SelectCloumn,
+    M extends SelectCloumn,
+    N extends SelectCloumn,
+    O extends SelectCloumn,
+    P extends SelectCloumn,
+    Q extends SelectCloumn,
+    R extends SelectCloumn,
+    S extends SelectCloumn,
+    T extends SelectCloumn,
+    U extends SelectCloumn,
+    V extends SelectCloumn,
+    W extends SelectCloumn,
+    X extends SelectCloumn,
+    Y extends SelectCloumn,
+    Z extends SelectCloumn
   >(
     a: A,
     b: B,
@@ -2175,36 +2164,112 @@ export abstract class Statement extends AST {
       Z
     >
   >;
-  static select(...args: any[]) {
-    return new Select(...args);
+};
+
+/**
+ * 函数调用表达式
+ */
+export class ScalarFuncInvoke<TReturn extends JsConstant> extends Expression<
+  TReturn
+> {
+  $func: Func<string>;
+  $args: Expression<JsConstant>[];
+  readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
+    SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
+
+  // TODO: 是否需参数的类型判断？
+  constructor(
+    func: Name<string> | Func<string>,
+    args: Expressions<JsConstant>[]
+    // (
+    //   | Parameter<JsConstant>
+    //   | Field<JsConstant, string>
+    //   | Constant<JsConstant>
+    // )[]
+  ) {
+    super();
+    this.$func = ensureFunction(func);
+    this.$args = args.map((expr) => ensureExpression(expr));
   }
+}
+
+export class TableFuncInvoke<TReturn extends object> extends Rowset<TReturn> {
+  readonly $func: Func<string>;
+  readonly $args: Expression<JsConstant>[];
+  readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
+    SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
+
+  constructor(
+    func: Name<string> | Func<string>,
+    args: Expressions<JsConstant>[]
+  ) {
+    super();
+    this.$func = ensureFunction(func);
+    this.$args = args.map((expr) => ensureExpression(expr));
+  }
+}
+
+/**
+ * SQL 语句
+ */
+export abstract class Statement extends AST {
+  /**
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
+   */
+  static insert<T extends object>(
+    table: Tables<T, string>,
+    fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
+  ): Insert<T> {
+    return new Insert(table, fields);
+  }
+
+  /**
+   * 更新一个表格
+   * @param table
+   */
+  static update<T extends object>(table: Tables<T, string>): Update<T> {
+    return new Update(table).from(table);
+  }
+
+  /**
+   * 删除一个表格
+   * @param table 表格
+   */
+  static delete<T extends object>(table: Tables<T, string>): Delete<T> {
+    return new Delete(table);
+  }
+
+  static select: SelectAction = (...args: any[]) => {
+    return new Select(...args);
+  };
 
   /**
    * 执行一个存储过程
    * @param proc
    * @param params
    */
-  static execute(proc: Identifiers<void>, params?: Expressions[]): Execute;
-  static execute(proc: Identifiers<void>, params?: Parameter[]): Execute;
-  static execute(
-    proc: Identifiers<void>,
-    params?: Expressions[] | Parameter[]
-  ): Execute {
-    return new Execute(proc, params);
-  }
-
-  /**
-   * 执行一个存储过程，execute的别名
-   * @param proc 存储过程
-   * @param params 参数
-   */
-  static exec(proc: Identifiers, params?: Expressions[]): Execute;
-  static exec(proc: Identifiers, params?: Parameter[]): Execute;
-  static exec(
-    proc: Identifiers,
-    params?: Expressions[] | Parameter[]
-  ): Execute {
-    return new Execute(proc, params);
+  static execute<T extends object>(
+    proc: Name<string> | Procedure<T, string>,
+    params?: Expressions<JsConstant>[]
+  ): Execute<T>;
+  static execute<T extends object>(
+    proc: Name<string> | Procedure<T, string>,
+    params?: Parameter<JsConstant, string>[]
+  ): Execute<T>;
+  static execute<T extends object>(
+    proc: Name<string> | Procedure<T, string>,
+    params?: InputObject
+  ): Execute<T>;
+  static execute<T extends object>(
+    proc: Name<string> | Procedure<T, string>,
+    params?:
+      | Expressions<JsConstant>[]
+      | Parameter<JsConstant, string>[]
+      | InputObject
+  ): Execute<T> {
+    return new Execute(proc, params as any);
   }
 
   /**
@@ -2212,7 +2277,10 @@ export abstract class Statement extends AST {
    * @param left 左值
    * @param right 右值
    */
-  static assign(left: Expression, right: Expressions) {
+  static assign<T extends JsConstant>(
+    left: Assignable<T>,
+    right: Expressions<T>
+  ) {
     return new Assignment(left, right);
   }
 
@@ -2229,110 +2297,93 @@ export abstract class Statement extends AST {
    * @param expr
    * @param value
    */
-  static when(expr: Expressions, value?: Expressions) {
+  static when(expr: Expressions<JsConstant>, value?: Expressions<JsConstant>) {
     return new When(expr, value);
   }
 
-  static case(expr?: Expressions) {
+  static case(expr?: Expressions<JsConstant>) {
     return new Case(expr);
   }
 
-  static with(withs: WithItems) {
+  /**
+   * With语句
+   */
+  static with(
+    withs: Record<string, Select<object>> | NamedSelect<object, string>[]
+  ) {
     return new With(withs);
   }
+
+  static union<T extends object>(...selects: Select<T>[]): Select<T> {
+    let selec = selects[0];
+    selects.forEach((sel, index) => {
+      if (index < selects.length - 1) sel.union(selects[index + 1]);
+    });
+    return selects[0];
+  }
+
+  static unionAll<T extends object>(...selects: Select<T>[]): Select<T> {
+    let selec = selects[0];
+    selects.forEach((sel, index) => {
+      if (index < selects.length - 1) sel.unionAll(selects[index + 1]);
+    });
+    return selects[0];
+  }
 }
-
-// TODO: 测试完成后删除注释
-// type f = Field<string, JsConstant>
-// type j = Field<'abc', string>
-
-// type c = j extends f ? true : false
-
-const colA = new Star(
-  new Table<"abc", { a: number; b: string }>("abc") as Rowset<{ a: 1; b: 2 }>
-);
-const colB = new Star(
-  new Table<"def", { c: number; d: string }>("def") as Rowset<{ x: 1; y: 2 }>
-);
-const colC = new Field<"sssss", string>("sssss");
-
-const d = Statement.select(colA, colB, colC);
-
-type X<T> = T extends Select<infer G> ? G : never;
-
-type fdsds = X<typeof d>;
-
-// d.as('abc').$field('a')
-
-// type ff = <A extends SelectColumn, B extends SelectColumn, C extends SelectColumn>(a: A, b?: B, c?: C) => ResultObjectByColumns<A, B>
-// const kd: ff = null
-
-// const fffd = kd(colA, colB)
-
-// type s = typeof fffd
-
-// type d = FieldsOf<({ a: 1, b: 2} & { c: 'd' })>
-
-// type x = ResultObjectByColumns<typeof colA, {}>
-
-// type y = ResultObjectByColumns<Star<{ a: 1, b: 2 }>, Field<'abc', string>, typeof colB>
 
 /**
  * When语句
  */
-export class When<T> extends AST {
-  expr: Expression | Condition;
-  value: Expression<T>;
+export class When<T extends JsConstant> extends AST {
+  $expr: Expression<JsConstant> | Condition;
+  $value: Expression<T>;
+  $type: SQL_SYMBOLE.WHEN = SQL_SYMBOLE.WHEN;
 
-  constructor(expr: Expressions | Conditions, then: Expressions) {
-    super(SQL_SYMBOLE.WHEN);
+  constructor(expr: Expressions<JsConstant> | Condition, then: Expressions<T>) {
+    super();
     if (expr instanceof Expression || expr instanceof Condition) {
-      this.expr = expr;
+      this.$expr = expr;
     }
     if (isJsConstant(expr)) {
-      this.expr = ensureExpression(expr as JsConstant);
+      this.$expr = ensureExpression(expr as JsConstant);
     } else {
-      this.expr = ensureCondition(expr as WhereObject);
+      this.$expr = expr;
     }
-    this.value = ensureExpression(then);
+    this.$value = ensureExpression(then);
   }
 }
 
 /**
  * CASE表达式
  */
-export class Case<T = any> extends Expression<T> {
-  get lvalue() {
-    return false;
-  }
-
-  expr: Expression<any> | Condition;
-  whens: When<any>[];
-  defaults?: Expression<T>;
+export class Case<T extends JsConstant> extends Expression<T> {
+  $expr: Expression<any> | Condition;
+  $whens: When<T>[];
+  $default?: Expression<T>;
+  $type: SQL_SYMBOLE.CASE = SQL_SYMBOLE.CASE;
 
   /**
    *
    * @param expr
    */
-  constructor(expr?: Expressions) {
-    super(SQL_SYMBOLE.CASE);
+  constructor(expr?: Expressions<JsConstant>) {
+    super();
     if (expr !== undefined) {
-      this.expr = ensureExpression(expr);
+      this.$expr = ensureExpression(expr);
     }
     /**
      * @type {When[]}
      */
-    this.whens = [];
+    this.$whens = [];
   }
 
   /**
    * ELSE语句
    * @param defaults
    */
-  else<T>(defaults: Expressions<T>): Case<T> {
-    const self: Case<T> = this as any;
-    self.defaults = ensureExpression(defaults as Expressions<any>);
-    return self;
+  else(defaults: Expressions<T>): this {
+    this.$default = ensureExpression(defaults as Expressions<any>);
+    return this;
   }
 
   /**
@@ -2340,9 +2391,9 @@ export class Case<T = any> extends Expression<T> {
    * @param expr
    * @param then
    */
-  when<T>(expr: Expressions | Conditions, then: Expressions<T>): Case<T> {
-    this.whens.push(new When(expr, then));
-    return this as any;
+  when(expr: Expressions<JsConstant> | Condition, then: Expressions<T>): this {
+    this.$whens.push(new When(expr, then));
+    return this;
   }
 }
 
@@ -2363,270 +2414,24 @@ export class Constant<T extends JsConstant> extends Expression<T> {
   }
 }
 
-// /**
-//  * 值列表（不含括号）
-//  */
-// export class List extends AST {
-//   $items: Expression<any>[]
-
-//   constructor(symbol: SQL_SYMBOLE, ...values: Expressions[]) {
-//     super(symbol)
-//     this.$items = values.map(value => ensureConstant(value))
-//   }
-
-//   static values(...values: Expressions[]): List {
-//     return new List(SQL_SYMBOLE.VALUE_LIST, ...values)
-//   }
-
-//   static columns(...exprs: Expressions[]): List {
-//     return new List(SQL_SYMBOLE.COLUMN_LIST, ...exprs)
-//   }
-
-//   static invokeArgs(...exprs: Expressions[]): List {
-//     return new List(SQL_SYMBOLE.INVOKE_ARGUMENT_LIST, ...exprs)
-//   }
-
-//   static execArgs(...exprs: Expressions[]): List {
-//     return new List(SQL_SYMBOLE.EXECUTE_ARGUMENT_LIST, ...exprs)
-//   }
-// }
-
-/**
- * 括号引用
- */
-export class Bracket<
-  T extends AST,
-  TValue = ExpressionType<T>
-> extends Expression<TValue> {
-  get lvalue() {
-    return false;
-  }
-
-  /**
-   * 表达式
-   */
-  context: T;
-
-  constructor(context: T) {
-    super(SQL_SYMBOLE.BRACKET_EXPRESSION);
-    this.context = context;
-  }
-}
-
-// export class BracketExpression extends Bracket<Expressions | List | Select> implements IExpression {
-
-//   /**
-//    * 加法运算
-//    */
-//   add: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 减法运算
-//    */
-//   sub: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 乘法运算
-//    * @param expr 要与当前表达式相乘的表达式
-//    */
-//   mul: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 除法运算
-//    * @param expr 要与当前表达式相除的表达式
-//    * @returns 返回运算后的表达式
-//    */
-//   div: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 算术运算 %
-//    * @param expr 要与当前表达式相除的表达式
-//    * @returns 返回运算后的表达式
-//    */
-//   mod: (expr: UnsureExpressions) => Expression
-
-//   and: (expr: UnsureExpressions) => Expression
-
-//   or: (expr: UnsureExpressions) => Expression
-
-//   not: (expr: UnsureExpressions) => Expression
-//   /**
-//    * 位运算 ^
-//    * @param expr 要与当前表达式相除的表达式
-//    * @returns 返回运算后的表达式
-//    */
-//   xor: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 位运算 <<
-//    * @param expr 要与当前表达式相除的表达式
-//    * @returns 返回运算后的表达式
-//    */
-//   shl: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 位运算 >>
-//    * @param expr 要与当前表达式相除的表达式
-//    * @returns 返回运算后的表达式
-//    */
-//   shr: (expr: UnsureExpressions) => Expression
-
-//   /**
-//    * 比较是否相等 =
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   eq: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否不等于 <>
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   neq: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否小于 <
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   lt: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否小于等于 <=
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   lte: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否大于 >
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   gt: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否小于等于 >=
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   gte: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是相像 LIKE
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   like: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否不想像 NOT LIKE
-//    * @param expr 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   notLike: (expr: UnsureExpressions) => Condition
-
-//   /**
-//    * 比较是否不包含于 IN
-//    * @param values 要与当前表达式相比较的表达式数组
-//    * @returns 返回对比条件表达式
-//    */
-//   in: (...values: UnsureExpressions[]) => Condition
-
-//   /**
-//    * 比较是否不包含于 NOT IN
-//    * @param values 要与当前表达式相比较的表达式
-//    * @returns 返回对比条件表达式
-//    */
-//   notIn: (...values: UnsureExpressions[]) => Condition
-
-//   /**
-//    * 比较是否为空 IS NULL
-//    * @returns 返回对比条件表达式
-//    */
-//   isNull: () => Condition
-
-//   /**
-//    * 比较是否为空 IS NOT NULL
-//    * @returns 返回对比条件表达式
-//    */
-//   isNotNull: () => Condition
-
-//   /**
-//    * isNotNull 的简称别名
-//    * @returns 返回对比条件表达式
-//    */
-//   notNull: () => Condition
-
-//   /**
-//    * 正序
-//    * @returns 返回对比条件表达式
-//    */
-//   asc: () => SortInfo
-
-//   /**
-//    * 倒序
-//    * @returns 返回对比条件表达式
-//    */
-//   desc: () => SortInfo
-
-//   /**
-//    * 为当前表达式添加别名
-//    */
-//   as: (alias: string) => Alias
-
-// }
-
-export class QuotedCondition extends Condition {
+export class GroupCondition extends Condition {
   context: Condition;
 
-  readonly $type: SQL_SYMBOLE.QUOTED_CONDITION = SQL_SYMBOLE.QUOTED_CONDITION;
+  readonly $kind: CONDITION_KIND.GROUP = CONDITION_KIND.GROUP;
 
   constructor(conditions: Conditions<any>) {
     super();
     this.context = ensureCondition(conditions);
   }
-
-  /**
-   * and连接
-   * @param condition 下一个查询条件
-   * @returns 返回新的查询条件
-   */
-  and: (condition: Conditions<any>) => Condition;
-
-  /**
-   * and连接，并在被连接的条件中加上括号 ()
-   * @param condition 下一个查询条件
-   * @returns 返回新的查询条件
-   */
-  andGroup: (condition: Conditions<any>) => Condition;
-
-  /**
-   * OR语句
-   * @param condition
-   * @returns 返回新的查询条件
-   */
-  or: (condition: Conditions<any>) => Condition;
-
-  /**
-   * or 连接，并在被连接的条件中加上括号 ()
-   * @param condition
-   * @returns 返回新的查询条件
-   */
-  orGroup: (condition: Conditions<any>) => Condition;
-
-  /**
-   * 返回括号表达式
-   */
-  quoted: () => Bracket<Condition>;
 }
 
 /**
  * 运算表达式基类
  */
 export abstract class Operation<T extends JsConstant> extends Expression<T> {
-  $operator: CALCULATE_OPERATOR;
+  readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
+  readonly $kind: OPERATION_KIND;
+  $operator: OPERATION_OPERATOR;
 
   /**
    * 算术运算 +
@@ -2635,7 +2440,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
    * @returns 返回算术运算表达式
    */
   static neg(expr: Expressions<number>): Expression<number> {
-    return new UnaryOperation(UNARY_CALCULATE_OPERATOR.NEG, expr);
+    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
   }
 
   /**
@@ -2645,7 +2450,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<string>,
     right: Expressions<string>
   ): Expression<string> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.CONCAT, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, left, right);
   }
 
   /**
@@ -2658,7 +2463,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.ADD, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
   }
 
   /**
@@ -2671,7 +2476,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.SUB, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
   }
 
   /**
@@ -2684,7 +2489,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.MUL, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
   }
 
   /**
@@ -2697,7 +2502,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.DIV, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
   }
 
   /**
@@ -2710,7 +2515,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.MOD, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
   }
 
   /**
@@ -2723,7 +2528,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.AND, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.AND, left, right);
   }
 
   /**
@@ -2736,7 +2541,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.OR, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.OR, left, right);
   }
 
   /**
@@ -2749,7 +2554,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.XOR, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
   }
 
   /**
@@ -2759,7 +2564,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
    * @returns 返回算术运算表达式
    */
   static not(value: Expressions<number>): Expression<number> {
-    return new UnaryOperation(UNARY_CALCULATE_OPERATOR.NOT, value);
+    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NOT, value);
   }
 
   /**
@@ -2772,7 +2577,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.SHL, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
   }
 
   /**
@@ -2785,7 +2590,7 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
     left: Expressions<number>,
     right: Expressions<number>
   ): Expression<number> {
-    return new BinaryOperation(BINARY_CALCULATE_OPERATOR.SHR, left, right);
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
   }
 }
 
@@ -2793,10 +2598,10 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
  * 二元运算表达式
  */
 export class BinaryOperation<T extends JsConstant> extends Operation<T> {
-  $type: SQL_SYMBOLE.BINARY_CALCULATE = SQL_SYMBOLE.BINARY_CALCULATE;
+  readonly $kind: OPERATION_KIND.BINARY = OPERATION_KIND.BINARY;
   $left: Expression<T>;
   $right: Expression<T>;
-  $operator: BINARY_CALCULATE_OPERATOR;
+  $operator: BINARY_OPERATION_OPERATOR;
 
   /**
    * 名称
@@ -2805,7 +2610,7 @@ export class BinaryOperation<T extends JsConstant> extends Operation<T> {
    * @param right 右值
    */
   constructor(
-    operator: BINARY_CALCULATE_OPERATOR,
+    operator: BINARY_OPERATION_OPERATOR,
     left: Expressions<T>,
     right: Expressions<T>
   ) {
@@ -2817,65 +2622,57 @@ export class BinaryOperation<T extends JsConstant> extends Operation<T> {
 }
 
 /**
- * - 运算符
+ * 一元运算符
  */
-export class UnaryOperation extends Expression<number> implements IUnary {
-  readonly $operator: CALCULATE_OPERATOR.NEG;
-  readonly $next: Expression<any>;
-  readonly $type: SQL_SYMBOLE;
+export class UnaryOperation<T extends JsConstant> extends Operation<T> {
+  readonly $value: Expression<JsConstant>;
+  readonly $kind: OPERATION_KIND.UNARY = OPERATION_KIND.UNARY;
+  readonly $operator: UNARY_OPERATION_OPERATOR;
 
-  get lvalue() {
-    return false;
-  }
   /**
-   * 一元运算目前只支持负数运算符
-   * @param expr
+   * 一元运算
+   * @param value
    */
-  constructor(operator: CALCULATE_OPERATOR.NEG, expr: Expressions) {
-    super(SQL_SYMBOLE.UNARY_CALCULATE);
+  constructor(
+    operator: UNARY_OPERATION_OPERATOR,
+    value: Expressions<JsConstant>
+  ) {
+    super();
     this.$operator = operator;
-    this.$next = ensureExpression(expr);
+    this.$value = ensureExpression(value);
   }
 }
 
 /**
  * 联接查询
  */
-export class Union extends AST {
-  select: SelectExpression;
-  all: boolean;
+export class Union<T extends object> extends AST {
+  $select: Select<T>;
+  $all: boolean;
+  $type: SQL_SYMBOLE.UNION = SQL_SYMBOLE.UNION;
+
   /**
    *
    * @param select SELECT语句
    * @param all 是否所有查询
    */
-  constructor(select: SelectExpression, all: boolean = false) {
-    super(SQL_SYMBOLE.UNION);
-    this.select = select;
-    this.all = all;
+  constructor(select: Select<T>, all: boolean = false) {
+    super();
+    this.$select = select;
+    this.$all = all;
   }
 }
 
-// export interface SelectOptions {
-//   from?: UnsureIdentifier[],
-//   top?: number,
-//   offset?: number,
-//   limit?: number,
-//   distinct?: boolean,
-//   columns?: UnsureExpressions[],
-//   joins?: Join[],
-//   where?: Conditions,
-//   orderBy?: (SortInfo | UnsureExpressions)[],
-//   groupBy?: UnsureExpressions[]
-// }
-
-export type SortObject<T = any> = {
-  [K in keyof Filter<T, JsConstant>]?: SORT_DIRECTION;
+/**
+ * 排序对象
+ */
+export type SortObject<T extends object> = {
+  [K in keyof FieldsOf<T>]?: SORT_DIRECTION;
 };
 
 abstract class Fromable extends Statement {
-  $froms?: Table<string, any>[];
-  $joins?: Join<string, any>[];
+  $froms?: Rowset<object>[];
+  $joins?: Join[];
   $where?: Condition;
 
   /**
@@ -2887,7 +2684,7 @@ abstract class Fromable extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: (Name<string> | Table<string, any>)[]): this {
+  from(...tables: (Name<string> | Rowset<object>)[]): this {
     this.$froms = tables.map((table) => {
       if (typeof table === "string" || Array.isArray(table)) {
         return new Table(table);
@@ -2904,7 +2701,7 @@ abstract class Fromable extends Statement {
    * @memberof Select
    */
   join<T extends object>(
-    table: Identifier<T> | string,
+    table: Name<string> | Rowset<T>,
     on: Condition,
     left?: boolean
   ): this {
@@ -2922,7 +2719,7 @@ abstract class Fromable extends Statement {
    * @param on
    */
   leftJoin<T extends object>(
-    table: Identifier<T> | string,
+    table: Name<string> | Rowset<T>,
     on: Condition
   ): this {
     return this.join(table, on, true);
@@ -2932,24 +2729,24 @@ abstract class Fromable extends Statement {
    * where查询条件
    * @param condition
    */
-  where(condition: Conditions) {
+  where<T extends object = any>(condition: Conditions<T>) {
     assert(!this.$where, "where is declared");
     if (_.isPlainObject(condition)) {
       condition = ensureCondition(condition);
     }
-    // assert(condition instanceof Condition, 'Then argument condition must type of Condition')
     this.$where = condition as Condition;
     return this;
   }
 }
 
 export class SortInfo extends AST {
-  expr: Expression;
-  direction?: SORT_DIRECTION;
-  constructor(expr: Expressions, direction?: SORT_DIRECTION) {
-    super(SQL_SYMBOLE.SORT);
-    this.expr = ensureExpression(expr);
-    this.direction = direction;
+  $type: SQL_SYMBOLE.SORT = SQL_SYMBOLE.SORT;
+  $expr: Expression<JsConstant>;
+  $direction?: SORT_DIRECTION;
+  constructor(expr: Expressions<JsConstant>, direction?: SORT_DIRECTION) {
+    super();
+    this.$expr = ensureExpression(expr);
+    this.$direction = direction;
   }
 }
 
@@ -2957,51 +2754,47 @@ export class SortInfo extends AST {
  * SELECT查询
  */
 export class Select<TModel extends object> extends Fromable {
-  $tops?: number;
-  $offsets?: number;
-  $limits?: number;
+  $top?: number;
+  $offset?: number;
+  $limit?: number;
   $distinct?: boolean;
-  $columns: Column<string, JsConstant>[];
+  $columns: Column<JsConstant, string>[];
   $sorts?: SortInfo[];
   $groups?: Expression<any>[];
-  $havings?: Condition;
-  $unions?: Union;
+  $having?: Condition;
+  $union?: Union<TModel>;
 
   readonly $type: SQL_SYMBOLE.SELECT = SQL_SYMBOLE.SELECT;
 
   constructor(valueObject?: ValueObject<TModel>);
   constructor(
     ...columns: (
-      | Field<FieldsOf<TModel>, JsConstant>
-      | Column<string, JsConstant>
+      | Field<JsConstant, FieldsOf<TModel>>
+      | Column<JsConstant, string>
     )[]
   );
   constructor(
-    singleColumn: Expressions<JsConstant> | Column<string, JsConstant>
+    singleColumn: Expressions<JsConstant> | Column<JsConstant, string>
   );
   constructor(...columns: any) {
     super();
     if (columns.length === 1 && _.isPlainObject(columns[0])) {
       const valueObject = columns[0];
-      this.$columns = Object.entries(valueObject).map(([name, expr]) => {
-        new Column(name, expr instanceof AST ? expr : new Constant(name));
-      });
+      this.$columns = Object.entries(valueObject as ValueObject<TModel>).map(
+        ([name, expr]) => {
+          return new Column(name, ensureExpression(expr));
+        }
+      );
       return;
     }
     // 实例化
-    this.$columns = List.columns(
-      ...(columns as Expressions[]).map((expr) => ensureExpression(expr))
-    );
-    // if (options?.from) this.from(...options.from)
-    // if (options?.joins) this.$joins = options.joins
-    // if (options?.columns) this.columns(...options.columns)
-    // if (options?.where) this.where(options.where)
-    // if (options?.orderBy) this.orderBy(...options.orderBy)
-    // if (options?.groupBy) this.groupBy(...options.groupBy)
-    // if (options?.distinct === true) this.distinct()
-    // if (options?.top !== undefined) this.top(options.top)
-    // if (options?.offset !== undefined) this.offset(options.offset)
-    // if (options?.limit !== undefined) this.offset(options.limit)
+    this.$columns = (columns as (
+      | Field<JsConstant, FieldsOf<TModel>>
+      | Column<JsConstant, string>
+    )[]).map((item) => {
+      if (item instanceof Column) return item;
+      return new Column(pickName(item.$name), item);
+    });
   }
 
   /**
@@ -3017,8 +2810,8 @@ export class Select<TModel extends object> extends Fromable {
    * @param rows 行数
    */
   top(rows: number) {
-    assert(_.isUndefined(this.$tops), "top is declared");
-    this.$tops = rows;
+    assert(_.isUndefined(this.$top), "top is declared");
+    this.$top = rows;
     return this;
   }
 
@@ -3026,9 +2819,11 @@ export class Select<TModel extends object> extends Fromable {
    * order by 排序
    * @param sorts 排序信息
    */
-  orderBy(sorts: SortObject): this;
-  orderBy(...sorts: (SortInfo | Expressions)[]): this;
-  orderBy(...sorts: (SortObject | SortInfo | Expressions)[]): this {
+  orderBy(sorts: SortObject<TModel>): this;
+  orderBy(...sorts: (SortInfo | Expressions<JsConstant>)[]): this;
+  orderBy(
+    ...sorts: (SortObject<TModel> | SortInfo | Expressions<JsConstant>)[]
+  ): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(sorts.length > 0, "must have one or more order basis");
     // 如果传入的是对象类型
@@ -3039,9 +2834,11 @@ export class Select<TModel extends object> extends Fromable {
       );
       return this;
     }
-    sorts = sorts as (Expressions | SortInfo)[];
+    sorts = sorts as (Expressions<JsConstant> | SortInfo)[];
     this.$sorts = sorts.map((expr) =>
-      expr instanceof SortInfo ? expr : new SortInfo(expr as Expressions)
+      expr instanceof SortInfo
+        ? expr
+        : new SortInfo(expr as Expressions<JsConstant>)
     );
     return this;
   }
@@ -3050,7 +2847,7 @@ export class Select<TModel extends object> extends Fromable {
    * 分组查询
    * @param groups
    */
-  groupBy(...groups: Expressions[]) {
+  groupBy(...groups: Expressions<JsConstant>[]) {
     this.$groups = groups.map((expr) => ensureExpression(expr));
     return this;
   }
@@ -3059,13 +2856,13 @@ export class Select<TModel extends object> extends Fromable {
    * Having 子句
    * @param condition
    */
-  having(condition: Conditions) {
-    assert(!this.$havings, "having is declared");
+  having(condition: Conditions<TModel>) {
+    assert(!this.$having, "having is declared");
     assert(this.$groups, "Syntax error, group by is not declared.");
     if (!(condition instanceof Condition)) {
       condition = ensureCondition(condition);
     }
-    this.$havings = condition as Condition;
+    this.$having = condition as Condition;
     return this;
   }
 
@@ -3074,7 +2871,7 @@ export class Select<TModel extends object> extends Fromable {
    * @param rows
    */
   offset(rows: number) {
-    this.$offsets = rows;
+    this.$offset = rows;
     return this;
   }
 
@@ -3084,49 +2881,43 @@ export class Select<TModel extends object> extends Fromable {
    */
   limit(rows: number) {
     assert(_.isNumber(rows), "The argument rows must type of Number");
-    this.$limits = rows;
+    this.$limit = rows;
     return this;
   }
 
   /**
    * 合并查询
    */
-  union(select: SelectExpression, all = false) {
-    this.$unions = new Union(select, all);
+  union(select: Select<TModel>, all = false): this {
+    let sel: Select<TModel> = this;
+    while (sel.$union) {
+      sel = sel.$union.$select;
+    }
+    // TODO: 需要优化性能
+    sel.$union = new Union(select, all);
     return this;
   }
 
-  unionAll(select: SelectExpression) {
+  unionAll(select: Select<TModel>): this {
     return this.union(select, true);
-  }
-
-  /**
-   * 将本SELECT返回表达式
-   * @returns 返回一个加()后的SELECT语句
-   */
-  quoted(): Expression<TModel> {
-    return new Bracket(this);
   }
 
   /**
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as(alias: string) {
-    return makeProxiedTable(new Column(this.quoted(), alias));
+  as<TAlias extends string>(alias: TAlias): Rowset<TModel> {
+    return makeProxiedRowset(new NamedSelect(this, alias));
   }
 }
 
 /**
  * Insert 语句
  */
-export class Insert<
-  TName extends string,
-  TModel extends object = any
-> extends Fromable {
-  $table: Table<TName, TModel>;
-  $fields?: Field<FieldsOf<TModel>, JsConstant>[];
-  $values: Expression<JsConstant>[] | Select<TModel>;
+export class Insert<T extends object> extends Fromable {
+  $table: Table<T, string>;
+  $fields?: Field<JsConstant, FieldsOf<T>>[];
+  $values: Expression<JsConstant>[][] | Select<T>;
 
   readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT;
 
@@ -3134,29 +2925,29 @@ export class Insert<
    * 构造函数
    */
   constructor(
-    table: Tables<TName, TModel>,
-    fields?: FieldsOf<TModel>[] | Field<FieldsOf<TModel>, JsConstant>[]
+    table: Tables<T, string>,
+    fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
   ) {
     super();
-    this.$table = ensureTable(table);
+    this.$table = ensureRowset(table) as Table<T, string>;
     if (fields[0] instanceof AST) {
-      this.$fields = (fields as FieldsOf<TModel>[]).map(
+      this.$fields = (fields as FieldsOf<T>[]).map(
         (field) => new Field(field)
       );
     }
   }
 
-  values(select: Select<TModel>): this;
-  values(row: ValueObject<TModel>): this;
+  values(select: Select<T>): this;
+  values(row: ValueObject<T>): this;
   values(row: Expressions<JsConstant>[]): this;
   values(rows: Expressions<JsConstant>[][]): this;
-  values(rows: ValueObject<TModel>[]): this;
+  values(rows: ValueObject<T>[]): this;
   values(...rows: Expressions<JsConstant>[][]): this;
-  values(...rows: ValueObject<TModel>[]): this;
+  values(...rows: ValueObject<T>[]): this;
   values(...args: any[]): this {
     assert(!this.$values, "values is declared");
     assert(args.length > 0, "rows must more than one elements.");
-    let items: ValueObject[], rows: Expressions[][];
+    let items: ValueObject<T>[], rows: Expressions<JsConstant>[][];
     // 单个参数
     if (args.length === 1) {
       const values = args[0];
@@ -3213,7 +3004,9 @@ export class Insert<
 
     // values(rows: UnsureExpressions[][])
     if (rows) {
-      this.$values = rows.map((row) => List.values(...row));
+      this.$values = rows.map((row) =>
+        row.map((expr) => ensureExpression(expr))
+      );
       return this;
     }
 
@@ -3225,14 +3018,14 @@ export class Insert<
           if (!existsFields[field]) existsFields[field] = true;
         })
       );
-      this._fields(...Object.keys(existsFields));
+      this.$fields = (Object.keys(existsFields) as FieldsOf<
+        T
+      >[]).map((fieldName) => this.$table.$field(fieldName)) as any;
     }
+    const fields = this.$fields.map((field) => pickName(field.$name));
 
-    this.$values = items.map((item) => {
-      const rowValues = this.$fields.map(
-        (field) => (item as ValueObject)[field.$name]
-      );
-      return List.values(...rowValues);
+    this.$values = items.map((item: any) => {
+      return fields.map((fieldName) => item[fieldName]);
     });
     return this;
   }
@@ -3248,71 +3041,46 @@ export class Insert<
 /**
  * Update 语句
  */
-export class Update<
-  TName extends string,
-  TModel extends object
-> extends Fromable {
-  $table: Table<TName, TModel>;
-  sets: Assignment<JsConstant, JsConstant>[];
+export class Update<TModel extends object> extends Fromable {
+  $table: Table<TModel, string>;
+  $sets: Assignment<JsConstant>[];
 
   readonly $type: SQL_SYMBOLE.UPDATE = SQL_SYMBOLE.UPDATE;
 
-  constructor(table: Tables<TName, TModel> /*options?: UpdateOptions*/) {
+  constructor(table: Tables<TModel, string>) {
     super();
-    this.$table = ensureTable(table);
-    // if (options?.table) this.from(options.table)
-    // if (options?.sets) this.set(options.sets)
-    // if (options?.where) this.where(options.where)
-    // if (options?.joins) this.$joins = options.joins
+    this.$table = ensureRowset(table) as Table<TModel, string>;
   }
 
   /**
    * @param sets
    */
   set(sets: ValueObject<TModel>): this;
-  set(...sets: Assignment<JsConstant, JsConstant>[]): this;
-  set(
-    ...sets: ValueObject<TModel>[] | Assignment<JsConstant, JsConstant>[]
-  ): this {
-    assert(!this.sets, "set statement is declared");
+  set(...sets: Assignment<JsConstant>[]): this;
+  set(...sets: ValueObject<TModel>[] | Assignment<JsConstant>[]): this {
+    assert(!this.$sets, "set statement is declared");
     assert(sets.length > 0, "sets must have more than 0 items");
     if (sets.length > 1 || sets[0] instanceof Assignment) {
-      this.sets = sets as Assignment<JsConstant, JsConstant>[];
+      this.$sets = sets as Assignment<JsConstant>[];
       return this;
     }
 
     const obj = sets[0];
-    this.sets = Object.entries(obj).map(
+    this.$sets = Object.entries(obj).map(
       ([key, value]) =>
         new Assignment(this.$table.$field(key as any), ensureExpression(value))
     );
     return this;
   }
-
-  // where(condition: WhereObject<T>): this
-  // where(condition: Condition): this
-  // where(condition: Conditions): this {
-  //   return super.where(condition)
-  // }
 }
 
-// export interface DeleteOptions {
-//   table?: UnsureIdentifier
-//   sets?: object | Assignment[]
-//   joins?: Join[]
-//   where?: Conditions
-// }
-
-export class Delete<
-  TName extends string,
-  TModel extends object
-> extends Fromable {
-  $table: Table<TName, TModel>;
+export class Delete<TModel extends object> extends Fromable {
+  $table: Table<TModel, string>;
   $type: SQL_SYMBOLE.DELETE = SQL_SYMBOLE.DELETE;
 
-  constructor(table: Tables<TName, TModel>) {
+  constructor(table: Tables<TModel, string>) {
     super();
-    this.$table = ensureTable(table);
+    this.$table = ensureRowset(table) as Table<TModel, string>;
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
     // if (options?.where) this.where(options.where)
@@ -3325,88 +3093,139 @@ export class Delete<
   }
 }
 
-export class Procedure extends Statement {
-  $args: Parameter<string, JsConstant>[];
+export class Procedure<T extends object, N extends string> extends Identifier<
+  N
+> {
+  $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
+
+  exec(...params: Expressions<JsConstant>[]): Execute<T>;
+  exec(...params: Parameter<JsConstant, string>[]): Execute<T>;
+  exec(params: InputObject): Execute<T>;
+  exec(
+    ...params:
+      | [InputObject]
+      | Parameter<JsConstant, string>[]
+      | Expressions<JsConstant>[]
+  ): Execute<T> {
+    return new Execute(this.$name, params as any);
+  }
 }
+
+// /**
+//  * 存储过程调用时使用的命名参数
+//  */
+// export class NamedArgument<
+//   T extends JsConstant,
+//   N extends string
+//   > extends Identifier<N> {
+//   $kind: IDENTOFIER_KIND.NAMED_ARGUMENT = IDENTOFIER_KIND.NAMED_ARGUMENT;
+//   $name: N;
+//   $value: Expression<T>;
+//   constructor(name: N, value: Expressions<T>) {
+//     super(name);
+//     this.$value = ensureExpression(value);
+//   }
+// }
 
 /**
  * 存储过程执行
  */
-export class Execute extends Statement {
-  proc: Identifier<void>;
-  args: List;
-  constructor(proc: Identifiers, args?: Expressions[]);
-  constructor(proc: Identifiers, args?: Parameter[]);
-  constructor(proc: Identifiers, args?: Expressions[] | Parameter[]);
-  constructor(proc: Identifiers, args?: Expressions[] | Parameter[]) {
-    super(SQL_SYMBOLE.EXECUTE);
-    this.proc = ensureIdentifier(proc);
-    this.args = List.invokeArgs(...(args || []));
+export class Execute<T extends object> extends Statement {
+  readonly $proc: Procedure<T, string>;
+  readonly $args: Expression<JsConstant>[];
+  // | NamedArgument<JsConstant, string>[];
+  readonly $type: SQL_SYMBOLE.EXECUTE = SQL_SYMBOLE.EXECUTE;
+
+  // constructor(proc: Name<string> | Procedure<T, string>, params?: InputObject);
+  constructor(
+    proc: Name<string> | Procedure<T, string>,
+    params?: // | InputObject
+    Expressions<JsConstant>[]
+  ) {
+    super();
+    this.$proc = ensureProcedure(proc);
+    // if (!Array.isArray(params)) {
+    //   this.$args = Object.entries(params).map(
+    //     ([name, expr]) => new NamedArgument(name, expr)
+    //   );
+    // } else
+    if (params[0] instanceof Parameter) {
+      this.$args = params as Parameter<JsConstant, string>[];
+    } else {
+      this.$args = (params as Expressions<JsConstant>[]).map((expr) =>
+        ensureExpression(expr)
+      );
+    }
   }
 }
 
 /**
  * 赋值语句
  */
-export class Assignment<
-  TLeft extends JsConstant,
-  TRight extends JsConstant
-> extends Statement {
-  left: Expression<TLeft>;
-  right: Expression<TRight>;
+export class Assignment<T extends JsConstant> extends Statement {
+  left: Assignable<T>;
+  right: Expression<T>;
+  $type: SQL_SYMBOLE.ASSIGNMENT = SQL_SYMBOLE.ASSIGNMENT;
 
-  constructor(left: Assignable<TLeft>, right: Expressions<TRight>) {
-    super(SQL_SYMBOLE.ASSIGNMENT);
+  constructor(left: Assignable<T>, right: Expressions<T>) {
+    super();
     this.left = left;
     this.right = ensureExpression(right);
   }
 }
 
 export class VariantDeclare extends AST {
+  readonly $type: SQL_SYMBOLE.VARAINT_DECLARE = SQL_SYMBOLE.VARAINT_DECLARE;
+
   constructor(name: string, dataType: string) {
-    super(SQL_SYMBOLE.VARAINT_DECLARE);
-    this.name = name;
-    this.dataType = dataType;
+    super();
+    this.$name = name;
+    this.$dataType = dataType;
   }
 
-  name: string;
-  dataType: string;
+  $name: string;
+  $dataType: string;
 }
 
 /**
  * 声明语句，暂时只支持变量声明
  */
 export class Declare extends Statement {
-  declares: VariantDeclare[];
-
+  $declares: VariantDeclare[];
+  readonly $type: SQL_SYMBOLE.DECLARE = SQL_SYMBOLE.DECLARE;
   constructor(...declares: VariantDeclare[]) {
-    super(SQL_SYMBOLE.DECLARE);
-    this.declares = declares;
+    super();
+    this.$declares = declares;
   }
 }
 
-type DbType = string;
+type DbType = string | Function;
 
 /**
  * 程序与数据库间传递值所使用的参数
  */
 export class Parameter<
-  TName extends string,
-  T extends JsConstant
-> extends Identifier<TName> {
-  $name: Name<TName>;
+    T extends JsConstant = JsConstant,
+    N extends string = string
+  >
+  extends Expression<T>
+  implements Identifier<N> {
+  $name: Name<N>;
+  $buildin: boolean = false;
   $direction: PARAMETER_DIRECTION;
   $dbType?: DbType;
+  $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.PARAMETER = IDENTOFIER_KIND.PARAMETER;
   $value: T;
 
   constructor(
-    name: Name<TName>,
+    name: Name<N>,
     dbType: DbType,
     value: T,
     direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT
   ) {
-    super(name);
+    super();
+    // Identifier.call(this, name, false);
     this.$value = value; // ensureConstant(value)
     this.$dbType = dbType;
     this.$direction = direction;
@@ -3427,77 +3246,104 @@ export class Parameter<
   }
 }
 
+applyMixins(Parameter, [Identifier]);
+
 /**
  * SQL 文档
  */
 export class Document extends AST {
   statements: Statement[];
+  $type: SQL_SYMBOLE.DOCUMENT = SQL_SYMBOLE.DOCUMENT;
+
   constructor(...statements: Statement[]) {
-    super(SQL_SYMBOLE.DOCUMENT);
+    super();
     this.statements = statements;
   }
 }
 
-export class Raw<T = any>
-  extends Expression<T>
-  implements Statement, Document, Condition {
-  sql: string;
-  private _lvalue: boolean;
+/**
+ * 源始SQL，用于将SQL代码插入语句任何部位
+ */
+export class Raw extends AST {
+  readonly $type: SQL_SYMBOLE.RAW = SQL_SYMBOLE.RAW;
+
+  $sql: string;
+
   constructor(sql: string) {
-    super(SQL_SYMBOLE.RAW);
-    this.sql = sql;
-  }
-  and: (condition: Condition) => Condition;
-  or: (condition: Condition) => Condition;
-  andGroup: (condition: Condition) => Condition;
-  orGroup: (condition: Condition) => Condition;
-
-  get statements(): Statement[] {
-    return [this];
-  }
-
-  get lvalue(): boolean {
-    if (this._lvalue === null || this._lvalue === undefined) {
-      throw new Error("Unset lvalue!");
-    }
-    return this._lvalue;
-  }
-
-  set lvalue(value: boolean) {
-    this._lvalue = value;
+    super();
+    this.$sql = sql;
   }
 }
 
-Object.assign(Raw, ConditionPrototype);
+/**
+ * 具名SELECT语句，可用于子查询，With语句等
+ */
+export class NamedSelect<T extends object, A extends string> extends Rowset<T> {
+  readonly $type = SQL_SYMBOLE.NAMED_SELECT;
+  $statement: Select<T>;
+  $alias: Alias<A>;
 
-export class WithItem<T, TName extends string> extends NamedObject<T, TName> {
-  constructor(expr: Expression<T>, name: TName) {
-    super(expr, name, SQL_SYMBOLE.WITH_ITEM);
+  constructor(statement: Select<T>, alias: A) {
+    super();
+    this.$as(alias);
+    this.$statement = statement;
+  }
+}
+
+/**
+ * 具名SELECT语句，可用于子查询，With语句等
+ */
+export class WithSelect<T extends object, A extends string> extends Rowset<T> {
+  readonly $type = SQL_SYMBOLE.WITH_SELECT;
+  $statement: Select<T>;
+  $alias: Alias<A>;
+
+  constructor(statement: Select<T>, alias: A) {
+    super();
+    this.$as(alias);
+    this.$statement = statement;
   }
 }
 
 export class With extends AST {
-  constructor(...items: WithItem<any, any>[]) {
-    super(SQL_SYMBOLE.WITH);
-    this.items = items;
+  $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
+
+  $items: WithSelect<object, string>[];
+
+  /**
+   * With结构
+   */
+  constructor(
+    items: Record<string, Select<object>> | WithSelect<object, string>[]
+  ) {
+    super();
+    if (Array.isArray(items)) {
+      this.$items = items;
+    } else {
+      this.$items = Object.entries(items).map(
+        ([alias, sel]) => new WithSelect(sel, alias)
+      );
+    }
   }
 
-  items: WithItem<any, any>[];
-
-  select<T extends object>(results: ValueObject<T>): Select<RowObject<T>>;
-  select<T = any>(...columns: Expressions[]): Select<T>;
-  select(...args: any) {
-    const sql = Statement.select(...args);
+  /**
+   * select查询
+   */
+  select: SelectAction = (...args: any[]) => {
+    const sql = Statement.select.call(Statement, ...args);
     sql.$with = this;
     return sql;
-  }
+  };
 
   /**
    * 插入至表,into的别名
    * @param table
    * @param fields
    */
-  insert<T extends object>(table: Identifiers<T>, fields?: Identifiers[]) {
+  insert<T extends object>(
+    table: Name<string> | Tables<T, string>,
+    fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
+  ): Insert<T> {
     const sql = Statement.insert(table, fields);
     sql.$with = this;
     return sql;
@@ -3507,7 +3353,7 @@ export class With extends AST {
    * 更新一个表格
    * @param table
    */
-  update<T extends object>(table: Identifiers<T>) {
+  update<T extends object>(table: Name<string> | Tables<T, string>): Update<T> {
     const sql = Statement.update(table);
     sql.$with = this;
     return sql;
@@ -3517,8 +3363,9 @@ export class With extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  delete<T extends object>(table: Identifiers<T>) {
+  delete<T extends object>(table: Name<string> | Tables<T, string>): Delete<T> {
     const sql = Statement.delete(table);
     sql.$with = this;
+    return sql;
   }
 }
