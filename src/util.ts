@@ -9,10 +9,10 @@ import {
   Func,
   Name,
   Table,
-  Field
-} from './ast'
-import { constant, func } from './builder'
-import { PathedName, Procedure, Rowset } from './lube'
+  Field,
+} from "./ast";
+import { constant, func } from "./builder";
+import { PathedName, Procedure, Rowset } from "./lube";
 
 /**
  * 断言
@@ -21,52 +21,62 @@ import { PathedName, Procedure, Rowset } from './lube'
  */
 export function assert(except: any, message: string) {
   if (!except) {
-    throw new Error(message)
+    throw new Error(message);
   }
 }
 
 /**
  * 返回表达式
  */
-export function ensureExpression<T extends JsConstant>(expr: Expressions<T>): Expression<T> {
+export function ensureExpression<T extends JsConstant>(
+  expr: Expressions<T>
+): Expression<T> {
   if (!(expr instanceof AST)) {
-    return constant(expr)
+    return constant(expr);
   }
-  return expr
+  return expr;
 }
 
 /**
  * 确保字段类型
  */
-export function ensureField<T extends JsConstant, N extends string>(name: Name<N> | Field<T, N>): Field<T, N> {
+export function ensureField<T extends JsConstant, N extends string>(
+  name: Name<N> | Field<T, N>
+): Field<T, N> {
   if (!(name instanceof AST)) {
-    return new Field(name)
+    return new Field(name);
   }
-  return name
+  return name;
 }
 
 /**
  * 确保表格类型
  */
-export function ensureRowset<TModel extends object>(name: Name<string> | Rowset<TModel>): Rowset<TModel> {
-  if (name instanceof AST) return name
-  return new Table(name)
+export function ensureRowset<TModel extends object>(
+  name: Name<string> | Rowset<TModel>
+): Rowset<TModel> {
+  if (name instanceof AST) return name;
+  return new Table(name);
 }
 
 /**
  * 确保函数类型
  */
-export function ensureFunction<TName extends string>(name: Name<TName> | Func<TName>): Func<TName> {
-  if (name instanceof AST) return name
-  return new Func(name)
+export function ensureFunction<TName extends string>(
+  name: Name<TName> | Func<TName>
+): Func<TName> {
+  if (name instanceof AST) return name;
+  return new Func(name);
 }
 
 /**
  * 确保标题函数类型
  */
-export function ensureProcedure<T extends object, N extends string>(name: Name<N> | Procedure<T, N>): Procedure<T, N> {
-  if (name instanceof AST) return name
-  return new Procedure(name)
+export function ensureProcedure<T extends object, N extends string>(
+  name: Name<N> | Procedure<T, N>
+): Procedure<T, N> {
+  if (name instanceof AST) return name;
+  return new Procedure(name);
 }
 
 /**
@@ -74,20 +84,22 @@ export function ensureProcedure<T extends object, N extends string>(name: Name<N
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition<T extends object>(condition: Conditions<T>): Condition {
-  if (condition instanceof Condition) return condition
+export function ensureCondition<T extends object>(
+  condition: Conditions<T>
+): Condition {
+  if (condition instanceof Condition) return condition;
   const compares = Object.entries(condition).map(([key, value]) => {
-    const field = new Field(key)
+    const field = new Field(key);
     if (value === null || value === undefined) {
-      return Condition.isNull(field)
+      return Condition.isNull(field);
     }
     if (Array.isArray(value)) {
-      return Condition.in(field, value)
+      return Condition.in(field, value);
     }
-    return Condition.eq(field, value)
-  })
+    return Condition.eq(field, value);
+  });
 
-  return compares.length >= 2 ? Condition.and(...compares) : compares[0]
+  return compares.length >= 2 ? Condition.and(...compares) : compares[0];
 }
 
 /**
@@ -95,83 +107,109 @@ export function ensureCondition<T extends object>(condition: Conditions<T>): Con
  */
 export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
   return new Proxy(table as any, {
-    get (target: Rowset<any>, prop: any): any {
+    get(target: Rowset<any>, prop: any): any {
       if (Reflect.has(target, prop)) {
-        return Reflect.get(target, prop)
+        return Reflect.get(target, prop);
       }
-      if (typeof prop === 'string') {
+      if (typeof prop === "string") {
         // $开头，实为转义符，避免字段命名冲突，程序自动移除首个
-        if (prop.startsWith('$')) {
-          prop = prop.substring(1)
+        if (prop.startsWith("$")) {
+          prop = prop.substring(1);
         }
-        return target.field(prop)
+        return target.field(prop);
       }
-      return undefined
-    }
-  }) as any
+      return undefined;
+    },
+  }) as any;
 }
 
 export function isJsConstant(value: any): value is JsConstant {
-  return typeof value === 'string' || typeof value === 'boolean' || typeof value === 'bigint' ||
-    typeof value === 'number' || value === null || value === undefined || value instanceof Date || value instanceof Uint8Array
+  return (
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    typeof value === "number" ||
+    value === null ||
+    value === undefined ||
+    value instanceof Date ||
+    value instanceof Uint8Array
+  );
 }
 
 export type Constructor<T> = {
-  new (...args: any): T
-}
+  new (...args: any): T;
+};
 
 export type MixinedConstructor<A, B, C = unknown, D = unknown, E = unknown> = {
-  new (): A & B & C & D & E
-}
+  new (): A & B & C & D & E;
+};
 
 /**
  * 混入
  */
-export function mixins<Base, A>(baseCls: Constructor<Base>, extend1: Constructor<A>): MixinedConstructor<Base, A>
-export function mixins<Base, A, B>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>): MixinedConstructor<Base, A, B>
-export function mixins<Base, A, B, C>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>, extend3: Constructor<C>): MixinedConstructor<Base, A, B, C>
-export function mixins<Base, A, B, C, D>(baseCls: Constructor<Base>, extend1: Constructor<A>, extend2: Constructor<B>, extend3: Constructor<C>, extend4: Constructor<D>): MixinedConstructor<Base, A, B, C, D>
+export function mixins<Base, A>(
+  baseCls: Constructor<Base>,
+  extend1: Constructor<A>
+): MixinedConstructor<Base, A>;
+export function mixins<Base, A, B>(
+  baseCls: Constructor<Base>,
+  extend1: Constructor<A>,
+  extend2: Constructor<B>
+): MixinedConstructor<Base, A, B>;
+export function mixins<Base, A, B, C>(
+  baseCls: Constructor<Base>,
+  extend1: Constructor<A>,
+  extend2: Constructor<B>,
+  extend3: Constructor<C>
+): MixinedConstructor<Base, A, B, C>;
+export function mixins<Base, A, B, C, D>(
+  baseCls: Constructor<Base>,
+  extend1: Constructor<A>,
+  extend2: Constructor<B>,
+  extend3: Constructor<C>,
+  extend4: Constructor<D>
+): MixinedConstructor<Base, A, B, C, D>;
 export function mixins(...classes: Constructor<any>[]): any {
-  const cls = class MixinedClass extends classes[0] {}
-  const proto: any = cls.prototype
-  classes.forEach(fn => {
-    Object.getOwnPropertyNames(fn.prototype).forEach(name => {
+  const cls = class MixinedClass extends classes[0] {};
+  const proto: any = cls.prototype;
+  classes.forEach((fn) => {
+    Object.getOwnPropertyNames(fn.prototype).forEach((name) => {
       /**
        * 不改变构造函数
        */
-      if (name !== 'constructor') {
+      if (name !== "constructor") {
         if (proto[name]) {
-          throw new Error(`在混入合并时，发现属性冲突！属性名：${name}`)
+          throw new Error(`在混入合并时，发现属性冲突！属性名：${name}`);
         }
-        proto[name] = fn.prototype[name]
+        proto[name] = fn.prototype[name];
       }
-    })
-  })
-  return cls
+    });
+  });
+  return cls;
 }
 
 export function applyMixins(derivedCtor: any, baseCtors: any[]) {
-  baseCtors.forEach(baseCtor => {
-      Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
-          derivedCtor.prototype[name] = baseCtor.prototype[name];
-      })
+  baseCtors.forEach((baseCtor) => {
+    Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
+      derivedCtor.prototype[name] = baseCtor.prototype[name];
+    });
   });
 }
 
 export function pickName(name: Name<string>): string {
-  if (typeof name === 'string') {
-    return name
+  if (typeof name === "string") {
+    return name;
   }
-  return name[name.length - 1]
+  return name[name.length - 1];
 }
 
 export function pathName<T extends string>(name: Name<T>): PathedName<T> {
-  if (typeof name === 'string') {
-    return [name]
+  if (typeof name === "string") {
+    return [name];
   }
-  return name
+  return name;
 }
 
 export function isPlainObject(obj: any) {
-  return [Object.prototype, null].includes(Object.getPrototypeOf(obj))
+  return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
 }
