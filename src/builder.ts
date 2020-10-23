@@ -131,6 +131,8 @@ export const del = Statement.delete
 
 export const $delete = Statement.delete
 
+export const star = Identifier.star
+
 /**
  * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
  * @param name
@@ -161,6 +163,8 @@ export const proc = Identifier.proc;
 
 export const constant = Constant.const;
 
+export const variant = Identifier.variant;
+
 /**
  * 语句
  */
@@ -171,6 +175,8 @@ export const SQL = {
   delete: $delete,
   case: $case,
   with: $with,
+  tableFn,
+  scalarFn,
   execute,
   exec,
   when,
@@ -184,11 +190,8 @@ export const SQL = {
   or,
   variant,
   var: variant,
-  bracket: group,
-  quoted,
+  group,
   raw,
-  any,
-  anyFields
 }
 
 export default SQL

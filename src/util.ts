@@ -11,7 +11,7 @@ import {
   Table,
   Field
 } from './ast'
-import { constant } from './builder'
+import { constant, func } from './builder'
 import { PathedName, Procedure, Rowset } from './lube'
 
 /**
@@ -104,7 +104,7 @@ export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return target.$field(prop)
+        return target.field(prop)
       }
       return undefined
     }
@@ -170,4 +170,8 @@ export function pathName<T extends string>(name: Name<T>): PathedName<T> {
     return [name]
   }
   return name
+}
+
+export function isPlainObject(obj: any) {
+  return [Object.prototype, null].includes(Object.getPrototypeOf(obj))
 }

@@ -772,7 +772,7 @@ export class Compiler {
     if ($distinct) {
       sql += 'DISTINCT '
     }
-    if (_.isNumber($top)) {
+    if (typeof $top === 'number') {
       sql += `TOP ${$top} `
     }
     sql += $columns
@@ -807,10 +807,10 @@ export class Compiler {
         $sorts.map(sort => this.compileSort(sort, params, parent)).join(', ')
     }
 
-    if (_.isNumber($offset)) {
+    if (typeof $offset === 'number') {
       sql += ` OFFSET ${$offset || 0} ROWS`
     }
-    if (_.isNumber($limit)) {
+    if (typeof $limit === 'number') {
       sql += ` FETCH NEXT ${$limit} ROWS ONLY`
     }
 

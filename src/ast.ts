@@ -1,8 +1,3 @@
-/**
- * lodash
- */
-import * as _ from 'lodash'
-
 import {
   assert,
   ensureExpression,
@@ -15,7 +10,8 @@ import {
   ensureFunction,
   ensureProcedure,
   pickName,
-  pathName
+  pathName,
+  isPlainObject
 } from './util'
 
 import {
@@ -32,11 +28,7 @@ import {
   UNARY_COMPARE_OPERATOR,
   CONDITION_KIND,
   OPERATION_KIND
-  // FUNCTION_TYPE,
 } from './constants'
-import { identifier } from './builder'
-import { QueryResult } from './lube'
-import { Mode } from 'fs'
 
 // **********************************类型声明******************************************
 
@@ -208,8 +200,9 @@ export type FieldsOf<T extends Model> = Exclude<
 >
 
 export type ProxiedRowset<T> = T extends Rowset<infer M> ? (T & {
-    [P in FieldsOf<M>]: Field<M[P], P>
-  }) : never
+  // 排除AST自有属性
+  [P in Exclude<FieldsOf<M>, keyof Table<any, string>>]: Field<M[P], P>
+}) : never
 
 /**
  * AST 基类
@@ -538,7 +531,7 @@ export abstract class Condition extends AST {
    */
   static and (...conditions: Condition[]): Condition {
     assert(
-      _.isArray(conditions) && conditions.length > 1,
+      Array.isArray(conditions) && conditions.length > 1,
       'Conditions must type of Array & have two or more elements.'
     )
     return Condition.group(
@@ -558,7 +551,7 @@ export abstract class Condition extends AST {
    */
   static or (...conditions: Condition[]): Condition {
     assert(
-      _.isArray(conditions) && conditions.length > 1,
+      Array.isArray(conditions) && conditions.length > 1,
       'Conditions must type of Array & have two or more elements.'
     )
     return Condition.group(
@@ -830,7 +823,7 @@ export class BinaryCompareCondition extends Condition {
     super()
     this.$operator = operator
     this.$left = ensureExpression(left)
-    if (_.isArray(right)) {
+    if (Array.isArray(right)) {
       this.$right = right.map(expr => ensureExpression(expr))
     } else {
       this.$right = ensureExpression(right)
@@ -972,6 +965,10 @@ export abstract class Identifier<TName extends string> extends AST {
   static variant<T extends JsConstant, N extends string>(name: N) {
     return new Variant(name)
   }
+
+  static star() {
+    return new Star()
+  }
 }
 
 /**
@@ -1100,7 +1097,7 @@ export abstract class Rowset<T extends Model> extends AST {
   /**
    * 为当前表添加别名
    */
-  $as (alias: string): this {
+  as (alias: string): this {
     this.$alias = new Alias(alias)
     return this
   }
@@ -1109,7 +1106,7 @@ export abstract class Rowset<T extends Model> extends AST {
    * 访问下一节点
    * @param name 节点名称
    */
-  $field<P extends FieldsOf<T>> (
+  field<P extends FieldsOf<T>> (
     name: P
   ): Field<T[P], P> {
     if (this.$alias) {
@@ -1122,8 +1119,8 @@ export abstract class Rowset<T extends Model> extends AST {
   /**
    * 获取所有字段
    */
-  $star (): Star<T> {
-    return new Star(this.$alias.$name)
+  get $(): Star<T> {
+    return new Star<T>(this.$alias.$name)
   }
 }
 
@@ -1146,10 +1143,9 @@ export class Table<T extends Model, N extends string> extends Rowset<T>
    * 访问字段
    * @param name 节点名称
    */
-  $field<P extends FieldsOf<T>> (
+  field<P extends FieldsOf<T>> (
     name: P
   ): Field<T[P], P> {
-    // @ts-ignore
     if (this.$alias) {
       return new Field<T[P], P>([this.$alias.$name, name])
     }
@@ -1162,7 +1158,12 @@ export class Table<T extends Model, N extends string> extends Rowset<T>
   /**
    * 获取所有字段
    */
-  $star: () => Star<T>
+  get $(): Star<T> {
+    if (this.$alias) {
+      return super.$
+    }
+    return new Star(this.$name)
+  }
 }
 
 applyMixins(Table, [Rowset])
@@ -1202,7 +1203,7 @@ applyMixins(Variant, [Identifier])
 /**
  * 列表达式
  */
-export class Column<T extends JsConstant, N extends string> extends Identifier<
+export class Column<T extends JsConstant = JsConstant, N extends string = string> extends Identifier<
   N
 > {
   /**
@@ -2214,6 +2215,7 @@ export type SelectAction = {
       Z
     >
   >
+  <T extends Model = Model>(...columns: Column[] | Expressions[]): Select<T>
 }
 
 /**
@@ -2742,7 +2744,7 @@ abstract class Fromable extends CrudStatement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from (...tables: (Name<string> | Rowset<any>)[]): this {
+  from (...tables: (Name<string> | Rowset<any> | Table<any, string>)[]): this {
     this.$froms = tables.map(table => {
       if (typeof table === 'string' || Array.isArray(table)) {
         return new Table(table)
@@ -2796,7 +2798,7 @@ abstract class Fromable extends CrudStatement {
    */
   where<T extends Model = any> (condition: Conditions<T>) {
     assert(!this.$where, 'where is declared')
-    if (_.isPlainObject(condition)) {
+    if (isPlainObject(condition)) {
       condition = ensureCondition(condition)
     }
     this.$where = condition as Condition
@@ -2818,7 +2820,7 @@ export class SortInfo extends AST {
 /**
  * SELECT查询
  */
-export class Select<TModel extends Model> extends Fromable {
+export class Select<T extends Model> extends Fromable {
   $top?: number
   $offset?: number
   $limit?: number
@@ -2827,14 +2829,14 @@ export class Select<TModel extends Model> extends Fromable {
   $sorts?: SortInfo[]
   $groups?: Expression<any>[]
   $having?: Condition
-  $union?: Union<TModel>
+  $union?: Union<T>
 
   readonly $type: SQL_SYMBOLE.SELECT = SQL_SYMBOLE.SELECT
 
-  constructor (valueObject?: ValueObject<TModel>)
+  constructor (valueObject?: ValueObject<T>)
   constructor (
     ...columns: (
-      | Field<JsConstant, FieldsOf<TModel>>
+      | Field<JsConstant, FieldsOf<T>>
       | Column<JsConstant, string>
     )[]
   )
@@ -2843,10 +2845,10 @@ export class Select<TModel extends Model> extends Fromable {
   )
   constructor (...columns: any) {
     super()
-    if (columns.length === 1 && _.isPlainObject(columns[0])) {
+    if (columns.length === 1 && isPlainObject(columns[0])) {
       const valueObject = columns[0]
-      this.$columns = Object.entries(valueObject as ValueObject<TModel>).map(
-        ([name, expr]) => {
+      this.$columns = Object.entries(valueObject as ValueObject<T>).map(
+        ([name, expr]: [string, Expressions]) => {
           return new Column(name, ensureExpression(expr))
         }
       )
@@ -2854,7 +2856,7 @@ export class Select<TModel extends Model> extends Fromable {
     }
     // 实例化
     this.$columns = (columns as (
-      | Field<JsConstant, FieldsOf<TModel>>
+      | Field<JsConstant, FieldsOf<T>>
       | Column<JsConstant, string>
     )[]).map(item => {
       if (item instanceof Column) return item
@@ -2875,7 +2877,7 @@ export class Select<TModel extends Model> extends Fromable {
    * @param rows 行数
    */
   top (rows: number) {
-    assert(_.isUndefined(this.$top), 'top is declared')
+    // assert(typeof this.$top === 'undefined', 'top is declared')
     this.$top = rows
     return this
   }
@@ -2884,15 +2886,15 @@ export class Select<TModel extends Model> extends Fromable {
    * order by 排序
    * @param sorts 排序信息
    */
-  orderBy (sorts: SortObject<TModel>): this
+  orderBy (sorts: SortObject<T>): this
   orderBy (...sorts: (SortInfo | Expressions<JsConstant>)[]): this
   orderBy (
-    ...sorts: (SortObject<TModel> | SortInfo | Expressions<JsConstant>)[]
+    ...sorts: (SortObject<T> | SortInfo | Expressions<JsConstant>)[]
   ): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(sorts.length > 0, 'must have one or more order basis')
     // 如果传入的是对象类型
-    if (sorts.length === 1 && _.isPlainObject(sorts[0])) {
+    if (sorts.length === 1 && isPlainObject(sorts[0])) {
       const obj = sorts[0]
       this.$sorts = Object.entries(obj).map(
         ([expr, direction]) => new SortInfo(expr, direction as SORT_DIRECTION)
@@ -2921,7 +2923,7 @@ export class Select<TModel extends Model> extends Fromable {
    * Having 子句
    * @param condition
    */
-  having (condition: Conditions<TModel>) {
+  having (condition: Conditions<T>) {
     assert(!this.$having, 'having is declared')
     assert(this.$groups, 'Syntax error, group by is not declared.')
     if (!(condition instanceof Condition)) {
@@ -2945,7 +2947,7 @@ export class Select<TModel extends Model> extends Fromable {
    * @param rows
    */
   limit (rows: number) {
-    assert(_.isNumber(rows), 'The argument rows must type of Number')
+    // assert(typeof rows === 'number', 'The argument rows must type of Number')
     this.$limit = rows
     return this
   }
@@ -2953,8 +2955,8 @@ export class Select<TModel extends Model> extends Fromable {
   /**
    * 合并查询
    */
-  union (select: Select<TModel>, all = false): this {
-    let sel: Select<TModel> = this
+  union (select: Select<T>, all = false): this {
+    let sel: Select<T> = this
     while (sel.$union) {
       sel = sel.$union.$select
     }
@@ -2963,7 +2965,7 @@ export class Select<TModel extends Model> extends Fromable {
     return this
   }
 
-  unionAll (select: Select<TModel>): this {
+  unionAll (select: Select<T>): this {
     return this.union(select, true)
   }
 
@@ -2971,7 +2973,7 @@ export class Select<TModel extends Model> extends Fromable {
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as<TAlias extends string> (alias: TAlias): Rowset<TModel> {
+  as<TAlias extends string> (alias: TAlias): Rowset<T> {
     return makeProxiedRowset(new NamedSelect(this, alias))
   }
 }
@@ -3018,9 +3020,9 @@ export class Insert<T extends Model> extends CrudStatement {
         return this
       }
       // values(UnsureExpression[] | ValuesObject[] | UnsureExpression[])
-      if (_.isArray(values)) {
+      if (Array.isArray(values)) {
         // values(UnsureExpression[][])
-        if (_.isArray(values[0])) {
+        if (Array.isArray(values[0])) {
           rows = args[0]
         }
         // values(UnsureExpression[])
@@ -3032,25 +3034,25 @@ export class Insert<T extends Model> extends CrudStatement {
           rows = [values]
         }
         // values(ValueObject[])
-        else if (_.isObject(values[0])) {
+        else if (typeof values[0] === 'object') {
           items = values
         } else {
           throw new Error('invalid arguments！')
         }
       }
       // values(ValueObject)
-      else if (_.isObject(values)) {
+      else if (typeof values === 'object') {
         items = args
       } else {
         throw new Error('invalid arguments！')
       }
     } else {
-      if (_.isArray(args[0])) {
+      if (Array.isArray(args[0])) {
         // values(...UsureExpression[][])
         rows = args
       }
       // values(...ValueObject[])
-      else if (_.isObject(args[0])) {
+      else if (typeof args[0] === 'object') {
         items = args
       }
       // invalid
@@ -3078,7 +3080,7 @@ export class Insert<T extends Model> extends CrudStatement {
         })
       )
       this.$fields = (Object.keys(existsFields) as FieldsOf<T>[]).map(
-        fieldName => this.$table.$field(fieldName)
+        fieldName => this.$table.field(fieldName)
       ) as any
     }
     const fields = this.$fields.map(field => pickName(field.$name))
@@ -3126,33 +3128,27 @@ export class Update<TModel extends Model> extends Fromable {
 
     const obj = sets[0]
     this.$sets = Object.entries(obj).map(
-      ([key, value]) =>
-        new Assignment(this.$table.$field(key as any), ensureExpression(value))
+      ([key, value]: [string, Expressions]) =>
+        new Assignment(this.$table.field(key as any), ensureExpression(value))
     )
     return this
   }
 }
 
-export class Delete<TModel extends Model> extends Fromable {
-  $table: Table<TModel, string>
+export class Delete<T extends Model> extends Fromable {
+  $table: Table<T, string>
   $type: SQL_SYMBOLE.DELETE = SQL_SYMBOLE.DELETE
 
-  constructor (table: Tables<TModel, string>) {
+  constructor (table: Tables<T, string>) {
     super()
-    this.$table = ensureRowset(table) as Table<TModel, string>
+    this.$table = ensureRowset(table) as Table<T, string>
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
     // if (options?.where) this.where(options.where)
   }
-
-  where (condition: Condition): this
-  where (condition: WhereObject<TModel>): this
-  where (condition: Conditions<TModel>): this {
-    return super.where(condition)
-  }
 }
 
-export class Procedure<T extends Model, N extends string> extends Identifier<
+export class Procedure<T extends Model, N extends string = string> extends Identifier<
   N
 > {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE
@@ -3220,7 +3216,7 @@ export class Execute<T extends Model> extends Statement {
 /**
  * 赋值语句
  */
-export class Assignment<T extends JsConstant> extends Statement {
+export class Assignment<T extends JsConstant = JsConstant> extends Statement {
   left: Assignable<T>
   right: Expression<T>
   $type: SQL_SYMBOLE.ASSIGNMENT = SQL_SYMBOLE.ASSIGNMENT
@@ -3341,7 +3337,7 @@ export class NamedSelect<T extends Model, A extends string> extends Rowset<T> {
 
   constructor (statement: Select<T>, alias: A) {
     super()
-    this.$as(alias)
+    this.as(alias)
     this.$statement = statement
   }
 }
@@ -3356,7 +3352,7 @@ export class WithSelect<T extends Model, A extends string> extends Rowset<T> {
 
   constructor (statement: Select<T>, alias: A) {
     super()
-    this.$as(alias)
+    this.as(alias)
     this.$statement = statement
   }
 }
