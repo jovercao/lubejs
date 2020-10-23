@@ -8,7 +8,11 @@ import {
   Expression,
   Expressions,
   Raw,
-  JsConstant,, BinaryOperation, UnaryOperation, Constant, ModelConstructor
+  JsConstant,
+  BinaryOperation,
+  UnaryOperation,
+  Constant,
+  ModelConstructor
 } from './ast'
 import { OPERATION_OPERATOR } from './constants'
 
@@ -43,9 +47,10 @@ export const or = Condition.or
  */
 export const exists = Condition.exists
 
-export const invoke = Expression.invoke
+export const invokeAsTable = Statement.invokeAsTable
+export const invokeAsScalar = Statement.invokeAsScalar
 
-export const exec = Statement.exec
+export const exec = Statement.execute
 
 export const execute = Statement.execute
 

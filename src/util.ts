@@ -93,9 +93,9 @@ export function ensureCondition<T extends object>(condition: Conditions<T>): Con
 /**
  * 将制作table的代理，用于生成字段
  */
-export function makeProxiedRowset<TModel extends object>(table: Rowset<TModel>): ProxiedRowset<TModel> {
+export function makeProxiedRowset<T extends Rowset<any>>(table: T): ProxiedRowset<T> {
   return new Proxy(table, {
-    get (target: Rowset<TModel>, prop: any): any {
+    get (target: T, prop: any): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
