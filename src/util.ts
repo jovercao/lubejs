@@ -91,11 +91,11 @@ export function ensureCondition<T extends object>(condition: Conditions<T>): Con
 }
 
 /**
- * 将制作table的代理，用于生成字段
+ * 将制作rowset的代理，用于通过属性访问字段
  */
-export function makeProxiedRowset<T extends Rowset<any>>(table: T): ProxiedRowset<T> {
-  return new Proxy(table, {
-    get (target: T, prop: any): any {
+export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
+  return new Proxy(table as any, {
+    get (target: Rowset<any>, prop: any): any {
       if (Reflect.has(target, prop)) {
         return Reflect.get(target, prop)
       }
@@ -104,7 +104,7 @@ export function makeProxiedRowset<T extends Rowset<any>>(table: T): ProxiedRowse
         if (prop.startsWith('$')) {
           prop = prop.substring(1)
         }
-        return table.$field(prop)
+        return target.$field(prop)
       }
       return undefined
     }

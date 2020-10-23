@@ -1,28 +1,50 @@
 import * as _ from 'lodash'
-import { assert, ensureIdentifier, isJsConstant } from './util'
+import { assert, isJsConstant } from './util'
 import { EventEmitter } from 'events'
-import { insert, select, update, del, table as sqlTable, exec, input, field, anyFields } from './builder'
-import { Parameter, AST, Select, JsConstant, Identifiers, Expressions, SortInfo, Condition, Statement, Assignment, Conditions, SortObject, ValueObject, WhereObject, Identifier, RowFields, RowObject, ParameterValues } from './ast'
+import {
+  insert,
+  select,
+  update,
+  del,
+  table as sqlTable,
+  exec,
+  input,
+  field
+} from './builder'
+import {
+  Parameter,
+  AST,
+  Select,
+  JsConstant,
+  Expressions,
+  SortInfo,
+  Condition,
+  Statement,
+  Assignment,
+  Conditions,
+  SortObject,
+  ValueObject,
+  WhereObject,
+  Identifier,
+  RowObject
+} from './ast'
 import { Compiler, Command } from './compiler'
 import { INSERT_MAXIMUM_ROWS } from './constants'
-import { Lube } from './lube'
+import { Field, FieldsOf, InputObject, Lube, Model, Name, Table } from './lube'
 import { stringify } from 'querystring'
 
-export interface QueryResult<R1 extends object, R2 extends object = never, R3 extends object = never, V extends JsConstant = never> {
-  rows?: RowObject<R1>[]
+export interface QueryResult<T extends Model> {
+  rows?: RowObject<T>[]
   output?: {
     [key: string]: JsConstant
   }
   rowsAffected: number
-  returnValue?: V
+  returnValue?: JsConstant
+
   /**
-   * 仅支持mssql
+   * 多数据集返回，仅支持mssql
    */
-  rowsets: [
-    RowObject<R1>[],
-    R2 extends never ? never : RowObject<R2>[],
-    R3 extends never ? never : RowObject<R3>[]
-  ]
+  rowsets?: any[]
 }
 
 // interface QueryParameter {
@@ -31,79 +53,33 @@ export interface QueryResult<R1 extends object, R2 extends object = never, R3 ex
 //    direction?: ParameterDirection
 // }
 
-export interface QueryHandler<T extends object = any> {
-  (sql: string, params: Parameter<string, JsConstant>[]): Promise<QueryResult<T>>
+export interface QueryHandler<T extends Model = any> {
+  (sql: string, params: Parameter<JsConstant, string>[]): Promise<
+    QueryResult<T>
+  >
 }
 
 export interface SelectOptions<T = any> {
-  where?: WhereObject<T> | Condition,
-  top?: number,
-  offset?: number,
-  limit?: number,
-  distinct?: boolean,
-  fields?: (keyof T)[],
+  where?: WhereObject<T> | Condition
+  top?: number
+  offset?: number
+  limit?: number
+  distinct?: boolean
+  fields?: (keyof T)[]
   sorts?: SortObject<T> | (SortInfo | Expressions)[]
 }
 
-// export interface IExecuotor {
-
-//   doQuery: QueryHandler
-
-//   query(sql: string, params: Parameter[]): Promise<QueryResult>
-//   query(sql: string, params: Object): Promise<QueryResult>
-//   query(strs: TemplateStringsArray, ...params)
-//   query(sql: Statement | Document): Promise<QueryResult>
-
-//   /**
-//    * 执行一个查询并获取返回的第一个标量值
-//    * @param sql
-//    */
-//   queryScalar(sql: string, params: Parameter[]): Promise<JsConstant>
-//   queryScalar(sql: string, params: Object): Promise<JsConstant>
-//   queryScalar(sql: Statement | Document): Promise<JsConstant>
-//   queryScalar(sql: string[], ...params: any[]): Promise<JsConstant>
-
-//   /**
-//    * 插入数据的快捷操作
-//    * @param {*} table
-//    * @param {array?} fields 字段列表，可空
-//    * @param {*} rows 可接受二维数组/对象，或者单行数组
-//    */
-//   insert(table: UnsureIdentifier, select: Select): Promise<number>
-//   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], select: Select): Promise<number>
-//   insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, rows: T[]): Promise<number>
-//   insert<T extends KeyValueObject = KeyValueObject>(table: UnsureIdentifier, row: T): Promise<number>
-//   insert(table: UnsureIdentifier, fields: UnsureIdentifier[], rows: UnsureExpression[][]): Promise<number>
-
-//   find<T = any>(table: UnsureIdentifier, where: UnsureCondition, fields?: string[]): Promise<T>
-
-//   /**
-//    * 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
-//    * @param table
-//    * @param where
-//    * @param options
-//    */
-//   select<T = any>(table: UnsureIdentifier, options?: SelectOptions): Promise<T[]>
-
-//   update(table: UnsureIdentifier, sets: Assignment[], where?: UnsureCondition): Promise<number>
-//   update(table: UnsureIdentifier, sets: KeyValueObject, where?: UnsureCondition): Promise<number>
-//   update(table: UnsureIdentifier, sets: KeyValueObject | Assignment[], where?: UnsureCondition): Promise<number>
-
-//   execute(spname: UnsureIdentifier, params: UnsureExpression[]): Promise<number>
-//   execute(spname: UnsureIdentifier, params: Parameter[]): Promise<number>
-
-//   /**
-//    * 执行存储过程
-//    * @param spname 存储过程名称
-//    * @param params
-//    */
-//   execute(spname, params): Promise<QueryResult>
-// }
-
 export class Executor extends EventEmitter {
   doQuery: QueryHandler
+
+  /**
+   * 编译器
+   */
   readonly compiler: Compiler
 
+  /**
+   * 是否在事务当中
+   */
   readonly isTrans: boolean
 
   /**
@@ -111,7 +87,11 @@ export class Executor extends EventEmitter {
    * @param {*} query 查询函数
    * @param {*} compiler 编译函数
    */
-  protected constructor(query: QueryHandler, compiler: Compiler, isTrans: boolean = false) {
+  protected constructor (
+    query: QueryHandler,
+    compiler: Compiler,
+    isTrans: boolean = false
+  ) {
     super()
     // 是否启用严格模式，避免关键字等问题
     this.doQuery = query
@@ -119,19 +99,19 @@ export class Executor extends EventEmitter {
     this.isTrans = isTrans
   }
 
-  on(event: 'command', listener: (cmd: Command) => void): this
-  on(event: 'commit', listener: (executor: Executor) => void): this
-  on(event: 'rollback', listener: (executor: Executor) => void): this
-  on(event: 'error', listener: (error: Error) => any): this
-  on(event: string, listener: (...args: any[]) => any): this {
+  on (event: 'command', listener: (cmd: Command) => void): this
+  on (event: 'commit', listener: (executor: Executor) => void): this
+  on (event: 'rollback', listener: (executor: Executor) => void): this
+  on (event: 'error', listener: (error: Error) => any): this
+  on (event: string, listener: (...args: any[]) => any): this {
     return super.on(event, listener)
   }
 
-  off(event: 'command', listener?: (cmd: Command) => void): this
-  off(event: 'commit', listener?: (executor: Executor) => void): this
-  off(event: 'rollback', listener?: (executor: Executor) => void): this
-  off(event: 'error', listener?: (error: Error) => any): this
-  off(event: string, listener?: (...args: any[]) => any): this {
+  off (event: 'command', listener?: (cmd: Command) => void): this
+  off (event: 'commit', listener?: (executor: Executor) => void): this
+  off (event: 'rollback', listener?: (executor: Executor) => void): this
+  off (event: 'error', listener?: (error: Error) => any): this
+  off (event: string, listener?: (...args: any[]) => any): this {
     if (!listener) {
       return super.removeAllListeners(event)
     } else {
@@ -142,15 +122,15 @@ export class Executor extends EventEmitter {
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
   // async _internalQuery(sql: string, params: Object): Promise<QueryResult>
   // async _internalQuery(sql: string[], ...params: any[]): Promise<QueryResult>
-  private async _internalQuery(...args: any[]) {
-    let sql: string, params: Parameter<unknown>[]
+  private async _internalQuery (...args: any[]) {
+    let sql: string, params: Parameter[]
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
-      ({ sql, params } = this.compiler.compile(args[0]))
+      ;({ sql, params } = this.compiler.compile(args[0]))
       // eslint-disable-next-line brace-style
     }
     // 如果是模板字符串
-    else if (_.isArray(args[0])) {
+    else if (Array.isArray(args[0])) {
       params = []
       sql = args[0].reduce((previous, current, index) => {
         previous += current
@@ -167,8 +147,8 @@ export class Executor extends EventEmitter {
       sql = args[0]
 
       if (_.isObject(args[1])) {
-        params = Object.entries(args[1]).map(
-          ([name, value]) => input(name, value)
+        params = Object.entries(args[1]).map(([name, value]) =>
+          input(name, value)
         )
       }
     }
@@ -194,13 +174,26 @@ export class Executor extends EventEmitter {
     }
   }
 
-  async query<TResult extends object>(sql: Select<TResult>): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: string): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: string, params: Parameter<unknown>[]): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: string, params: Object): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: Statement | Document): Promise<QueryResult<TResult>>
-  async query<TResult = any>(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult<TResult>>
-  async query(...args: any[]) {
+  async query<T extends Model = Model> (
+    sql: Select<T>
+  ): Promise<QueryResult<T>>
+  async query<T extends Model = Model> (sql: string): Promise<QueryResult<T>>
+  async query<T extends Model = Model> (
+    sql: string,
+    params: Parameter[]
+  ): Promise<QueryResult<T>>
+  async query<T extends Model = Model> (
+    sql: string,
+    params: Object
+  ): Promise<QueryResult<T>>
+  async query<T extends Model = Model> (
+    sql: Statement | Document
+  ): Promise<QueryResult<T>>
+  async query<T extends Model = Model> (
+    sql: TemplateStringsArray,
+    ...params: any[]
+  ): Promise<QueryResult<T>>
+  async query (...args: any[]) {
     return this._internalQuery(...args)
   }
 
@@ -208,70 +201,72 @@ export class Executor extends EventEmitter {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar<TResult extends JsConstant = any>(sql: string, params?: Parameter<unknown>[]): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = any>(sql: string, params?: ParameterValues): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = any>(sql: Statement | Document): Promise<TResult>
-  async queryScalar<TResult extends JsConstant = any>(sql: string[], ...params: any[]): Promise<TResult>
-  async queryScalar(...args: any[]) {
-    const { rows: [row] } = await this._internalQuery(...args)
+  async queryScalar<T extends JsConstant = any> (
+    sql: string,
+    params?: Parameter[]
+  ): Promise<T>
+  async queryScalar<T extends JsConstant = any> (
+    sql: string,
+    params?: InputObject
+  ): Promise<T>
+  async queryScalar<T extends JsConstant = any> (
+    sql: Select<Model>
+  ): Promise<T>
+  async queryScalar<T extends JsConstant = any> (
+    sql: string[],
+    ...params: any[]
+  ): Promise<T>
+  async queryScalar (...args: any[]) {
+    const {
+      rows: [row]
+    } = await this._internalQuery(...args)
     assert(row, 'sql not return recordsets.')
     return row[Object.keys(row)[0]]
   }
 
-
   /**
    * 插入数据的快捷操作
    */
-  async insert(table: string, fields: string[], row: Expressions[]): Promise<number>
-  async insert(table: string, fields: string[], rows: Expressions[][]): Promise<number>
-  async insert(table: string, item: ValueObject): Promise<number>
-  async insert(table: string, items: ValueObject[]): Promise<number>
-  async insert(table: string, row: Expressions[]): Promise<number>
-  async insert(table: string, rows: Expressions[][]): Promise<number>
-  async insert(table: string, select: Select): Promise<number>
-  async insert(table: string, fields: string[], select: Select): Promise<number>
-  async insert<T extends object>(table: string, items: ValueObject<T>[]): Promise<number>
-  async insert<T extends object>(table: string, item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], items: ValueObject<T>[]): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], select: Select): Promise<number>
-  async insert<T extends object>(table: string, fields: Identifier<void, T>[] | RowFields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], select: Select): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | RowFields<T>[], row: Expressions[]): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<T>[] | RowFields<T>[], rows: Expressions[][]): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, items: ValueObject<T>[]): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], item: ValueObject<T>): Promise<number>
-  async insert<T extends object>(table: Identifier<T, any>, fields: Identifier<void, T>[] | RowFields<T>[], items: ValueObject<T>[]): Promise<number>
-  async insert(table: Identifier<any, any>, fields: string[], row: Expressions[]): Promise<number>
-  async insert(table: Identifier<any, any>, fields: string[], rows: Expressions[][]): Promise<number>
-  async insert(table: Identifier<any, any>, item: ValueObject): Promise<number>
-  async insert(table: Identifier<any, any>, items: ValueObject[]): Promise<number>
-  async insert(table: Identifier<any, any>, row: Expressions[]): Promise<number>
-  async insert(table: Identifier<any, any>, rows: Expressions[][]): Promise<number>
-  async insert(table: Identifier<any, any>, select: Select): Promise<number>
-  async insert(table: Identifiers,
-    fieldsOrValues: any,
-    valuesOrUndefined?: any): Promise<number> {
-    let fields: Identifiers[], values: any
-    if (valuesOrUndefined) {
-      fields = fieldsOrValues as Identifiers[]
-      values = valuesOrUndefined
+  async insert<T extends Model = Model>(
+    table: Name<string> | Table<T, string>,
+    values?: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[]
+  ): Promise<number>
+  async insert<T extends Model = Model>(
+    table: Name<string> | Table<T, string>,
+    fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
+    value?: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[]
+  ): Promise<number>
+  async insert<T extends Model = Model>(
+    table: Name<string> | Table<T, string>,
+    arg2: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[] | ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[],
+    arg3?: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[] | undefined
+  ): Promise<number> {
+    let fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
+    let values: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[]
+
+    if (arguments.length <= 2) {
+      values = arg2
+      fields = undefined
     } else {
-      values = fieldsOrValues
+      values = arg3
+      fields = arg2 as FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
     }
 
     // 确保装入数组里，以便 使用
     // UnsureExpression[] => UnsureExpression[][]
     // Object => Object[]
-    if (!_.isArray(values) || (!_.isArray(values[0]) && isJsConstant(values[0]))) {
-      values = [values]
+    if (
+      !Array.isArray(values) ||
+      (!Array.isArray(values[0]) && isJsConstant(values[0]))
+    ) {
+      values = [values as any]
     }
 
     const action = async function (executor: Executor): Promise<number> {
       let i = 0
       let rowsAffected = 0
       while (true) {
-        if (i >= values.length) break;
+        if (i >= values.length) break
         const items = (values as any[]).slice(i, i + INSERT_MAXIMUM_ROWS)
         i += INSERT_MAXIMUM_ROWS
         const sql = insert(table, fields)
@@ -281,34 +276,89 @@ export class Executor extends EventEmitter {
       }
       return rowsAffected
     }
+    // 启用事务
     if (this instanceof Lube && !this.isTrans) {
+      console.warn('启用事务')
       return await this.trans(action)
     }
     return await action(this)
   }
 
-  async find(table: string, where: Condition, fields?: string[]): Promise<RowObject>
-  async find(table: string, where: WhereObject, fields?: string[]): Promise<RowObject>
-  async find<T extends object>(table: string, where: Condition, fields?: RowFields<T>[]): Promise<T>
-  async find<T extends object>(table: string, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: string, where: WhereObject<T>, fields?: RowFields<T>[]): Promise<T>
-  async find<T extends object>(table: string, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: Condition, fields?: RowFields<T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: Condition, fields?: Identifier<void, T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: WhereObject<T>, fields?: RowFields<T>[]): Promise<T>
-  async find<T extends object>(table: Identifier<T, any>, where: WhereObject<T>, fields?: Identifier<void, T>[]): Promise<T>
-  async find(table: Identifier<any, any>, where: Condition, fields?: string[]): Promise<RowObject>
-  async find(table: Identifier<any, any>, where: WhereObject, fields?: string[]): Promise<RowObject>
-  async find<T extends object = any>(table: Identifier<T> | string,
+  async find (
+    table: string,
+    where: Condition,
+    fields?: string[]
+  ): Promise<RowObject>
+  async find (
+    table: string,
+    where: WhereObject,
+    fields?: string[]
+  ): Promise<RowObject>
+  async find<T extends Model> (
+    table: string,
+    where: Condition,
+    fields?: RowFields<T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: string,
+    where: Condition,
+    fields?: Identifier<void, T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: string,
+    where: WhereObject<T>,
+    fields?: RowFields<T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: string,
+    where: WhereObject<T>,
+    fields?: Identifier<void, T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: Identifier<T, any>,
+    where: Condition,
+    fields?: RowFields<T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: Identifier<T, any>,
+    where: Condition,
+    fields?: Identifier<void, T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: Identifier<T, any>,
+    where: WhereObject<T>,
+    fields?: RowFields<T>[]
+  ): Promise<T>
+  async find<T extends Model> (
+    table: Identifier<T, any>,
+    where: WhereObject<T>,
+    fields?: Identifier<void, T>[]
+  ): Promise<T>
+  async find (
+    table: Identifier<any, any>,
+    where: Condition,
+    fields?: string[]
+  ): Promise<RowObject>
+  async find (
+    table: Identifier<any, any>,
+    where: WhereObject,
+    fields?: string[]
+  ): Promise<RowObject>
+  async find<T extends Model = any> (
+    table: Identifier<T> | string,
     where: Condition | WhereObject<T>,
-    fields?: RowFields<T>[] | Identifier<void, T>[]): Promise<T> {
-    let columns: (Expressions)[]
+    fields?: RowFields<T>[] | Identifier<void, T>[]
+  ): Promise<T> {
+    let columns: Expressions[]
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
       columns = (fields as string[]).map(fieldName => field(fieldName))
     } else {
       columns = [anyFields]
     }
-    const sql = select(...columns).top(1).from(table).where(where)
+    const sql = select(...columns)
+      .top(1)
+      .from(table)
+      .where(where)
     const res = await this.query<T>(sql)
     if (res.rows && res.rows.length > 0) {
       return res.rows[0]
@@ -322,12 +372,27 @@ export class Executor extends EventEmitter {
    * @param where
    * @param options
    */
-  async select(table: string, options?: SelectOptions): Promise<RowObject[]>
-  async select<TResult extends object>(table: Identifier<TResult, any>, options: SelectOptions<TResult>): Promise<TResult[]>
-  async select<TResult extends object>(table: Identifier<any, any>, options: SelectOptions<TResult>): Promise<TResult[]>
-  async select<TResult extends object>(table: string, options?: SelectOptions<TResult>): Promise<TResult[]>
-  async select(table: Identifier<any, any>, options?: SelectOptions): Promise<RowObject[]>
-  async select<TResult extends object = any>(table: Identifier<TResult, any> | string, options: SelectOptions<TResult> = {}): Promise<TResult[]> {
+  async select (table: string, options?: SelectOptions): Promise<RowObject[]>
+  async select<TResult extends Model> (
+    table: Identifier<TResult, any>,
+    options: SelectOptions<TResult>
+  ): Promise<TResult[]>
+  async select<TResult extends Model> (
+    table: Identifier<any, any>,
+    options: SelectOptions<TResult>
+  ): Promise<TResult[]>
+  async select<TResult extends Model> (
+    table: string,
+    options?: SelectOptions<TResult>
+  ): Promise<TResult[]>
+  async select (
+    table: Identifier<any, any>,
+    options?: SelectOptions
+  ): Promise<RowObject[]>
+  async select<TResult extends Model = any> (
+    table: Identifier<TResult, any> | string,
+    options: SelectOptions<TResult> = {}
+  ): Promise<TResult[]> {
     const { where, sorts, offset, limit, fields } = options
     let columns: Expressions[]
     const t = ensureIdentifier(table)
@@ -341,7 +406,7 @@ export class Executor extends EventEmitter {
       sql.where(where)
     }
     if (sorts) {
-      if (_.isArray(sorts)) {
+      if (Array.isArray(sorts)) {
         sql.orderBy(...sorts)
       } else {
         sql.orderBy(sorts)
@@ -354,7 +419,7 @@ export class Executor extends EventEmitter {
       sql.limit(limit)
     }
     const res = await this.query(sql)
-    return res.rows as unknown as TResult[]
+    return (res.rows as unknown) as TResult[]
   }
 
   /**
@@ -363,29 +428,103 @@ export class Executor extends EventEmitter {
    * @param sets 要修改的赋值
    * @param where 查询条件
    */
-  async update(table: string, sets: ValueObject, where?: Condition): Promise<number>
-  async update(table: string, sets: ValueObject, where?: WhereObject): Promise<number>
-  async update(table: string, sets: Assignment[], where?: WhereObject): Promise<number>
-  async update(table: string, sets: Assignment[], where?: Condition): Promise<number>
-  async update<T extends object>(table: string, sets: ValueObject<T>, where?: WhereObject<T>): Promise<number>
-  async update<T extends object>(table: string, sets: ValueObject<T>, where?: WhereObject): Promise<number>
-  async update<T extends object>(table: string, sets: ValueObject<T>, where?: Condition): Promise<number>
-  async update<T extends object>(table: string, sets: ValueObject, where: WhereObject<T>): Promise<number>
-  async update<T extends object>(table: string, sets: Assignment[], where: WhereObject<T>): Promise<number>
-  async update<T extends object>(table: Identifier<T, any>, sets: ValueObject<T>, where: WhereObject<T>): Promise<number>
-  async update<T extends object>(table: Identifier<T, any>, sets: ValueObject<T>, where?: WhereObject): Promise<number>
-  async update<T extends object>(table: Identifier<T, any>, sets: ValueObject<T>, where?: Condition): Promise<number>
-  async update<T extends object>(table: Identifier<T, any>, sets: ValueObject, where: WhereObject<T>): Promise<number>
-  async update<T extends object>(table: Identifier<T, any>, sets: Assignment[], where: WhereObject<T>): Promise<number>
-  async update(table: Identifier<any, any>, sets: ValueObject, where?: WhereObject): Promise<number>
-  async update(table: Identifier<any, any>, sets: ValueObject, where?: Condition): Promise<number>
-  async update(table: Identifier<any, any>, sets: Assignment[], where?: WhereObject): Promise<number>
-  async update(table: Identifier<any, any>, sets: Assignment[], where?: Condition): Promise<number>
-  async update<T extends object = any>(table: string | Identifier<TemplateStringsArray, any>,
+  async update (
+    table: string,
+    sets: ValueObject,
+    where?: Condition
+  ): Promise<number>
+  async update (
+    table: string,
+    sets: ValueObject,
+    where?: WhereObject
+  ): Promise<number>
+  async update (
+    table: string,
+    sets: Assignment[],
+    where?: WhereObject
+  ): Promise<number>
+  async update (
+    table: string,
+    sets: Assignment[],
+    where?: Condition
+  ): Promise<number>
+  async update<T extends Model> (
+    table: string,
+    sets: ValueObject<T>,
+    where?: WhereObject<T>
+  ): Promise<number>
+  async update<T extends Model> (
+    table: string,
+    sets: ValueObject<T>,
+    where?: WhereObject
+  ): Promise<number>
+  async update<T extends Model> (
+    table: string,
+    sets: ValueObject<T>,
+    where?: Condition
+  ): Promise<number>
+  async update<T extends Model> (
+    table: string,
+    sets: ValueObject,
+    where: WhereObject<T>
+  ): Promise<number>
+  async update<T extends Model> (
+    table: string,
+    sets: Assignment[],
+    where: WhereObject<T>
+  ): Promise<number>
+  async update<T extends Model> (
+    table: Identifier<T, any>,
+    sets: ValueObject<T>,
+    where: WhereObject<T>
+  ): Promise<number>
+  async update<T extends Model> (
+    table: Identifier<T, any>,
+    sets: ValueObject<T>,
+    where?: WhereObject
+  ): Promise<number>
+  async update<T extends Model> (
+    table: Identifier<T, any>,
+    sets: ValueObject<T>,
+    where?: Condition
+  ): Promise<number>
+  async update<T extends Model> (
+    table: Identifier<T, any>,
+    sets: ValueObject,
+    where: WhereObject<T>
+  ): Promise<number>
+  async update<T extends Model> (
+    table: Identifier<T, any>,
+    sets: Assignment[],
+    where: WhereObject<T>
+  ): Promise<number>
+  async update (
+    table: Identifier<any, any>,
+    sets: ValueObject,
+    where?: WhereObject
+  ): Promise<number>
+  async update (
+    table: Identifier<any, any>,
+    sets: ValueObject,
+    where?: Condition
+  ): Promise<number>
+  async update (
+    table: Identifier<any, any>,
+    sets: Assignment[],
+    where?: WhereObject
+  ): Promise<number>
+  async update (
+    table: Identifier<any, any>,
+    sets: Assignment[],
+    where?: Condition
+  ): Promise<number>
+  async update<T extends Model = any> (
+    table: string | Identifier<TemplateStringsArray, any>,
     sets: ValueObject<T> | Assignment[] | ValueObject<any>,
-    where?: WhereObject<T> | Condition | WhereObject): Promise<number> {
+    where?: WhereObject<T> | Condition | WhereObject
+  ): Promise<number> {
     const sql = update(table)
-    if (_.isArray(sets)) {
+    if (Array.isArray(sets)) {
       sql.set(...sets)
     } else {
       sql.set(sets)
@@ -395,22 +534,43 @@ export class Executor extends EventEmitter {
     return res.rowsAffected
   }
 
-  async delete(table: string, where?: WhereObject): Promise<number>
-  async delete(table: string, where?: Condition): Promise<number>
-  async delete<T extends object>(table: Identifier<T, any>, where?: WhereObject<T>): Promise<number>
-  async delete<T extends object>(table: Identifier<T, any>, where?: Condition): Promise<number>
-  async delete<T extends object>(table: string, where?: WhereObject<T>): Promise<number>
-  async delete<T extends object>(table: string, where?: Condition): Promise<number>
-  async delete(table: Identifier<any, any>, where?: WhereObject): Promise<number>
-  async delete(table: Identifier<any, any>, where?: Condition): Promise<number>
-  async delete<T extends object = any>(table: Identifier<T, any> | string, where?: WhereObject<T> | Condition | WhereObject): Promise<number> {
+  async delete (table: string, where?: WhereObject): Promise<number>
+  async delete (table: string, where?: Condition): Promise<number>
+  async delete<T extends Model> (
+    table: Identifier<T, any>,
+    where?: WhereObject<T>
+  ): Promise<number>
+  async delete<T extends Model> (
+    table: Identifier<T, any>,
+    where?: Condition
+  ): Promise<number>
+  async delete<T extends Model> (
+    table: string,
+    where?: WhereObject<T>
+  ): Promise<number>
+  async delete<T extends Model> (
+    table: string,
+    where?: Condition
+  ): Promise<number>
+  async delete (
+    table: Identifier<any, any>,
+    where?: WhereObject
+  ): Promise<number>
+  async delete (table: Identifier<any, any>, where?: Condition): Promise<number>
+  async delete<T extends Model = any> (
+    table: Identifier<T, any> | string,
+    where?: WhereObject<T> | Condition | WhereObject
+  ): Promise<number> {
     const sql = del(table)
     if (where) sql.where(where)
     const res = await this.query(sql)
     return res.rowsAffected
   }
 
-  async execute<T = any>(spname: Identifier<void, any> | string, params?: Expressions[] | Parameter<unknown>[]): Promise<QueryResult<T>> {
+  async execute<T = any> (
+    spname: Identifier<void, any> | string,
+    params?: Expressions[] | Parameter[]
+  ): Promise<QueryResult<T>> {
     const sql = exec(spname, params)
     const res = await this.query(sql)
     return res

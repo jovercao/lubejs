@@ -38,7 +38,7 @@ import {
   Func,
   TableFuncInvoke,
   Expression,
-  BuildInIdentifier,
+  BuiltIn,
   Field,
   JsConstant,
   Name,
@@ -51,7 +51,7 @@ import {
   CONDITION_KIND,
   OPERATION_KIND
 } from './constants'
-import { Operation, Rowset, Star, Table, WithSelect } from './lube'
+import { Operation, Rowset, Star, Statement, Table, WithSelect } from './lube'
 import { start } from 'repl'
 import { BigIntStats } from 'fs'
 
@@ -126,7 +126,7 @@ export class Compiler {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options)
   }
 
-  protected stringifyName (name: Name<string>, buildIn = false): string {
+  protected compileName (name: Name<string>, buildIn = false): string {
     if (Array.isArray(name)) {
       return name
         .map((n, index) => {
@@ -141,28 +141,8 @@ export class Compiler {
   }
 
   protected stringifyIdentifier (identifier: Identifier<string>): string {
-    return this.stringifyName(identifier.$name, identifier.$buildin)
+    return this.compileName(identifier.$name, identifier.$builtin)
   }
-
-  // /**
-  //  * 解析标识符
-  //  * @param identifier 标识符
-  //  */
-  // protected compileIdentifier(
-  //   identifier: Identifier<any>,
-  //   params?: Set<Parameter>,
-  //   parent?: AST
-  // ): string {
-  //   const sql =
-  //     identifier.$type === SQL_SYMBOLE.BUILDIN_IDENTIFIER
-  //       ? identifier.$name
-  //       : this.quoted(identifier.$name);
-  //   const parentNode = Reflect.get(identifier, "parent");
-  //   if (parentNode) {
-  //     return this.compileIdentifier(parentNode, params, identifier) + "." + sql;
-  //   }
-  //   return sql;
-  // }
 
   /**
    * 标识符转换，避免关键字被冲突问题
@@ -263,7 +243,7 @@ export class Compiler {
     throw new Error('unsupport constant value type:' + typeof value)
   }
 
-  public compile (ast: AST): Command {
+  public compile (ast: Statement | Document): Command {
     const params = new Set<Parameter<JsConstant, string>>()
     return {
       sql: this.compileAST(ast, params),
@@ -347,7 +327,7 @@ export class Compiler {
       case SQL_SYMBOLE.CASE:
         return this.compileCase(ast as Case<any>, params, parent)
       case SQL_SYMBOLE.OPERATION:
-        return this.compileOperation(ast, params, parent)
+        return this.compileOperation(ast as Operation<JsConstant>, params, parent)
       case SQL_SYMBOLE.CONDITION:
         this.compileCondtion(ast as Condition, params, parent)
       case SQL_SYMBOLE.JOIN:
@@ -365,7 +345,7 @@ export class Compiler {
       case SQL_SYMBOLE.STAR:
         return this.compileStar(ast as Star<object>, params, parent)
       default:
-        throw new Error('Error AST type: ' + ast.$type)
+        throw new Error(`Error AST type: ${ast.$type} in ${parent?.$type}`)
     }
   }
 
@@ -375,13 +355,13 @@ export class Compiler {
     parent: AST
   ): string {
     if (star.$parent) {
-      return this.compileRowsetName(star.$parent, params, star) + '.*'
+      return this.compileName(star.$parent) + '.*'
     }
     return '*'
   }
 
   private compileOperation (
-    ast: AST,
+    ast: Operation<JsConstant>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ) {
@@ -417,7 +397,7 @@ export class Compiler {
     const identifier = ast as Identifier<string>
     switch (identifier.$kind) {
       case IDENTOFIER_KIND.BUILD_IN:
-        return this.compileBuildIn(identifier as BuildInIdentifier<string>)
+        return this.compileBuildIn(identifier as BuiltIn<string>)
       case IDENTOFIER_KIND.COLUMN:
         return this.compileColumn(
           identifier as Column<JsConstant, string>,
@@ -425,11 +405,7 @@ export class Compiler {
           parent
         )
       case IDENTOFIER_KIND.TABLE:
-        return this.compileRowsetName(
-          ast as Table<object, string>,
-          params,
-          parent
-        )
+        return this.compileRowsetName(ast as Table<object, string>)
       case IDENTOFIER_KIND.ALIAS:
       case IDENTOFIER_KIND.FIELD:
       case IDENTOFIER_KIND.FUNCTION:
@@ -452,10 +428,9 @@ export class Compiler {
     }
   }
   compileRowsetName (
-    rowset: Rowset<object>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
+    rowset: Rowset<object> | Raw
   ) {
+    if (rowset instanceof Raw) return rowset.$sql
     // TODO: 兼容TableVariant
     if (rowset.$alias) {
       return this.stringifyIdentifier(rowset.$alias)
@@ -475,7 +450,7 @@ export class Compiler {
       '(' +
       this.compileSelect(rowset.$statement, params, rowset) +
       ') AS ' +
-      this.compileRowsetName(rowset, params, parent)
+      this.compileRowsetName(rowset)
     )
   }
 
@@ -489,7 +464,7 @@ export class Compiler {
   // compileNamedArgument(arg0: NamedArgument<JsConstant, string>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
   //   throw new Error("Method not implemented.");
   // }
-  compileBuildIn (buildIn: BuildInIdentifier<string>): string {
+  compileBuildIn (buildIn: BuiltIn<string>): string {
     return buildIn.$name
   }
   compileColumn (
@@ -503,10 +478,11 @@ export class Compiler {
   }
 
   compileWithSelect (
-    item: WithSelect<any, string>,
+    item: WithSelect<any, string> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ) {
+    if (item instanceof Raw) return item.$sql
     return `${this.quoted(item.$alias.$name)} AS (${this.compileAST(
       item.$statement,
       params,
@@ -515,10 +491,11 @@ export class Compiler {
   }
 
   compileWith (
-    withs: With,
+    withs: With | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ): string {
+    if (withs instanceof Raw) return withs.$sql
     return (
       'WITH ' +
       withs.$items
@@ -604,7 +581,7 @@ export class Compiler {
       fragment += ' ' + this.compileAST(caseExpr.$expr, params, parent)
     fragment +=
       ' ' +
-      caseExpr.$whens.map(when => this.compileWhen(when, params, caseExpr))
+      caseExpr.$whens.map(when => this.compileWhen(when, params, caseExpr)).join(' ')
     if (caseExpr.$default)
       fragment +=
         ' ELSE ' + this.compileAST(caseExpr.$default, params, caseExpr)
@@ -613,10 +590,11 @@ export class Compiler {
   }
 
   protected compileWhen (
-    when: When<any>,
+    when: When<any> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
+    if (when instanceof Raw) return when.$sql
     return (
       'WHEN ' +
       this.compileAST(when.$expr, params, when) +
@@ -630,7 +608,7 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    return '(' + this.compileAST(expr.context, params, expr) + ')'
+    return '(' + this.compileCondtion(expr.context, params, expr) + ')'
   }
 
   protected compileBinaryLogicCondition (
@@ -705,10 +683,13 @@ export class Compiler {
 
   // TODO: 是否需要类型判断以优化性能
   protected compileExpression (
-    expr: Expression<JsConstant>,
+    expr: Expression<JsConstant> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ) {
+    if (expr instanceof Raw) {
+      return expr.$sql
+    }
     return this.compileAST(expr, params, parent)
   }
 
@@ -738,10 +719,11 @@ export class Compiler {
   }
 
   protected compileJoin (
-    join: Join,
+    join: Join | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
+    if (join instanceof Raw) return join.$sql
     return (
       (join.$left ? 'LEFT ' : '') +
       'JOIN ' +
@@ -752,10 +734,11 @@ export class Compiler {
   }
 
   protected compileSort (
-    sort: SortInfo,
+    sort: SortInfo | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
+    if (sort instanceof Raw) return sort.$sql
     let sql = this.compileAST(sort.$expr, params, sort)
     if (sort.$direction) sql += ' ' + sort.$direction
     return sql
@@ -767,6 +750,7 @@ export class Compiler {
     parent?: AST
   ): string {
     const {
+      $with,
       $froms,
       $top,
       $joins,
@@ -780,7 +764,11 @@ export class Compiler {
       $limit,
       $distinct
     } = select
-    let sql = 'SELECT '
+    let sql = ''
+    if ($with) {
+      sql += this.compileWith($with, params, parent)
+    }
+    sql += 'SELECT '
     if ($distinct) {
       sql += 'DISTINCT '
     }
@@ -794,13 +782,7 @@ export class Compiler {
       sql +=
         ' FROM ' +
         $froms
-          .map(table => {
-            // 如果是命名行集
-            if (table instanceof NamedSelect) {
-              return this.compileNamedSelect(table, params, select)
-            }
-            return this.compileRowsetName(table, params, select)
-          })
+          .map(table => this.compileFrom(table, params, select))
           .join(', ')
     }
     if ($joins && $joins.length > 0) {
@@ -838,11 +820,24 @@ export class Compiler {
 
     return sql
   }
+
+  compileFrom(table: Rowset<any> | Raw, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
+    if (table instanceof Raw) {
+      return table.$sql
+    }
+    // 如果是命名行集
+    if (table instanceof NamedSelect) {
+      return this.compileNamedSelect(table, params, parent)
+    }
+    return this.compileRowsetName(table)
+  }
+
   compileCondtion (
-    where: Condition,
+    where: Condition | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ) {
+    if (where instanceof Raw) return where.$sql
     switch (where.$kind) {
       case CONDITION_KIND.EXISTS:
         return this.compileExistsCondition(
@@ -888,10 +883,14 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    const { $table, $values, $fields } = insert
-    let sql = 'INSERT INTO '
+    const { $table, $values, $fields, $with } = insert
+    let sql = ''
+    if ($with) {
+      sql += this.compileWith($with, params, parent)
+    }
+    sql += 'INSERT INTO '
 
-    sql += this.compileRowsetName($table, params, parent)
+    sql += this.compileRowsetName($table)
 
     if ($fields) {
       sql +=
@@ -954,16 +953,20 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    const { $table, $sets: sets, $where, $froms, $joins } = update
+    const { $table, $sets, $with, $where, $froms, $joins } = update
     assert($table, 'table is required by update statement')
-    assert(sets, 'set statement un declared')
+    assert($sets, 'set statement un declared')
 
-    let sql = 'UPDATE '
-    sql += this.compileRowsetName($table, params, parent)
+    let sql = ''
+    if ($with) {
+      sql += this.compileWith($with, params, parent)
+    }
+    sql += 'UPDATE '
+    sql += this.compileRowsetName($table)
 
     sql +=
       ' SET ' +
-      sets
+      $sets
         .map(
           ({ left, right }) =>
             this.compileAST(left, params, update) +
@@ -975,7 +978,7 @@ export class Compiler {
     if ($froms && $froms.length > 0) {
       sql +=
         ' FROM ' +
-        $froms.map(table => this.compileAST(table, params, update)).join(', ')
+        $froms.map(table => this.compileFrom(table, params, update)).join(', ')
     }
 
     if ($joins && $joins.length > 0) {
@@ -994,13 +997,17 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    const { $table, $froms, $joins, $where } = del
-    let sql = 'DELETE '
-    if ($table) sql += this.compileAST($table, params, parent)
+    const { $table, $froms, $joins, $where, $with } = del
+    let sql = ''
+    if ($with) {
+      sql += this.compileWith($with, params, parent)
+    }
+    sql += 'DELETE '
+    if ($table) sql += this.compileRowsetName($table)
     if ($froms && $froms.length > 0) {
       sql +=
         ' FROM ' +
-        $froms.map(table => this.compileAST(table, params, parent)).join(', ')
+        $froms.map(table => this.compileFrom(table, params, parent)).join(', ')
     }
 
     if ($joins) {
