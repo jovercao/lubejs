@@ -97,6 +97,10 @@ export type RowObject<T extends Model = Model> = {
   [K in FieldsOf<T>]: ExpressionType<T[K]>;
 };
 
+export type ResultObject<T extends Model = Model> = {
+  [K in keyof T]: ExpressionType<T[K]>
+}
+
 /**
  * 获取表达式对像所表示的类型
  */
@@ -1259,7 +1263,7 @@ export type SelectAction = {
   /**
    * 选择列
    */
-  <T extends Model = Model>(results: ValueObject<T>): Select<RowObject<T>>;
+  <T extends InputObject>(results: T): Select<ResultObject<T>>;
   <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     ResultObjectByColumns<A, B>
@@ -2995,8 +2999,8 @@ export class Select<T extends Model = Model> extends Fromable {
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as<TAlias extends string>(alias: TAlias): Rowset<T> {
-    return makeProxiedRowset(new NamedSelect(this, alias));
+  as<TAlias extends string>(alias: TAlias): ProxiedRowset<Rowset<T>> {
+    return makeProxiedRowset(new NamedSelect(this, alias)) as any;
   }
 
   asValue<T extends JsConstant = JsConstant>() {

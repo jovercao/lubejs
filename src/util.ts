@@ -103,16 +103,17 @@ export function ensureCondition<T extends Model>(
 }
 
 const RowsetFixedProps: string[] = [
+  '$',
+  'field',
+  '_',
+  'star',
+  'as',
   '$type',
   '$kind',
   '$alias',
-  'as',
-  'field',
   '$name',
   '$builtin',
-  '_',
-  '$',
-  'star'
+  '$statement'
 ];
 
 /**
