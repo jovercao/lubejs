@@ -1074,7 +1074,7 @@ export type PathedName<T extends string> =
 
 export type Name<T extends string> = T | PathedName<T>;
 
-export abstract class Assignable<T extends JsConstant> extends Expression<T> {
+export abstract class Assignable<T extends JsConstant = any> extends Expression<T> {
   readonly $lvalue: true = true;
   /**
    * 赋值操作
@@ -2252,7 +2252,7 @@ export type SelectAction = {
 /**
  * 函数调用表达式
  */
-export class ScalarFuncInvoke<TReturn extends JsConstant> extends Expression<
+export class ScalarFuncInvoke<TReturn extends JsConstant = any> extends Expression<
   TReturn
 > {
   $func: Func<string>;
@@ -2356,7 +2356,7 @@ export abstract class Statement extends AST {
     return new TableFuncInvoke<T>(func, args);
   }
 
-  static invokeAsScalar<T extends JsConstant>(
+  static invokeAsScalar<T extends JsConstant = any>(
     func: Name<string> | Func<string>,
     args: Expressions<JsConstant>[]
   ) {
@@ -2368,7 +2368,7 @@ export abstract class Statement extends AST {
    * @param left 左值
    * @param right 右值
    */
-  static assign<T extends JsConstant>(
+  static assign<T extends JsConstant = any>(
     left: Assignable<T>,
     right: Expressions<T>
   ) {
@@ -2432,7 +2432,7 @@ export abstract class CrudStatement extends Statement {
 /**
  * When语句
  */
-export class When<T extends JsConstant> extends AST {
+export class When<T extends JsConstant = any> extends AST {
   $expr: Expression<JsConstant> | Condition;
   $value: Expression<T>;
   $type: SQL_SYMBOLE.WHEN = SQL_SYMBOLE.WHEN;
@@ -2454,7 +2454,7 @@ export class When<T extends JsConstant> extends AST {
 /**
  * CASE表达式
  */
-export class Case<T extends JsConstant> extends Expression<T> {
+export class Case<T extends JsConstant = any> extends Expression<T> {
   $expr: Expression<any> | Condition;
   $whens: When<T>[];
   $default?: Expression<T>;

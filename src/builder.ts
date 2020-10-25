@@ -14,6 +14,7 @@ import {
   ProxiedRowset,
   TableFuncInvoke,
 } from "./ast";
+import { Union } from './lube'
 import { makeProxiedRowset } from "./util";
 
 /**
@@ -171,6 +172,9 @@ export const constant = Constant.const;
 
 export const variant = Identifier.variant;
 
+export const union = Statement.union;
+export const unionAll = Statement.unionAll;
+
 /**
  * 语句
  */
@@ -179,6 +183,7 @@ export const SQL = {
   insert,
   update,
   delete: $delete,
+  del: $delete,
   case: $case,
   with: $with,
   tableFn,
@@ -187,6 +192,8 @@ export const SQL = {
   exec,
   when,
   exists,
+  union,
+  unionAll,
   builtIn,
   table,
   field,
