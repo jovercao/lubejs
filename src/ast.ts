@@ -65,6 +65,8 @@ export type JsConstant =
   | Binary
   | bigint;
 
+export type ValueTypeOf<T extends Model> = T[FieldsOf<T>]
+
 /**
  * 不明确类型的键值对象，用于 输入SQL语句的的对象，如WhereObject等
  */
@@ -3003,8 +3005,8 @@ export class Select<T extends Model = Model> extends Fromable {
     return makeProxiedRowset(new NamedSelect(this, alias)) as any;
   }
 
-  asValue<T extends JsConstant = JsConstant>() {
-    return new ValuedSelect<T>(this);
+  asValue<V extends JsConstant = ValueTypeOf<T>>() {
+    return new ValuedSelect<V>(this);
   }
 }
 

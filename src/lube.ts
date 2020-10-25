@@ -1,7 +1,6 @@
 import { Executor, QueryResult } from "./executor";
 import { Compiler, CompileOptions, Command } from "./compiler";
 import { URL } from "url";
-import * as _ from "lodash";
 import { ISOLATION_LEVEL } from "./constants";
 import * as assert from "assert";
 import { Parameter } from "./ast";

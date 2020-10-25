@@ -35,7 +35,6 @@
   },
   "homepage": "https://github.com/jovercao/lubejs#readme",
   "devDependencies": {
-    "@types/lodash": "^4.14.156",
     "@types/mocha": "^8.0.3",
     "@types/node": "^14.0.14",
     "@typescript-eslint/eslint-plugin": "^2.34.0",
@@ -55,10 +54,7 @@
     "typedoc-plugin-markdown": "^2.3.1",
     "typescript": "^3.9.5"
   },
-  "dependencies": {
-    "lodash": "^4.17.15",
-    "moment": "^2.24.0"
-  },
+  "dependencies": {},
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"

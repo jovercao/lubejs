@@ -24,7 +24,7 @@ import {
 } from "./ast";
 import { Compiler, Command } from "./compiler";
 import { INSERT_MAXIMUM_ROWS } from "./constants";
-import { Lube } from "./lube";
+import { Lube, ValueTypeOf } from "./lube";
 
 export interface QueryResult<T extends Model = any> {
   rows?: T[];
@@ -200,7 +200,8 @@ export class Executor extends EventEmitter {
     sql: string,
     params?: InputObject
   ): Promise<T>;
-  async queryScalar<T extends JsConstant = any>(sql: Select<Model>): Promise<T>;
+  async queryScalar<T extends Model>(sql: Select<T>): Promise<ValueTypeOf<T>>;
+  async queryScalar<T extends JsConstant>(sql: Select<any>): Promise<T>;
   async queryScalar<T extends JsConstant = any>(
     sql: string[],
     ...params: any[]

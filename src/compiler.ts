@@ -1,6 +1,4 @@
 import * as assert from "assert";
-import * as moment from "moment";
-import * as _ from "lodash";
 
 import {
   AST,
@@ -58,6 +56,7 @@ import {
   OPERATION_KIND,
 } from "./constants";
 import { ValuedSelect } from './lube'
+import { dateToString } from './util'
 
 export interface Command {
   sql: string;
@@ -209,7 +208,7 @@ export class Compiler {
    * 编译日期常量
    */
   protected compileDate(date: Date) {
-    return "'" + moment(date).format("YYYY-MM-DD HH:mm:ss.SSS") + "'";
+    return `'${dateToString(date)}'`
   }
 
   /**
