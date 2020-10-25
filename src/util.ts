@@ -228,5 +228,5 @@ function fix(num: number, digits: number): string {
 }
 
 export function dateToString(date: Date): string {
-  return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(date.getDate(), 2)}T${fix(date.getHours() + 1, 2)}:${fix(date.getMinutes(), 2)}:${fix(date.getSeconds(), 2)}.${fix(date.getMilliseconds(), 3)}${date.getTimezoneOffset() > 0 ? '-' : '+'}${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`
+  return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(date.getDate(), 2)}T${fix(date.getHours(), 2)}:${fix(date.getMinutes(), 2)}:${fix(date.getSeconds(), 2)}.${fix(date.getMilliseconds(), 3)}${date.getTimezoneOffset() > 0 ? '-' : '+'}${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`
 }
