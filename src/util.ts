@@ -102,15 +102,31 @@ export function ensureCondition<T extends object>(
   return compares.length >= 2 ? Condition.and(...compares) : compares[0];
 }
 
+const RowsetFixedProps: string[] = [
+  '$type',
+  '$kind',
+  '$alias',
+  'as',
+  'field',
+  '$name',
+  '$builtin',
+  '_',
+  '$',
+  'star'
+];
+
 /**
  * 将制作rowset的代理，用于通过属性访问字段
  */
 export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
   return new Proxy(table as any, {
     get(target: Rowset<any>, prop: any): any {
-      if (Reflect.has(target, prop)) {
+      if (RowsetFixedProps.includes(prop)) {
         return Reflect.get(target, prop);
       }
+      // const value = Reflect.get(target, prop);
+      // if (value !== undefined) return value;
+
       if (typeof prop === "string") {
         // $开头，实为转义符，避免字段命名冲突，程序自动移除首个
         if (prop.startsWith("$")) {
@@ -118,7 +134,7 @@ export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
         }
         return target.field(prop);
       }
-      return undefined;
+      return Reflect.get(target, prop);
     },
   }) as any;
 }
@@ -186,14 +202,6 @@ export function mixins(...classes: Constructor<any>[]): any {
     });
   });
   return cls;
-}
-
-export function applyMixins(derivedCtor: any, baseCtors: any[]) {
-  baseCtors.forEach((baseCtor) => {
-    Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
-      derivedCtor.prototype[name] = baseCtor.prototype[name];
-    });
-  });
 }
 
 export function pickName(name: Name<string>): string {

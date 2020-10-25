@@ -57,6 +57,7 @@ import {
   CONDITION_KIND,
   OPERATION_KIND,
 } from "./constants";
+import { ValuedSelect } from './lube'
 
 export interface Command {
   sql: string;
@@ -92,9 +93,12 @@ export interface CompileOptions {
    * 变量前缀
    */
   variantPrefix?: string;
-}
 
-const RETURN_VALUE_PARAMETER_NAME: string = "__RETURN_VALUE__";
+  /**
+   * 返回参数名称
+   */
+  returnParameterName?: string;
+}
 
 const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
   strict: true,
@@ -117,6 +121,10 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
    * 变量前缀
    */
   variantPrefix: "@",
+  /**
+   * 返回参数名称
+   */
+  returnParameterName: '__RETURN_VALUE__'
 };
 
 /**
@@ -143,6 +151,15 @@ export class Compiler {
     return buildIn ? name : this.quoted(name);
   }
 
+  /**
+   * 编译Insert语句中的字段，取掉表别名
+   * @param field 字段
+   */
+  protected compileInsertField(field: Field<JsConstant, string>) {
+    if (typeof field.$name === 'string') return this.quoted(field.$name)
+    return this.quoted(field.$name[field.$name.length - 1])
+  }
+
   protected stringifyIdentifier(identifier: Identifier<string>): string {
     return this.compileName(identifier.$name, identifier.$builtin);
   }
@@ -151,7 +168,7 @@ export class Compiler {
    * 标识符转换，避免关键字被冲突问题
    * @param {string} name 标识符
    */
-  private quoted(name: string): string {
+  protected quoted(name: string): string {
     if (this.options.strict) {
       return this.options.quotedLeft + name + this.options.quotedRight;
     }
@@ -339,6 +356,8 @@ export class Compiler {
           params,
           parent
         );
+      case SQL_SYMBOLE.VALUED_SELECT:
+        return this.compileValuedSelect(ast as ValuedSelect<JsConstant>, params, parent);
       case SQL_SYMBOLE.CONDITION:
         this.compileCondtion(ast as Condition, params, parent);
       case SQL_SYMBOLE.JOIN:
@@ -360,7 +379,14 @@ export class Compiler {
     }
   }
 
-  compileStar(
+  /**
+   * SELECT 语句 当值使用
+   */
+  protected compileValuedSelect(expr: ValuedSelect<JsConstant>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
+    return `(${this.compileSelect(expr.$select, params, parent)})`
+  }
+
+  protected compileStar(
     star: Star<object>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -371,7 +397,7 @@ export class Compiler {
     return "*";
   }
 
-  private compileOperation(
+  protected compileOperation(
     ast: Operation<JsConstant>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -392,7 +418,7 @@ export class Compiler {
     }
   }
 
-  compileUnaryOperation(
+  protected compileUnaryOperation(
     opt: UnaryOperation<JsConstant>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -400,7 +426,13 @@ export class Compiler {
     return opt.$operator + this.compileExpression(opt.$value, params, parent);
   }
 
-  private compileIdentifier(
+  /**
+   * 编译
+   * @param ast
+   * @param params
+   * @param parent
+   */
+  protected compileIdentifier(
     ast: AST,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -416,7 +448,8 @@ export class Compiler {
           parent
         );
       case IDENTOFIER_KIND.TABLE:
-        return this.compileRowsetName(ast as Table<object, string>);
+        throw new Error('The Table AST is special and must be compiled independently.')
+        // return this.compileRowsetName(ast as Table<object, string>);
       case IDENTOFIER_KIND.ALIAS:
       case IDENTOFIER_KIND.FIELD:
       case IDENTOFIER_KIND.FUNCTION:
@@ -438,7 +471,7 @@ export class Compiler {
       //   return this.compileNamedArgument(identifier as NamedArgument<JsConstant, string>, params, parent)
     }
   }
-  compileRowsetName(rowset: Rowset<object> | Raw) {
+  protected compileRowsetName(rowset: Rowset<object> | Raw) {
     if (rowset instanceof Raw) return rowset.$sql;
     // TODO: 兼容TableVariant
     if (rowset.$alias) {
@@ -450,7 +483,7 @@ export class Compiler {
     throw new Error("行集必须要有名称，否则无法使用！");
   }
 
-  compileNamedSelect(
+  protected compileNamedSelect(
     rowset: NamedSelect<object, string>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -458,12 +491,12 @@ export class Compiler {
     return (
       "(" +
       this.compileSelect(rowset.$statement, params, rowset) +
-      ") AS " +
+      `) AS ` +
       this.compileRowsetName(rowset)
     );
   }
 
-  compileTableInvoke(
+  protected compileTableInvoke(
     arg0: TableFuncInvoke<object>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -473,20 +506,24 @@ export class Compiler {
   // compileNamedArgument(arg0: NamedArgument<JsConstant, string>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
   //   throw new Error("Method not implemented.");
   // }
-  compileBuildIn(buildIn: BuiltIn<string>): string {
+  protected compileBuildIn(buildIn: BuiltIn<string>): string {
     return buildIn.$name;
   }
-  compileColumn(
-    column: Column<JsConstant, string>,
+
+  protected compileColumn(
+    column: Column<JsConstant, string> | Expression<JsConstant>,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ): string {
-    return `${this.compileAST(column.$expr, params, column)} AS ${this.quoted(
-      column.$name
-    )}`;
+    if (column instanceof Column) {
+      return `${this.compileExpression(column.$expr, params, column)} AS ${this.quoted(
+        column.$name
+      )}`;
+    }
+    return this.compileExpression(column, params, parent)
   }
 
-  compileWithSelect(
+  protected compileWithSelect(
     item: WithSelect<any, string> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -499,7 +536,7 @@ export class Compiler {
     )})`;
   }
 
-  compileWith(
+  protected compileWith(
     withs: With | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -527,12 +564,12 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    const returnParam = Parameter.output(RETURN_VALUE_PARAMETER_NAME, Number);
+    const returnParam = Parameter.output(this.options.returnParameterName, Number);
     return (
       "EXECUTE " +
-      this.compileAST(returnParam, params, parent) +
+      this.compileParameter(returnParam, params, parent) +
       " = " +
-      this.compileAST(exec.$proc, params, exec) +
+      this.compileIdentifier(exec.$proc, params, exec) +
       " " +
       this.compileExecuteArgumentList(exec.$args, params, exec)
     );
@@ -555,10 +592,10 @@ export class Compiler {
   ): string {
     return args
       .map((ast) => {
-        let sql = this.compileAST(ast, params, parent);
+        let sql = this.compileExpression(ast, params, parent);
         if (
           ast instanceof Parameter &&
-          (ast as Parameter<JsConstant, string>).$direction ===
+          (ast as Parameter<JsConstant, string>).direction ===
             PARAMETER_DIRECTION.OUTPUT
         ) {
           sql += " OUTPUT";
@@ -628,11 +665,11 @@ export class Compiler {
     parent?: AST
   ): string {
     return (
-      this.compileAST(expr.$left, params, expr) +
+      this.compileCondtion(expr.$left, params, expr) +
       " " +
       expr.$operator +
       " " +
-      this.compileAST(expr.$right, params, expr)
+      this.compileCondtion(expr.$right, params, expr)
     );
   }
 
@@ -681,7 +718,7 @@ export class Compiler {
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
-    return "EXISTS" + this.compileAST(expr.$statement, params, expr);
+    return "EXISTS(" + this.compileSelect(expr.$statement, params, expr) + ")";
   }
 
   protected compileUnaryLogicCondition(
@@ -727,7 +764,7 @@ export class Compiler {
     parent?: AST
   ): string {
     return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
-      .map((v) => this.compileAST(v, params, invoke))
+      .map((v) => this.compileExpression(v, params, invoke))
       .join(", ")})`;
   }
 
@@ -740,9 +777,9 @@ export class Compiler {
     return (
       (join.$left ? "LEFT " : "") +
       "JOIN " +
-      this.compileAST(join.$table, params, join) +
+      this.compileFrom(join.$table, params, join) +
       " ON " +
-      this.compileAST(join.$on, params, join)
+      this.compileCondtion(join.$on, params, join)
     );
   }
 
@@ -809,10 +846,10 @@ export class Compiler {
     if ($groups && $groups.length) {
       sql +=
         " GROUP BY " +
-        $groups.map((p) => this.compileAST(p, params, parent)).join(", ");
+        $groups.map((p) => this.compileExpression(p, params, parent)).join(", ");
     }
     if ($having) {
-      sql += " HAVING " + this.compileAST($having, params, parent);
+      sql += " HAVING " + this.compileCondtion($having, params, parent);
     }
     if ($sorts && $sorts.length > 0) {
       sql +=
@@ -834,7 +871,7 @@ export class Compiler {
     return sql;
   }
 
-  compileFrom(
+  protected compileFrom(
     table: Rowset<any> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -842,14 +879,23 @@ export class Compiler {
     if (table instanceof Raw) {
       return table.$sql;
     }
+    if (table instanceof Table) {
+      let sql = ''
+      sql += this.stringifyIdentifier(table)
+      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias)
+      return sql
+    }
     // 如果是命名行集
     if (table instanceof NamedSelect) {
       return this.compileNamedSelect(table, params, parent);
     }
+    if (table instanceof TableFuncInvoke) {
+      return this.compileTableInvoke(table, params, parent) + ' AS ' + this.stringifyIdentifier(table.$alias)
+    }
     return this.compileRowsetName(table);
   }
 
-  compileCondtion(
+  protected compileCondtion(
     where: Condition | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
@@ -906,14 +952,16 @@ export class Compiler {
       sql += this.compileWith($with, params, parent);
     }
     sql += "INSERT INTO ";
-
+    if ($table.$alias) {
+      throw new Error('Insert statements do not allow aliases on table.')
+    }
     sql += this.compileRowsetName($table);
 
     if ($fields) {
       sql +=
         "(" +
         $fields
-          .map((field) => this.compileAST(field, params, parent))
+          .map((field) => this.compileInsertField(field))
           .join(", ") +
         ")";
     }
@@ -925,12 +973,13 @@ export class Compiler {
           (row) =>
             "(" +
             row
-              .map((expr) => this.compileExpression(expr, params, parent) + ")")
+              .map((expr) => this.compileExpression(expr, params, parent))
               .join(", ")
+            + ")"
         )
         .join(", ");
     } else {
-      sql += " " + this.compileAST($values, params, parent);
+      sql += " " + this.compileSelect($values, params, parent);
     }
 
     return sql;
@@ -985,12 +1034,8 @@ export class Compiler {
       " SET " +
       $sets
         .map(
-          ({ left, right }) =>
-            this.compileAST(left, params, update) +
-            " = " +
-            this.compileAST(right, params, parent)
-        )
-        .join(", ");
+          (assign) => this.compileAssignment(assign, params, update)
+        ).join(", ");
 
     if ($froms && $froms.length > 0) {
       sql +=
@@ -1006,7 +1051,7 @@ export class Compiler {
         $joins.map((join) => this.compileJoin(join, params, update)).join(" ");
     }
     if ($where) {
-      sql += " WHERE " + this.compileAST($where, params, update);
+      sql += " WHERE " + this.compileCondtion($where, params, update);
     }
     return sql;
   }

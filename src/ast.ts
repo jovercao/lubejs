@@ -4,7 +4,6 @@ import {
   ensureCondition,
   makeProxiedRowset,
   isJsConstant,
-  applyMixins,
   ensureRowset,
   ensureField,
   ensureFunction,
@@ -28,7 +27,26 @@ import {
   UNARY_COMPARE_OPERATOR,
   CONDITION_KIND,
   OPERATION_KIND,
+  SQL_SYMBOLE_EXPRESSION,
 } from "./constants";
+
+/**
+ * 混入函数，必须放最前面，避免循环引用导致无法获取
+ * @param derivedCtor
+ * @param baseCtors
+ */
+export function applyMixins(derivedCtor: any, baseCtors: any[]) {
+  baseCtors.forEach((baseCtor) => {
+    Object.entries(Object.getOwnPropertyDescriptors(baseCtor.prototype)).forEach(([name, desc]) => {
+      // if (desc.get || desc.set) {
+
+      // }
+      // 复制属性
+      Object.defineProperty(derivedCtor.prototype, name, desc)
+      // derivedCtor.prototype[name] = baseCtor.prototype[name];
+    });
+  });
+}
 
 // **********************************类型声明******************************************
 
@@ -123,6 +141,7 @@ export type PickFields<T> = T extends undefined
 export type SelectCloumn =
   | Field<JsConstant, string>
   | Column<JsConstant, string>
+  | Star<any>
   | Star<Model>;
 
 export type ResultObjectByColumns<
@@ -229,12 +248,7 @@ export type ModelTypeOfConstructor<T> = T extends new (
  * 可以直接使用 instanceof 来判断是否为expression
  */
 export abstract class Expression<T extends JsConstant> extends AST {
-  $type:
-    | SQL_SYMBOLE.IDENTIFIER
-    | SQL_SYMBOLE.OPERATION
-    | SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE
-    | SQL_SYMBOLE.CASE
-    | SQL_SYMBOLE.CONSTANT;
+  $type: SQL_SYMBOLE_EXPRESSION;
   /**
    * 字符串连接运算
    */
@@ -866,7 +880,7 @@ export class UnaryCompareCondition extends Condition {
  */
 export class ExistsCondition extends Condition {
   $statement: Select<Model>;
-  $kind: CONDITION_KIND.EXISTS;
+  $kind: CONDITION_KIND.EXISTS = CONDITION_KIND.EXISTS;
 
   /**
    * EXISTS子句
@@ -904,6 +918,20 @@ export class Join extends AST {
     this.$on = on;
     this.$left = left;
   }
+}
+
+/**
+ * SQL *，查询所有字段时使用
+ */
+export class Star<T extends Model> extends AST {
+  readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
+
+  constructor(parent?: Name<string>) {
+    super();
+    this.$parent = parent;
+  }
+
+  $parent?: Name<string>;
 }
 
 /**
@@ -982,8 +1010,8 @@ export abstract class Identifier<TName extends string> extends AST {
     return new Variant(name);
   }
 
-  static star() {
-    return new Star();
+  static get star(): Star<any> {
+    return new Star<any>();
   }
 }
 
@@ -996,14 +1024,6 @@ export class BuiltIn<TName extends string> extends Identifier<TName> {
   readonly $builtin: true;
   constructor(name: TName) {
     super(name, true);
-  }
-}
-
-export class FieldName<N extends string> extends Identifier<N> {
-  $name: N;
-  $kind: IDENTOFIER_KIND.FIELD;
-  constructor(name: N) {
-    super(name, false);
   }
 }
 
@@ -1084,21 +1104,8 @@ export class Field<T extends JsConstant, N extends string>
   readonly $kind: IDENTOFIER_KIND.FIELD = IDENTOFIER_KIND.FIELD;
 }
 
+
 applyMixins(Field, [Identifier]);
-
-/**
- * SQL *，查询所有字段时使用
- */
-export class Star<T extends Model> extends AST {
-  readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
-
-  constructor(parent?: Name<string>) {
-    super();
-    this.$parent = parent;
-  }
-
-  $parent?: Name<string>;
-}
 
 /**
  * 数据库行集，混入类型
@@ -1122,17 +1129,33 @@ export abstract class Rowset<T extends Model> extends AST {
    * @param name 节点名称
    */
   field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
-    if (this.$alias) {
-      return new Field<T[P], P>([this.$alias.$name, name]);
-    } else {
-      return new Field<T[P], P>(name);
+    if (!this.$alias) {
+      throw new Error('You must named rowset befor use field.')
     }
+    return new Field<T[P], P>([this.$alias.$name, name]);
+  }
+
+  /**
+   * 获取star的缩写方式，等价于 field
+   */
+  get _(): Star<T> {
+    return this.star
+  }
+
+  /**
+   * 访问字段的缩写方式，等价于 field
+   */
+  $<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
+    return this.field(name)
   }
 
   /**
    * 获取所有字段
    */
-  get $(): Star<T> {
+  get star(): Star<T> {
+    if (!this.$alias) {
+      throw new Error('You must named rowset befor use field.')
+    }
     return new Star<T>(this.$alias.$name);
   }
 }
@@ -1144,12 +1167,12 @@ export type Tables<T extends Model, N extends string> =
 export class Table<T extends Model, N extends string>
   extends Rowset<T>
   implements Identifier<N> {
-  constructor(name: Name<N>, buildIn = false) {
+  constructor(name: Name<N>) {
     super();
-    Identifier.call(this, name, buildIn);
+    this.$name = name;
   }
   $name: Name<N>;
-  $builtin: boolean;
+  $builtin: false = false;
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.TABLE = IDENTOFIER_KIND.TABLE;
 
@@ -1159,7 +1182,7 @@ export class Table<T extends Model, N extends string>
    */
   field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
     if (this.$alias) {
-      return new Field<T[P], P>([this.$alias.$name, name]);
+      return super.field(name)
     }
     return new Field<T[P], P>([...pathName(this.$name), name] as any);
   }
@@ -1167,15 +1190,15 @@ export class Table<T extends Model, N extends string>
   /**
    * 获取所有字段
    */
-  get $(): Star<T> {
+  get star(): Star<T> {
     if (this.$alias) {
-      return super.$;
+      return super.star;
     }
     return new Star(this.$name);
   }
 }
 
-applyMixins(Table, [Rowset]);
+applyMixins(Table, [Identifier]);
 
 /**
  * 标量变量，暂不支持表变量
@@ -1184,7 +1207,7 @@ export class Variant<T extends JsConstant, N extends string = string>
   extends Assignable<T>
   implements Identifier<N> {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
-  $kind: IDENTOFIER_KIND.VARIANT;
+  $kind: IDENTOFIER_KIND.VARIANT = IDENTOFIER_KIND.VARIANT;
   constructor(name: N) {
     super();
     this.$name = name;
@@ -2225,7 +2248,9 @@ export type SelectAction = {
       Z
     >
   >;
-  <T extends Model = Model>(...columns: Column[] | Expressions[]): Select<T>;
+  <T extends Model = Model>(
+    ...columns: (Column | Expressions | Star<any>)[]
+  ): Select<T>;
 };
 
 /**
@@ -2748,7 +2773,7 @@ export class Union<T extends Model> extends AST {
  * 排序对象
  */
 export type SortObject<T extends Model> = {
-  [K in keyof FieldsOf<T>]?: SORT_DIRECTION;
+  [K in FieldsOf<T>]?: SORT_DIRECTION;
 };
 
 abstract class Fromable extends CrudStatement {
@@ -2761,11 +2786,7 @@ abstract class Fromable extends CrudStatement {
    * @param tables
    */
   from(...tables: (Name<string> | Rowset<any> | Table<any, string>)[]): this {
-    this.$froms = tables.map((table) => {
-      if (typeof table === "string" || Array.isArray(table)) {
-        return new Table(table);
-      }
-    });
+    this.$froms = tables.map((table) => ensureRowset(table));
     this.$froms.forEach((table) => {
       if (!table.$alias) {
         if (!(table as any).$name) {
@@ -2841,7 +2862,7 @@ export class Select<T extends Model> extends Fromable {
   $offset?: number;
   $limit?: number;
   $distinct?: boolean;
-  $columns: Column<JsConstant, string>[];
+  $columns: (Expression<JsConstant> | Column<JsConstant, string>)[];
   $sorts?: SortInfo[];
   $groups?: Expression<any>[];
   $having?: Condition;
@@ -2851,13 +2872,11 @@ export class Select<T extends Model> extends Fromable {
 
   constructor(valueObject?: ValueObject<T>);
   constructor(
-    ...columns: (Field<JsConstant, FieldsOf<T>> | Column<JsConstant, string>)[]
-  );
-  constructor(
-    singleColumn: Expressions<JsConstant> | Column<JsConstant, string>
+    ...columns: (Expressions<JsConstant> | Column<JsConstant, string>)[]
   );
   constructor(...columns: any) {
     super();
+    assert(columns.length > 0, 'Must select one or more columns by Select statement.')
     if (columns.length === 1 && isPlainObject(columns[0])) {
       const valueObject = columns[0];
       this.$columns = Object.entries(valueObject as ValueObject<T>).map(
@@ -2869,11 +2888,11 @@ export class Select<T extends Model> extends Fromable {
     }
     // 实例化
     this.$columns = (columns as (
-      | Field<JsConstant, FieldsOf<T>>
+      | Expressions<JsConstant>
       | Column<JsConstant, string>
     )[]).map((item) => {
-      if (item instanceof Column) return item;
-      return new Column(pickName(item.$name), item);
+      if (item instanceof AST) return item
+      return ensureExpression(item)
     });
   }
 
@@ -2989,6 +3008,22 @@ export class Select<T extends Model> extends Fromable {
   as<TAlias extends string>(alias: TAlias): Rowset<T> {
     return makeProxiedRowset(new NamedSelect(this, alias));
   }
+
+  asValue<T extends JsConstant = JsConstant>() {
+    return new ValuedSelect<T>(this);
+  }
+}
+
+/**
+ * 表达式化后的SELECT语句，通常用于 in 语句，或者当作值当行值使用
+ */
+export class ValuedSelect<T extends JsConstant> extends Expression<T> {
+  $select: Select<any>;
+  $type: SQL_SYMBOLE.VALUED_SELECT = SQL_SYMBOLE.VALUED_SELECT;
+  constructor(select: Select<any>) {
+    super();
+    this.$select = select;
+  }
 }
 
 /**
@@ -3006,13 +3041,20 @@ export class Insert<T extends Model> extends CrudStatement {
    */
   constructor(
     table: Tables<T, string>,
-    fields?: (FieldsOf<T> | Field<JsConstant, FieldsOf<T>>)[]
+    fields?: Field<JsConstant, FieldsOf<T>>[] | FieldsOf<T>[]
   ) {
     super();
     this.$table = ensureRowset(table) as Table<T, string>;
-    this.$fields = fields.map((field) =>
-      field instanceof AST ? field : new Field(field)
-    );
+    if (this.$table.$alias) {
+      throw new Error('Insert statements do not allow aliases on table.')
+    }
+    if (fields) {
+      if (typeof fields[0] === 'string') {
+        this.$fields = (fields as FieldsOf<T>[]).map((field) => this.$table.field(field));
+      } else {
+        this.$fields = fields as Field<JsConstant, FieldsOf<T>>[]
+      }
+    }
   }
 
   values(select: Select<T>): this;
@@ -3089,8 +3131,9 @@ export class Insert<T extends Model> extends CrudStatement {
     }
 
     // values(items: ValueObject[])
+    // 字段从值中提取
     if (!this.$fields) {
-      const existsFields: { [key: string]: boolean } = {};
+      const existsFields: { [key: string]: true } = {};
       items.forEach((item) =>
         Object.keys(item).forEach((field) => {
           if (!existsFields[field]) existsFields[field] = true;
@@ -3098,12 +3141,14 @@ export class Insert<T extends Model> extends CrudStatement {
       );
       this.$fields = (Object.keys(existsFields) as FieldsOf<
         T
-      >[]).map((fieldName) => this.$table.field(fieldName)) as any;
+      >[]).map((fieldName) => {
+        return this.$table.field(fieldName)
+      });
     }
     const fields = this.$fields.map((field) => pickName(field.$name));
 
     this.$values = items.map((item: any) => {
-      return fields.map((fieldName) => item[fieldName]);
+      return fields.map((fieldName) => ensureExpression(item[fieldName]));
     });
     return this;
   }
@@ -3282,38 +3327,41 @@ export class Parameter<
   >
   extends Expression<T>
   implements Identifier<N> {
-  $name: Name<N>;
+  $name: N;
   $builtin: boolean = false;
-  $direction: PARAMETER_DIRECTION;
-  $dbType?: DbType;
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.PARAMETER = IDENTOFIER_KIND.PARAMETER;
-  $value: T;
+  get name() {
+    return this.$name
+  }
+  direction: PARAMETER_DIRECTION;
+  dbType?: DbType;
+  value: T;
 
   constructor(
-    name: Name<N>,
+    name: N,
     dbType: DbType,
     value: T,
     direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT
   ) {
     super();
-    // Identifier.call(this, name, false);
-    this.$value = value; // ensureConstant(value)
-    this.$dbType = dbType;
-    this.$direction = direction;
+    this.$name = name
+    this.value = value; // ensureConstant(value)
+    this.dbType = dbType;
+    this.direction = direction;
   }
 
   /**
    * input 参数
    */
-  static input(name: string, value: JsConstant) {
+  static input<T extends JsConstant, N extends string>(name: N, value: T) {
     return new Parameter(name, null, value, PARAMETER_DIRECTION.INPUT);
   }
 
   /**
    * output参数
    */
-  static output(name: string, type: DbType, value?: JsConstant) {
+  static output<T extends JsConstant, N extends string>(name: N, type: DbType, value?: T) {
     return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
   }
 }

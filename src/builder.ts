@@ -127,6 +127,11 @@ export const $delete = Statement.delete;
 export const star = Identifier.star;
 
 /**
+ * 等效于star
+ */
+export const _ = Identifier.star;
+
+/**
  * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
  * @param name
  */
@@ -143,7 +148,7 @@ export function tableFn<T extends Model>(
   return function (
     ...args: Expressions<JsConstant>[]
   ): ProxiedRowset<TableFuncInvoke<T>> {
-    return makeProxiedRowset(Statement.invokeAsTable<T>(name, args));
+    return makeProxiedRowset(Statement.invokeAsTable<T>(Identifier.func(name, builtIn), args));
   };
 }
 
@@ -156,7 +161,7 @@ export function scalarFn<T extends JsConstant>(
   builtIn = false
 ): (...args: Expressions<JsConstant>[]) => Expression<T> {
   return function (...args: Expressions<JsConstant>[]): Expression<T> {
-    return Statement.invokeAsScalar<T>(name, args);
+    return Statement.invokeAsScalar<T>(Identifier.func(name, builtIn), args);
   };
 }
 

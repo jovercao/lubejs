@@ -153,7 +153,7 @@ export class Executor extends EventEmitter {
       if (res.output) {
         Object.entries(res.output).forEach(([name, value]) => {
           const p = params.find((p) => p.$name === name);
-          p.$value = value;
+          p.value = value;
           if (p.$name === "_ReturnValue_") {
             res.returnValue = value;
           }
@@ -219,12 +219,21 @@ export class Executor extends EventEmitter {
    */
   async insert<T extends Model = Model>(
     table: Name<string> | Table<T, string>,
-    values?: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[]
+    values?: ValueObject<T> | Expressions[]
+  ): Promise<number>;
+  async insert<T extends Model = Model>(
+    table: Name<string> | Table<T, string>,
+    values?: ValueObject<T>[]
   ): Promise<number>;
   async insert<T extends Model = Model>(
     table: Name<string> | Table<T, string>,
     fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
-    value?: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[]
+    value?: ValueObject<T> | Expressions[]
+  ): Promise<number>;
+  async insert<T extends Model = Model>(
+    table: Name<string> | Table<T, string>,
+    fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
+    value?: ValueObject<T> | ValueObject<T>[] | Expressions[] | Expressions[][]
   ): Promise<number>;
   async insert<T extends Model = Model>(
     table: Name<string> | Table<T, string>,
@@ -304,7 +313,7 @@ export class Executor extends EventEmitter {
         t.field(fieldName)
       );
     } else {
-      columns = [t.$];
+      columns = [t.star];
     }
     const sql = Statement.select<T>(...columns)
       .top(1)
@@ -327,13 +336,13 @@ export class Executor extends EventEmitter {
     table: Name<string> | Table<T, string>,
     options?: SelectOptions
   ): Promise<RowObject<T>[]> {
-    const { where, sorts, offset, limit, fields } = options;
+    const { where, sorts, offset, limit, fields } = options || {};
     let columns: any[];
     const t = ensureRowset(table);
     if (fields) {
       columns = fields.map((expr) => ensureField(expr as string));
     } else {
-      columns = [t.$];
+      columns = [t.star];
     }
     const sql = Statement.select<T>(...columns).from(table);
     if (where) {
