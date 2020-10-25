@@ -14,7 +14,6 @@ import {
   ValueObject,
   WhereObject,
   Identifier,
-  RowObject,
   Field,
   FieldsOf,
   InputObject,
@@ -28,7 +27,7 @@ import { INSERT_MAXIMUM_ROWS } from "./constants";
 import { Lube } from "./lube";
 
 export interface QueryResult<T extends Model = any> {
-  rows?: RowObject<T>[];
+  rows?: T[];
   output?: {
     [key: string]: JsConstant;
   };
@@ -302,7 +301,7 @@ export class Executor extends EventEmitter {
     table: Table<T, string> | Name<string>,
     where: Condition | WhereObject<T>,
     fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
-  ): Promise<RowObject<T>> {
+  ): Promise<T> {
     let columns: any[];
     if (Array.isArray(table) || typeof table === "string") {
       table = Identifier.table(table);
@@ -335,7 +334,7 @@ export class Executor extends EventEmitter {
   async select<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     options?: SelectOptions
-  ): Promise<RowObject<T>[]> {
+  ): Promise<T[]> {
     const { where, sorts, offset, limit, fields } = options || {};
     let columns: any[];
     const t = ensureRowset(table);

@@ -12,7 +12,7 @@ import {
   Field,
 } from "./ast";
 import { constant, func } from "./builder";
-import { PathedName, Procedure, Rowset } from "./lube";
+import { Model, PathedName, Procedure, Rowset, WhereObject } from "./lube";
 
 /**
  * 断言
@@ -52,7 +52,7 @@ export function ensureField<T extends JsConstant, N extends string>(
 /**
  * 确保表格类型
  */
-export function ensureRowset<TModel extends object>(
+export function ensureRowset<TModel extends Model>(
   name: Name<string> | Rowset<TModel>
 ): Rowset<TModel> {
   if (name instanceof AST) return name;
@@ -72,7 +72,7 @@ export function ensureFunction<TName extends string>(
 /**
  * 确保标题函数类型
  */
-export function ensureProcedure<T extends object, N extends string>(
+export function ensureProcedure<T extends Model, N extends string>(
   name: Name<N> | Procedure<T, N>
 ): Procedure<T, N> {
   if (name instanceof AST) return name;
@@ -84,8 +84,8 @@ export function ensureProcedure<T extends object, N extends string>(
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition<T extends object>(
-  condition: Conditions<T>
+export function ensureCondition<T extends Model>(
+  condition: Condition | WhereObject<T>
 ): Condition {
   if (condition instanceof Condition) return condition;
   const compares = Object.entries(condition).map(([key, value]) => {
@@ -96,7 +96,7 @@ export function ensureCondition<T extends object>(
     if (Array.isArray(value)) {
       return Condition.in(field, value);
     }
-    return Condition.eq(field, value);
+    return Condition.eq(field, value as any);
   });
 
   return compares.length >= 2 ? Condition.and(...compares) : compares[0];

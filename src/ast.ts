@@ -29,6 +29,7 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION,
 } from "./constants";
+import { Mode } from 'fs'
 
 /**
  * 混入函数，必须放最前面，避免循环引用导致无法获取
@@ -71,13 +72,6 @@ export type InputObject = {
   [p: string]: Expressions<JsConstant>;
 };
 
-/**
- * 从数据库输出的对象
- */
-export type OutputObject = {
-  [K: string]: JsConstant;
-};
-
 export type Model = {
   [field: string]: any;
 };
@@ -85,27 +79,23 @@ export type Model = {
 /**
  * 简化后的whereObject查询条件
  */
-export type WhereObject<T extends Model> = keyof T extends never
-  ? InputObject
-  : {
-      [K in FieldsOf<T>]?: Expressions<T[K]> | Expressions<T[K]>[];
-    };
+export type WhereObject<T extends Model = Model> = {
+  [K in FieldsOf<T>]?: Expressions<T[K]> | Expressions<T[K]>[];
+};
 
 /**
  * 值列表，用于传递Select、Insert、Update 的键值对
  */
-export type ValueObject<T extends Model> = {
+export type ValueObject<T extends Model = Model> = {
   [K in FieldsOf<T>]?: Expressions<T[K]>;
 };
 
 /**
  * 行结果对象，查询的返回结果类型
  */
-export type RowObject<T extends Model> = keyof T extends never
-  ? OutputObject
-  : {
-      [K in FieldsOf<T>]: ExpressionType<T[K]>;
-    };
+export type RowObject<T extends Model = Model> = {
+  [K in FieldsOf<T>]: ExpressionType<T[K]>;
+};
 
 /**
  * 获取表达式对像所表示的类型
@@ -206,7 +196,7 @@ export type Expressions<T extends JsConstant = JsConstant> = Expression<T> | T;
 /**
  * 所有查询条件的兼容类型
  */
-export type Conditions<T extends Model> = Condition | WhereObject<T>;
+export type Conditions<T extends Model = Model> = Condition | WhereObject<T>;
 
 /**
  * 取数据库有效字段，类型为JsConstant的字段列表
@@ -923,7 +913,7 @@ export class Join extends AST {
 /**
  * SQL *，查询所有字段时使用
  */
-export class Star<T extends Model> extends AST {
+export class Star<T extends Model = Model> extends AST {
   readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
 
   constructor(parent?: Name<string>) {
@@ -937,7 +927,7 @@ export class Star<T extends Model> extends AST {
 /**
  * 标识符，可以多级，如表名等
  */
-export abstract class Identifier<TName extends string> extends AST {
+export abstract class Identifier<TName extends string = string> extends AST {
   constructor(name: Name<TName>, builtIn = false) {
     super();
     this.$name = name;
@@ -963,13 +953,13 @@ export abstract class Identifier<TName extends string> extends AST {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param name
    */
-  static table<T extends Model>(
+  static table<T extends Model = Model>(
     modelClass: ModelConstructor<T>
   ): ProxiedRowset<Table<T, string>>;
-  static table<T extends Model, N extends string = string>(
+  static table<T extends Model = Model, N extends string = string>(
     name: Name<N>
   ): ProxiedRowset<Table<T, N>>;
-  static table<T extends Model>(
+  static table<T extends Model = Model>(
     nameOrModel: Name<string> | ModelConstructor<T>
   ): ProxiedRowset<Table<T, string>> {
     if (typeof nameOrModel === "function") {
@@ -1058,7 +1048,7 @@ export class Func<
     // this.$ftype = type || (FUNCTION_TYPE.SCALAR as K)
   }
 
-  callAsTable<T extends Model>(...args: Expressions<JsConstant>[]): Rowset<T> {
+  callAsTable<T extends Model = Model>(...args: Expressions<JsConstant>[]): Rowset<T> {
     return new TableFuncInvoke(this, args);
   }
 
@@ -1090,7 +1080,7 @@ export abstract class Assignable<T extends JsConstant> extends Expression<T> {
   }
 }
 
-export class Field<T extends JsConstant, N extends string>
+export class Field<T extends JsConstant = any, N extends string = string>
   extends Assignable<T>
   implements Identifier<N> {
   constructor(name: Name<N>) {
@@ -1110,7 +1100,7 @@ applyMixins(Field, [Identifier]);
 /**
  * 数据库行集，混入类型
  */
-export abstract class Rowset<T extends Model> extends AST {
+export abstract class Rowset<T extends Model = Model> extends AST {
   /**
    * 别名
    */
@@ -1160,11 +1150,11 @@ export abstract class Rowset<T extends Model> extends AST {
   }
 }
 
-export type Tables<T extends Model, N extends string> =
+export type Tables<T extends Model = Model, N extends string = string> =
   | Name<string>
   | Table<T, N>;
 
-export class Table<T extends Model, N extends string>
+export class Table<T extends Model = Model, N extends string = string>
   extends Rowset<T>
   implements Identifier<N> {
   constructor(name: Name<N>) {
@@ -1203,7 +1193,7 @@ applyMixins(Table, [Identifier]);
 /**
  * 标量变量，暂不支持表变量
  */
-export class Variant<T extends JsConstant, N extends string = string>
+export class Variant<T extends JsConstant = any, N extends string = string>
   extends Assignable<T>
   implements Identifier<N> {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
@@ -1269,7 +1259,7 @@ export type SelectAction = {
   /**
    * 选择列
    */
-  <T extends Model>(results: ValueObject<T>): Select<RowObject<T>>;
+  <T extends Model = Model>(results: ValueObject<T>): Select<RowObject<T>>;
   <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     ResultObjectByColumns<A, B>
@@ -2280,7 +2270,7 @@ export class ScalarFuncInvoke<TReturn extends JsConstant> extends Expression<
   }
 }
 
-export class TableFuncInvoke<TReturn extends Model> extends Rowset<TReturn> {
+export class TableFuncInvoke<TReturn extends Model = Model> extends Rowset<TReturn> {
   readonly $func: Func<string>;
   readonly $args: Expression<JsConstant>[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
@@ -2305,7 +2295,7 @@ export abstract class Statement extends AST {
    * @param table
    * @param fields
    */
-  static insert<T extends Model>(
+  static insert<T extends Model = Model>(
     table: Tables<T, string>,
     fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
   ): Insert<T> {
@@ -2316,7 +2306,7 @@ export abstract class Statement extends AST {
    * 更新一个表格
    * @param table
    */
-  static update<T extends Model>(table: Tables<T, string>): Update<T> {
+  static update<T extends Model = Model>(table: Tables<T, string>): Update<T> {
     return new Update(table);
   }
 
@@ -2324,7 +2314,7 @@ export abstract class Statement extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  static delete<T extends Model>(table: Tables<T, string>): Delete<T> {
+  static delete<T extends Model = Model>(table: Tables<T, string>): Delete<T> {
     return new Delete(table);
   }
 
@@ -2345,7 +2335,7 @@ export abstract class Statement extends AST {
   //   proc: Name<string> | Procedure<T, string>,
   //   params?: InputObject
   // ): Execute<T>
-  static execute<T extends Model>(
+  static execute<T extends Model = Model>(
     proc: Name<string> | Procedure<T, string>,
     params?: Expressions<JsConstant>[]
     // | Parameter<JsConstant, string>[] | InputObject
@@ -2353,7 +2343,7 @@ export abstract class Statement extends AST {
     return new Execute(proc, params as any);
   }
 
-  static invokeAsTable<T extends Model>(
+  static invokeAsTable<T extends Model = Model>(
     func: Name<string> | Func<string>,
     args: Expressions<JsConstant>[]
   ) {
@@ -2409,7 +2399,7 @@ export abstract class Statement extends AST {
     return new With(withs);
   }
 
-  static union<T extends Model>(...selects: Select<T>[]): Select<T> {
+  static union<T extends Model = Model>(...selects: Select<T>[]): Select<T> {
     let selec = selects[0];
     selects.forEach((sel, index) => {
       if (index < selects.length - 1) sel.union(selects[index + 1]);
@@ -2417,7 +2407,7 @@ export abstract class Statement extends AST {
     return selects[0];
   }
 
-  static unionAll<T extends Model>(...selects: Select<T>[]): Select<T> {
+  static unionAll<T extends Model = Model>(...selects: Select<T>[]): Select<T> {
     let selec = selects[0];
     selects.forEach((sel, index) => {
       if (index < selects.length - 1) sel.unionAll(selects[index + 1]);
@@ -2752,7 +2742,7 @@ export class UnaryOperation<T extends JsConstant> extends Operation<T> {
 /**
  * 联接查询
  */
-export class Union<T extends Model> extends AST {
+export class Union<T extends Model = Model> extends AST {
   $select: Select<T>;
   $all: boolean;
   $type: SQL_SYMBOLE.UNION = SQL_SYMBOLE.UNION;
@@ -2772,7 +2762,7 @@ export class Union<T extends Model> extends AST {
 /**
  * 排序对象
  */
-export type SortObject<T extends Model> = {
+export type SortObject<T extends Model = Model> = {
   [K in FieldsOf<T>]?: SORT_DIRECTION;
 };
 
@@ -2804,7 +2794,7 @@ abstract class Fromable extends CrudStatement {
    * @param left
    * @memberof Select
    */
-  join<T extends Model>(
+  join<T extends Model = Model>(
     table: Name<string> | Rowset<T>,
     on: Condition,
     left?: boolean
@@ -2822,7 +2812,7 @@ abstract class Fromable extends CrudStatement {
    * @param table
    * @param on
    */
-  leftJoin<T extends Model>(
+  leftJoin<T extends Model = Model>(
     table: Name<string> | Rowset<T>,
     on: Condition
   ): this {
@@ -2833,7 +2823,7 @@ abstract class Fromable extends CrudStatement {
    * where查询条件
    * @param condition
    */
-  where<T extends Model = any>(condition: Conditions<T>) {
+  where<T extends Model = Model>(condition: Conditions<T>) {
     assert(!this.$where, "where is declared");
     if (isPlainObject(condition)) {
       condition = ensureCondition(condition);
@@ -2857,7 +2847,7 @@ export class SortInfo extends AST {
 /**
  * SELECT查询
  */
-export class Select<T extends Model> extends Fromable {
+export class Select<T extends Model = Model> extends Fromable {
   $top?: number;
   $offset?: number;
   $limit?: number;
@@ -3029,7 +3019,7 @@ export class ValuedSelect<T extends JsConstant> extends Expression<T> {
 /**
  * Insert 语句
  */
-export class Insert<T extends Model> extends CrudStatement {
+export class Insert<T extends Model = Model> extends CrudStatement {
   $table: Table<T, string>;
   $fields?: Field<JsConstant, FieldsOf<T>>[];
   $values: Expression<JsConstant>[][] | Select<T>;
@@ -3164,7 +3154,7 @@ export class Insert<T extends Model> extends CrudStatement {
 /**
  * Update 语句
  */
-export class Update<TModel extends Model> extends Fromable {
+export class Update<TModel extends Model = Model> extends Fromable {
   $table: Table<TModel, string>;
   $sets: Assignment<JsConstant>[];
 
@@ -3197,7 +3187,7 @@ export class Update<TModel extends Model> extends Fromable {
   }
 }
 
-export class Delete<T extends Model> extends Fromable {
+export class Delete<T extends Model = Model> extends Fromable {
   $table: Table<T, string>;
   $type: SQL_SYMBOLE.DELETE = SQL_SYMBOLE.DELETE;
 
@@ -3211,7 +3201,7 @@ export class Delete<T extends Model> extends Fromable {
 }
 
 export class Procedure<
-  T extends Model,
+  T extends Model = never,
   N extends string = string
 > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
@@ -3248,7 +3238,7 @@ export class Procedure<
 /**
  * 存储过程执行
  */
-export class Execute<T extends Model> extends Statement {
+export class Execute<T extends Model = Model> extends Statement {
   readonly $proc: Procedure<T, string>;
   readonly $args: Expression<JsConstant>[];
   // | NamedArgument<JsConstant, string>[];
@@ -3322,7 +3312,7 @@ type DbType = string | Function;
  * 程序与数据库间传递值所使用的参数
  */
 export class Parameter<
-    T extends JsConstant = JsConstant,
+    T extends JsConstant = any,
     N extends string = string
   >
   extends Expression<T>
@@ -3398,7 +3388,7 @@ export class Raw extends AST {
 /**
  * 具名SELECT语句，可用于子查询，With语句等
  */
-export class NamedSelect<T extends Model, A extends string> extends Rowset<T> {
+export class NamedSelect<T extends Model = Model, A extends string = string> extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
   $statement: Select<T>;
   $alias: Alias<A>;
@@ -3413,7 +3403,7 @@ export class NamedSelect<T extends Model, A extends string> extends Rowset<T> {
 /**
  * 具名SELECT语句，可用于子查询，With语句等
  */
-export class WithSelect<T extends Model, A extends string> extends Rowset<T> {
+export class WithSelect<T extends Model = Model, A extends string = string> extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.WITH_SELECT;
   $statement: Select<T>;
   $alias: Alias<A>;
@@ -3460,7 +3450,7 @@ export class With extends AST {
    * @param table
    * @param fields
    */
-  insert<T extends Model>(
+  insert<T extends Model = Model>(
     table: Name<string> | Tables<T, string>,
     fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
   ): Insert<T> {
@@ -3473,7 +3463,7 @@ export class With extends AST {
    * 更新一个表格
    * @param table
    */
-  update<T extends Model>(table: Name<string> | Tables<T, string>): Update<T> {
+  update<T extends Model = Model>(table: Name<string> | Tables<T, string>): Update<T> {
     const sql = Statement.update(table);
     sql.$with = this;
     return sql;
@@ -3483,7 +3473,7 @@ export class With extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  delete<T extends Model>(table: Name<string> | Tables<T, string>): Delete<T> {
+  delete<T extends Model = Model>(table: Name<string> | Tables<T, string>): Delete<T> {
     const sql = Statement.delete(table);
     sql.$with = this;
     return sql;
