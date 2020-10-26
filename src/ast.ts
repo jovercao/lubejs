@@ -120,16 +120,16 @@ export type PickFields<T> = T extends undefined
   ? {}
   : T extends Field<infer V, infer N>
   ? {
-      [key in N]: V;
-    }
+    [key in N]: V;
+  }
   : T extends Column<infer V, infer N>
   ? {
-      [key in N]: V;
-    }
+    [key in N]: V;
+  }
   : T extends Star<infer M>
   ? {
-      [P in FieldsOf<M>]: M[P];
-    }
+    [P in FieldsOf<M>]: M[P];
+  }
   : {};
 
 /**
@@ -167,7 +167,7 @@ export type ResultObjectByColumns<
   X = unknown,
   Y = unknown,
   Z = unknown
-> = PickFields<A> &
+  > = PickFields<A> &
   PickFields<B> &
   PickFields<C> &
   PickFields<D> &
@@ -216,10 +216,10 @@ export type FieldsOf<T extends Model> = Exclude<
 
 export type ProxiedRowset<T> = T extends Rowset<infer M>
   ? T &
-      {
-        // 排除AST自有属性
-        [P in Exclude<FieldsOf<M>, keyof Table<any, string>>]: Field<M[P], P>;
-      }
+  {
+    // 排除AST自有属性
+    [P in Exclude<FieldsOf<M>, keyof Table<any, string>>]: Field<M[P], P>;
+  }
   : never;
 
 /**
@@ -1208,7 +1208,7 @@ export class Alias<N extends string> extends Identifier<N> {
 export class Func<
   N extends string
   // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
 
   // /**
@@ -1408,7 +1408,7 @@ applyMixins(Variant, [Identifier]);
 export class Column<
   T extends JsConstant = JsConstant,
   N extends string = string
-> extends Identifier<N> {
+  > extends Identifier<N> {
   /**
    * 列名称
    */
@@ -1439,10 +1439,10 @@ export type SelectAction = {
   /**
    * 选择列
    */
+  <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
   <T extends JsConstant>(expr: Expressions<T>): Select<{ '*no name': T }>;
   <T extends InputObject>(results: T): Select<ResultObject<T>>;
   <T extends Model>(results: InputObject<T>): Select<T>;
-  <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     ResultObjectByColumns<A, B>
   >;
@@ -1456,7 +1456,7 @@ export type SelectAction = {
     B extends SelectCloumn,
     C extends SelectCloumn,
     D extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1468,7 +1468,7 @@ export type SelectAction = {
     C extends SelectCloumn,
     D extends SelectCloumn,
     E extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1482,7 +1482,7 @@ export type SelectAction = {
     D extends SelectCloumn,
     E extends SelectCloumn,
     F extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1498,7 +1498,7 @@ export type SelectAction = {
     E extends SelectCloumn,
     F extends SelectCloumn,
     G extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1516,7 +1516,7 @@ export type SelectAction = {
     F extends SelectCloumn,
     G extends SelectCloumn,
     H extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1536,7 +1536,7 @@ export type SelectAction = {
     G extends SelectCloumn,
     H extends SelectCloumn,
     I extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1558,7 +1558,7 @@ export type SelectAction = {
     H extends SelectCloumn,
     I extends SelectCloumn,
     J extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1582,7 +1582,7 @@ export type SelectAction = {
     I extends SelectCloumn,
     J extends SelectCloumn,
     K extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1608,7 +1608,7 @@ export type SelectAction = {
     J extends SelectCloumn,
     K extends SelectCloumn,
     L extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1636,7 +1636,7 @@ export type SelectAction = {
     K extends SelectCloumn,
     L extends SelectCloumn,
     M extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1666,7 +1666,7 @@ export type SelectAction = {
     L extends SelectCloumn,
     M extends SelectCloumn,
     N extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1698,7 +1698,7 @@ export type SelectAction = {
     M extends SelectCloumn,
     N extends SelectCloumn,
     O extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1732,7 +1732,7 @@ export type SelectAction = {
     N extends SelectCloumn,
     O extends SelectCloumn,
     P extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1770,7 +1770,7 @@ export type SelectAction = {
     O extends SelectCloumn,
     P extends SelectCloumn,
     Q extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1810,7 +1810,7 @@ export type SelectAction = {
     P extends SelectCloumn,
     Q extends SelectCloumn,
     R extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1852,7 +1852,7 @@ export type SelectAction = {
     Q extends SelectCloumn,
     R extends SelectCloumn,
     S extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1916,7 +1916,7 @@ export type SelectAction = {
     R extends SelectCloumn,
     S extends SelectCloumn,
     T extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1983,7 +1983,7 @@ export type SelectAction = {
     S extends SelectCloumn,
     T extends SelectCloumn,
     U extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2053,7 +2053,7 @@ export type SelectAction = {
     T extends SelectCloumn,
     U extends SelectCloumn,
     V extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2126,7 +2126,7 @@ export type SelectAction = {
     U extends SelectCloumn,
     V extends SelectCloumn,
     W extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2202,7 +2202,7 @@ export type SelectAction = {
     V extends SelectCloumn,
     W extends SelectCloumn,
     X extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2281,7 +2281,7 @@ export type SelectAction = {
     W extends SelectCloumn,
     X extends SelectCloumn,
     Y extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2363,7 +2363,7 @@ export type SelectAction = {
     X extends SelectCloumn,
     Y extends SelectCloumn,
     Z extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2448,7 +2448,7 @@ export type SelectAction = {
     X extends JsConstant,
     Y extends JsConstant,
     Z extends JsConstant
-  >(
+    >(
     a: Expressions<A>,
     b: Expressions<B>,
     c: Expressions<C>,
@@ -2488,7 +2488,7 @@ export type SelectAction = {
  */
 export class ScalarFuncInvoke<TReturn extends JsConstant = any> extends Expression<
   TReturn
-> {
+  > {
   $func: Func<string>;
   $args: Expression<JsConstant>[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
@@ -3302,7 +3302,7 @@ export class Delete<T extends Model = any> extends Fromable {
 export class Procedure<
   T extends Model = never,
   N extends string = string
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
 
   execute(...params: Expressions<JsConstant>[]): Execute<T>;
@@ -3411,8 +3411,8 @@ type DbType = string | Function;
  * 程序与数据库间传递值所使用的参数
  */
 export class Parameter<
-    T extends JsConstant = any,
-    N extends string = string
+  T extends JsConstant = any,
+  N extends string = string
   >
   extends Expression<T>
   implements Identifier<N> {
