@@ -55,7 +55,7 @@ import {
   CONDITION_KIND,
   OPERATION_KIND,
 } from "./constants";
-import { ValuedSelect } from './lube'
+import { Bracket, ValuedSelect } from './lube'
 import { dateToString } from './util'
 
 export interface Command {
@@ -335,15 +335,16 @@ export class Compiler {
         return this.compileIdentifier(ast, params, parent);
       case SQL_SYMBOLE.EXECUTE:
         return this.compileExecute(ast as Execute<object>, params, parent);
-      case SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE:
-        return this.compileScalarInvoke(
-          ast as ScalarFuncInvoke<JsConstant>,
-          params,
-          parent
-        );
       case SQL_SYMBOLE.TABLE_FUNCTION_INVOKE:
         return this.compileTableInvoke(
           ast as TableFuncInvoke<object>,
+          params,
+          parent
+        );
+
+      case SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE:
+        return this.compileScalarInvoke(
+          ast as ScalarFuncInvoke<JsConstant>,
           params,
           parent
         );
@@ -355,8 +356,11 @@ export class Compiler {
           params,
           parent
         );
+      case SQL_SYMBOLE.BRACKET:
+        return this.compileBracket(ast as Bracket<JsConstant>, params, parent)
       case SQL_SYMBOLE.VALUED_SELECT:
         return this.compileValuedSelect(ast as ValuedSelect<JsConstant>, params, parent);
+
       case SQL_SYMBOLE.CONDITION:
         this.compileCondtion(ast as Condition, params, parent);
       case SQL_SYMBOLE.JOIN:
@@ -376,6 +380,10 @@ export class Compiler {
       default:
         throw new Error(`Error AST type: ${ast.$type} in ${parent?.$type}`);
     }
+  }
+
+  protected compileBracket(expr: Bracket<JsConstant>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
+    return `(${this.compileExpression(expr.$inner, params, parent)})`;
   }
 
   /**

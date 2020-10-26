@@ -249,21 +249,21 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * 字符串连接运算
    */
   concat(expr: Expressions<string>): Expression<string> {
-    return Operation.concat(this as Expressions<string>, expr);
+    return Expression.concat(this as Expressions<string>, expr);
   }
 
   /**
    * 加法运算，返回数值，如果是字符串相加，请使用join函数连接
    */
   add(expr: Expressions<number>): Expression<number> {
-    return Operation.add(this as Expressions<number>, expr);
+    return Expression.add(this as Expressions<number>, expr);
   }
 
   /**
    * 减法运算
    */
   sub(expr: Expressions<number>): Expression<number> {
-    return Operation.sub(this as Expressions<number>, expr);
+    return Expression.sub(this as Expressions<number>, expr);
   }
 
   /**
@@ -271,7 +271,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @param expr 要与当前表达式相乘的表达式
    */
   mul(expr: Expressions<number>): Expression<number> {
-    return Operation.mul(this as Expressions<number>, expr);
+    return Expression.mul(this as Expressions<number>, expr);
   }
 
   /**
@@ -280,7 +280,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   div(expr: Expressions<number>): Expression<number> {
-    return Operation.div(this as Expressions<number>, expr);
+    return Expression.div(this as Expressions<number>, expr);
   }
 
   /**
@@ -289,7 +289,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   mod(expr: Expressions<number>): Expression<number> {
-    return Operation.mod(this as Expressions<number>, expr);
+    return Expression.mod(this as Expressions<number>, expr);
   }
 
   /**
@@ -298,7 +298,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   and(expr: Expressions<number>): Expression<number> {
-    return Operation.and(this as Expressions<number>, expr);
+    return Expression.and(this as Expressions<number>, expr);
   }
 
   /**
@@ -307,7 +307,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   or(expr: Expressions<number>): Expression<number> {
-    return Operation.or(this as Expressions<number>, expr);
+    return Expression.or(this as Expressions<number>, expr);
   }
 
   /**
@@ -316,7 +316,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   not(): Expression<number> {
-    return Operation.not(this as Expressions<number>);
+    return Expression.not(this as Expressions<number>);
   }
 
   /**
@@ -325,7 +325,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   xor(expr: Expressions<number>): Expression<number> {
-    return Operation.xor(this as Expressions<number>, expr);
+    return Expression.xor(this as Expressions<number>, expr);
   }
 
   /**
@@ -334,7 +334,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   shl(expr: Expressions<number>): Expression<number> {
-    return Operation.shl(this as Expressions<number>, expr);
+    return Expression.shl(this as Expressions<number>, expr);
   }
 
   /**
@@ -343,7 +343,7 @@ export abstract class Expression<T extends JsConstant> extends AST {
    * @returns 返回运算后的表达式
    */
   shr(expr: Expressions<number>): Expression<number> {
-    return Operation.shr(this as Expressions<number>, expr);
+    return Expression.shr(this as Expressions<number>, expr);
   }
 
   /**
@@ -481,6 +481,180 @@ export abstract class Expression<T extends JsConstant> extends AST {
    */
   as<TName extends string>(alias: TName): Column<T, TName> {
     return new Column<T, TName>(alias, this);
+  }
+
+  /**
+   * 将本表达式括起来
+   */
+  bracket(): Expression<T> {
+    return Expression.bracket(this)
+  }
+
+  /**
+   * 括号表达式，将表达式括起来，如优先级
+   */
+  static bracket<T extends JsConstant>(value: Expressions<T>): Expression<T> {
+    return new Bracket(value);
+  }
+
+  /**
+   * 算术运算 +
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static neg(expr: Expressions<number>): Expression<number> {
+    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
+  }
+
+  /**
+   * 字符串连接运算
+   */
+  static concat(
+    left: Expressions<string>,
+    right: Expressions<string>
+  ): Expression<string> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, left, right);
+  }
+
+  /**
+   * 算术运算 +
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static add(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
+  }
+
+  /**
+   * 算术运算 -
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static sub(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
+  }
+
+  /**
+   * 算术运算 *
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static mul(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
+  }
+
+  /**
+   * 算术运算 /
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static div(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
+  }
+
+  /**
+   * 算术运算 %
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static mod(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
+  }
+
+  /**
+   * 位算术运算 &
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static and(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.AND, left, right);
+  }
+
+  /**
+   * 位算术运算 |
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static or(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.OR, left, right);
+  }
+
+  /**
+   * 位算术运算 ^
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static xor(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
+  }
+
+  /**
+   * 位算术运算 ~
+   * @param value 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static not(value: Expressions<number>): Expression<number> {
+    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NOT, value);
+  }
+
+  /**
+   * 位算术运算 <<
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static shl(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
+  }
+
+  /**
+   * 位算术运算 >>
+   * @param left 左值
+   * @param right 右值
+   * @returns 返回算术运算表达式
+   */
+  static shr(
+    left: Expressions<number>,
+    right: Expressions<number>
+  ): Expression<number> {
+    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
   }
 }
 
@@ -2528,172 +2702,24 @@ export class GroupCondition extends Condition {
 }
 
 /**
+ * 括号表达式
+ */
+export class Bracket<T extends JsConstant> extends Expression<T> {
+  $type: SQL_SYMBOLE.BRACKET = SQL_SYMBOLE.BRACKET;
+  $inner: Expression<T>;
+  constructor(inner: Expressions<T>) {
+    super()
+    this.$inner = ensureExpression(inner)
+  }
+}
+
+/**
  * 运算表达式基类
  */
 export abstract class Operation<T extends JsConstant> extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
   readonly $kind: OPERATION_KIND;
   $operator: OPERATION_OPERATOR;
-
-  /**
-   * 算术运算 +
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static neg(expr: Expressions<number>): Expression<number> {
-    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
-  }
-
-  /**
-   * 字符串连接运算
-   */
-  static concat(
-    left: Expressions<string>,
-    right: Expressions<string>
-  ): Expression<string> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, left, right);
-  }
-
-  /**
-   * 算术运算 +
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static add(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
-  }
-
-  /**
-   * 算术运算 -
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static sub(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
-  }
-
-  /**
-   * 算术运算 *
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static mul(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
-  }
-
-  /**
-   * 算术运算 /
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static div(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
-  }
-
-  /**
-   * 算术运算 %
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static mod(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
-  }
-
-  /**
-   * 位算术运算 &
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static and(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.AND, left, right);
-  }
-
-  /**
-   * 位算术运算 |
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static or(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.OR, left, right);
-  }
-
-  /**
-   * 位算术运算 ^
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static xor(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
-  }
-
-  /**
-   * 位算术运算 ~
-   * @param value 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static not(value: Expressions<number>): Expression<number> {
-    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NOT, value);
-  }
-
-  /**
-   * 位算术运算 <<
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static shl(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
-  }
-
-  /**
-   * 位算术运算 >>
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static shr(
-    left: Expressions<number>,
-    right: Expressions<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
-  }
 }
 
 /**
