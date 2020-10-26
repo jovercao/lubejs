@@ -70,8 +70,8 @@ export type ValueTypeOf<T extends Model> = T[FieldsOf<T>]
 /**
  * 不明确类型的键值对象，用于 输入SQL语句的的对象，如WhereObject等
  */
-export type InputObject = {
-  [p: string]: Expressions<JsConstant>;
+export type InputObject<T extends Model = Model> = {
+  [P in FieldsOf<T>]: Expressions<T[P]>;
 };
 
 export type Model = {
@@ -1440,6 +1440,7 @@ export type SelectAction = {
    * 选择列
    */
   <T extends InputObject>(results: T): Select<ResultObject<T>>;
+  <T extends Model>(results: InputObject<T>): Select<T>;
   <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     ResultObjectByColumns<A, B>
