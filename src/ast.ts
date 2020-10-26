@@ -243,7 +243,7 @@ export type ModelTypeOfConstructor<T> = T extends new (
  * 所有表达式类均从该类型继承，
  * 可以直接使用 instanceof 来判断是否为expression
  */
-export abstract class Expression<T extends JsConstant> extends AST {
+export abstract class Expression<T extends JsConstant = JsConstant> extends AST {
   $type: SQL_SYMBOLE_EXPRESSION;
   /**
    * 字符串连接运算
@@ -1188,7 +1188,7 @@ export abstract class Identifier<N extends string = string> extends AST {
 /**
  * SQL系统内建关键字，如MSSQL DATEPART: DAY / M / MM 等
  */
-export class BuiltIn<N extends string> extends Identifier<N> {
+export class BuiltIn<N extends string = string> extends Identifier<N> {
   $name: N;
   $kind: IDENTOFIER_KIND.BUILD_IN;
   readonly $builtin: true;
@@ -2490,23 +2490,21 @@ export class ScalarFuncInvoke<TReturn extends JsConstant = any> extends Expressi
   TReturn
   > {
   $func: Func<string>;
-  $args: Expression<JsConstant>[];
+  $args: (Expression<JsConstant> | BuiltIn<string> | Star)[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
     SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
 
-  // TODO: 是否需参数的类型判断？
+  // TODO: 是否需参数的类型判断，拦截ValuedSelect之类的表达式进入？
   constructor(
     func: Name<string> | Func<string>,
-    args: Expressions<JsConstant>[]
-    // (
-    //   | Parameter<JsConstant>
-    //   | Field<JsConstant, string>
-    //   | Constant<JsConstant>
-    // )[]
+    args: (Expressions<JsConstant> | BuiltIn<string> | Star)[]
   ) {
     super();
     this.$func = ensureFunction(func);
-    this.$args = args.map((expr) => ensureExpression(expr));
+    this.$args = args.map((expr) => {
+      if (isJsConstant(expr)) return ensureExpression(expr)
+      return expr
+    });
   }
 }
 
@@ -2689,7 +2687,7 @@ export class When<T extends JsConstant = any> extends AST {
  * CASE表达式
  */
 export class Case<T extends JsConstant = any> extends Expression<T> {
-  $expr: Expression<any> | Condition;
+  $expr: Expression<any>;
   $whens: When<T>[];
   $default?: Expression<T>;
   $type: SQL_SYMBOLE.CASE = SQL_SYMBOLE.CASE;
@@ -2944,7 +2942,7 @@ export class Select<T extends Model = any> extends Fromable {
   $offset?: number;
   $limit?: number;
   $distinct?: boolean;
-  $columns: (Expression<JsConstant> | Column<JsConstant, string>)[];
+  $columns: (Expression<JsConstant> | Column<JsConstant, string> | Star<any>)[];
   $sorts?: SortInfo[];
   $groups?: Expression<any>[];
   $having?: Condition;
@@ -2954,7 +2952,7 @@ export class Select<T extends Model = any> extends Fromable {
 
   constructor(valueObject?: ValueObject<T>);
   constructor(
-    ...columns: (Expressions<JsConstant> | Column<JsConstant, string>)[]
+    ...columns: (Expressions<JsConstant> | Column<JsConstant, string> | Star<any>)[]
   );
   constructor(...columns: any) {
     super();
