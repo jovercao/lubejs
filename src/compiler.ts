@@ -346,10 +346,10 @@ export class Compiler {
       case SQL_SYMBOLE.IDENTIFIER:
         return this.compileIdentifier(ast, params, parent);
       case SQL_SYMBOLE.EXECUTE:
-        return this.compileExecute(ast as Execute<object>, params, parent);
+        return this.compileExecute(ast as Execute, params, parent);
       case SQL_SYMBOLE.TABLE_FUNCTION_INVOKE:
         return this.compileTableInvoke(
-          ast as TableFuncInvoke<object>,
+          ast as TableFuncInvoke,
           params,
           parent
         );
@@ -378,7 +378,7 @@ export class Compiler {
       case SQL_SYMBOLE.JOIN:
         return this.compileJoin(ast as Join, params, parent);
       case SQL_SYMBOLE.UNION:
-        return this.compileUnion(ast as Union<object>, params, parent);
+        return this.compileUnion(ast as Union, params, parent);
       case SQL_SYMBOLE.SORT:
         return this.compileSort(ast as SortInfo, params, parent);
       case SQL_SYMBOLE.DOCUMENT:
@@ -388,7 +388,7 @@ export class Compiler {
       case SQL_SYMBOLE.WITH:
         return this.compileWith(ast as With, params, parent);
       case SQL_SYMBOLE.STAR:
-        return this.compileStar(ast as Star<object>, params, parent);
+        return this.compileStar(ast as Star, params, parent);
       default:
         throw new Error(`Error AST type: ${ast.$type} in ${parent?.$type}`);
     }
@@ -406,7 +406,7 @@ export class Compiler {
   }
 
   protected compileStar(
-    star: Star<object>,
+    star: Star,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ): string {
@@ -490,7 +490,7 @@ export class Compiler {
       //   return this.compileNamedArgument(identifier as NamedArgument<JsConstant, string>, params, parent)
     }
   }
-  protected compileRowsetName(rowset: Rowset<object> | Raw) {
+  protected compileRowsetName(rowset: Rowset | Raw) {
     if (rowset instanceof Raw) return rowset.$sql;
     // TODO: 兼容TableVariant
     if (rowset.$alias) {
@@ -516,7 +516,7 @@ export class Compiler {
   }
 
   protected compileTableInvoke(
-    arg0: TableFuncInvoke<object>,
+    arg0: TableFuncInvoke,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ): string {
@@ -579,7 +579,7 @@ export class Compiler {
   }
 
   protected compileExecute<T extends AST>(
-    exec: Execute<object>,
+    exec: Execute,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
@@ -625,7 +625,7 @@ export class Compiler {
   }
 
   protected compileUnion(
-    union: Union<object>,
+    union: Union,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
@@ -814,7 +814,7 @@ export class Compiler {
   }
 
   protected compileSelect(
-    select: Select<object>,
+    select: Select,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
@@ -961,7 +961,7 @@ export class Compiler {
   }
 
   protected compileInsert(
-    insert: Insert<object>,
+    insert: Insert,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
@@ -1034,7 +1034,7 @@ export class Compiler {
   }
 
   protected compileUpdate(
-    update: Update<object>,
+    update: Update,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {
@@ -1076,7 +1076,7 @@ export class Compiler {
   }
 
   protected compileDelete(
-    del: Delete<object>,
+    del: Delete,
     params: Set<Parameter<JsConstant, string>>,
     parent?: AST
   ): string {

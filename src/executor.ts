@@ -52,7 +52,7 @@ export interface QueryHandler<T extends Model = any> {
   >;
 }
 
-export interface SelectOptions<T = any> {
+export interface SelectOptions<T extends Model = any> {
   where?: WhereObject<T> | Condition;
   top?: number;
   offset?: number;
@@ -167,20 +167,20 @@ export class Executor extends EventEmitter {
     }
   }
 
-  async query<T extends Model = Model>(sql: Select<T>): Promise<QueryResult<T>>;
-  async query<T extends Model = Model>(sql: string): Promise<QueryResult<T>>;
-  async query<T extends Model = Model>(
+  async query<T extends Model = any>(sql: Select<T>): Promise<QueryResult<T>>;
+  async query<T extends Model = any>(sql: string): Promise<QueryResult<T>>;
+  async query<T extends Model = any>(
     sql: string,
     params: Parameter[]
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = Model>(
+  async query<T extends Model = any>(
     sql: string,
     params: Object
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = Model>(
+  async query<T extends Model = any>(
     sql: Statement | Document
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = Model>(
+  async query<T extends Model = any>(
     sql: TemplateStringsArray,
     ...params: any[]
   ): Promise<QueryResult<T>>;
@@ -217,25 +217,25 @@ export class Executor extends EventEmitter {
   /**
    * 插入数据的快捷操作
    */
-  async insert<T extends Model = Model>(
+  async insert<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     values?: ValueObject<T> | Expressions[]
   ): Promise<number>;
-  async insert<T extends Model = Model>(
+  async insert<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     values?: ValueObject<T>[]
   ): Promise<number>;
-  async insert<T extends Model = Model>(
+  async insert<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
     value?: ValueObject<T> | Expressions[]
   ): Promise<number>;
-  async insert<T extends Model = Model>(
+  async insert<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
     value?: ValueObject<T> | ValueObject<T>[] | Expressions[] | Expressions[][]
   ): Promise<number>;
-  async insert<T extends Model = Model>(
+  async insert<T extends Model = any>(
     table: Name<string> | Table<T, string>,
     arg2:
       | FieldsOf<T>[]
@@ -334,7 +334,7 @@ export class Executor extends EventEmitter {
    */
   async select<T extends Model = any>(
     table: Name<string> | Table<T, string>,
-    options?: SelectOptions
+    options?: SelectOptions<T>
   ): Promise<T[]> {
     const { where, sorts, offset, limit, fields } = options || {};
     let columns: any[];
