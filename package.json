@@ -1,6 +1,6 @@
 {
   "name": "lubejs",
-  "version": "2.0.0-beta.6",
+  "version": "2.0.0-beta.7",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "lib/lube.js",
   "directories": {
