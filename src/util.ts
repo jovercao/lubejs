@@ -499,7 +499,10 @@ export function invalidAST(type: string, ast: AST) {
   throw new Error(`Invalid ${type} AST.`);
 }
 
-export function clone(value: any) {
+export function clone<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(item => item instanceof AST ? item.clone() : clone(item)) as any
+  }
   if (value && typeof value === 'object') {
     const copied: any = {};
     Object.entries(value).forEach(([k, v]) => {
