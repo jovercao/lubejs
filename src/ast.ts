@@ -11,6 +11,7 @@ import {
   pickName,
   pathName,
   isPlainObject,
+  ensureVariant, clone
 } from "./util";
 
 import {
@@ -29,25 +30,28 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION,
 } from "./constants";
-import { Mode } from 'fs'
 
 /**
  * 混入函数，必须放最前面，避免循环引用导致无法获取
  * @param derivedCtor
  * @param baseCtors
  */
-export function applyMixins(derivedCtor: any, baseCtors: any[]) {
+function applyMixins(derivedCtor: any, baseCtors: any[]) {
   baseCtors.forEach((baseCtor) => {
-    Object.entries(Object.getOwnPropertyDescriptors(baseCtor.prototype)).forEach(([name, desc]) => {
+    Object.entries(
+      Object.getOwnPropertyDescriptors(baseCtor.prototype)
+    ).forEach(([name, desc]) => {
       // if (desc.get || desc.set) {
 
       // }
       // 复制属性
-      Object.defineProperty(derivedCtor.prototype, name, desc)
+      Object.defineProperty(derivedCtor.prototype, name, desc);
       // derivedCtor.prototype[name] = baseCtor.prototype[name];
     });
   });
 }
+
+export const $IsProxy = Symbol('#IS_PROXY')
 
 // **********************************类型声明******************************************
 
@@ -65,7 +69,7 @@ export type JsConstant =
   | Binary
   | bigint;
 
-export type ValueTypeOf<T extends Model> = T[FieldsOf<T>]
+export type ValueTypeOf<T extends Model> = T[FieldsOf<T>];
 
 /**
  * 不明确类型的键值对象，用于 输入SQL语句的的对象，如WhereObject等
@@ -77,7 +81,6 @@ export type InputObject<T extends Model = any> = {
 export type Model = {
   [field: string]: any;
 };
-
 
 /**
  * 简化后的whereObject查询条件
@@ -101,8 +104,8 @@ export type RowObject<T extends Model = any> = {
 };
 
 export type ResultObject<T extends Model = any> = {
-  [K in keyof T]: ExpressionType<T[K]>
-}
+  [K in keyof T]: ExpressionType<T[K]>;
+};
 
 /**
  * 获取表达式对像所表示的类型
@@ -227,6 +230,12 @@ export type ProxiedRowset<T> = T extends Rowset<infer M>
  */
 export abstract class AST {
   readonly $type: SQL_SYMBOLE;
+  /**
+   * 克隆自身
+   */
+  clone(): this {
+    return clone(this)
+  }
 }
 
 export type ModelConstructor<T extends Model = object> = new (
@@ -243,7 +252,9 @@ export type ModelTypeOfConstructor<T> = T extends new (
  * 所有表达式类均从该类型继承，
  * 可以直接使用 instanceof 来判断是否为expression
  */
-export abstract class Expression<T extends JsConstant = JsConstant> extends AST {
+export abstract class Expression<
+  T extends JsConstant = JsConstant
+  > extends AST {
   $type: SQL_SYMBOLE_EXPRESSION;
   /**
    * 字符串连接运算
@@ -487,7 +498,14 @@ export abstract class Expression<T extends JsConstant = JsConstant> extends AST 
    * 将本表达式括起来
    */
   bracket(): Expression<T> {
-    return Expression.bracket(this)
+    return Expression.bracket(this);
+  }
+
+  /**
+   * 将当前表达式转换为指定的类型
+   */
+  to<T extends ScalarType>(type: T): Expression<TypeOfScalarType<T>> {
+    return Expression.convert(this, type);
   }
 
   /**
@@ -655,6 +673,13 @@ export abstract class Expression<T extends JsConstant = JsConstant> extends AST 
     right: Expressions<number>
   ): Expression<number> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
+  }
+
+  static convert<T extends ScalarType>(
+    expr: Expressions<JsConstant>,
+    toType: T
+  ): Expression<TypeOfScalarType<T>> {
+    return new ConvertOperation(expr, toType) as any;
   }
 }
 
@@ -1190,7 +1215,7 @@ export abstract class Identifier<N extends string = string> extends AST {
  */
 export class BuiltIn<N extends string = string> extends Identifier<N> {
   $name: N;
-  $kind: IDENTOFIER_KIND.BUILD_IN;
+  $kind: IDENTOFIER_KIND.BUILT_IN = IDENTOFIER_KIND.BUILT_IN;
   readonly $builtin: true;
   constructor(name: N) {
     super(name, true);
@@ -1228,7 +1253,9 @@ export class Func<
     // this.$ftype = type || (FUNCTION_TYPE.SCALAR as K)
   }
 
-  callAsTable<T extends Model = any>(...args: Expressions<JsConstant>[]): Rowset<T> {
+  callAsTable<T extends Model = any>(
+    ...args: Expressions<JsConstant>[]
+  ): Rowset<T> {
     return new TableFuncInvoke(this, args);
   }
 
@@ -1248,7 +1275,9 @@ export type PathedName<T extends string> =
 
 export type Name<T extends string> = T | PathedName<T>;
 
-export abstract class Assignable<T extends JsConstant = any> extends Expression<T> {
+export abstract class Assignable<T extends JsConstant = any> extends Expression<
+  T
+  > {
   readonly $lvalue: true = true;
   /**
    * 赋值操作
@@ -1273,7 +1302,6 @@ export class Field<T extends JsConstant = any, N extends string = string>
   readonly $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   readonly $kind: IDENTOFIER_KIND.FIELD = IDENTOFIER_KIND.FIELD;
 }
-
 
 applyMixins(Field, [Identifier]);
 
@@ -1300,7 +1328,7 @@ export abstract class Rowset<T extends Model = any> extends AST {
    */
   field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
     if (!this.$alias) {
-      throw new Error('You must named rowset befor use field.')
+      throw new Error("You must named rowset befor use field.");
     }
     return new Field<T[P], P>([this.$alias.$name, name]);
   }
@@ -1309,14 +1337,14 @@ export abstract class Rowset<T extends Model = any> extends AST {
    * 获取star的缩写方式，等价于 field
    */
   get _(): Star<T> {
-    return this.star
+    return this.star;
   }
 
   /**
    * 访问字段的缩写方式，等价于 field
    */
   $<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
-    return this.field(name)
+    return this.field(name);
   }
 
   /**
@@ -1324,9 +1352,17 @@ export abstract class Rowset<T extends Model = any> extends AST {
    */
   get star(): Star<T> {
     if (!this.$alias) {
-      throw new Error('You must named rowset befor use field.')
+      throw new Error("You must named rowset befor use field.");
     }
     return new Star<T>(this.$alias.$name);
+  }
+
+  clone(): this {
+    const copied = super.clone()
+    if (Reflect.get(this, $IsProxy)) {
+      return makeProxiedRowset(copied)
+    }
+    return copied
   }
 }
 
@@ -1352,7 +1388,7 @@ export class Table<T extends Model = any, N extends string = string>
    */
   field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
     if (this.$alias) {
-      return super.field(name)
+      return super.field(name);
     }
     return new Field<T[P], P>([...pathName(this.$name), name] as any);
   }
@@ -1390,17 +1426,20 @@ applyMixins(Variant, [Identifier]);
 
 // TODO 表变量支持
 
-// export class TableVariant<N extends string, T extends Model> extends Rowset<T> {
-//   $name: string
+export class TableVariant<T extends Model = any, N extends string = string>
+  extends Rowset<T>
+  implements Identifier<N> {
+  $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
+  $builtin: boolean;
+  $kind: IDENTOFIER_KIND.TABLE_VARIANT = IDENTOFIER_KIND.TABLE_VARIANT;
+  $name: N;
+  constructor(name: N) {
+    super();
+    this.$name = name;
+  }
+}
 
-//   $schema: {
-
-//   }
-
-//   constructor(name: N) {
-//     super(SQL_SYMBOLE.TABLE_VARIANT)
-//   }
-// }
+applyMixins(TableVariant, [Identifier]);
 
 /**
  * 列表达式
@@ -1440,7 +1479,7 @@ export type SelectAction = {
    * 选择列
    */
   <A extends SelectCloumn>(a: A): Select<ResultObjectByColumns<A>>;
-  <T extends JsConstant>(expr: Expressions<T>): Select<{ '*no name': T }>;
+  <T extends JsConstant>(expr: Expressions<T>): Select<{ "*no name": T }>;
   <T extends InputObject>(results: T): Select<ResultObject<T>>;
   <T extends Model>(results: InputObject<T>): Select<T>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
@@ -2476,7 +2515,34 @@ export type SelectAction = {
     y: Expressions<Y>,
     z: Expressions<Z>
   ): Select<{
-    "*": [A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z]
+    "*": [
+      A,
+      B,
+      C,
+      D,
+      E,
+      F,
+      G,
+      H,
+      I,
+      J,
+      K,
+      L,
+      M,
+      N,
+      O,
+      P,
+      Q,
+      R,
+      S,
+      T,
+      U,
+      V,
+      W,
+      X,
+      Y,
+      Z
+    ];
   }>;
   <T extends Model = any>(
     ...columns: (Column | Expressions | Star<any>)[]
@@ -2486,9 +2552,9 @@ export type SelectAction = {
 /**
  * 函数调用表达式
  */
-export class ScalarFuncInvoke<TReturn extends JsConstant = any> extends Expression<
-  TReturn
-  > {
+export class ScalarFuncInvoke<
+  TReturn extends JsConstant = any
+  > extends Expression<TReturn> {
   $func: Func<string>;
   $args: (Expression<JsConstant> | BuiltIn<string> | Star)[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
@@ -2502,13 +2568,15 @@ export class ScalarFuncInvoke<TReturn extends JsConstant = any> extends Expressi
     super();
     this.$func = ensureFunction(func);
     this.$args = args.map((expr) => {
-      if (isJsConstant(expr)) return ensureExpression(expr)
-      return expr
+      if (isJsConstant(expr)) return ensureExpression(expr);
+      return expr;
     });
   }
 }
 
-export class TableFuncInvoke<TReturn extends Model = any> extends Rowset<TReturn> {
+export class TableFuncInvoke<TReturn extends Model = any> extends Rowset<
+  TReturn
+  > {
   readonly $func: Func<string>;
   readonly $args: Expression<JsConstant>[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
@@ -2631,9 +2699,7 @@ export abstract class Statement extends AST {
   /**
    * With语句
    */
-  static with(
-    withs: Record<string, Select> | WithSelect<any, string>[]
-  ) {
+  static with(withs: Record<string, Select> | WithSelect<any, string>[]) {
     return new With(withs);
   }
 
@@ -2730,7 +2796,7 @@ export class Case<T extends JsConstant = any> extends Expression<T> {
 /**
  * 常量表达式
  */
-export class Constant<T extends JsConstant> extends Expression<T> {
+export class Constant<T extends JsConstant = JsConstant> extends Expression<T> {
   $type: SQL_SYMBOLE.CONSTANT = SQL_SYMBOLE.CONSTANT;
 
   /**
@@ -2762,19 +2828,21 @@ export class GroupCondition extends Condition {
 /**
  * 括号表达式
  */
-export class Bracket<T extends JsConstant> extends Expression<T> {
+export class Bracket<T extends JsConstant = JsConstant> extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET = SQL_SYMBOLE.BRACKET;
   $inner: Expression<T>;
   constructor(inner: Expressions<T>) {
-    super()
-    this.$inner = ensureExpression(inner)
+    super();
+    this.$inner = ensureExpression(inner);
   }
 }
 
 /**
  * 运算表达式基类
  */
-export abstract class Operation<T extends JsConstant> extends Expression<T> {
+export abstract class Operation<
+  T extends JsConstant = JsConstant
+  > extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
   readonly $kind: OPERATION_KIND;
   $operator: OPERATION_OPERATOR;
@@ -2783,7 +2851,9 @@ export abstract class Operation<T extends JsConstant> extends Expression<T> {
 /**
  * 二元运算表达式
  */
-export class BinaryOperation<T extends JsConstant> extends Operation<T> {
+export class BinaryOperation<
+  T extends JsConstant = JsConstant
+  > extends Operation<T> {
   readonly $kind: OPERATION_KIND.BINARY = OPERATION_KIND.BINARY;
   $left: Expression<T>;
   $right: Expression<T>;
@@ -2810,7 +2880,9 @@ export class BinaryOperation<T extends JsConstant> extends Operation<T> {
 /**
  * 一元运算符
  */
-export class UnaryOperation<T extends JsConstant> extends Operation<T> {
+export class UnaryOperation<
+  T extends JsConstant = JsConstant
+  > extends Operation<T> {
   readonly $value: Expression<JsConstant>;
   readonly $kind: OPERATION_KIND.UNARY = OPERATION_KIND.UNARY;
   readonly $operator: UNARY_OPERATION_OPERATOR;
@@ -2952,11 +3024,18 @@ export class Select<T extends Model = any> extends Fromable {
 
   constructor(valueObject?: ValueObject<T>);
   constructor(
-    ...columns: (Expressions<JsConstant> | Column<JsConstant, string> | Star<any>)[]
+    ...columns: (
+      | Expressions<JsConstant>
+      | Column<JsConstant, string>
+      | Star<any>
+    )[]
   );
   constructor(...columns: any) {
     super();
-    assert(columns.length > 0, 'Must select one or more columns by Select statement.')
+    assert(
+      columns.length > 0,
+      "Must select one or more columns by Select statement."
+    );
     if (columns.length === 1 && isPlainObject(columns[0])) {
       const valueObject = columns[0];
       this.$columns = Object.entries(valueObject as ValueObject<T>).map(
@@ -2971,8 +3050,8 @@ export class Select<T extends Model = any> extends Fromable {
       | Expressions<JsConstant>
       | Column<JsConstant, string>
     )[]).map((item) => {
-      if (item instanceof AST) return item
-      return ensureExpression(item)
+      if (item instanceof AST) return item;
+      return ensureExpression(item);
     });
   }
 
@@ -3097,14 +3176,16 @@ export class Select<T extends Model = any> extends Fromable {
   }
 
   asColumn<N extends string>(name: N) {
-    return this.asValue().as(name)
+    return this.asValue().as(name);
   }
 }
 
 /**
  * 表达式化后的SELECT语句，通常用于 in 语句，或者当作值当行值使用
  */
-export class ValuedSelect<T extends JsConstant> extends Expression<T> {
+export class ValuedSelect<T extends JsConstant = JsConstant> extends Expression<
+  T
+  > {
   $select: Select<any>;
   $type: SQL_SYMBOLE.VALUED_SELECT = SQL_SYMBOLE.VALUED_SELECT;
   constructor(select: Select<any>) {
@@ -3133,13 +3214,15 @@ export class Insert<T extends Model = any> extends CrudStatement {
     super();
     this.$table = ensureRowset(table) as Table<T, string>;
     if (this.$table.$alias) {
-      throw new Error('Insert statements do not allow aliases on table.')
+      throw new Error("Insert statements do not allow aliases on table.");
     }
     if (fields) {
-      if (typeof fields[0] === 'string') {
-        this.$fields = (fields as FieldsOf<T>[]).map((field) => this.$table.field(field));
+      if (typeof fields[0] === "string") {
+        this.$fields = (fields as FieldsOf<T>[]).map((field) =>
+          this.$table.field(field)
+        );
       } else {
-        this.$fields = fields as Field<JsConstant, FieldsOf<T>>[]
+        this.$fields = fields as Field<JsConstant, FieldsOf<T>>[];
       }
     }
   }
@@ -3226,11 +3309,11 @@ export class Insert<T extends Model = any> extends CrudStatement {
           if (!existsFields[field]) existsFields[field] = true;
         })
       );
-      this.$fields = (Object.keys(existsFields) as FieldsOf<
-        T
-      >[]).map((fieldName) => {
-        return this.$table.field(fieldName)
-      });
+      this.$fields = (Object.keys(existsFields) as FieldsOf<T>[]).map(
+        (fieldName) => {
+          return this.$table.field(fieldName);
+        }
+      );
     }
     const fields = this.$fields.map((field) => pickName(field.$name));
 
@@ -3381,13 +3464,13 @@ export class Assignment<T extends JsConstant = JsConstant> extends Statement {
 export class VariantDeclare extends AST {
   readonly $type: SQL_SYMBOLE.VARAINT_DECLARE = SQL_SYMBOLE.VARAINT_DECLARE;
 
-  constructor(name: string, dataType: string) {
+  constructor(name: string | Variant, dataType: string) {
     super();
-    this.$name = name;
+    this.$name = ensureVariant(name);
     this.$dataType = dataType;
   }
 
-  $name: string;
+  $name: Variant;
   $dataType: string;
 }
 
@@ -3403,15 +3486,10 @@ export class Declare extends Statement {
   }
 }
 
-type DbType = string | Function;
-
 /**
  * 程序与数据库间传递值所使用的参数
  */
-export class Parameter<
-  T extends JsConstant = any,
-  N extends string = string
-  >
+export class Parameter<T extends JsConstant = any, N extends string = string>
   extends Expression<T>
   implements Identifier<N> {
   $name: N;
@@ -3419,22 +3497,26 @@ export class Parameter<
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $kind: IDENTOFIER_KIND.PARAMETER = IDENTOFIER_KIND.PARAMETER;
   get name() {
-    return this.$name
+    return this.$name;
   }
   direction: PARAMETER_DIRECTION;
-  dbType?: DbType;
+  type?: ScalarType;
+  /**
+   * 数据库原始类型，为了保证跨平台性，一般情况下不建议使用
+   */
+  dbType?: string;
   value: T;
 
   constructor(
     name: N,
-    dbType: DbType,
+    dbType: ScalarType,
     value: T,
     direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT
   ) {
     super();
-    this.$name = name
+    this.$name = name;
     this.value = value; // ensureConstant(value)
-    this.dbType = dbType;
+    this.type = dbType;
     this.direction = direction;
   }
 
@@ -3448,7 +3530,11 @@ export class Parameter<
   /**
    * output参数
    */
-  static output<T extends JsConstant, N extends string>(name: N, type: DbType, value?: T) {
+  static output<T extends ScalarType, N extends string>(
+    name: N,
+    type: T,
+    value?: TypeOfScalarType<T>
+  ): Parameter<TypeOfScalarType<T>, N> {
     return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
   }
 }
@@ -3485,30 +3571,36 @@ export class Raw extends AST {
 /**
  * 具名SELECT语句，可用于子查询，With语句等
  */
-export class NamedSelect<T extends Model = any, A extends string = string> extends Rowset<T> {
+export class NamedSelect<
+  T extends Model = any,
+  A extends string = string
+  > extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
-  $statement: Select<T>;
+  $select: Select<T>;
   $alias: Alias<A>;
 
   constructor(statement: Select<T>, alias: A) {
     super();
     this.as(alias);
-    this.$statement = statement;
+    this.$select = statement;
   }
 }
 
 /**
  * 具名SELECT语句，可用于子查询，With语句等
  */
-export class WithSelect<T extends Model = any, A extends string = string> extends Rowset<T> {
+export class WithSelect<
+  T extends Model = any,
+  A extends string = string
+  > extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.WITH_SELECT;
-  $statement: Select<T>;
+  $select: Select<T>;
   $alias: Alias<A>;
 
   constructor(statement: Select<T>, alias: A) {
     super();
     this.as(alias);
-    this.$statement = statement;
+    this.$select = statement;
   }
 }
 
@@ -3520,9 +3612,7 @@ export class With extends AST {
   /**
    * With结构
    */
-  constructor(
-    items: Record<string, Select> | WithSelect<any, string>[]
-  ) {
+  constructor(items: Record<string, Select> | WithSelect<any, string>[]) {
     super();
     if (Array.isArray(items)) {
       this.$items = items;
@@ -3560,7 +3650,9 @@ export class With extends AST {
    * 更新一个表格
    * @param table
    */
-  update<T extends Model = any>(table: Name<string> | Tables<T, string>): Update<T> {
+  update<T extends Model = any>(
+    table: Name<string> | Tables<T, string>
+  ): Update<T> {
     const sql = Statement.update(table);
     sql.$with = this;
     return sql;
@@ -3570,9 +3662,86 @@ export class With extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  delete<T extends Model = any>(table: Name<string> | Tables<T, string>): Delete<T> {
+  delete<T extends Model = any>(
+    table: Name<string> | Tables<T, string>
+  ): Delete<T> {
     const sql = Statement.delete(table);
     sql.$with = this;
     return sql;
   }
 }
+
+/**
+ * 类型转换运算符
+ */
+export class ConvertOperation<
+  T extends JsConstant = JsConstant
+  > extends Operation<T> {
+  $kind: OPERATION_KIND.CONVERT = OPERATION_KIND.CONVERT;
+  /**
+   * 转换到类型
+   */
+  $to: ScalarType;
+  $expr: Expression<JsConstant>;
+  constructor(expr: Expressions<JsConstant>, to: ScalarType) {
+    super();
+    this.$to = to;
+    this.$expr = ensureExpression(expr);
+  }
+}
+
+
+/**
+ * 标量类型的字面量表达
+ */
+export type ScalarType =
+  | "string"
+  | "number"
+  | "date"
+  | "boolean"
+  | "bigint"
+  | "binary";
+
+export type TypeOfScalarType<T> = T extends "string"
+  ? string
+  : T extends "number"
+  ? number
+  : T extends "date"
+  ? Date
+  : T extends "boolean"
+  ? boolean
+  : T extends "bigint"
+  ? bigint
+  : T extends "binary"
+  ? Binary
+  : never;
+
+// /**
+//  * 标量类型的函数表达
+//  */
+// export type ScalarObjectType =
+//   | typeof Number
+//   | typeof String
+//   | typeof ArrayBuffer
+//   | typeof Boolean
+//   | typeof Date
+//   | typeof BigInt;
+
+// /**
+//  * 类型转换
+//  */
+// export type TypeOfScalarTypeObject<
+//   T extends ScalarObjectType
+//   > = T extends typeof Number
+//   ? number
+//   : T extends typeof String
+//   ? string
+//   : T extends typeof Boolean
+//   ? boolean
+//   : T extends typeof Date
+//   ? Date
+//   : T extends typeof BigInt
+//   ? BigInt
+//   : T extends typeof ArrayBuffer | SharedArrayBuffer
+//   ? Binary
+//   : never;

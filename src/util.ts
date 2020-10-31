@@ -1,6 +1,5 @@
 import {
   Condition,
-  Conditions,
   Expressions,
   Expression,
   AST,
@@ -10,9 +9,56 @@ import {
   Name,
   Table,
   Field,
+  Document,
+  Assignment,
+  BinaryOperation,
+  Bracket,
+  BuiltIn,
+  Case,
+  Column,
+  Constant,
+  ConvertOperation,
+  Declare,
+  Delete,
+  Execute,
+  Identifier,
+  Insert,
+  Model,
+  NamedSelect,
+  Operation,
+  Parameter,
+  PathedName,
+  Procedure,
+  Raw,
+  Rowset,
+  ScalarFuncInvoke,
+  Select,
+  Star,
+  Statement,
+  TableFuncInvoke,
+  TableVariant,
+  UnaryOperation,
+  Update,
+  ValuedSelect,
+  Variant,
+  WhereObject,
+  WithSelect,
+  BinaryCompareCondition,
+  BinaryLogicCondition,
+  ExistsCondition,
+  GroupCondition,
+  UnaryCompareCondition,
+  UnaryLogicCondition,
+  $IsProxy
 } from "./ast";
 import { constant, func } from "./builder";
-import { Model, PathedName, Procedure, Rowset, WhereObject } from "./lube";
+import {
+  CONDITION_KIND,
+  IDENTOFIER_KIND,
+  OPERATION_KIND,
+  SQL_SYMBOLE,
+} from "./constants";
+
 
 /**
  * 断言
@@ -45,6 +91,15 @@ export function ensureField<T extends JsConstant, N extends string>(
 ): Field<T, N> {
   if (!(name instanceof AST)) {
     return new Field(name);
+  }
+  return name;
+}
+
+export function ensureVariant<T extends string, N extends string>(
+  name: N | Variant<T, N>
+): Variant<T, N> {
+  if (typeof name === "string") {
+    return new Variant(name);
   }
   return name;
 }
@@ -101,19 +156,20 @@ export function ensureCondition<T extends Model>(
 
   return compares.length >= 2 ? Condition.and(...compares) : compares[0];
 }
-
 const RowsetFixedProps: string[] = [
-  '$',
-  'field',
-  '_',
-  'star',
-  'as',
-  '$type',
-  '$kind',
-  '$alias',
-  '$name',
-  '$builtin',
-  '$statement'
+  "field",
+  "clone",
+  "_",
+  "as",
+  "$alias",
+  "$",
+  "star",
+  "as",
+  "$builtin",
+  "$type",
+  "$kind",
+  "$statement",
+  "$select"
 ];
 
 /**
@@ -121,21 +177,28 @@ const RowsetFixedProps: string[] = [
  */
 export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
   return new Proxy(table as any, {
-    get(target: Rowset<any>, prop: any): any {
-      if (RowsetFixedProps.includes(prop)) {
-        return Reflect.get(target, prop);
+    get(target: any, prop: string | symbol | number): any {
+      /**
+       * 标记为Proxy
+       */
+      if (prop === $IsProxy) {
+        return true
       }
+      const v = target[prop]
+      if (
+        typeof prop !== 'string' ||
+        v !== undefined ||
+        RowsetFixedProps.includes(prop)
+      ) {
+        return v
+      }
+
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;
-
-      if (typeof prop === "string") {
-        // $开头，实为转义符，避免字段命名冲突，程序自动移除首个
-        if (prop.startsWith("$")) {
-          prop = prop.substring(1);
-        }
-        return target.field(prop);
+      if (prop.startsWith("$")) {
+        prop = prop.substring(1);
       }
-      return Reflect.get(target, prop);
+      return target.field(prop);
     },
   }) as any;
 }
@@ -224,9 +287,226 @@ export function isPlainObject(obj: any) {
 }
 
 function fix(num: number, digits: number): string {
-  return num.toString().padStart(digits, '0')
+  return num.toString().padStart(digits, "0");
 }
 
 export function dateToString(date: Date): string {
-  return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(date.getDate(), 2)}T${fix(date.getHours(), 2)}:${fix(date.getMinutes(), 2)}:${fix(date.getSeconds(), 2)}.${fix(date.getMilliseconds(), 3)}${date.getTimezoneOffset() > 0 ? '-' : '+'}${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`
+  return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(
+    date.getDate(),
+    2
+  )}T${fix(date.getHours(), 2)}:${fix(date.getMinutes(), 2)}:${fix(
+    date.getSeconds(),
+    2
+  )}.${fix(date.getMilliseconds(), 3)}${
+    date.getTimezoneOffset() > 0 ? "-" : "+"
+  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
+}
+
+export function isRaw(ast: AST): ast is Raw {
+  return ast.$type === SQL_SYMBOLE.RAW;
+}
+
+export function isSelect(ast: AST): ast is Select {
+  return ast.$type === SQL_SYMBOLE.SELECT;
+}
+
+export function isUpdate(ast: AST): ast is Update {
+  return ast.$type === SQL_SYMBOLE.UPDATE;
+}
+
+export function isDelete(ast: AST): ast is Delete {
+  return ast.$type === SQL_SYMBOLE.DELETE;
+}
+
+export function isInsert(ast: AST): ast is Insert {
+  return ast.$type === SQL_SYMBOLE.INSERT;
+}
+
+export function isAssignment(ast: AST): ast is Assignment {
+  return ast.$type === SQL_SYMBOLE.ASSIGNMENT;
+}
+
+export function isDeclare(ast: AST): ast is Declare {
+  return ast.$type === SQL_SYMBOLE.DECLARE;
+}
+
+export function isExecute(ast: AST): ast is Execute {
+  return ast.$type === SQL_SYMBOLE.EXECUTE;
+}
+
+export function isStatement(ast: AST): ast is Statement {
+  return (
+    isSelect(ast) ||
+    isUpdate(ast) ||
+    isDelete(ast) ||
+    isInsert(ast) ||
+    isDeclare(ast) ||
+    isAssignment(ast) ||
+    isExecute(ast)
+  );
+}
+
+export function isIdentifier(ast: AST): ast is Identifier {
+  return ast.$type === SQL_SYMBOLE.IDENTIFIER;
+}
+
+export function isTable(ast: AST): ast is Table {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.TABLE;
+}
+
+export function isField(ast: AST): ast is Field {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.FIELD;
+}
+
+export function isConstant(ast: AST): ast is Constant {
+  return ast.$type === SQL_SYMBOLE.CONSTANT;
+}
+
+export function isNamedSelect(ast: AST): ast is NamedSelect {
+  return ast.$type === SQL_SYMBOLE.NAMED_SELECT;
+}
+
+export function isWithSelect(ast: AST): ast is WithSelect {
+  return ast.$type === SQL_SYMBOLE.WITH_SELECT;
+}
+
+export function isTableFuncInvoke(ast: AST): ast is TableFuncInvoke {
+  return ast.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
+}
+
+export function isScalarFuncInvoke(ast: AST): ast is ScalarFuncInvoke {
+  return ast.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
+}
+
+export function isTableVariant(ast: AST): ast is TableVariant {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
+}
+
+export function isVariant(ast: AST): ast is Variant {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.VARIANT;
+}
+
+export function isRowset(ast: AST): ast is Rowset {
+  return (
+    isTable(ast) ||
+    isNamedSelect(ast) ||
+    isWithSelect(ast) ||
+    isTableFuncInvoke(ast) ||
+    isTableVariant(ast)
+  );
+}
+
+export function isExpression(ast: AST): ast is Expression {
+  return (
+    isField(ast) ||
+    isConstant(ast) ||
+    isVariant(ast) ||
+    isOperation(ast) ||
+    isScalarFuncInvoke(ast) ||
+    isCase(ast) ||
+    isBracket(ast) ||
+    isValuedSelect(ast) ||
+    isParameter(ast)
+  );
+}
+
+export function isCase(ast: AST): ast is Case {
+  return ast.$type === SQL_SYMBOLE.CASE;
+}
+
+export function isBracket(ast: AST): ast is Bracket {
+  return ast.$type === SQL_SYMBOLE.BRACKET;
+}
+
+export function isValuedSelect(ast: AST): ast is ValuedSelect {
+  return ast.$type === SQL_SYMBOLE.VALUED_SELECT;
+}
+
+export function isOperation(ast: AST): ast is Operation {
+  return ast.$type === SQL_SYMBOLE.OPERATION;
+}
+
+export function isUnaryOperation(ast: Operation): ast is UnaryOperation {
+  return ast.$kind === OPERATION_KIND.UNARY;
+}
+
+export function isBinaryOperation(ast: Operation): ast is BinaryOperation {
+  return ast.$kind === OPERATION_KIND.BINARY;
+}
+
+export function isConvertOperation(ast: Operation): ast is ConvertOperation {
+  return ast.$kind === OPERATION_KIND.CONVERT;
+}
+
+export function isParameter(ast: AST): ast is Parameter {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.PARAMETER;
+}
+
+export function isStar(ast: AST): ast is Star {
+  return ast.$type === SQL_SYMBOLE.STAR;
+}
+
+export function isBuiltIn(ast: AST): ast is BuiltIn {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.BUILT_IN;
+}
+
+export function isColumn(ast: AST): ast is Column {
+  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.COLUMN;
+}
+
+export function isCondition(ast: AST): ast is Condition {
+  return ast.$type === SQL_SYMBOLE.CONDITION;
+}
+
+export function isUnaryCompareCondition(
+  ast: Condition
+): ast is UnaryCompareCondition {
+  return ast.$kind === CONDITION_KIND.UNARY_COMPARE;
+}
+
+export function isBinaryCompareCondition(
+  ast: Condition
+): ast is BinaryCompareCondition {
+  return ast.$kind === CONDITION_KIND.BINARY_COMPARE;
+}
+
+export function isUnaryLogicCondition(
+  ast: Condition
+): ast is UnaryLogicCondition {
+  return ast.$kind === CONDITION_KIND.UNARY_COMPARE;
+}
+
+export function isBinaryLogicCondition(
+  ast: Condition
+): ast is BinaryLogicCondition {
+  return ast.$kind === CONDITION_KIND.BINARY_LOGIC;
+}
+
+export function isGroupCondition(ast: Condition): ast is GroupCondition {
+  return ast.$kind === CONDITION_KIND.GROUP;
+}
+
+export function isExistsCondition(ast: Condition): ast is ExistsCondition {
+  return ast.$kind === CONDITION_KIND.EXISTS;
+}
+
+export function isDocument(ast: AST): ast is Document {
+  return ast.$type === SQL_SYMBOLE.DOCUMENT;
+}
+
+export function invalidAST(type: string, ast: AST) {
+  console.debug(`Invalid ${type} AST：`, ast);
+  throw new Error(`Invalid ${type} AST.`);
+}
+
+export function clone(value: any) {
+  if (value && typeof value === 'object') {
+    const copied: any = {};
+    Object.entries(value).forEach(([k, v]) => {
+      copied[k] = v instanceof AST ? v.clone() : clone(v)
+    })
+    Object.setPrototypeOf(copied, Object.getPrototypeOf(value))
+    return copied
+  }
+  return value
 }

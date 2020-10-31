@@ -131,7 +131,7 @@ export class Executor extends EventEmitter {
           const name = "__p__" + index;
           const param = Parameter.input(name, args[index + 1]);
           params.push(param);
-          previous += this.compiler.pretreatmentParameterName(param);
+          previous += this.compiler.stringifyParameterName(param);
         }
         return previous;
       }, "");

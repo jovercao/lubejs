@@ -12,7 +12,7 @@ import {
   Model,
   Name,
   ProxiedRowset,
-  TableFuncInvoke
+  TableFuncInvoke,
 } from "./ast";
 import { makeProxiedRowset } from "./util";
 
@@ -148,7 +148,9 @@ export function tableFn<T extends Model>(
   return function (
     ...args: Expressions<JsConstant>[]
   ): ProxiedRowset<TableFuncInvoke<T>> {
-    return makeProxiedRowset(Statement.invokeAsTable<T>(Identifier.func(name, builtIn), args));
+    return makeProxiedRowset(
+      Statement.invokeAsTable<T>(Identifier.func(name, builtIn), args)
+    );
   };
 }
 
@@ -232,10 +234,31 @@ export const SQL = {
   neg,
   mod,
   concat,
-  bracket
+  bracket,
 };
 
 export default SQL;
+
+export type JsConstantConstructor =
+  | typeof String
+  | typeof Number
+  | typeof ArrayBuffer
+  | typeof Date
+  | typeof Boolean
+  | typeof BigInt;
+
+export type JsConstantName =
+  | "string"
+  | "number"
+  | "date"
+  | "boolean"
+  | "bigint"
+  | "binary";
+
+/**
+ * 类型转换运算
+ */
+export const convert = Expression.convert;
 
 // TODO: 建立命令查询器，针对model的
 /**

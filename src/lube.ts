@@ -1,5 +1,5 @@
 import { Executor, QueryResult } from "./executor";
-import { Compiler, CompileOptions, Command } from "./compiler";
+import { Compiler, CompileOptions } from "./compiler";
 import { URL } from "url";
 import { ISOLATION_LEVEL } from "./constants";
 import * as assert from "assert";
@@ -23,11 +23,20 @@ export interface ITransaction {
  * 数据库提供驱动程序
  */
 export interface IDbProvider {
-  ployfill?: CompileOptions;
-  compiler?: Compiler;
+  /**
+   * 必须实现编译器
+   */
+  compiler: Compiler;
   query(sql: string, params: Parameter[]): Promise<QueryResult>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction;
   close(): Promise<void>;
+}
+
+/**
+ * 驱动入口，通过实现该方法来扩展
+ */
+export interface Driver {
+  (config: ConnectOptions): IDbProvider
 }
 
 export class Lube extends Executor {
@@ -35,13 +44,13 @@ export class Lube extends Executor {
 
   constructor(provider: IDbProvider, options: ConnectOptions) {
     let compiler = provider.compiler;
-    if (!compiler) {
-      let compileOptions: CompileOptions = {};
-      if (options.strict !== undefined) {
-        compileOptions.strict = options.strict;
-      }
-      compiler = new Compiler(compileOptions);
-    }
+    // if (!compiler) {
+    //   let compileOptions: CompileOptions = {};
+    //   if (options.strict !== undefined) {
+    //     compileOptions.strict = options.strict;
+    //   }
+    //   compiler = new Compiler(compileOptions);
+    // }
     super(function (...args) {
       return provider.query(...args);
     }, compiler);
@@ -95,15 +104,15 @@ export class Lube extends Executor {
   }
 }
 
-export interface ConnectOptions {
+export type ConnectOptions = {
   /**
    * 数据库方言，必须安装相应的驱动才可正常使用
    */
   dialect?: string;
   /**
-   * 驱动程序，与dialect二选一
+   * 驱动程序，与dialect二选一，优先使用driver
    */
-  driver?: (config: ConnectOptions) => IDbProvider;
+  driver?: Driver;
   host: string;
   port?: number;
   user: string;
@@ -112,12 +121,11 @@ export interface ConnectOptions {
   poolMax: number;
   poolMin: number;
   idelTimeout: number;
-  strict?: boolean;
   /**
    * 其它配置项，针对各种数据的专门配置
    */
   [key: string]: any;
-}
+} & Pick<CompileOptions, 'strict' | 'returnParameterName'>
 
 /**
  * 连接数据库并返回一个连接池
@@ -169,7 +177,12 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 
   if (!config.driver) {
     try {
-      config.driver = require("lubejs-" + config.dialect);
+      const driver = dialects[config.dialect]
+      if (typeof driver === 'string') {
+        config.driver = require(driver);
+      } else {
+        config.driver = driver
+      }
     } catch (err) {
       throw new Error("Unsupported dialect or driver not installed.");
     }
@@ -177,6 +190,21 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 
   const provider: IDbProvider = await config.driver(config);
   return new Lube(provider, config);
+}
+
+const dialects: Record<string, Driver | string> = {
+  mssql: 'lube-mssql'
+}
+
+/**
+ * 注册一个方言支持
+ * @param driver 驱动可以是connect函数，亦可以是npm包或路径
+ */
+export async function register(name: string, driver: Driver | string) {
+  if (dialects[name]) {
+    throw new Error(`Driver ${name} is exists.`)
+  }
+  dialects[name] = driver
 }
 
 export * from "./builder";

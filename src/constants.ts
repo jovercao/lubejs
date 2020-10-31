@@ -18,11 +18,11 @@ export enum PARAMETER_DIRECTION {
  * 参数隔离方向
  */
 export enum ISOLATION_LEVEL {
-  READ_COMMIT = 1,
-  READ_UNCOMMIT = 2,
-  REPEATABLE_READ = 3,
-  SERIALIZABLE = 4,
-  SNAPSHOT = 5,
+  READ_COMMIT = 'READ_COMMIT',
+  READ_UNCOMMIT = 'READ_UNCOMMIT',
+  REPEATABLE_READ = 'REPEATABLE_READ',
+  SERIALIZABLE = 'SERIALIZABLE',
+  SNAPSHOT = 'SNAPSHOT',
 }
 
 /**
@@ -145,8 +145,9 @@ export enum CONDITION_KIND {
 }
 
 export enum OPERATION_KIND {
-  BINARY = "BINARY_CALCULATE",
-  UNARY = "UNARY_CALCULATE",
+  BINARY = "BINARY",
+  UNARY = "UNARY",
+  CONVERT = "CONVERT"
 }
 
 export enum IDENTOFIER_KIND {
@@ -179,7 +180,7 @@ export enum IDENTOFIER_KIND {
   /**
    * 内建标识
    */
-  BUILD_IN = "BUILD_IN",
+  BUILT_IN = "BUILT_IN",
   /**
    * 别名
    */
