@@ -184,7 +184,7 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
         config.driver = driver
       }
     } catch (err) {
-      throw new Error("Unsupported dialect or driver not installed.");
+      throw new Error("Unsupported dialect or driver not installed." + err);
     }
   }
 
@@ -193,7 +193,7 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 }
 
 const dialects: Record<string, Driver | string> = {
-  mssql: 'lube-mssql'
+  mssql: 'lubejs-mssql'
 }
 
 /**
