@@ -62,6 +62,7 @@ import {
   dateToString,
   invalidAST,
   isAssignment,
+  isBinary,
   isBinaryCompareCondition,
   isBinaryLogicCondition,
   isBinaryOperation,
@@ -295,21 +296,7 @@ export abstract class Compiler {
     if (value instanceof Date) {
       return this.compileDate(value);
     }
-    if (
-      value instanceof ArrayBuffer ||
-      value instanceof Uint8Array ||
-      value instanceof Uint16Array ||
-      value instanceof Uint32Array ||
-      value instanceof BigUint64Array ||
-      value instanceof Int8Array ||
-      value instanceof Int16Array ||
-      value instanceof Int32Array ||
-      value instanceof BigInt64Array ||
-      value instanceof Float32Array ||
-      value instanceof Float64Array ||
-      value instanceof Uint8ClampedArray ||
-      value instanceof SharedArrayBuffer
-    ) {
+    if (isBinary(value)) {
       return "0x" + Buffer.from(value).toString("hex");
     }
     console.debug(value);

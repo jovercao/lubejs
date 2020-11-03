@@ -49,9 +49,10 @@ import {
   GroupCondition,
   UnaryCompareCondition,
   UnaryLogicCondition,
-  $IsProxy
+  $IsProxy,
+  Binary
 } from "./ast";
-import { constant, func } from "./builder";
+import { constant, func, JsConstantName } from "./builder";
 import {
   CONDITION_KIND,
   IDENTOFIER_KIND,
@@ -212,8 +213,24 @@ export function isJsConstant(value: any): value is JsConstant {
     value === null ||
     value === undefined ||
     value instanceof Date ||
-    value instanceof Uint8Array
+    isBinary(value)
   );
+}
+
+export function isBinary(value: any): value is Binary {
+  return value instanceof ArrayBuffer ||
+    value instanceof Uint8Array ||
+    value instanceof Uint16Array ||
+    value instanceof Uint32Array ||
+    value instanceof BigUint64Array ||
+    value instanceof Int8Array ||
+    value instanceof Int16Array ||
+    value instanceof Int32Array ||
+    value instanceof BigInt64Array ||
+    value instanceof Float32Array ||
+    value instanceof Float64Array ||
+    value instanceof Uint8ClampedArray ||
+    value instanceof SharedArrayBuffer
 }
 
 export type Constructor<T> = {
