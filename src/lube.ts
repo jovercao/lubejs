@@ -14,7 +14,7 @@ export type TransactionHandler = (
  * 数据库事务
  */
 export interface ITransaction {
-  query(): Promise<QueryResult>;
+  query(sql: string, params: Parameter[]): Promise<QueryResult>;
   commit(): void;
   rollback(): void;
 }

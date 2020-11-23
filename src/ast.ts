@@ -694,7 +694,7 @@ export abstract class Condition extends AST {
    * @param condition 下一个查询条件
    * @returns 返回新的查询条件
    */
-  and(condition: Condition): Condition {
+  and(condition: Conditions): Condition {
     condition = ensureCondition(condition);
     return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, condition);
   }
@@ -743,11 +743,8 @@ export abstract class Condition extends AST {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
-  static and(...conditions: Condition[]): Condition {
-    assert(
-      Array.isArray(conditions) && conditions.length > 1,
-      "Conditions must type of Array & have two or more elements."
-    );
+  static and(cond1: Conditions, cond2: Conditions, ...condn: Conditions[]): Condition {
+    const conditions = [cond1, cond2, ...condn]
     return Condition.group(
       conditions.reduce((previous, current) => {
         current = ensureCondition(current);
@@ -763,11 +760,8 @@ export abstract class Condition extends AST {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
-  static or(...conditions: Condition[]): Condition {
-    assert(
-      Array.isArray(conditions) && conditions.length > 1,
-      "Conditions must type of Array & have two or more elements."
-    );
+  static or(cond1: Conditions, cond2: Conditions, ...condn: Condition[]): Condition {
+    const conditions = [cond1, cond2, ...condn]
     return Condition.group(
       conditions.reduce((previous, current, index) => {
         current = ensureCondition(current);
