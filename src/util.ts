@@ -155,7 +155,7 @@ export function ensureCondition<T extends Model>(
     return Condition.eq(field, value as any);
   });
 
-  return compares.length >= 2 ? Condition.and(...compares) : compares[0];
+  return compares.length >= 2 ? Condition.and.call(Condition, ...compares) : compares[0];
 }
 const RowsetFixedProps: string[] = [
   "field",
