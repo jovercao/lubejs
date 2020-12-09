@@ -2693,7 +2693,12 @@ export abstract class Statement extends AST {
   /**
    * With语句
    */
-  static with(withs: Record<string, Select> | NamedSelect<any, string>[]) {
+  static with(...selecteds: NamedSelect<any, string>[]): With
+  static with(withs: Record<string, Select>): With
+  static with(...withs: any) {
+    if (withs.length === 1 && isPlainObject(withs)) {
+      return new With(withs[0])
+    }
     return new With(withs);
   }
 
