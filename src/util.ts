@@ -42,7 +42,6 @@ import {
   ValuedSelect,
   Variant,
   WhereObject,
-  WithSelect,
   BinaryCompareCondition,
   BinaryLogicCondition,
   ExistsCondition,
@@ -176,8 +175,8 @@ const RowsetFixedProps: string[] = [
 /**
  * 将制作rowset的代理，用于通过属性访问字段
  */
-export function makeProxiedRowset<T>(table: T): ProxiedRowset<T> {
-  return new Proxy(table as any, {
+export function makeProxiedRowset<T extends Rowset<unknown>>(rowset: T): ProxiedRowset<T> {
+  return new Proxy(rowset as any, {
     get(target: any, prop: string | symbol | number): any {
       /**
        * 标记为Proxy
@@ -383,8 +382,8 @@ export function isNamedSelect(ast: AST): ast is NamedSelect {
   return ast.$type === SQL_SYMBOLE.NAMED_SELECT;
 }
 
-export function isWithSelect(ast: AST): ast is WithSelect {
-  return ast.$type === SQL_SYMBOLE.WITH_SELECT;
+export function isWithSelect(ast: AST): ast is NamedSelect {
+  return isNamedSelect(ast) && ast.$inWith;
 }
 
 export function isTableFuncInvoke(ast: AST): ast is TableFuncInvoke {

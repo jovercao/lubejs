@@ -221,7 +221,7 @@ export type ProxiedRowset<T> = T extends Rowset<infer M>
   ? T &
   {
     // 排除AST自有属性
-    [P in Exclude<FieldsOf<M>, keyof Table<any, string>>]: Field<M[P], P>;
+    [P in FieldsOf<M>]: Field<M[P], P>;
   }
   : never;
 
@@ -1162,7 +1162,7 @@ export abstract class Identifier<N extends string = string> extends AST {
     nameOrModel: Name<string> | ModelConstructor<T>
   ): ProxiedRowset<Table<T, string>> {
     if (typeof nameOrModel === "function") {
-      return makeProxiedRowset(new Table<T, string>(nameOrModel.name));
+      return makeProxiedRowset<Table<T, string>>(new Table<T, string>(nameOrModel.name));
     }
     return makeProxiedRowset(new Table<T, string>(nameOrModel));
   }
@@ -1302,7 +1302,7 @@ applyMixins(Field, [Identifier]);
 /**
  * 数据库行集，混入类型
  */
-export abstract class Rowset<T extends Model = any> extends AST {
+export abstract class Rowset<T extends Model = unknown> extends AST {
   /**
    * 别名
    */
@@ -1384,7 +1384,7 @@ export class Table<T extends Model = any, N extends string = string>
     if (this.$alias) {
       return super.field(name);
     }
-    return new Field<T[P], P>([...pathName(this.$name), name] as any);
+    return new Field<T[P], P>([...pathName(this.$name), name] as Name<P>);
   }
 
   /**
@@ -2693,7 +2693,7 @@ export abstract class Statement extends AST {
   /**
    * With语句
    */
-  static with(withs: Record<string, Select> | WithSelect<any, string>[]) {
+  static with(withs: Record<string, Select> | NamedSelect<any, string>[]) {
     return new With(withs);
   }
 
@@ -3158,7 +3158,7 @@ export class Select<T extends Model = any> extends Fromable {
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as<TAlias extends string>(alias: TAlias): ProxiedRowset<Rowset<T>> {
+  as<TAlias extends string>(alias: TAlias): ProxiedRowset<NamedSelect<T>> {
     return makeProxiedRowset(new NamedSelect(this, alias)) as any;
   }
 
@@ -3570,6 +3570,7 @@ export class NamedSelect<
   A extends string = string
   > extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
+  $inWith: boolean = false
   $select: Select<T>;
   $alias: Alias<A>;
 
@@ -3580,41 +3581,44 @@ export class NamedSelect<
   }
 }
 
-/**
- * 具名SELECT语句，可用于子查询，With语句等
- */
-export class WithSelect<
-  T extends Model = any,
-  A extends string = string
-  > extends Rowset<T> {
-  readonly $type = SQL_SYMBOLE.WITH_SELECT;
-  $select: Select<T>;
-  $alias: Alias<A>;
+// /**
+//  * 具名SELECT语句，可用于子查询，With语句等
+//  */
+// export class WithSelect<
+//   T extends Model = any,
+//   A extends string = string
+//   > extends Rowset<T> {
+//   readonly $type = SQL_SYMBOLE.WITH_SELECT;
+//   $select: Select<T>;
+//   $alias: Alias<A>;
 
-  constructor(statement: Select<T>, alias: A) {
-    super();
-    this.as(alias);
-    this.$select = statement;
-  }
-}
+//   constructor(statement: Select<T>, alias: A) {
+//     super();
+//     this.as(alias);
+//     this.$select = statement;
+//   }
+// }
 
 export class With extends AST {
   $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
 
-  $items: WithSelect<any, string>[];
+  $items: NamedSelect<any, string>[];
 
   /**
    * With结构
    */
-  constructor(items: Record<string, Select> | WithSelect<any, string>[]) {
+  constructor(items: Record<string, Select> | NamedSelect<any, string>[]) {
     super();
     if (Array.isArray(items)) {
       this.$items = items;
     } else {
       this.$items = Object.entries(items).map(
-        ([alias, sel]) => new WithSelect(sel, alias)
+        ([alias, sel]) => new NamedSelect(sel, alias)
       );
     }
+    this.$items.forEach(item => {
+      item.$inWith = true
+    })
   }
 
   /**

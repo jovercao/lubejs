@@ -46,7 +46,6 @@ import {
   Star,
   Statement,
   Table,
-  WithSelect,
   ConvertOperation,
   Bracket,
   ValuedSelect,
@@ -491,7 +490,7 @@ export abstract class Compiler {
   }
 
   protected compileWithSelect(
-    item: WithSelect<any, string> | Raw,
+    item: NamedSelect<any, string> | Raw,
     params: Set<Parameter<JsConstant, string>>,
     parent: AST
   ) {
