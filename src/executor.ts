@@ -203,15 +203,14 @@ export class Executor extends EventEmitter {
   async queryScalar<T extends Model>(sql: Select<T>): Promise<ValueTypeOf<T>>;
   async queryScalar<T extends JsConstant>(sql: Select<any>): Promise<T>;
   async queryScalar<T extends JsConstant = any>(
-    sql: string[],
+    sql: TemplateStringsArray,
     ...params: any[]
   ): Promise<T>;
   async queryScalar(...args: any[]) {
     const {
       rows: [row],
     } = await this._internalQuery(...args);
-    assert(row, "sql not return recordsets.");
-    return row[Object.keys(row)[0]];
+    return row ? Object.values(row)[0] : null;
   }
 
   /**
