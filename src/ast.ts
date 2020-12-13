@@ -11,7 +11,7 @@ import {
   pickName,
   pathName,
   isPlainObject,
-  ensureVariant, clone
+  ensureVariant, clone, isSelect
 } from "./util";
 
 import {
@@ -434,8 +434,14 @@ export abstract class Expression<
    * @param values 要与当前表达式相比较的表达式数组
    * @returns 返回对比条件表达式
    */
-  in(...values: Expressions<T>[]): Condition {
-    return Condition.in(this, values);
+  in(select: Select<any>): Condition
+  in(values: Expressions<T>[]): Condition
+  in(...values: Expressions<T>[]): Condition
+  in(...values: Expressions<T>[] | [Select<any>] | [Expressions<T>[]]): Condition {
+    if (values.length === 1 && (isSelect(values[0]) || Array.isArray(values[0]))) {
+      return Condition.in(this, values[0] as any)
+    }
+    return Condition.in(this, values as any);
   }
 
   /**
@@ -747,9 +753,12 @@ export abstract class Condition extends AST {
     const conditions = [cond1, cond2, ...condn]
     return Condition.group(
       conditions.reduce((previous, current) => {
-        current = ensureCondition(current);
-        if (!previous) return current;
-        return new BinaryLogicCondition(LOGIC_OPERATOR.AND, previous, current);
+        let condition = ensureCondition(current);
+        if (condition.$kind === 'BINARY_LOGIC') {
+          condition = Condition.group(condition)
+        }
+        if (!previous) return condition;
+        return new BinaryLogicCondition(LOGIC_OPERATOR.AND, previous, condition);
       })
     );
   }
@@ -764,9 +773,12 @@ export abstract class Condition extends AST {
     const conditions = [cond1, cond2, ...condn]
     return Condition.group(
       conditions.reduce((previous, current, index) => {
-        current = ensureCondition(current);
-        if (!previous) return current;
-        return new BinaryLogicCondition(LOGIC_OPERATOR.OR, previous, current);
+        let condition = ensureCondition(current);
+        if (condition.$kind === 'BINARY_LOGIC') {
+          condition = Condition.group(condition)
+        }
+        if (!previous) return condition;
+        return new BinaryLogicCondition(LOGIC_OPERATOR.OR, previous, condition);
       })
     );
   }
@@ -906,14 +918,13 @@ export abstract class Condition extends AST {
    * @param values 要比较的值列表
    * @returns 返回比较运算对比条件
    */
-  static in<T extends JsConstant>(
-    left: Expressions<T>,
-    values: Expressions<T>[]
-  ): Condition {
+  static in<T extends JsConstant>(left: Expressions<T>, select: Select<any>): Condition
+  static in<T extends JsConstant>(left: Expressions<T>, values: Expressions<T>[]): Condition
+  static in<T extends JsConstant>(left: Expressions<T>, values: Expressions<T>[] | Select<any>): Condition {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.IN,
       left,
-      values.map((v) => ensureExpression(v))
+      isSelect(values) ? values.asValue() : values.map((v) => ensureExpression(v))
     );
   }
 

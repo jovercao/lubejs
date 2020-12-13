@@ -318,200 +318,200 @@ export function dateToString(date: Date): string {
   }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
 }
 
-export function isRaw(ast: AST): ast is Raw {
-  return ast.$type === SQL_SYMBOLE.RAW;
+export function isRaw(value: any): value is Raw {
+  return value.$type === SQL_SYMBOLE.RAW;
 }
 
-export function isSelect(ast: AST): ast is Select {
-  return ast.$type === SQL_SYMBOLE.SELECT;
+export function isSelect(value: any): value is Select {
+  return value.$type === SQL_SYMBOLE.SELECT;
 }
 
-export function isUpdate(ast: AST): ast is Update {
-  return ast.$type === SQL_SYMBOLE.UPDATE;
+export function isUpdate(value: any): value is Update {
+  return value.$type === SQL_SYMBOLE.UPDATE;
 }
 
-export function isDelete(ast: AST): ast is Delete {
-  return ast.$type === SQL_SYMBOLE.DELETE;
+export function isDelete(value: any): value is Delete {
+  return value.$type === SQL_SYMBOLE.DELETE;
 }
 
-export function isInsert(ast: AST): ast is Insert {
-  return ast.$type === SQL_SYMBOLE.INSERT;
+export function isInsert(value: any): value is Insert {
+  return value.$type === SQL_SYMBOLE.INSERT;
 }
 
-export function isAssignment(ast: AST): ast is Assignment {
-  return ast.$type === SQL_SYMBOLE.ASSIGNMENT;
+export function isAssignment(value: any): value is Assignment {
+  return value.$type === SQL_SYMBOLE.ASSIGNMENT;
 }
 
-export function isDeclare(ast: AST): ast is Declare {
-  return ast.$type === SQL_SYMBOLE.DECLARE;
+export function isDeclare(value: any): value is Declare {
+  return value.$type === SQL_SYMBOLE.DECLARE;
 }
 
-export function isExecute(ast: AST): ast is Execute {
-  return ast.$type === SQL_SYMBOLE.EXECUTE;
+export function isExecute(value: any): value is Execute {
+  return value.$type === SQL_SYMBOLE.EXECUTE;
 }
 
-export function isStatement(ast: AST): ast is Statement {
+export function isStatement(value: any): value is Statement {
   return (
-    isSelect(ast) ||
-    isUpdate(ast) ||
-    isDelete(ast) ||
-    isInsert(ast) ||
-    isDeclare(ast) ||
-    isAssignment(ast) ||
-    isExecute(ast)
+    isSelect(value) ||
+    isUpdate(value) ||
+    isDelete(value) ||
+    isInsert(value) ||
+    isDeclare(value) ||
+    isAssignment(value) ||
+    isExecute(value)
   );
 }
 
-export function isIdentifier(ast: AST): ast is Identifier {
-  return ast.$type === SQL_SYMBOLE.IDENTIFIER;
+export function isIdentifier(value: any): value is Identifier {
+  return value.$type === SQL_SYMBOLE.IDENTIFIER;
 }
 
-export function isTable(ast: AST): ast is Table {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.TABLE;
+export function isTable(value: any): value is Table {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE;
 }
 
-export function isField(ast: AST): ast is Field {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.FIELD;
+export function isField(value: any): value is Field {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD;
 }
 
-export function isConstant(ast: AST): ast is Constant {
-  return ast.$type === SQL_SYMBOLE.CONSTANT;
+export function isConstant(value: any): value is Constant {
+  return value.$type === SQL_SYMBOLE.CONSTANT;
 }
 
-export function isNamedSelect(ast: AST): ast is NamedSelect {
-  return ast.$type === SQL_SYMBOLE.NAMED_SELECT;
+export function isNamedSelect(value: any): value is NamedSelect {
+  return value.$type === SQL_SYMBOLE.NAMED_SELECT;
 }
 
-export function isWithSelect(ast: AST): ast is NamedSelect {
-  return isNamedSelect(ast) && ast.$inWith;
+export function isWithSelect(value: any): value is NamedSelect {
+  return isNamedSelect(value) && value.$inWith;
 }
 
-export function isTableFuncInvoke(ast: AST): ast is TableFuncInvoke {
-  return ast.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
+export function isTableFuncInvoke(value: any): value is TableFuncInvoke {
+  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 }
 
-export function isScalarFuncInvoke(ast: AST): ast is ScalarFuncInvoke {
-  return ast.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
+export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
+  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
 }
 
-export function isTableVariant(ast: AST): ast is TableVariant {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
+export function isTableVariant(value: any): value is TableVariant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
 }
 
-export function isVariant(ast: AST): ast is Variant {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.VARIANT;
+export function isVariant(value: any): value is Variant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
 }
 
-export function isRowset(ast: AST): ast is Rowset {
+export function isRowset(value: any): value is Rowset {
   return (
-    isTable(ast) ||
-    isNamedSelect(ast) ||
-    isWithSelect(ast) ||
-    isTableFuncInvoke(ast) ||
-    isTableVariant(ast)
+    isTable(value) ||
+    isNamedSelect(value) ||
+    isWithSelect(value) ||
+    isTableFuncInvoke(value) ||
+    isTableVariant(value)
   );
 }
 
-export function isExpression(ast: AST): ast is Expression {
+export function isExpression(value: any): value is Expression {
   return (
-    isField(ast) ||
-    isConstant(ast) ||
-    isVariant(ast) ||
-    isOperation(ast) ||
-    isScalarFuncInvoke(ast) ||
-    isCase(ast) ||
-    isBracket(ast) ||
-    isValuedSelect(ast) ||
-    isParameter(ast)
+    isField(value) ||
+    isConstant(value) ||
+    isVariant(value) ||
+    isOperation(value) ||
+    isScalarFuncInvoke(value) ||
+    isCase(value) ||
+    isBracket(value) ||
+    isValuedSelect(value) ||
+    isParameter(value)
   );
 }
 
-export function isCase(ast: AST): ast is Case {
-  return ast.$type === SQL_SYMBOLE.CASE;
+export function isCase(value: any): value is Case {
+  return value.$type === SQL_SYMBOLE.CASE;
 }
 
-export function isBracket(ast: AST): ast is Bracket {
-  return ast.$type === SQL_SYMBOLE.BRACKET;
+export function isBracket(value: any): value is Bracket {
+  return value.$type === SQL_SYMBOLE.BRACKET;
 }
 
-export function isValuedSelect(ast: AST): ast is ValuedSelect {
-  return ast.$type === SQL_SYMBOLE.VALUED_SELECT;
+export function isValuedSelect(value: any): value is ValuedSelect {
+  return value.$type === SQL_SYMBOLE.VALUED_SELECT;
 }
 
-export function isOperation(ast: AST): ast is Operation {
-  return ast.$type === SQL_SYMBOLE.OPERATION;
+export function isOperation(value: any): value is Operation {
+  return value.$type === SQL_SYMBOLE.OPERATION;
 }
 
-export function isUnaryOperation(ast: Operation): ast is UnaryOperation {
-  return ast.$kind === OPERATION_KIND.UNARY;
+export function isUnaryOperation(value: Operation): value is UnaryOperation {
+  return value.$kind === OPERATION_KIND.UNARY;
 }
 
-export function isBinaryOperation(ast: Operation): ast is BinaryOperation {
-  return ast.$kind === OPERATION_KIND.BINARY;
+export function isBinaryOperation(value: Operation): value is BinaryOperation {
+  return value.$kind === OPERATION_KIND.BINARY;
 }
 
-export function isConvertOperation(ast: Operation): ast is ConvertOperation {
-  return ast.$kind === OPERATION_KIND.CONVERT;
+export function isConvertOperation(value: Operation): value is ConvertOperation {
+  return value.$kind === OPERATION_KIND.CONVERT;
 }
 
-export function isParameter(ast: AST): ast is Parameter {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.PARAMETER;
+export function isParameter(value: any): value is Parameter {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER;
 }
 
-export function isStar(ast: AST): ast is Star {
-  return ast.$type === SQL_SYMBOLE.STAR;
+export function isStar(value: any): value is Star {
+  return value.$type === SQL_SYMBOLE.STAR;
 }
 
-export function isBuiltIn(ast: AST): ast is BuiltIn {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.BUILT_IN;
+export function isBuiltIn(value: any): value is BuiltIn {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN;
 }
 
-export function isColumn(ast: AST): ast is Column {
-  return isIdentifier(ast) && ast.$kind === IDENTOFIER_KIND.COLUMN;
+export function isColumn(value: any): value is Column {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN;
 }
 
-export function isCondition(ast: AST): ast is Condition {
-  return ast.$type === SQL_SYMBOLE.CONDITION;
+export function isCondition(value: any): value is Condition {
+  return value.$type === SQL_SYMBOLE.CONDITION;
 }
 
 export function isUnaryCompareCondition(
-  ast: Condition
-): ast is UnaryCompareCondition {
-  return ast.$kind === CONDITION_KIND.UNARY_COMPARE;
+  value: Condition
+): value is UnaryCompareCondition {
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryCompareCondition(
-  ast: Condition
-): ast is BinaryCompareCondition {
-  return ast.$kind === CONDITION_KIND.BINARY_COMPARE;
+  value: Condition
+): value is BinaryCompareCondition {
+  return value.$kind === CONDITION_KIND.BINARY_COMPARE;
 }
 
 export function isUnaryLogicCondition(
-  ast: Condition
-): ast is UnaryLogicCondition {
-  return ast.$kind === CONDITION_KIND.UNARY_COMPARE;
+  value: Condition
+): value is UnaryLogicCondition {
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryLogicCondition(
-  ast: Condition
-): ast is BinaryLogicCondition {
-  return ast.$kind === CONDITION_KIND.BINARY_LOGIC;
+  value: Condition
+): value is BinaryLogicCondition {
+  return value.$kind === CONDITION_KIND.BINARY_LOGIC;
 }
 
-export function isGroupCondition(ast: Condition): ast is GroupCondition {
-  return ast.$kind === CONDITION_KIND.GROUP;
+export function isGroupCondition(value: Condition): value is GroupCondition {
+  return value.$kind === CONDITION_KIND.GROUP;
 }
 
-export function isExistsCondition(ast: Condition): ast is ExistsCondition {
-  return ast.$kind === CONDITION_KIND.EXISTS;
+export function isExistsCondition(value: Condition): value is ExistsCondition {
+  return value.$kind === CONDITION_KIND.EXISTS;
 }
 
-export function isDocument(ast: AST): ast is Document {
-  return ast.$type === SQL_SYMBOLE.DOCUMENT;
+export function isDocument(value: any): value is Document {
+  return value.$type === SQL_SYMBOLE.DOCUMENT;
 }
 
-export function invalidAST(type: string, ast: AST) {
-  console.debug(`Invalid ${type} AST：`, ast);
+export function invalidAST(type: string, value: any) {
+  console.debug(`Invalid ${type} AST：`, value);
   throw new Error(`Invalid ${type} AST.`);
 }
 
