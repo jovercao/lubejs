@@ -140,11 +140,12 @@ export function ensureProcedure<T extends Model, N extends string>(
  * @param condition 条件表达式
  */
 export function ensureCondition<T extends Model>(
-  condition: Condition | WhereObject<T>
+  condition: Condition | WhereObject<T>,
+  rowset?: Rowset<T>
 ): Condition {
   if (condition instanceof Condition) return condition;
   const compares = Object.entries(condition).map(([key, value]) => {
-    const field = new Field(key);
+    const field = rowset ? rowset.$(key as any) : new Field(key);
     if (value === null || value === undefined) {
       return Condition.isNull(field);
     }
