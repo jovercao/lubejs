@@ -141,11 +141,20 @@ export function ensureProcedure<T extends Model, N extends string>(
  */
 export function ensureCondition<T extends Model>(
   condition: Condition | WhereObject<T>,
-  rowset?: Rowset<T>
+  rowset?: Rowset<T> | Name<string>
 ): Condition {
   if (condition instanceof Condition) return condition;
   const compares = Object.entries(condition).map(([key, value]) => {
-    const field = rowset ? rowset.$(key as any) : new Field(key);
+    let field: Field<any, string>
+    if (rowset) {
+      if (Array.isArray(rowset)) {
+        field = new Field([...(Array.isArray(rowset) ? rowset : [rowset]), key] as Name<string>);
+      } else if (rowset instanceof Rowset) {
+        field = rowset.$(key as any)
+      }
+    } else {
+      field = new Field(key)
+    }
     if (value === null || value === undefined) {
       return Condition.isNull(field);
     }
