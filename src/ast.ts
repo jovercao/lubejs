@@ -3344,23 +3344,27 @@ export class Insert<T extends Model = any> extends CrudStatement {
 /**
  * Update 语句
  */
-export class Update<TModel extends Model = any> extends Fromable {
-  $table: Table<TModel, string>;
+export class Update<T extends Model = any> extends Fromable {
+  $table: Table<T, string>;
   $sets: Assignment<JsConstant>[];
 
   readonly $type: SQL_SYMBOLE.UPDATE = SQL_SYMBOLE.UPDATE;
 
-  constructor(table: Tables<TModel, string>) {
+  constructor(table: Tables<T, string>) {
     super();
-    this.$table = ensureRowset(table) as Table<TModel, string>;
+    const tb = ensureRowset(table)
+    if (tb.$alias) {
+      this.from(tb)
+    }
+    this.$table = tb as Table<T>
   }
 
   /**
    * @param sets
    */
-  set(sets: ValueObject<TModel>): this;
+  set(sets: ValueObject<T>): this;
   set(...sets: Assignment<JsConstant>[]): this;
-  set(...sets: ValueObject<TModel>[] | Assignment<JsConstant>[]): this {
+  set(...sets: ValueObject<T>[] | Assignment<JsConstant>[]): this {
     assert(!this.$sets, "set statement is declared");
     assert(sets.length > 0, "sets must have more than 0 items");
     if (sets.length > 1 || sets[0] instanceof Assignment) {
