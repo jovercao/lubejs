@@ -1,66 +1,33 @@
-import { assert, ensureField, ensureRowset, isJsConstant } from "./util";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { assert, ensureField, ensureRowset, isScalar } from "./util";
 import { EventEmitter } from "events";
 import {
   Parameter,
   AST,
   Select,
-  JsConstant,
-  Expressions,
-  SortInfo,
+  ScalarType,
+  CompatibleExpression,
   Condition,
   Statement,
   Assignment,
-  SortObject,
-  ValueObject,
+  InputObject,
   WhereObject,
   Identifier,
   Field,
   FieldsOf,
-  InputObject,
-  Model,
+  RowObject,
   Name,
   Procedure,
   Table,
+  AsScalarType,
+  CompatibleCondition,
+  Document
 } from "./ast";
-import { Compiler, Command } from "./compiler";
+import { Compiler } from "./compiler";
 import { INSERT_MAXIMUM_ROWS } from "./constants";
-import { Lube, ValueTypeOf } from "./lube";
-
-export interface QueryResult<T extends Model = any> {
-  rows?: T[];
-  output?: {
-    [key: string]: JsConstant;
-  };
-  rowsAffected: number;
-  returnValue?: JsConstant;
-
-  /**
-   * 多数据集返回，仅支持mssql
-   */
-  rowsets?: any[];
-}
-
-// interface QueryParameter {
-//    name: string,
-//    value: any,
-//    direction?: ParameterDirection
-// }
-
-export interface QueryHandler<T extends Model = any> {
-  (sql: string, params: Parameter<JsConstant, string>[]): Promise<
-    QueryResult<T>
-  >;
-}
-
-export interface SelectOptions<T extends Model = any> {
-  where?: WhereObject<T> | Condition;
-  top?: number;
-  offset?: number;
-  limit?: number;
-  distinct?: boolean;
-  fields?: (keyof T)[];
-  sorts?: SortObject<T> | (SortInfo | Expressions)[];
-}
+import { Lube } from "./lube";
+import { QueryHandler, QueryResult, Command, SelectOptions } from "./types";
+import { Repository } from "./repository";
 
 export class Executor extends EventEmitter {
   doQuery: QueryHandler;
@@ -83,7 +50,7 @@ export class Executor extends EventEmitter {
   protected constructor(
     query: QueryHandler,
     compiler: Compiler,
-    isTrans: boolean = false
+    isTrans = false
   ) {
     super();
     // 是否启用严格模式，避免关键字等问题
@@ -167,24 +134,24 @@ export class Executor extends EventEmitter {
     }
   }
 
-  async query<T extends Model = any>(sql: Select<T>): Promise<QueryResult<T>>;
-  async query<T extends Model = any>(sql: string): Promise<QueryResult<T>>;
-  async query<T extends Model = any>(
+  async query<T extends RowObject = any>(sql: Select<T>): Promise<QueryResult<T>>;
+  async query<T extends RowObject = any>(sql: string): Promise<QueryResult<T>>;
+  async query<T extends RowObject = any>(
     sql: string,
     params: Parameter[]
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = any>(
+  async query<T extends RowObject = any>(
     sql: string,
-    params: Object
+    params: Record<string, ScalarType>
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = any>(
+  async query<T extends RowObject = any>(
     sql: Statement | Document
   ): Promise<QueryResult<T>>;
-  async query<T extends Model = any>(
+  async query<T extends RowObject = any>(
     sql: TemplateStringsArray,
     ...params: any[]
   ): Promise<QueryResult<T>>;
-  async query(...args: any[]) {
+  async query(...args: any[]): Promise<any> {
     return this._internalQuery(...args);
   }
 
@@ -192,21 +159,21 @@ export class Executor extends EventEmitter {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar<T extends JsConstant = any>(
+  async queryScalar<T extends ScalarType = any>(
     sql: string,
     params?: Parameter[]
   ): Promise<T>;
-  async queryScalar<T extends JsConstant = any>(
+  async queryScalar<T extends ScalarType = any>(
     sql: string,
     params?: InputObject
   ): Promise<T>;
-  async queryScalar<T extends Model>(sql: Select<T>): Promise<ValueTypeOf<T>>;
-  async queryScalar<T extends JsConstant>(sql: Select<any>): Promise<T>;
-  async queryScalar<T extends JsConstant = any>(
+  async queryScalar<T extends RowObject>(sql: Select<T>): Promise<AsScalarType<T>>;
+  async queryScalar<T extends ScalarType>(sql: Select<any>): Promise<T>;
+  async queryScalar<T extends ScalarType = any>(
     sql: TemplateStringsArray,
     ...params: any[]
   ): Promise<T>;
-  async queryScalar(...args: any[]) {
+  async queryScalar(...args: any[]): Promise<any> {
     const {
       rows: [row],
     } = await this._internalQuery(...args);
@@ -216,49 +183,49 @@ export class Executor extends EventEmitter {
   /**
    * 插入数据的快捷操作
    */
-  async insert<T extends Model = any>(
+  async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    values?: ValueObject<T> | Expressions[]
+    values?: InputObject<T> | CompatibleExpression[]
   ): Promise<number>;
-  async insert<T extends Model = any>(
+  async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    values?: ValueObject<T>[]
+    values?: InputObject<T>[]
   ): Promise<number>;
-  async insert<T extends Model = any>(
+  async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
-    value?: ValueObject<T> | Expressions[]
+    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
+    value?: InputObject<T> | CompatibleExpression[]
   ): Promise<number>;
-  async insert<T extends Model = any>(
+  async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[],
-    value?: ValueObject<T> | ValueObject<T>[] | Expressions[] | Expressions[][]
+    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
+    value?: InputObject<T> | InputObject<T>[] | CompatibleExpression[] | CompatibleExpression[][]
   ): Promise<number>;
-  async insert<T extends Model = any>(
+  async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
     arg2:
       | FieldsOf<T>[]
-      | Field<JsConstant, FieldsOf<T>>[]
-      | ValueObject<T>
-      | ValueObject<T>[]
-      | Expressions
-      | Expressions[],
+      | Field<ScalarType, FieldsOf<T>>[]
+      | InputObject<T>
+      | InputObject<T>[]
+      | CompatibleExpression
+      | CompatibleExpression[],
     arg3?:
-      | ValueObject<T>
-      | ValueObject<T>[]
-      | Expressions
-      | Expressions[]
+      | InputObject<T>
+      | InputObject<T>[]
+      | CompatibleExpression
+      | CompatibleExpression[]
       | undefined
   ): Promise<number> {
-    let fields: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[];
-    let values: ValueObject<T> | ValueObject<T>[] | Expressions | Expressions[];
+    let fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[];
+    let values: InputObject<T> | InputObject<T>[] | CompatibleExpression | CompatibleExpression[];
 
     if (arguments.length <= 2) {
       values = arg2;
       fields = undefined;
     } else {
       values = arg3;
-      fields = arg2 as FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[];
+      fields = arg2 as FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[];
     }
 
     // 确保装入数组里，以便 使用
@@ -266,8 +233,9 @@ export class Executor extends EventEmitter {
     // Object => Object[]
     if (
       !Array.isArray(values) ||
-      (!Array.isArray(values[0]) && isJsConstant(values[0]))
+      (!Array.isArray(values[0]) && isScalar(values[0]))
     ) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       values = [values as any];
     }
     const packedValues = values;
@@ -279,8 +247,7 @@ export class Executor extends EventEmitter {
     const action = async (executor: Executor): Promise<number> => {
       let i = 0;
       let rowsAffected = 0;
-      while (true) {
-        if (i >= packedValues.length) break;
+      while (i < packedValues.length) {
         const items = packedValues.slice(i, i + INSERT_MAXIMUM_ROWS);
         i += INSERT_MAXIMUM_ROWS;
         const sql = Statement.insert(table, fields);
@@ -297,10 +264,10 @@ export class Executor extends EventEmitter {
     return await action(this);
   }
 
-  async find<T extends Model = any>(
+  async find<T extends RowObject = any>(
     table: Table<T, string> | Name<string>,
     where: Condition | WhereObject<T>,
-    fields?: FieldsOf<T>[] | Field<JsConstant, FieldsOf<T>>[]
+    fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
   ): Promise<T> {
     let columns: any[];
     if (Array.isArray(table) || typeof table === "string") {
@@ -331,7 +298,7 @@ export class Executor extends EventEmitter {
    * @param where
    * @param options
    */
-  async select<T extends Model = any>(
+  async select<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
     options?: SelectOptions<T>
   ): Promise<T[]> {
@@ -370,23 +337,54 @@ export class Executor extends EventEmitter {
    * @param sets 要修改的赋值
    * @param where 查询条件
    */
-  async update<T extends Model = any>(
+  async update<T extends RowObject = any>(
     table: string | Table<T, string>,
-    sets: ValueObject<T> | Assignment[],
-    where?: WhereObject<T> | Condition | WhereObject<T>
+    sets: InputObject<T> | Assignment[],
+    where?: WhereObject<T> | Condition
+  ): Promise<number>
+  async update<T extends RowObject = any>(
+    table: string | Table<T, string>,
+    items: T[],
+    key: string[]
+  ): Promise<number>
+  async update<T extends RowObject = any>(
+    table: string | Table<T, string>,
+    sets: InputObject<T> | Assignment[],
+    where?: WhereObject<T> | Condition | FieldsOf<T>[]
   ): Promise<number> {
+
+    if (Array.isArray(sets) && !(sets[0] instanceof Assignment)) {
+      const key = where as FieldsOf<T>[]
+      const items = sets as InputObject<T>[]
+      const docs: Document = new Document(
+        ...items.map(item => {
+          const condition: Partial<T> = {}
+          key.forEach(field => {
+            Reflect.set(condition, field, item[field])
+          })
+          const sql = Statement.update(table).set(item).where(condition)
+          return sql
+        })
+      )
+
+      const res = await this.query(docs)
+      return res.rowsAffected
+    }
+
     const sql = Statement.update(table);
     if (Array.isArray(sets)) {
       sql.set(...sets);
     } else {
       sql.set(sets);
     }
-    if (where) sql.where(where);
+    if (where) {
+      sql.where(where as CompatibleCondition<T>);
+    }
     const res = await this.query(sql);
     return res.rowsAffected;
   }
 
-  async delete<T extends Model = any>(
+  async delete<T extends RowObject = any>(
     table: Table<T, string> | Name<string>,
     where?: WhereObject<T> | Condition
   ): Promise<number> {
@@ -398,12 +396,16 @@ export class Executor extends EventEmitter {
     return res.rowsAffected;
   }
 
-  async execute<T extends Model>(
+  async execute<T extends RowObject>(
     spName: Name<string> | Procedure<T>,
-    params?: Expressions[]
+    params?: CompatibleExpression[]
   ): Promise<QueryResult<T>> {
     const sql = Statement.execute<T>(spName, params);
     const res = await this.query(sql);
     return res as any;
+  }
+
+  getRepository<T extends RowObject>(rowset: Table<T>): Repository<T> {
+    return new Repository(this, rowset)
   }
 }

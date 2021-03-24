@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as assert from "assert";
 
 import {
   AST,
   Parameter,
   Identifier,
-  Constant,
+  Literal,
   When,
   Column,
   Declare,
@@ -17,7 +18,6 @@ import {
   Case,
   Variant,
   Join,
-  Alias,
   Execute,
   Document,
   Union,
@@ -30,32 +30,28 @@ import {
   BinaryOperation,
   ExistsCondition,
   Raw,
-  GroupCondition,
+  ParenthesesCondition,
   With,
   NamedSelect,
-  Func,
-  TableFuncInvoke,
   Expression,
   BuiltIn,
   Field,
-  JsConstant,
+  ScalarType,
   Name,
   Condition,
   Operation,
   Rowset,
   Star,
   Statement,
-  Table,
   ConvertOperation,
-  Bracket,
+  ParenthesesExpression,
   ValuedSelect,
   TableVariant,
 } from "./ast";
 import {
   PARAMETER_DIRECTION,
-  CONDITION_KIND,
-  OPERATION_KIND,
 } from "./constants";
+import { Command, CompileOptions } from "./types";
 
 import {
   dateToString,
@@ -98,47 +94,6 @@ import {
   isValuedSelect,
   isVariant,
 } from "./util";
-
-export interface Command {
-  sql: string;
-  params: Parameter[];
-}
-
-// TODO: 使用命令生成器优化SQL字符串拼接
-
-/**
- * 编译选项
- */
-export interface CompileOptions {
-  /**
-   * 是否启用严格模式，默认启用
-   * 如果为false，则生成的SQL标识不会被[]或""包括
-   */
-  strict?: boolean;
-  /**
-   * 标识符引用，左
-   */
-  quotedLeft?: string;
-  /**
-   * 标识符引用，右
-   */
-  quotedRight?: string;
-
-  /**
-   * 参数前缀
-   */
-  parameterPrefix?: string;
-
-  /**
-   * 变量前缀
-   */
-  variantPrefix?: string;
-
-  /**
-   * 返回参数名称
-   */
-  returnParameterName?: string;
-}
 
 const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
   strict: true,
@@ -195,7 +150,7 @@ export abstract class Compiler {
    * 编译Insert语句中的字段，取掉表别名
    * @param field 字段
    */
-  protected compileInsertField(field: Field<JsConstant, string>) {
+  protected compileInsertField(field: Field<ScalarType, string>): string {
     if (typeof field.$name === "string") return this.quoted(field.$name);
     return this.quoted(field.$name[field.$name.length - 1]);
   }
@@ -221,15 +176,13 @@ export abstract class Compiler {
    * @param {any} value 参数值
    */
   protected compileParameter(
-    param: Parameter<JsConstant, string>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST = null
-  ): string {
+    param: Parameter<ScalarType, string>,
+    params: Set<Parameter<ScalarType, string>>): string {
     params.add(param);
     return this.stringifyParameterName(param);
   }
 
-  public stringifyParameterName(p: Parameter<JsConstant, string>) {
+  public stringifyParameterName(p: Parameter<ScalarType, string>): string {
     return this.options.parameterPrefix + (p.$name || "");
   }
 
@@ -238,42 +191,36 @@ export abstract class Compiler {
   }
 
   protected compileVariant(
-    variant: Variant,
-    params: Set<Parameter>,
-    parent: AST = null
-  ) {
+    variant: Variant): string {
     return this.stringifyVariantName(variant);
   }
 
   /**
    * 编译日期常量
    */
-  protected compileDate(date: Date) {
+  protected compileDate(date: Date): string {
     return `'${dateToString(date)}'`;
   }
 
   /**
    * 编译Boolean常量
    */
-  protected compileBoolean(value: boolean) {
+  protected compileBoolean(value: boolean): string {
     return value ? "1" : "0";
   }
 
   /**
    * 编译字符串常量
    */
-  protected compileString(value: string) {
+  protected compileString(value: string): string {
     return `'${value.replace(/'/g, "''")}'`;
   }
 
   /**
    * 编译常量
    */
-  protected compileConstant(
-    constant: Constant<JsConstant>,
-    params?: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ) {
+  protected compileLiteral(
+    constant: Literal<ScalarType>): string {
     const value = constant.$value;
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
@@ -298,13 +245,12 @@ export abstract class Compiler {
     if (isBinary(value)) {
       return "0x" + Buffer.from(value).toString("hex");
     }
-    console.debug(value);
-    // @ts-ignore
+    console.debug("unsupport constant value type:", value);
     throw new Error("unsupport constant value type:" + typeof value);
   }
 
   public compile(ast: Statement | Document): Command {
-    const params = new Set<Parameter<JsConstant, string>>();
+    const params = new Set<Parameter<ScalarType, string>>();
     let sql: string;
     if (isDocument(ast)) {
       sql = this.compileDocument(ast, params);
@@ -325,7 +271,7 @@ export abstract class Compiler {
     /**
      * 参数容器
      */
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     /**
      * 父级AST
      */
@@ -348,7 +294,7 @@ export abstract class Compiler {
     }
 
     if (isDeclare(statement)) {
-      return this.compileDeclare(statement, params, parent);
+      return this.compileDeclare(statement);
     }
 
     if (isExecute(statement)) {
@@ -366,30 +312,25 @@ export abstract class Compiler {
     invalidAST("statement", statement);
   }
 
-  protected compileBracket(
-    expr: Bracket<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
-  ): string {
-    return `(${this.compileExpression(expr.$inner, params, parent)})`;
+  protected compileParenthesesExpression(
+    expr: ParenthesesExpression<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>): string {
+    return `(${this.compileExpression(expr.$inner, params, expr)})`;
   }
 
   /**
    * SELECT 语句 当值使用
    */
   protected compileValuedSelect(
-    expr: ValuedSelect<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
+    expr: ValuedSelect<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
   ): string {
     return `(${this.compileSelect(expr.$select, params, parent)})`;
   }
 
   protected compileStar(
-    star: Star,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
-  ): string {
+    star: Star): string {
     if (star.$parent) {
       return this.compileName(star.$parent) + ".*";
     }
@@ -398,20 +339,20 @@ export abstract class Compiler {
 
   protected compileOperation(
     operation: Operation,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
-  ) {
+  ): string {
     if (isUnaryOperation(operation)) {
       return this.compileUnaryOperation(operation, params, parent);
     }
 
     if (isBinaryOperation(operation)) {
-      return this.compileBinaryOperation(operation, params, parent);
+      return this.compileBinaryOperation(operation, params);
     }
 
     if (isConvertOperation(operation)) {
       return this.compileConvert(
-        operation as ConvertOperation<JsConstant>,
+        operation as ConvertOperation<ScalarType>,
         params,
         parent
       );
@@ -420,20 +361,20 @@ export abstract class Compiler {
   }
 
   abstract compileConvert(
-    ast: ConvertOperation<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
+    ast: ConvertOperation<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
   ): string;
 
   protected compileUnaryOperation(
-    opt: UnaryOperation<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
+    opt: UnaryOperation<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
   ): string {
     return opt.$operator + this.compileExpression(opt.$value, params, parent);
   }
 
-  protected compileRowsetName(rowset: Rowset | Raw) {
+  protected compileRowsetName(rowset: Rowset | Raw): string {
     if (isRaw(rowset)) return rowset.$sql;
     if (rowset.$alias) {
       return this.stringifyIdentifier(rowset.$alias);
@@ -445,10 +386,8 @@ export abstract class Compiler {
   }
 
   protected compileNamedSelect(
-    rowset: NamedSelect<object, string>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
-  ) {
+    rowset: NamedSelect,
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       "(" +
       this.compileSelect(rowset.$select, params, rowset) +
@@ -458,9 +397,6 @@ export abstract class Compiler {
   }
 
   protected compileTableInvoke(
-    arg0: TableFuncInvoke,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
   ): string {
     throw new Error("Method not implemented.");
   }
@@ -472,8 +408,8 @@ export abstract class Compiler {
   }
 
   protected compileColumn(
-    column: Column<JsConstant, string> | Star | Expression<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
+    column: Column<ScalarType, string> | Star | Expression<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
   ): string {
     if (isColumn(column)) {
@@ -484,16 +420,16 @@ export abstract class Compiler {
       )} AS ${this.quoted(column.$name)}`;
     }
     if (isStar(column)) {
-      return this.compileStar(column, params, parent);
+      return this.compileStar(column);
     }
     return this.compileExpression(column, params, parent);
   }
 
   protected compileWithSelect(
     item: NamedSelect<any, string> | Raw,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent: AST
-  ) {
+  ): string {
     if (isRaw(item)) return item.$sql;
     return `${this.quoted(item.$alias.$name)} AS (${this.compileSelect(
       item.$select,
@@ -504,13 +440,11 @@ export abstract class Compiler {
 
   protected compileWith(
     withs: With | Raw,
-    params: Set<Parameter<JsConstant, string>>,
-    parent: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     if (isRaw(withs)) return withs.$sql;
     return (
       "WITH " +
-      withs.$items
+      withs.$rowsets
         .map((item) => this.compileWithSelect(item, params, withs))
         .join(", ")
     );
@@ -518,16 +452,17 @@ export abstract class Compiler {
 
   protected compileDocument(
     doc: Document,
-    params: Set<Parameter<JsConstant, string>>
-  ) {
+    params: Set<Parameter<ScalarType, string>>
+  ): string {
     return doc.statements
       .map((statement) => this.compileStatement(statement, params, doc))
       .join("\n");
   }
 
-  protected compileExecute<T extends AST>(
+  protected compileExecute(
     exec: Execute,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
     const returnParam = Parameter.output(
@@ -536,7 +471,7 @@ export abstract class Compiler {
     );
     return (
       "EXECUTE " +
-      this.compileParameter(returnParam, params, parent) +
+      this.compileParameter(returnParam, params) +
       " = " +
       this.stringifyIdentifier(exec.$proc) +
       " " +
@@ -545,8 +480,8 @@ export abstract class Compiler {
   }
 
   protected compileInvokeArgumentList(
-    args: Expression<JsConstant>[],
-    params: Set<Parameter<JsConstant, string>>,
+    args: Expression<ScalarType>[],
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     return args
@@ -555,8 +490,8 @@ export abstract class Compiler {
   }
 
   protected compileExecuteArgumentList(
-    args: Expression<JsConstant>[],
-    params: Set<Parameter<JsConstant, string>>,
+    args: Expression<ScalarType>[],
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     return args
@@ -564,8 +499,8 @@ export abstract class Compiler {
         let sql = this.compileExpression(ast, params, parent);
         if (
           isParameter(ast) &&
-          (ast as Parameter<JsConstant, string>).direction ===
-            PARAMETER_DIRECTION.OUTPUT
+          (ast as Parameter<ScalarType, string>).direction ===
+          PARAMETER_DIRECTION.OUTPUT
         ) {
           sql += " OUTPUT";
         }
@@ -576,19 +511,19 @@ export abstract class Compiler {
 
   protected compileUnion(
     union: Union,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       "UNION " +
       (union.$all ? "ALL " : "") +
-      this.compileSelect(union.$select, params, union)
+      (isSelect(union.$select)
+        ? this.compileSelect(union.$select, params, union)
+        : this.compileRowsetName(union.$select))
     );
   }
 
   protected compileCase(
     caseExpr: Case<any>,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     let fragment = "CASE";
@@ -597,7 +532,7 @@ export abstract class Compiler {
     fragment +=
       " " +
       caseExpr.$whens
-        .map((when) => this.compileWhen(when, params, caseExpr))
+        .map((when) => this.compileWhen(when, params))
         .join(" ");
     if (caseExpr.$default)
       fragment +=
@@ -608,9 +543,7 @@ export abstract class Compiler {
 
   protected compileWhen(
     when: When<any> | Raw,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     if (isRaw(when)) return when.$sql;
     return (
       "WHEN " +
@@ -622,19 +555,15 @@ export abstract class Compiler {
     );
   }
 
-  protected compileGroupCondition(
-    expr: GroupCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
-    return "(" + this.compileCondition(expr.context, params, expr) + ")";
+  protected compileParenthesesCondition(
+    expr: ParenthesesCondition,
+    params: Set<Parameter<ScalarType, string>>): string {
+    return "(" + this.compileCondition(expr.$inner, params, expr) + ")";
   }
 
   protected compileBinaryLogicCondition(
     expr: BinaryLogicCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       this.compileCondition(expr.$left, params, expr) +
       " " +
@@ -646,9 +575,7 @@ export abstract class Compiler {
 
   protected compileBinaryCompareCondition(
     expr: BinaryCompareCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
       " " +
@@ -656,17 +583,15 @@ export abstract class Compiler {
       " " +
       (Array.isArray(expr.$right)
         ? "(" +
-          expr.$right.map((p) => this.compileExpression(p, params, expr)) +
-          ")"
+        expr.$right.map((p) => this.compileExpression(p, params, expr)) +
+        ")"
         : this.compileExpression(expr.$right, params, expr))
     );
   }
 
   protected compileBinaryOperation(
-    expr: BinaryOperation<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    expr: BinaryOperation<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
       " " +
@@ -678,9 +603,7 @@ export abstract class Compiler {
 
   protected compileUnaryCompareCondition(
     expr: UnaryCompareCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       this.compileExpression(expr.$expr, params, expr) + " " + expr.$operator
     );
@@ -688,17 +611,13 @@ export abstract class Compiler {
 
   protected compileExistsCondition(
     expr: ExistsCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return "EXISTS(" + this.compileSelect(expr.$statement, params, expr) + ")";
   }
 
   protected compileUnaryLogicCondition(
     expr: UnaryLogicCondition,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     return (
       expr.$operator +
       " " +
@@ -707,15 +626,15 @@ export abstract class Compiler {
   }
 
   protected compileExpression(
-    expr: Expression<JsConstant> | Raw,
-    params: Set<Parameter<JsConstant, string>>,
+    expr: Expression<ScalarType> | Raw,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
-  ) {
+  ): string {
     if (isRaw(expr)) {
       return expr.$sql;
     }
     if (isConstant(expr)) {
-      return this.compileConstant(expr, params, parent);
+      return this.compileLiteral(expr);
     }
 
     if (isOperation(expr)) {
@@ -727,7 +646,7 @@ export abstract class Compiler {
     }
 
     if (isBracket(expr)) {
-      return this.compileBracket(expr, params, parent);
+      return this.compileParenthesesExpression(expr, params);
     }
 
     if (isValuedSelect(expr)) {
@@ -739,11 +658,11 @@ export abstract class Compiler {
     }
 
     if (isParameter(expr)) {
-      return this.compileParameter(expr, params, parent);
+      return this.compileParameter(expr, params);
     }
 
     if (isScalarFuncInvoke(expr)) {
-      return this.compileScalarInvoke(expr, params, parent);
+      return this.compileScalarInvoke(expr, params);
     }
 
     if (isCase(expr)) {
@@ -756,8 +675,8 @@ export abstract class Compiler {
     arg: Expression | Star | BuiltIn,
     params: Set<Parameter>,
     parent: AST
-  ) {
-    if (isStar(arg)) return this.compileStar(arg, params, parent);
+  ): string {
+    if (isStar(arg)) return this.compileStar(arg);
     if (isBuiltIn(arg)) return this.compileBuildIn(arg);
     return this.compileExpression(arg, params, parent);
   }
@@ -769,10 +688,8 @@ export abstract class Compiler {
    * @memberof Executor
    */
   protected compileScalarInvoke(
-    invoke: ScalarFuncInvoke<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    invoke: ScalarFuncInvoke<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>): string {
     return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
       .map((v) => this.compileScalarInvokeArgs(v, params, invoke))
       .join(", ")})`;
@@ -780,9 +697,7 @@ export abstract class Compiler {
 
   protected compileJoin(
     join: Join | Raw,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     if (isRaw(join)) return join.$sql;
     return (
       (join.$left ? "LEFT " : "") +
@@ -795,9 +710,7 @@ export abstract class Compiler {
 
   protected compileSort(
     sort: SortInfo | Raw,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    params: Set<Parameter<ScalarType, string>>): string {
     if (isRaw(sort)) return sort.$sql;
     let sql = this.compileExpression(sort.$expr, params, sort);
     if (sort.$direction) sql += " " + sort.$direction;
@@ -806,7 +719,7 @@ export abstract class Compiler {
 
   protected compileSelect(
     select: Select,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     const {
@@ -826,7 +739,7 @@ export abstract class Compiler {
     } = select;
     let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params, parent);
+      sql += this.compileWith($with, params);
     }
     sql += "SELECT ";
     if ($distinct) {
@@ -848,7 +761,7 @@ export abstract class Compiler {
     if ($joins && $joins.length > 0) {
       sql +=
         " " +
-        $joins.map((join) => this.compileJoin(join, params, parent)).join(" ");
+        $joins.map((join) => this.compileJoin(join, params)).join(" ");
     }
     if ($where) {
       sql += " WHERE " + this.compileCondition($where, params, parent);
@@ -866,7 +779,7 @@ export abstract class Compiler {
     if ($sorts && $sorts.length > 0) {
       sql +=
         " ORDER BY " +
-        $sorts.map((sort) => this.compileSort(sort, params, parent)).join(", ");
+        $sorts.map((sort) => this.compileSort(sort, params)).join(", ");
     }
 
     if (typeof $offset === "number") {
@@ -877,7 +790,7 @@ export abstract class Compiler {
     }
 
     if ($union) {
-      sql += " " + this.compileUnion($union, params, select);
+      sql += " " + this.compileUnion($union, params);
     }
 
     return sql;
@@ -885,7 +798,8 @@ export abstract class Compiler {
 
   protected compileFrom(
     table: Rowset<any> | Raw,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
   ): string {
     if (isRaw(table)) {
@@ -905,11 +819,11 @@ export abstract class Compiler {
     }
     // 如果是命名行集
     if (isNamedSelect(table)) {
-      return this.compileNamedSelect(table, params, parent);
+      return this.compileNamedSelect(table, params);
     }
     if (isTableFuncInvoke(table)) {
       return (
-        this.compileTableInvoke(table, params, parent) +
+        this.compileTableInvoke() +
         " AS " +
         this.stringifyIdentifier(table.$alias)
       );
@@ -919,64 +833,53 @@ export abstract class Compiler {
 
   protected compileCondition(
     condition: Condition | Raw,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
-  ) {
+  ): string {
     if (isRaw(condition)) return condition.$sql;
     if (isExistsCondition(condition)) {
       return this.compileExistsCondition(
         condition as ExistsCondition,
-        params,
-        parent
-      );
+        params);
     }
     if (isGroupCondition(condition)) {
-      return this.compileGroupCondition(
-        condition as GroupCondition,
-        params,
-        parent
-      );
+      return this.compileParenthesesCondition(
+        condition as ParenthesesCondition,
+        params);
     }
     if (isBinaryCompareCondition(condition)) {
       return this.compileBinaryCompareCondition(
         condition as BinaryCompareCondition,
-        params,
-        parent
-      );
+        params);
     }
     if (isUnaryCompareCondition(condition)) {
       return this.compileUnaryCompareCondition(
         condition as UnaryCompareCondition,
-        params,
-        parent
-      );
+        params);
     }
     if (isBinaryLogicCondition(condition)) {
       return this.compileBinaryLogicCondition(
         condition as BinaryLogicCondition,
-        params,
-        parent
-      );
+        params);
     }
     if (isUnaryLogicCondition(condition)) {
       return this.compileUnaryLogicCondition(
         condition as UnaryLogicCondition,
-        params,
-        parent
-      );
+        params);
     }
     invalidAST("condition", condition);
   }
 
   protected compileInsert(
     insert: Insert,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     const { $table, $values, $fields, $with } = insert;
     let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params, parent);
+      sql += this.compileWith($with, params);
     }
     sql += "INSERT INTO ";
     if ($table.$alias) {
@@ -1011,8 +914,8 @@ export abstract class Compiler {
   }
 
   protected compileAssignment(
-    assign: Assignment<JsConstant>,
-    params: Set<Parameter<JsConstant, string>>,
+    assign: Assignment<ScalarType>,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     const { left, right } = assign;
@@ -1024,10 +927,7 @@ export abstract class Compiler {
   }
 
   protected compileDeclare(
-    declare: Declare,
-    params: Set<Parameter<JsConstant, string>>,
-    parent?: AST
-  ): string {
+    declare: Declare): string {
     return (
       "DECLARE " +
       declare.$declares
@@ -1041,7 +941,8 @@ export abstract class Compiler {
 
   protected compileUpdate(
     update: Update,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
     const { $table, $sets, $with, $where, $froms, $joins } = update;
@@ -1050,7 +951,7 @@ export abstract class Compiler {
 
     let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params, parent);
+      sql += this.compileWith($with, params);
     }
     sql += "UPDATE ";
     sql += this.compileRowsetName($table);
@@ -1072,7 +973,7 @@ export abstract class Compiler {
     if ($joins && $joins.length > 0) {
       sql +=
         " " +
-        $joins.map((join) => this.compileJoin(join, params, update)).join(" ");
+        $joins.map((join) => this.compileJoin(join, params)).join(" ");
     }
     if ($where) {
       sql += " WHERE " + this.compileCondition($where, params, update);
@@ -1082,13 +983,13 @@ export abstract class Compiler {
 
   protected compileDelete(
     del: Delete,
-    params: Set<Parameter<JsConstant, string>>,
+    params: Set<Parameter<ScalarType, string>>,
     parent?: AST
   ): string {
     const { $table, $froms, $joins, $where, $with } = del;
     let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params, parent);
+      sql += this.compileWith($with, params);
     }
     sql += "DELETE ";
     if ($table) sql += this.compileRowsetName($table);
@@ -1102,7 +1003,7 @@ export abstract class Compiler {
 
     if ($joins) {
       sql += $joins
-        .map((join) => this.compileJoin(join, params, parent))
+        .map((join) => this.compileJoin(join, params))
         .join(" ");
     }
     if ($where) {

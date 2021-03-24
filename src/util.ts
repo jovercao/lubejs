@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   Condition,
-  Expressions,
+  CompatibleExpression,
   Expression,
   AST,
-  JsConstant,
-  ProxiedRowset,
+  ScalarType,
+  Proxied,
   Func,
   Name,
   Table,
@@ -12,18 +14,18 @@ import {
   Document,
   Assignment,
   BinaryOperation,
-  Bracket,
+  ParenthesesExpression,
   BuiltIn,
   Case,
   Column,
-  Constant,
+  Literal,
   ConvertOperation,
   Declare,
   Delete,
   Execute,
   Identifier,
   Insert,
-  Model,
+  RowObject,
   NamedSelect,
   Operation,
   Parameter,
@@ -45,17 +47,18 @@ import {
   BinaryCompareCondition,
   BinaryLogicCondition,
   ExistsCondition,
-  GroupCondition,
+  ParenthesesCondition,
   UnaryCompareCondition,
   UnaryLogicCondition,
-  $IsProxy,
-  Binary
+  Binary,
+  With,
+  CrudStatement
 } from "./ast";
-import { constant, func, JsConstantName } from "./builder";
 import {
   CONDITION_KIND,
   IDENTOFIER_KIND,
   OPERATION_KIND,
+  $IsProxy,
   SQL_SYMBOLE,
 } from "./constants";
 
@@ -65,7 +68,7 @@ import {
  * @param except 预期结果
  * @param message 错误消息
  */
-export function assert(except: any, message: string) {
+export function assert(except: any, message: string): asserts except {
   if (!except) {
     throw new Error(message);
   }
@@ -74,11 +77,11 @@ export function assert(except: any, message: string) {
 /**
  * 返回表达式
  */
-export function ensureExpression<T extends JsConstant>(
-  expr: Expressions<T>
+export function ensureExpression<T extends ScalarType>(
+  expr: CompatibleExpression<T>
 ): Expression<T> {
   if (!(expr instanceof AST)) {
-    return constant(expr);
+    return Expression.literal(expr);
   }
   return expr;
 }
@@ -86,7 +89,7 @@ export function ensureExpression<T extends JsConstant>(
 /**
  * 确保字段类型
  */
-export function ensureField<T extends JsConstant, N extends string>(
+export function ensureField<T extends ScalarType, N extends string>(
   name: Name<N> | Field<T, N>
 ): Field<T, N> {
   if (!(name instanceof AST)) {
@@ -107,7 +110,7 @@ export function ensureVariant<T extends string, N extends string>(
 /**
  * 确保表格类型
  */
-export function ensureRowset<TModel extends Model>(
+export function ensureRowset<TModel extends RowObject>(
   name: Name<string> | Rowset<TModel>
 ): Rowset<TModel> {
   if (name instanceof AST) return name;
@@ -127,7 +130,7 @@ export function ensureFunction<TName extends string>(
 /**
  * 确保标题函数类型
  */
-export function ensureProcedure<T extends Model, N extends string>(
+export function ensureProcedure<T extends RowObject, N extends string>(
   name: Name<N> | Procedure<T, N>
 ): Procedure<T, N> {
   if (name instanceof AST) return name;
@@ -139,7 +142,7 @@ export function ensureProcedure<T extends Model, N extends string>(
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition<T extends Model>(
+export function ensureCondition<T extends RowObject>(
   condition: Condition | WhereObject<T>,
   rowset?: Rowset<T> | Name<string>
 ): Condition {
@@ -185,7 +188,7 @@ const RowsetFixedProps: string[] = [
 /**
  * 将制作rowset的代理，用于通过属性访问字段
  */
-export function makeProxiedRowset<T extends Rowset<unknown>>(rowset: T): ProxiedRowset<T> {
+export function makeProxiedRowset<T extends Rowset>(rowset: T): Proxied<T> {
   return new Proxy(rowset as any, {
     get(target: any, prop: string | symbol | number): any {
       /**
@@ -213,7 +216,7 @@ export function makeProxiedRowset<T extends Rowset<unknown>>(rowset: T): Proxied
   }) as any;
 }
 
-export function isJsConstant(value: any): value is JsConstant {
+export function isScalar(value: any): value is ScalarType {
   return (
     typeof value === "string" ||
     typeof value === "boolean" ||
@@ -224,6 +227,10 @@ export function isJsConstant(value: any): value is JsConstant {
     value instanceof Date ||
     isBinary(value)
   );
+}
+
+export function isLiteral(value: any): value is Literal {
+  return value.$type === SQL_SYMBOLE.LITERAL
 }
 
 export function isBinary(value: any): value is Binary {
@@ -242,57 +249,61 @@ export function isBinary(value: any): value is Binary {
     value instanceof SharedArrayBuffer
 }
 
-export type Constructor<T> = {
-  new (...args: any): T;
-};
-
-export type MixinedConstructor<A, B, C = unknown, D = unknown, E = unknown> = {
-  new (): A & B & C & D & E;
-};
-
-/**
- * 混入
- */
-export function mixins<Base, A>(
-  baseCls: Constructor<Base>,
-  extend1: Constructor<A>
-): MixinedConstructor<Base, A>;
-export function mixins<Base, A, B>(
-  baseCls: Constructor<Base>,
-  extend1: Constructor<A>,
-  extend2: Constructor<B>
-): MixinedConstructor<Base, A, B>;
-export function mixins<Base, A, B, C>(
-  baseCls: Constructor<Base>,
-  extend1: Constructor<A>,
-  extend2: Constructor<B>,
-  extend3: Constructor<C>
-): MixinedConstructor<Base, A, B, C>;
-export function mixins<Base, A, B, C, D>(
-  baseCls: Constructor<Base>,
-  extend1: Constructor<A>,
-  extend2: Constructor<B>,
-  extend3: Constructor<C>,
-  extend4: Constructor<D>
-): MixinedConstructor<Base, A, B, C, D>;
-export function mixins(...classes: Constructor<any>[]): any {
-  const cls = class MixinedClass extends classes[0] {};
-  const proto: any = cls.prototype;
-  classes.forEach((fn) => {
-    Object.getOwnPropertyNames(fn.prototype).forEach((name) => {
-      /**
-       * 不改变构造函数
-       */
-      if (name !== "constructor") {
-        if (proto[name]) {
-          throw new Error(`在混入合并时，发现属性冲突！属性名：${name}`);
-        }
-        proto[name] = fn.prototype[name];
-      }
-    });
-  });
-  return cls;
+export function isProxiedRowset<T extends Rowset | Rowset<any>>(rowset: T): rowset is Proxied<T> {
+  return Reflect.get(rowset, $IsProxy) === true
 }
+
+// export type Constructor<T> = {
+//   new (...args: any): T;
+// };
+
+// export type MixinedConstructor<A, B, C = unknown, D = unknown, E = unknown> = {
+//   new (): A & B & C & D & E;
+// };
+
+// /**
+//  * 混入
+//  */
+// export function mixins<Base, A>(
+//   baseCls: Constructor<Base>,
+//   extend1: Constructor<A>
+// ): MixinedConstructor<Base, A>;
+// export function mixins<Base, A, B>(
+//   baseCls: Constructor<Base>,
+//   extend1: Constructor<A>,
+//   extend2: Constructor<B>
+// ): MixinedConstructor<Base, A, B>;
+// export function mixins<Base, A, B, C>(
+//   baseCls: Constructor<Base>,
+//   extend1: Constructor<A>,
+//   extend2: Constructor<B>,
+//   extend3: Constructor<C>
+// ): MixinedConstructor<Base, A, B, C>;
+// export function mixins<Base, A, B, C, D>(
+//   baseCls: Constructor<Base>,
+//   extend1: Constructor<A>,
+//   extend2: Constructor<B>,
+//   extend3: Constructor<C>,
+//   extend4: Constructor<D>
+// ): MixinedConstructor<Base, A, B, C, D>;
+// export function mixins(...classes: Constructor<any>[]): any {
+//   const cls = class MixinedClass extends classes[0] {};
+//   const proto: any = cls.prototype;
+//   classes.forEach((fn) => {
+//     Object.getOwnPropertyNames(fn.prototype).forEach((name) => {
+//       /**
+//        * 不改变构造函数
+//        */
+//       if (name !== "constructor") {
+//         if (proto[name]) {
+//           throw new Error(`在混入合并时，发现属性冲突！属性名：${name}`);
+//         }
+//         proto[name] = fn.prototype[name];
+//       }
+//     });
+//   });
+//   return cls;
+// }
 
 export function pickName(name: Name<string>): string {
   if (typeof name === "string") {
@@ -308,7 +319,7 @@ export function pathName<T extends string>(name: Name<T>): PathedName<T> {
   return name;
 }
 
-export function isPlainObject(obj: any) {
+export function isPlainObject(obj: any): boolean {
   return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
 }
 
@@ -368,8 +379,18 @@ export function isStatement(value: any): value is Statement {
     isInsert(value) ||
     isDeclare(value) ||
     isAssignment(value) ||
+    isWith(value) ||
     isExecute(value)
   );
+}
+
+export function isCrudStatement(value: any): value is CrudStatement {
+  return (
+    isSelect(value) ||
+    isUpdate(value) ||
+    isDelete(value) ||
+    isInsert(value)
+  )
 }
 
 export function isIdentifier(value: any): value is Identifier {
@@ -384,8 +405,8 @@ export function isField(value: any): value is Field {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD;
 }
 
-export function isConstant(value: any): value is Constant {
-  return value.$type === SQL_SYMBOLE.CONSTANT;
+export function isConstant(value: any): value is Literal {
+  return value.$type === SQL_SYMBOLE.LITERAL;
 }
 
 export function isNamedSelect(value: any): value is NamedSelect {
@@ -394,6 +415,10 @@ export function isNamedSelect(value: any): value is NamedSelect {
 
 export function isWithSelect(value: any): value is NamedSelect {
   return isNamedSelect(value) && value.$inWith;
+}
+
+export function isWith(value: any): value is With {
+  return value && value.$type === SQL_SYMBOLE.WITH
 }
 
 export function isTableFuncInvoke(value: any): value is TableFuncInvoke {
@@ -416,7 +441,6 @@ export function isRowset(value: any): value is Rowset {
   return (
     isTable(value) ||
     isNamedSelect(value) ||
-    isWithSelect(value) ||
     isTableFuncInvoke(value) ||
     isTableVariant(value)
   );
@@ -440,8 +464,8 @@ export function isCase(value: any): value is Case {
   return value.$type === SQL_SYMBOLE.CASE;
 }
 
-export function isBracket(value: any): value is Bracket {
-  return value.$type === SQL_SYMBOLE.BRACKET;
+export function isBracket(value: any): value is ParenthesesExpression {
+  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
 }
 
 export function isValuedSelect(value: any): value is ValuedSelect {
@@ -508,8 +532,8 @@ export function isBinaryLogicCondition(
   return value.$kind === CONDITION_KIND.BINARY_LOGIC;
 }
 
-export function isGroupCondition(value: Condition): value is GroupCondition {
-  return value.$kind === CONDITION_KIND.GROUP;
+export function isGroupCondition(value: Condition): value is ParenthesesCondition {
+  return value.$kind === CONDITION_KIND.BRACKET_CONDITION;
 }
 
 export function isExistsCondition(value: Condition): value is ExistsCondition {

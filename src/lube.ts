@@ -1,49 +1,16 @@
-import { Executor, QueryResult } from "./executor";
-import { Compiler, CompileOptions } from "./compiler";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { Executor } from "./executor";
 import { URL } from "url";
 import { ISOLATION_LEVEL } from "./constants";
-import * as assert from "assert";
-import { Parameter } from "./ast";
-
-export type TransactionHandler = (
-  executor: Executor,
-  abort: () => Promise<void>
-) => Promise<any>;
-
-/**
- * 数据库事务
- */
-export interface ITransaction {
-  query(sql: string, params: Parameter[]): Promise<QueryResult>;
-  commit(): void;
-  rollback(): void;
-}
-
-/**
- * 数据库提供驱动程序
- */
-export interface IDbProvider {
-  /**
-   * 必须实现编译器
-   */
-  compiler: Compiler;
-  query(sql: string, params: Parameter[]): Promise<QueryResult>;
-  beginTrans(isolationLevel: ISOLATION_LEVEL): ITransaction;
-  close(): Promise<void>;
-}
-
-/**
- * 驱动入口，通过实现该方法来扩展
- */
-export interface Driver {
-  (config: ConnectOptions): IDbProvider
-}
+import * as assert from "assert"
+import { dialects } from "./dialects";
+import { CompileOptions, ConnectOptions, IDbProvider, TransactionHandler } from "./types";
 
 export class Lube extends Executor {
   private _provider: IDbProvider;
 
-  constructor(provider: IDbProvider, options: ConnectOptions) {
-    let compiler = provider.compiler;
+  constructor(provider: IDbProvider, compileOptions?: CompileOptions) {
+    const compiler = provider.getCompiler(compileOptions);
     // if (!compiler) {
     //   let compileOptions: CompileOptions = {};
     //   if (options.strict !== undefined) {
@@ -51,8 +18,8 @@ export class Lube extends Executor {
     //   }
     //   compiler = new Compiler(compileOptions);
     // }
-    super(function (...args) {
-      return provider.query(...args);
+    super(function (...args: any[]) {
+      return provider.query.call(provider, ...args);
     }, compiler);
     this._provider = provider;
   }
@@ -62,10 +29,10 @@ export class Lube extends Executor {
    * @param {*} handler (exeutor, cancel) => false
    * @param {*} isolationLevel 事务隔离级别
    */
-  async trans(
-    handler: TransactionHandler,
+  async trans<T>(
+    handler: TransactionHandler<T>,
     isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
-  ) {
+  ): Promise<T> {
     if (this.isTrans) {
       throw new Error("is in transaction now");
     }
@@ -99,33 +66,10 @@ export class Lube extends Executor {
     }
   }
 
-  async close() {
+  async close(): Promise<void> {
     await this._provider.close();
   }
 }
-
-export type ConnectOptions = {
-  /**
-   * 数据库方言，必须安装相应的驱动才可正常使用
-   */
-  dialect?: string;
-  /**
-   * 驱动程序，与dialect二选一，优先使用driver
-   */
-  driver?: Driver;
-  host: string;
-  port?: number;
-  user: string;
-  password: string;
-  database: string;
-  poolMax: number;
-  poolMin: number;
-  idelTimeout: number;
-  /**
-   * 其它配置项，针对各种数据的专门配置
-   */
-  [key: string]: any;
-} & Pick<CompileOptions, 'strict' | 'returnParameterName'>
 
 /**
  * 连接数据库并返回一个连接池
@@ -192,27 +136,3 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
   return new Lube(provider, config);
 }
 
-const dialects: Record<string, Driver | string> = {
-  mssql: 'lubejs-mssql'
-}
-
-/**
- * 注册一个方言支持
- * @param driver 驱动可以是connect函数，亦可以是npm包或路径
- */
-export async function register(name: string, driver: Driver | string) {
-  if (dialects[name]) {
-    throw new Error(`Driver ${name} is exists.`)
-  }
-  dialects[name] = driver
-}
-
-export * from "./builder";
-
-export * from "./constants";
-
-export * from "./ast";
-
-export * from "./compiler";
-
-export * from "./executor";
