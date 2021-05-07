@@ -1,48 +1,5 @@
-import { table, select, update, insert, del, $case, } from '../src/lube'
+import { table, select, update, insert, del, $case, } from '..'
 const assert = require('assert')
-
-const ployfill = {
-  /**
-   * 标识符引用，左
-   */
-  quotedLeft: '[',
-  /**
-   * 标识符引用，右
-   */
-  quotedRight: ']',
-
-  /**
-   * 参数前缀
-   */
-  parameterPrefix: '@',
-
-  /**
-   * 变量前缀
-   */
-  variantPrefix: '@',
-
-  /**
-   * 集合别名连接字符，默认为 ''
-   */
-  setsAliasJoinWith: 'AS',
-
-  /**
-   * 输出参数尾词
-   */
-  parameterOutWord: 'OUT',
-
-  /**
-   * 字段别名连接字符器，默认为 ''
-   */
-  fieldAliasJoinWith: 'AS',
-  /**
-   * 存储过程返回值参数
-   */
-  returnValueParameter: '__return_value__',
-
-  executeKeyword: 'EXECUTE'
-}
-
 class Table1 {
   id: number;
   name: string;

@@ -14,6 +14,8 @@ import {
   Proxied,
   TableFuncInvoke,
   CompatibleCondition,
+  Rowset,
+  ProxiedRowset,
 } from "./ast";
 import {
   isExpression,
@@ -128,6 +130,7 @@ export const $insert = Statement.insert;
 
 export const $case = Statement.case;
 export const $with = Statement.with;
+export const With = Statement.with;
 
 /**
  * 创建一个UPDATE语句
@@ -172,49 +175,375 @@ export const $ = Identifier.star;
 export const table = Identifier.table;
 export const $table = Identifier.table;
 
-/**
- * 表值函数
- * @param names
- */
-export function tableFn<T extends RowObject>(
+
+// /**
+//  * 创建一个可调用的表值函数
+//  * @param names
+//  */
+// export function makeTableFunc<T extends RowObject,
+//   A1 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1
+//   ) => ProxiedRowset<T>
+// export function makeTableFunc<T extends RowObject,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2
+//   ) => ProxiedRowset<T>
+// export function makeTableFunc<T extends RowObject,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3
+//   ) => ProxiedRowset<T>
+// export function makeTableFunc<T extends RowObject,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4
+//   ) => ProxiedRowset<T>
+// export function makeTableFunc<T extends RowObject,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => ProxiedRowset<T>
+// export function makeTableFunc<T extends RowObject>(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     ...args: CompatibleExpression[]
+//   ) => ProxiedRowset<T>
+
+// export function makeTableFunc<T extends RowObject>(
+//   name: Name<string>,
+//   builtIn = false
+// ): (
+//     ...args: CompatibleExpression[]
+//   ) => ProxiedRowset<T> {
+//   return function (
+//     ...args: CompatibleExpression[]
+//   ): ProxiedRowset<T> {
+//     return Statement.invokeTableFunction<T>(Identifier.func(name, builtIn), args);
+//   };
+// }
+
+// /**
+// * 创建一个可调用的标量函数
+// * @param names
+// */
+// export function sfunc<T extends ScalarType,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => Expression<T>
+// export function sfunc<T extends ScalarType,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => Expression<T>
+// export function sfunc<T extends ScalarType,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => Expression<T>
+// export function sfunc<T extends ScalarType,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => Expression<T>
+// export function sfunc<T extends ScalarType,
+//   A1 extends CompatibleExpression,
+//   A2 extends CompatibleExpression,
+//   A3 extends CompatibleExpression,
+//   A4 extends CompatibleExpression,
+//   A5 extends CompatibleExpression
+// >(
+//   name: Name<string>,
+//   builtIn?: boolean
+// ): (
+//     arg1: A1,
+//     arg2: A2,
+//     arg3: A3,
+//     arg4: A4,
+//     arg5: A5
+//   ) => Expression<T>
+// export function sfunc<T extends ScalarType>(
+//   name: Name<string>,
+//   builtIn = false
+// ): (...args: CompatibleExpression<ScalarType>[]) => Expression<T> {
+//   return function (...args: CompatibleExpression<ScalarType>[]): Expression<T> {
+//     return Statement.invokeScalarFunction<T>(
+//       Identifier.func(name, builtIn),
+//       args
+//     );
+//   };
+// }
+
+export function makeFunc<
+  T extends RowObject,
+  A1 extends CompatibleExpression
+>(
+  type: 'table',
   name: Name<string>,
-  builtIn = false
+  builtIn?: boolean
 ): (
-  ...args: CompatibleExpression<ScalarType>[]
-) => Proxied<TableFuncInvoke<T>> {
-  return function (
-    ...args: CompatibleExpression<ScalarType>[]
-  ): Proxied<TableFuncInvoke<T>> {
-    return makeProxiedRowset(
-      Statement.invokeTableFunction<T>(Identifier.func(name, builtIn), args)
-    );
-  };
-}
+    arg1: A1
+  ) => ProxiedRowset<T>
+export function makeFunc<
+  T extends RowObject,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression
+>(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2
+  ) => ProxiedRowset<T>
+export function makeFunc<
+  T extends RowObject,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression
+>(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3
+  ) => ProxiedRowset<T>
+export function makeFunc<
+  T extends RowObject,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression
+>(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4
+  ) => ProxiedRowset<T>
+export function makeFunc<
+  T extends RowObject,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression,
+  A5 extends CompatibleExpression
+>(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4,
+    arg5: A5
+  ) => ProxiedRowset<T>
 
-export const $tableFn = tableFn;
 
-/**
- * 表值函数
- * @param names
- */
-export function scalarFunction<T extends ScalarType>(
+export function makeFunc<
+  T extends RowObject
+>(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    ...args: CompatibleExpression[]
+  ) => ProxiedRowset<T>
+
+
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression,
+  A5 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4,
+    arg5: A5
+  ) => Expression<T>
+
+
+export function makeFunc<
+  T extends ScalarType
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    ...args: CompatibleExpression[]
+  ) => Expression<T>
+
+export function makeFunc(
+  type: 'table' | 'scalar',
   name: Name<string>,
   builtIn = false
-): (...args: CompatibleExpression<ScalarType>[]) => Expression<T> {
-  return function (...args: CompatibleExpression<ScalarType>[]): Expression<T> {
-    return Statement.invokeScalarFunction<T>(
-      Identifier.func(name, builtIn),
-      args
-    );
-  };
+): (...args: CompatibleExpression[]) => Expression | ProxiedRowset<RowObject> {
+  if (type === 'table') {
+    return function (
+      ...args: CompatibleExpression[]
+    ): ProxiedRowset<RowObject> {
+      return Statement.invokeTableFunction(Identifier.func(name, builtIn), args);
+    }
+  }
+  if (type === 'scalar') {
+    return function (...args: CompatibleExpression<ScalarType>[]): Expression {
+      return Statement.invokeScalarFunction<ScalarType>(
+        Identifier.func(name, builtIn),
+        args
+      );
+    };
+  }
+  throw new Error('invalid arg value of `type`');
 }
-export const $scalarFunction = scalarFunction;
 
-export const scalarFunc = scalarFunction;
-export const $scalarFunc = scalarFunction;
-
-export const scalarFn = scalarFunction;
-export const $scalarFn = scalarFunction;
 
 export const proc = Identifier.proc;
 export const $proc = Identifier.proc;
@@ -280,10 +609,14 @@ export function enclose<T extends CompatibleExpression | CompatibleCondition>(
   if (isScalar(exprOrCondition) || isExpression(exprOrCondition)) {
     return Expression.enclose(exprOrCondition) as any;
   }
-
   return Condition.enclose(exprOrCondition as CompatibleCondition) as any;
 }
 export const $enclose = enclose;
+
+/**
+ * 类型转换运算
+ */
+ export const convert = Expression.convert;
 
 /**
  * 语句
@@ -316,7 +649,7 @@ export const SQL = {
   /**
    * delete statement
    */
-  delete: $delete,
+  delete: Statement.delete,
   /**
    * alias of del
    */
@@ -326,10 +659,7 @@ export const SQL = {
    */
   case: $case,
   with: $with,
-  tableFn,
-  scalarFn,
-  scalarFunc,
-  scalarFunction,
+  makeFunc,
   execute,
   exec,
   proc,
@@ -363,11 +693,7 @@ export const SQL = {
   mod,
   concat,
   enclose,
+  convert,
 };
 
 export default SQL;
-
-/**
- * 类型转换运算
- */
-export const convert = Expression.convert;

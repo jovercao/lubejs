@@ -52,7 +52,10 @@ import {
   UnaryLogicCondition,
   Binary,
   With,
-  CrudStatement
+  CrudStatement,
+  SortInfo,
+  ProxiedRowset,
+  ProxiedTable
 } from "./ast";
 import {
   CONDITION_KIND,
@@ -111,10 +114,34 @@ export function ensureVariant<T extends string, N extends string>(
  * 确保表格类型
  */
 export function ensureRowset<TModel extends RowObject>(
+  name: Name<string> | Table<TModel>
+): Table<TModel>
+export function ensureRowset<TModel extends RowObject>(
   name: Name<string> | Rowset<TModel>
+): Rowset<TModel>
+export function ensureRowset<TModel extends RowObject>(
+  name: Name<string> | Rowset<TModel> | Table<TModel>
 ): Rowset<TModel> {
   if (name instanceof AST) return name;
   return new Table(name);
+}
+
+export function ensureProxiedRowset<TModel extends RowObject>(
+  name: Name<string> | Table<TModel>
+): ProxiedTable<TModel>
+export function ensureProxiedRowset<TModel extends RowObject>(
+  name: Name<string> | Rowset<TModel>
+): ProxiedRowset<TModel>
+export function ensureProxiedRowset<TModel extends RowObject>(
+  name: Name<string> | Rowset<TModel> | Table<TModel>
+): ProxiedRowset<TModel> {
+  if (isRowset(name)) {
+    if (isProxiedRowset(name)) {
+      return name;
+    }
+    return makeProxiedRowset(name);
+  }
+  return makeProxiedRowset(ensureRowset(name));
 }
 
 /**
@@ -233,6 +260,10 @@ export function isLiteral(value: any): value is Literal {
   return value.$type === SQL_SYMBOLE.LITERAL
 }
 
+export function isSortInfo(value: any): value is SortInfo {
+  return value.$type === SQL_SYMBOLE.SORT;
+}
+
 export function isBinary(value: any): value is Binary {
   return value instanceof ArrayBuffer ||
     value instanceof Uint8Array ||
@@ -249,7 +280,7 @@ export function isBinary(value: any): value is Binary {
     value instanceof SharedArrayBuffer
 }
 
-export function isProxiedRowset<T extends Rowset | Rowset<any>>(rowset: T): rowset is Proxied<T> {
+export function isProxiedRowset<T extends RowObject>(rowset: Rowset<T>): rowset is ProxiedRowset<T> {
   return Reflect.get(rowset, $IsProxy) === true
 }
 

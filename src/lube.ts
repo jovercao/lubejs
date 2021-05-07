@@ -7,7 +7,7 @@ import { dialects } from "./dialects";
 import { CompileOptions, ConnectOptions, IDbProvider, TransactionHandler } from "./types";
 
 export class Lube extends Executor {
-  private _provider: IDbProvider;
+  private provider: IDbProvider;
 
   constructor(provider: IDbProvider, compileOptions?: CompileOptions) {
     const compiler = provider.getCompiler(compileOptions);
@@ -21,7 +21,7 @@ export class Lube extends Executor {
     super(function (...args: any[]) {
       return provider.query.call(provider, ...args);
     }, compiler);
-    this._provider = provider;
+    this.provider = provider;
   }
 
   /**
@@ -37,7 +37,7 @@ export class Lube extends Executor {
       throw new Error("is in transaction now");
     }
     let canceled = false;
-    const { query, commit, rollback } = await this._provider.beginTrans(
+    const { query, commit, rollback } = await this.provider.beginTrans(
       isolationLevel
     );
     const executor = new Executor(query, this.compiler, true);
@@ -67,7 +67,7 @@ export class Lube extends Executor {
   }
 
   async close(): Promise<void> {
-    await this._provider.close();
+    await this.provider.close();
   }
 }
 

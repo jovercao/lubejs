@@ -8,6 +8,10 @@ import {
   SortInfo,
   SortObject,
   WhereObject,
+  Rowset,
+  CompatibleSortInfo,
+  InputObject,
+  ProxiedRowset,
 } from "./ast";
 import { Compiler } from "./compiler";
 import { ISOLATION_LEVEL } from "./constants";
@@ -38,15 +42,13 @@ export interface QueryHandler<T extends RowObject = any> {
     QueryResult<T>
   >;
 }
-
 export interface SelectOptions<T extends RowObject = any> {
-  where?: WhereObject<T> | Condition;
+  where?: WhereObject<T> | Condition | ((table: Readonly<ProxiedRowset<T>>) => Condition);
   top?: number;
   offset?: number;
   limit?: number;
   distinct?: boolean;
-  fields?: (keyof T)[];
-  sorts?: SortObject<T> | (SortInfo | CompatibleExpression)[];
+  sorts?: CompatibleSortInfo | ((rowset: Rowset<T>) => SortInfo[]);
 }
 
 export type TransactionHandler<T> = (

@@ -16,6 +16,8 @@ import {
   clone,
   isSelect,
   isProxiedRowset,
+  isExpression,
+  isSortInfo,
 } from "./util";
 
 import {
@@ -86,8 +88,8 @@ export type RowObject = {
  */
 export type WhereObject<T extends RowObject = any> = {
   [K in FieldsOf<T>]?:
-    | CompatibleExpression<T[K]>
-    | CompatibleExpression<T[K]>[];
+  | CompatibleExpression<T[K]>
+  | CompatibleExpression<T[K]>[];
 };
 
 /**
@@ -114,25 +116,25 @@ export type TypeOf<T> = T extends ScalarType
  */
 export type RowTypeFrom<T> = T extends undefined
   ? // eslint-disable-next-line @typescript-eslint/ban-types
-    {}
+  {}
   : T extends Field<infer V, infer N>
   ? {
-      [K in N]: V;
-    }
+    [K in N]: V;
+  }
   : T extends Column<infer V, infer N>
   ? {
-      [K in N]: V;
-    }
+    [K in N]: V;
+  }
   : T extends Star<infer M>
   ? {
-      [P in FieldsOf<M>]: M[P];
-    }
+    [P in FieldsOf<M>]: M[P];
+  }
   : T extends Record<string, unknown>
   ? {
-      [K in FieldsOf<T>]: TypeOf<T[K]>;
-    }
+    [K in FieldsOf<T>]: TypeOf<T[K]>;
+  }
   : // eslint-disable-next-line @typescript-eslint/ban-types
-    {};
+  {};
 
 /**
  * select语句可以接收的列
@@ -169,7 +171,7 @@ export type RowTypeByColumns<
   X = unknown,
   Y = unknown,
   Z = unknown
-> = RowTypeFrom<A> &
+  > = RowTypeFrom<A> &
   RowTypeFrom<B> &
   RowTypeFrom<C> &
   RowTypeFrom<D> &
@@ -210,6 +212,8 @@ export type CompatibleCondition<T extends RowObject = any> =
   | Condition
   | WhereObject<T>;
 
+export type CompatibleSortInfo<T extends RowObject = any> = SortInfo[] | SortObject<T> | [CompatibleExpression, SORT_DIRECTION][];
+
 /**
  * 提取类型中的数据库有效字段，即类型为ScalarType的字段列表
  * 用于在智能提示时排除非数据库字段
@@ -226,10 +230,10 @@ export type FieldsOf<T> = Exclude<
  */
 export type Proxied<T> = T extends Rowset<infer M>
   ? T &
-      {
-        // 排除AST自有属性
-        [P in FieldsOf<M>]: Field<M[P], P>;
-      }
+  {
+    // 排除AST自有属性
+    [P in FieldsOf<M>]: Field<M[P], P>;
+  }
   : never;
 
 /**
@@ -278,7 +282,7 @@ export type ModelTypeOfConstructor<T> = T extends new (
  */
 export abstract class Expression<
   T extends ScalarType = ScalarType
-> extends AST {
+  > extends AST {
   $type: SQL_SYMBOLE_EXPRESSION;
   /**
    * 字符串连接运算
@@ -756,13 +760,13 @@ export abstract class Condition extends AST {
   /**
    * 使用逻辑表达式联接多个条件
    */
-  static join(
+  private static join(
     logic: LOGIC_OPERATOR.AND | LOGIC_OPERATOR.OR,
-    cond1: CompatibleCondition,
-    cond2: CompatibleCondition,
-    ...condN: CompatibleCondition[]
+    conditions: CompatibleCondition[]
   ): Condition {
-    const conditions = [cond1, cond2, ...condN];
+    if (conditions.length < 2) {
+      throw new Error(`conditions must more than or equals 2 element.`)
+    }
     return Condition.enclose(
       conditions.reduce((previous, current) => {
         let condition = ensureCondition(current);
@@ -783,15 +787,11 @@ export abstract class Condition extends AST {
    * @returns 返回逻辑表达式
    */
   static and(
-    condition1: CompatibleCondition,
-    condition2: CompatibleCondition,
-    ...conditionN: CompatibleCondition[]
+    ...conditions: CompatibleCondition[]
   ): Condition {
     return Condition.join(
       LOGIC_OPERATOR.AND,
-      condition1,
-      condition2,
-      ...conditionN
+      conditions
     );
   }
 
@@ -802,15 +802,11 @@ export abstract class Condition extends AST {
    * @returns 返回逻辑表达式
    */
   static or(
-    condition1: CompatibleCondition,
-    conditino2: CompatibleCondition,
-    ...condiditionN: Condition[]
+    ...conditions: CompatibleCondition[]
   ): Condition {
     return Condition.join(
       LOGIC_OPERATOR.OR,
-      condition1,
-      conditino2,
-      ...condiditionN
+      conditions
     );
   }
 
@@ -1223,6 +1219,9 @@ export abstract class Identifier<N extends string = string> extends AST {
     return makeProxiedRowset(new Table<T, string>(nameOrModel));
   }
 
+  /**
+   * 声明一个函数
+   */
   static func<N extends string>(name: Name<N>, builtIn = false): Func<N> {
     return new Func(name, builtIn);
   }
@@ -1283,7 +1282,7 @@ export class Alias<N extends string> extends Identifier<N> {
 export class Func<
   N extends string
   // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
 
   // /**
@@ -1327,7 +1326,7 @@ export type Name<T extends string> = T | PathedName<T>;
 
 export abstract class Assignable<
   T extends ScalarType = any
-> extends Expression<T> {
+  > extends Expression<T> {
   readonly $lvalue: true = true;
   /**
    * 赋值操作
@@ -1417,9 +1416,15 @@ export abstract class Rowset<T extends RowObject = {}> extends AST {
   }
 }
 
-export type Tables<T extends RowObject = any, N extends string = string> =
+export type CompatibleTable<T extends RowObject = any, N extends string = string> =
   | Name<string>
-  | Table<T, N>;
+  | Table<T, N>
+  | ProxiedTable<T>;
+
+export type CompatibleRowset<T extends RowObject = any, N extends string = string> =
+  | CompatibleTable<T, N>
+  | Rowset<T>
+  | ProxiedRowset<T>;
 
 export class Table<T extends RowObject = any, N extends string = string>
   extends Rowset<T>
@@ -1498,7 +1503,7 @@ applyMixins(TableVariant, [Identifier]);
 export class Column<
   T extends ScalarType = ScalarType,
   N extends string = string
-> extends Identifier<N> {
+  > extends Identifier<N> {
   /**
    * 列名称
    */
@@ -1548,7 +1553,7 @@ export type SelectAction = {
     B extends SelectCloumn,
     C extends SelectCloumn,
     D extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1560,7 +1565,7 @@ export type SelectAction = {
     C extends SelectCloumn,
     D extends SelectCloumn,
     E extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1574,7 +1579,7 @@ export type SelectAction = {
     D extends SelectCloumn,
     E extends SelectCloumn,
     F extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1590,7 +1595,7 @@ export type SelectAction = {
     E extends SelectCloumn,
     F extends SelectCloumn,
     G extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1608,7 +1613,7 @@ export type SelectAction = {
     F extends SelectCloumn,
     G extends SelectCloumn,
     H extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1628,7 +1633,7 @@ export type SelectAction = {
     G extends SelectCloumn,
     H extends SelectCloumn,
     I extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1650,7 +1655,7 @@ export type SelectAction = {
     H extends SelectCloumn,
     I extends SelectCloumn,
     J extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1674,7 +1679,7 @@ export type SelectAction = {
     I extends SelectCloumn,
     J extends SelectCloumn,
     K extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1700,7 +1705,7 @@ export type SelectAction = {
     J extends SelectCloumn,
     K extends SelectCloumn,
     L extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1728,7 +1733,7 @@ export type SelectAction = {
     K extends SelectCloumn,
     L extends SelectCloumn,
     M extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1758,7 +1763,7 @@ export type SelectAction = {
     L extends SelectCloumn,
     M extends SelectCloumn,
     N extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1790,7 +1795,7 @@ export type SelectAction = {
     M extends SelectCloumn,
     N extends SelectCloumn,
     O extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1824,7 +1829,7 @@ export type SelectAction = {
     N extends SelectCloumn,
     O extends SelectCloumn,
     P extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1860,7 +1865,7 @@ export type SelectAction = {
     O extends SelectCloumn,
     P extends SelectCloumn,
     Q extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1900,7 +1905,7 @@ export type SelectAction = {
     P extends SelectCloumn,
     Q extends SelectCloumn,
     R extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1942,7 +1947,7 @@ export type SelectAction = {
     Q extends SelectCloumn,
     R extends SelectCloumn,
     S extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1986,7 +1991,7 @@ export type SelectAction = {
     R extends SelectCloumn,
     S extends SelectCloumn,
     T extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2032,7 +2037,7 @@ export type SelectAction = {
     S extends SelectCloumn,
     T extends SelectCloumn,
     U extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2102,7 +2107,7 @@ export type SelectAction = {
     T extends SelectCloumn,
     U extends SelectCloumn,
     V extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2175,7 +2180,7 @@ export type SelectAction = {
     U extends SelectCloumn,
     V extends SelectCloumn,
     W extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2251,7 +2256,7 @@ export type SelectAction = {
     V extends SelectCloumn,
     W extends SelectCloumn,
     X extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2330,7 +2335,7 @@ export type SelectAction = {
     W extends SelectCloumn,
     X extends SelectCloumn,
     Y extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2412,7 +2417,7 @@ export type SelectAction = {
     X extends SelectCloumn,
     Y extends SelectCloumn,
     Z extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2480,7 +2485,7 @@ export type SelectAction = {
  */
 export class ScalarFuncInvoke<
   TReturn extends ScalarType = any
-> extends Expression<TReturn> {
+  > extends Expression<TReturn> {
   $func: Func<string>;
   $args: (Expression<ScalarType> | BuiltIn<string> | Star)[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
@@ -2502,7 +2507,7 @@ export class ScalarFuncInvoke<
 
 export class TableFuncInvoke<
   TReturn extends RowObject = any
-> extends Rowset<TReturn> {
+  > extends Rowset<TReturn> {
   readonly $func: Func<string>;
   readonly $args: Expression<ScalarType>[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
@@ -2528,7 +2533,7 @@ export abstract class Statement extends AST {
    * @param fields
    */
   static insert<T extends RowObject = any>(
-    table: Tables<T, string>,
+    table: CompatibleTable<T, string>,
     fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields);
@@ -2538,7 +2543,7 @@ export abstract class Statement extends AST {
    * 更新一个表格
    * @param table
    */
-  static update<T extends RowObject = any>(table: Tables<T, string>): Update<T> {
+  static update<T extends RowObject = any>(table: CompatibleTable<T, string>): Update<T> {
     return new Update(table);
   }
 
@@ -2546,7 +2551,7 @@ export abstract class Statement extends AST {
    * 删除一个表格
    * @param table 表格
    */
-  static delete<T extends RowObject = any>(table: Tables<T, string>): Delete<T> {
+  static delete<T extends RowObject = any>(table: CompatibleTable<T, string>): Delete<T> {
     return new Delete(table);
   }
 
@@ -2578,8 +2583,8 @@ export abstract class Statement extends AST {
   static invokeTableFunction<T extends RowObject = any>(
     func: Name<string> | Func<string>,
     args: CompatibleExpression<ScalarType>[]
-  ): TableFuncInvoke<T> {
-    return new TableFuncInvoke<T>(func, args);
+  ): ProxiedRowset<T> {
+    return makeProxiedRowset(new TableFuncInvoke<T>(func, args));
   }
 
   static invokeScalarFunction<T extends ScalarType = any>(
@@ -2767,7 +2772,7 @@ export class ParenthesesCondition extends Condition {
  */
 export class ParenthesesExpression<
   T extends ScalarType = ScalarType
-> extends Expression<T> {
+  > extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET_EXPRESSION = SQL_SYMBOLE.BRACKET_EXPRESSION;
   $inner: Expression<T>;
   constructor(inner: CompatibleExpression<T>) {
@@ -2781,7 +2786,7 @@ export class ParenthesesExpression<
  */
 export abstract class Operation<
   T extends ScalarType = ScalarType
-> extends Expression<T> {
+  > extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
   readonly $kind: OPERATION_KIND;
   $operator: OPERATION_OPERATOR;
@@ -2792,7 +2797,7 @@ export abstract class Operation<
  */
 export class BinaryOperation<
   T extends ScalarType = ScalarType
-> extends Operation<T> {
+  > extends Operation<T> {
   readonly $kind: OPERATION_KIND.BINARY = OPERATION_KIND.BINARY;
   $left: Expression<T>;
   $right: Expression<T>;
@@ -2821,7 +2826,7 @@ export class BinaryOperation<
  */
 export class UnaryOperation<
   T extends ScalarType = ScalarType
-> extends Operation<T> {
+  > extends Operation<T> {
   readonly $value: Expression<ScalarType>;
   readonly $kind: OPERATION_KIND.UNARY = OPERATION_KIND.UNARY;
   readonly $operator: UNARY_OPERATION_OPERATOR;
@@ -3020,26 +3025,32 @@ export class Select<T extends RowObject = any> extends Fromable {
    * order by 排序
    * @param sorts 排序信息
    */
-  orderBy(sorts: SortObject<T>): this;
-  orderBy(...sorts: (SortInfo | CompatibleExpression<ScalarType>)[]): this;
+  orderBy(sorts: SortObject<T> | (SortInfo | CompatibleExpression<ScalarType> | [CompatibleExpression, SORT_DIRECTION])[]): this;
+  orderBy(...sorts: (SortInfo | CompatibleExpression<ScalarType> | [CompatibleExpression, SORT_DIRECTION])[]): this;
   orderBy(
-    ...sorts: (SortObject<T> | SortInfo | CompatibleExpression<ScalarType>)[]
+    ...args: any[]
   ): this {
     // assert(!this.$orders, 'order by clause is declared')
-    assert(sorts.length > 0, "must have one or more order basis");
+    assert(args.length > 0, "must have one or more order basis");
     // 如果传入的是对象类型
-    if (sorts.length === 1 && isPlainObject(sorts[0])) {
-      const obj = sorts[0];
-      this.$sorts = Object.entries(obj).map(
-        ([expr, direction]) => new SortInfo(expr, direction as SORT_DIRECTION)
-      );
-      return this;
+    if (args.length === 1) {
+      if (isPlainObject(args[0])) {
+        const obj = args[0];
+        this.$sorts = Object.entries(obj).map(
+          ([expr, direction]) => new SortInfo(expr, direction as SORT_DIRECTION)
+        );
+        return this;
+      }
+      if (Array.isArray(args[0])) {
+        args = args[0];
+      }
     }
-    sorts = sorts as (CompatibleExpression<ScalarType> | SortInfo)[];
-    this.$sorts = sorts.map((expr) =>
-      expr instanceof SortInfo
-        ? expr
-        : new SortInfo(expr as CompatibleExpression<ScalarType>)
+    const sorts = args as (SortInfo | CompatibleExpression<ScalarType> | [CompatibleExpression, SORT_DIRECTION])[]
+    this.$sorts = sorts.map((item) =>
+      isSortInfo(item)
+        ? item
+        : isScalar(item) || isExpression(item) ? new SortInfo(item as CompatibleExpression<ScalarType>)
+          : new SortInfo(item[0], item[1])
     );
     return this;
   }
@@ -3130,7 +3141,7 @@ export class Select<T extends RowObject = any> extends Fromable {
  */
 export class ValuedSelect<
   T extends ScalarType = ScalarType
-> extends Expression<T> {
+  > extends Expression<T> {
   $select: Select<any>;
   $type: SQL_SYMBOLE.VALUED_SELECT = SQL_SYMBOLE.VALUED_SELECT;
   constructor(select: Select<any>) {
@@ -3153,7 +3164,7 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
    * 构造函数
    */
   constructor(
-    table: Tables<T, string>,
+    table: CompatibleTable<T, string>,
     fields?: Field<ScalarType, FieldsOf<T>>[] | FieldsOf<T>[]
   ) {
     super();
@@ -3285,7 +3296,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
 
   readonly $type: SQL_SYMBOLE.UPDATE = SQL_SYMBOLE.UPDATE;
 
-  constructor(table: Tables<T, string>) {
+  constructor(table: CompatibleTable<T, string>) {
     super();
     const tb = ensureRowset(table);
     if (tb.$alias) {
@@ -3320,19 +3331,34 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T, string>;
   $type: SQL_SYMBOLE.DELETE = SQL_SYMBOLE.DELETE;
 
-  constructor(table: Tables<T, string>) {
+  constructor(table?: CompatibleTable<T, string>) {
     super();
-    this.$table = ensureRowset(table) as Table<T, string>;
+    if (table) {
+      this.$table = ensureRowset(table) as Table<T, string>;
+    }
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
     // if (options?.where) this.where(options.where)
   }
+
+  // /**
+  //  * 从表中查询，可以查询多表
+  //  * @param tables
+  //  */
+  // from(...tables: (Name<string> | Rowset<any> | Table<any, string>)[]): this {
+  //   super.from(...tables);
+  //   // 如果未指定要删除的表，则必须指定
+  //   if (!this.$table) {
+  //     this.$table = this.$froms[0] as Table<T, string>;
+  //   }
+  //   return this;
+  // }
 }
 
 export class Procedure<
   T extends RowObject = never,
   N extends string = string
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
 
   execute(...params: CompatibleExpression<ScalarType>[]): Execute<T>;
@@ -3527,7 +3553,7 @@ export class Raw extends AST {
 export class NamedSelect<
   T extends RowObject = any,
   A extends string = string
-> extends Rowset<T> {
+  > extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
   $inWith = false;
   $select: Select<T>;
@@ -3599,7 +3625,7 @@ export class With extends AST {
    * @param fields
    */
   insert<T extends RowObject = any>(
-    table: Name<string> | Tables<T, string>,
+    table: Name<string> | CompatibleTable<T, string>,
     fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
   ): Insert<T> {
     const sql = Statement.insert(table, fields);
@@ -3612,7 +3638,7 @@ export class With extends AST {
    * @param table
    */
   update<T extends RowObject = any>(
-    table: Name<string> | Tables<T, string>
+    table: Name<string> | CompatibleTable<T, string>
   ): Update<T> {
     const sql = Statement.update(table);
     sql.$with = this;
@@ -3624,7 +3650,7 @@ export class With extends AST {
    * @param table 表格
    */
   delete<T extends RowObject = any>(
-    table: Name<string> | Tables<T, string>
+    table: Name<string> | CompatibleTable<T, string>
   ): Delete<T> {
     const sql = Statement.delete(table);
     sql.$with = this;
@@ -3637,7 +3663,7 @@ export class With extends AST {
  */
 export class ConvertOperation<
   T extends ScalarType = ScalarType
-> extends Operation<T> {
+  > extends Operation<T> {
   $kind: OPERATION_KIND.CONVERT = OPERATION_KIND.CONVERT;
   /**
    * 转换到类型

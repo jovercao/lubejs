@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { assert, ensureField, ensureRowset, isScalar } from "./util";
+import { assert, ensureField, ensureProxiedRowset, ensureRowset, isScalar, isTable, makeProxiedRowset } from "./util";
 import { EventEmitter } from "events";
 import {
   Parameter,
@@ -12,7 +12,6 @@ import {
   Assignment,
   InputObject,
   WhereObject,
-  Identifier,
   Field,
   FieldsOf,
   RowObject,
@@ -21,13 +20,17 @@ import {
   Table,
   AsScalarType,
   CompatibleCondition,
-  Document
+  Document,
+  Rowset,
+  RowTypeFrom,
+  ProxiedRowset
 } from "./ast";
 import { Compiler } from "./compiler";
 import { INSERT_MAXIMUM_ROWS } from "./constants";
 import { Lube } from "./lube";
 import { QueryHandler, QueryResult, Command, SelectOptions } from "./types";
-import { Repository } from "./repository";
+import { Queryable } from "./queryable";
+import { and, or } from "./builder";
 
 export class Executor extends EventEmitter {
   doQuery: QueryHandler;
@@ -266,14 +269,11 @@ export class Executor extends EventEmitter {
 
   async find<T extends RowObject = any>(
     table: Table<T, string> | Name<string>,
-    where: Condition | WhereObject<T>,
+    where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition),
     fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
   ): Promise<T> {
     let columns: any[];
-    if (Array.isArray(table) || typeof table === "string") {
-      table = Identifier.table(table);
-    }
-    const t = table;
+    const t = makeProxiedRowset(ensureRowset(table));
     if (fields && fields.length > 0 && typeof fields[0] === "string") {
       columns = (fields as FieldsOf<T>[]).map((fieldName) =>
         t.field(fieldName)
@@ -284,7 +284,7 @@ export class Executor extends EventEmitter {
     const sql = Statement.select<T>(...columns)
       .top(1)
       .from(t)
-      .where(where);
+      .where(typeof where === 'function' ? where(t) : where);
     const res = await this.query<T>(sql);
     if (res.rows && res.rows.length > 0) {
       return res.rows[0];
@@ -298,25 +298,46 @@ export class Executor extends EventEmitter {
    * @param where
    * @param options
    */
+  async select<T extends RowObject = any, G extends InputObject = InputObject>(
+    table: Name<string> | Table<T, string>,
+    results: ((rowset: Readonly<Rowset<T>>) => G),
+    options?: SelectOptions<T>
+  ): Promise<RowTypeFrom<G>[]>
   async select<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
     options?: SelectOptions<T>
-  ): Promise<T[]> {
-    const { where, sorts, offset, limit, fields } = options || {};
-    let columns: any[];
-    const t = ensureRowset(table);
-    if (fields) {
-      columns = fields.map((expr) => ensureField(expr as string));
+  ): Promise<T[]>
+
+  async select(
+    table: Name<string> | Table,
+    arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
+    arg3?: SelectOptions
+  ): Promise<any[]> {
+    let options: SelectOptions;
+    let results: ((rowset: Readonly<Rowset>) => any);
+    if (typeof arg2 === 'function') {
+      results = arg2;
+      options = arg3;
     } else {
-      columns = [t.star];
+      options = arg2;
     }
-    const sql = Statement.select<T>(...columns).from(table);
+    const { where, sorts, offset, limit } = options || {};
+    let columns: any;
+    const t = ensureProxiedRowset(table);
+    if (results) {
+      columns = results(t);
+    } else {
+      columns = t.star;
+    }
+    const sql = Statement.select(columns).from(table);
     if (where) {
-      sql.where(where);
+      sql.where(typeof where === 'function' ? where(t) : where);
     }
     if (sorts) {
       if (Array.isArray(sorts)) {
         sql.orderBy(...sorts);
+      } else if (typeof sorts === 'function') {
+        sql.orderBy(...sorts(t));
       } else {
         sql.orderBy(sorts);
       }
@@ -333,33 +354,37 @@ export class Executor extends EventEmitter {
 
   /**
    * 更新表
-   * @param table 表
-   * @param sets 要修改的赋值
-   * @param where 查询条件
    */
   async update<T extends RowObject = any>(
     table: string | Table<T, string>,
     sets: InputObject<T> | Assignment[],
-    where?: WhereObject<T> | Condition
+    where?: WhereObject<T> | Condition | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number>
+  /**
+   * 通过主键更新
+   */
   async update<T extends RowObject = any>(
     table: string | Table<T, string>,
     items: T[],
-    key: string[]
+    /**
+     * 更新键字段列表
+     */
+    keyFields: string[]
   ): Promise<number>
+
   async update<T extends RowObject = any>(
     table: string | Table<T, string>,
     sets: InputObject<T> | Assignment[],
-    where?: WhereObject<T> | Condition | FieldsOf<T>[]
+    whereOrKeys?: WhereObject<T> | Condition | FieldsOf<T>[] | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
 
     if (Array.isArray(sets) && !(sets[0] instanceof Assignment)) {
-      const key = where as FieldsOf<T>[]
+      const keys = whereOrKeys as FieldsOf<T>[]
       const items = sets as InputObject<T>[]
       const docs: Document = new Document(
         ...items.map(item => {
           const condition: Partial<T> = {}
-          key.forEach(field => {
+          keys.forEach(field => {
             Reflect.set(condition, field, item[field])
           })
           const sql = Statement.update(table).set(item).where(condition)
@@ -371,14 +396,15 @@ export class Executor extends EventEmitter {
       return res.rowsAffected
     }
 
-    const sql = Statement.update(table);
+    const t = ensureProxiedRowset(table);
+    const sql = Statement.update(t);
     if (Array.isArray(sets)) {
       sql.set(...sets);
     } else {
       sql.set(sets);
     }
-    if (where) {
-      sql.where(where as CompatibleCondition<T>);
+    if (whereOrKeys) {
+      sql.where(typeof whereOrKeys === 'function' ? whereOrKeys(t) : whereOrKeys as CompatibleCondition<T>);
     }
     const res = await this.query(sql);
     return res.rowsAffected;
@@ -386,11 +412,12 @@ export class Executor extends EventEmitter {
 
   async delete<T extends RowObject = any>(
     table: Table<T, string> | Name<string>,
-    where?: WhereObject<T> | Condition
+    where?: WhereObject<T> | Condition | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
-    const sql = Statement.delete(table);
+    const t = ensureProxiedRowset(table);
+    const sql = Statement.delete(t);
     if (where) {
-      sql.where(where);
+      sql.where(where instanceof Function ? where(t) : where);
     }
     const res = await this.query(sql);
     return res.rowsAffected;
@@ -405,7 +432,54 @@ export class Executor extends EventEmitter {
     return res as any;
   }
 
-  getRepository<T extends RowObject>(rowset: Table<T>): Repository<T> {
-    return new Repository(this, rowset)
+  /**
+   * 保存数据，必须指定主键后才允许使用
+   * 通过自动对比与数据库中现有的数据差异而进行提交
+   * 遵守不存在的则插入、已存在的则更新的原则；
+   */
+   async save<T extends RowObject = any>(table: Table<T, string> | Name<string>, keyFields: FieldsOf<T>[], items: T[] | T): Promise<number> {
+    if (keyFields.length === 0) {
+      throw new Error("KeyFields must be specified.");
+    }
+
+    if (!Array.isArray(items)) {
+      items = [items];
+    }
+    const hasKeyItems = items.filter(item => !keyFields.find(field => item[field] === undefined || item[field] === null));
+    const keygen = (item: T) => keyFields.map(field => item[field]).join('#');
+    const itemsMap: Map<any, any> = new Map();
+    hasKeyItems.forEach((item) => {
+      if (keyFields.find(field => item[field] === undefined || item[field] === null)) return;
+      const key = keygen(item);
+      itemsMap.set(key, item);
+    });
+
+    const t = ensureProxiedRowset(table);
+
+    const existsItems = await this.select(t, {
+      where: or(...hasKeyItems.map(item => and(...keyFields.map(field => t[field].eq(item[field])))))
+    });
+    const existsMap: Map<any, any> = new Map();
+    existsItems.forEach((item) => {
+      const keyValue = keygen(item);
+      existsMap.set(keyValue, item);
+    });
+
+    const addeds = items.filter(
+      (item) => !existsMap.has(keygen(item))
+    );
+    await this.insert(t, addeds);
+    const updateds = items.filter((item) =>
+      existsMap.has(keygen(item))
+    );
+    // for (const item of updateds) {
+    //   await this.executor.update(this.table, item, this.table[this.primaryKey].eq(item[this.primaryKey]))
+    // }
+    await this.update(t, updateds, keyFields);
+    return addeds.length + updateds.length;
+  }
+
+  queryable<T extends RowObject = any>(table: Table<T, string> | Name<string>): Queryable<T> {
+    return new Queryable(this, table as Rowset<T>);
   }
 }
