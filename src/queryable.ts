@@ -9,8 +9,10 @@ import {
   InputObject,
   SortInfo,
   SortObject,
+  Condition,
+  Select,
 } from "./ast";
-import { SELECT } from "./builder";
+import { select } from "./builder";
 import { Executor } from "./executor";
 import { isProxiedRowset, makeProxiedRowset } from "./util";
 // import { getMetadata } from 'typeorm'
@@ -18,9 +20,12 @@ import { isProxiedRowset, makeProxiedRowset } from "./util";
 const ROWSET_ALIAS = "__T__";
 
 /**
- * 可查询对象，本身是一个异步可迭代对象，实现延迟加载功能
+ * 可查询对象，接口类似js自带的`Array`对象，并且其本身是一个异步可迭代对象，实现了延迟加载功能，数据将在调用`toArray`，或者对其进行遍历时才执行加载
+ * // INFO:
+ * // TODO: 实现延迟在线逐条查询功能
+ * // TODO: 性能优化，不再每一个动作产生一个SQL子查询
  * ```ts
- * const x: QueryBuilder<T>
+ * const x: Queryable<T> = ...
  * for await (const item of x) {
  *    ...
  * }
@@ -30,7 +35,6 @@ const ROWSET_ALIAS = "__T__";
 export class Queryable<T extends RowObject = {}>
   implements AsyncIterable<T> {
   private _rowset: ProxiedRowset<T>;
-  // protected _where: Condition;
 
   constructor(protected readonly executor: Executor, rowset: Rowset<T>) {
     if (isProxiedRowset(rowset)) {
@@ -38,7 +42,6 @@ export class Queryable<T extends RowObject = {}>
     } else {
       this._rowset = makeProxiedRowset(rowset);
     }
-
   }
 
   /**
@@ -50,7 +53,7 @@ export class Queryable<T extends RowObject = {}>
     return {
       next: async (): Promise<IteratorResult<T>> => {
         if (!result) {
-          result = await this.getAll();
+          result = await this.toArray();
         }
 
         if (i < result.length) {
@@ -61,39 +64,19 @@ export class Queryable<T extends RowObject = {}>
     };
   }
 
-  take(lines: number, skip = 0): Queryable<T> {
-    const sql = SELECT(this._rowset._).offset(skip).limit(lines);
-    if (lines !== undefined) {
-      sql.limit(lines);
-    }
-    sql.from(this._rowset);
+  take(count: number, skip = 0): Queryable<T> {
+    // if (this._take !== undefined) {
+    //   this._take = lines;
+    //   this._skip = skip;
+    //   return this;
+    // }
+    const sql = this._buildSelectSql().offset(skip).limit(count);
     return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS));
   }
 
-  // /**
-  //  * 仅追加过滤条件
-  //  */
-  // protected where(condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>): this {
-  //   if (!this._where) {
-  //     this._where = Condition.enclose(ensureCondition(condition(this._rowset)));
-  //   } else {
-  //     this._where = and(
-  //       this._where,
-  //       Condition.enclose(ensureCondition(condition(this._rowset)))
-  //     );
-  //   }
-  //   return this;
-  // }
-
-  // private _buildSelectSql(): Select<T>
-  // private _buildSelectSql<G extends InputObject>(results: (p: ProxiedRowset<T>) => G): Select<RowTypeFrom<G>>
-  // private _buildSelectSql(results?: (p: ProxiedRowset<T>) => any): Select {
-  //   const sql = select(results ? results(this._rowset) : this._rowset._ ).from(this._rowset);
-  //   if (this._where) {
-  //     sql.where(this._where);
-  //   }
-  //   return sql;
-  // }
+  private _buildSelectSql(): Select<T> {
+    return select(this._rowset._).from(this._rowset);
+  }
 
   /**
    * 过滤数据并返回一个新的只读仓库
@@ -101,7 +84,7 @@ export class Queryable<T extends RowObject = {}>
   filter(
     condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
   ): Queryable<T> {
-    const rowset = SELECT(this._rowset._).from(this._rowset).where(condition(this._rowset)).as(ROWSET_ALIAS);
+    const rowset = this._buildSelectSql().where(condition(this._rowset)).as(ROWSET_ALIAS);
     return new Queryable<T>(this.executor, rowset);
   }
 
@@ -110,7 +93,7 @@ export class Queryable<T extends RowObject = {}>
   ): Queryable<RowTypeFrom<G>> {
     return new Queryable<RowTypeFrom<G>>(
       this.executor,
-      SELECT(results(this._rowset)).from(this._rowset).as(ROWSET_ALIAS)
+      select(results(this._rowset)).from(this._rowset).as(ROWSET_ALIAS)
     );
   }
 
@@ -120,23 +103,27 @@ export class Queryable<T extends RowObject = {}>
     ) => SortInfo[] | SortObject<T>
   ): Queryable<T> {
     const orders = sorts(this._rowset);
-    const sql = SELECT(this._rowset._).from(this._rowset).orderBy(orders);
+    const sql = this._buildSelectSql().orderBy(orders);
     return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS));
   }
 
-  // find(
-  //   filter: (p: ProxiedRowset<T>) => CompatibleCondition
-  // ): Queryable<T> {
-  //   const sql = select(this._rowset._).from(this._rowset).where(filter(this._rowset)).limit(1);
-  //   return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS));
-  // }
+  /**
+   * 添加过滤条件，并限定返回头一条记录
+   */
+  find(
+    filter: (p: ProxiedRowset<T>) => CompatibleCondition
+  ): Queryable<T> {
+    const sql = this._buildSelectSql().where(filter(this._rowset)).offset(0).limit(1);
+    return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS));
+  }
 
   groupBy<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G,
-    groups: (p: ProxiedRowset<T>) => CompatibleExpression[]
+    groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
+    where?: (p: ProxiedRowset<T>) => Condition,
   ): Queryable<RowTypeFrom<G>> {
-    const sql = this._buildSelectSql(results);
-    sql.groupBy(...groups(this._rowset));
+    const sql = select(results(this._rowset)).groupBy(...groups(this._rowset));
+    if (where) sql.where(where(this._rowset));
     return new Queryable<RowTypeFrom<G>>(
       this.executor,
       sql.as(ROWSET_ALIAS)
@@ -221,19 +208,19 @@ export class Queryable<T extends RowObject = {}>
   }
 
   /**
-   * 获取所有
+   * 执行查询，并获取所有数据返回一个数组
    */
-  async getAll(): Promise<T[]> {
-    const sql = SELECT<T>(this._rowset._).from(this._rowset);
+  async toArray(): Promise<T[]> {
+    const sql = select<T>(this._rowset._).from(this._rowset);
     const queryResult = await this.executor.query(sql);
     return queryResult.rows;
   }
 
   /**
-   * 获取第一个项
+   * 执行查询，并获取第一行记录
    */
-  async getOne(): Promise<T> {
-    const sql = SELECT<T>(this._rowset._).from(this._rowset).offset(0).limit(1);
+  async first(): Promise<T> {
+    const sql = select<T>(this._rowset._).from(this._rowset).offset(0).limit(1);
     const { rows } = await this.executor.query(sql);
     return rows[0];
   }

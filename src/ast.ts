@@ -77,25 +77,32 @@ export type ScalarType =
 /**
  * 取值结果集首个返回值类型运算
  */
-export type AsScalarType<T extends RowObject> = T[FieldsOf<T>];
+export type AsScalarType<T extends RowObject> = T[FieldsOf<T>] extends ScalarType ? T[FieldsOf<T>] : never;
 
-export type RowObject = {
-  [field: string]: ScalarType;
-};
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type RowObject = object;
+
+export type DefaultRowObject = {
+  [P in string]: ScalarType;
+}
+
+// {
+//   [field: string]: ScalarType;
+// };
 
 /**
  * 简化后的whereObject查询条件
  */
-export type WhereObject<T extends RowObject = any> = {
+export type WhereObject<T extends RowObject = DefaultRowObject> = {
   [K in FieldsOf<T>]?:
-  | CompatibleExpression<T[K]>
-  | CompatibleExpression<T[K]>[];
+  | CompatibleExpression<FieldTypeOf<T, K>>
+  | CompatibleExpression<FieldTypeOf<T, K>>[];
 };
 
 /**
  * 值列表，用于传递Select、Insert、Update、Parameters 的键值对
  */
-export type InputObject<T extends RowObject = RowObject> = {
+export type InputObject<T extends RowObject = DefaultRowObject> = {
   [K in FieldsOf<T>]?: CompatibleExpression<T[K]>;
 };
 
@@ -129,7 +136,11 @@ export type RowTypeFrom<T> = T extends undefined
   ? {
     [P in FieldsOf<M>]: M[P];
   }
-  : T extends Record<string, unknown>
+  : T extends InputObject
+  ? {
+    [K in keyof T]: TypeOf<T[K]>
+  }
+  : T extends Record<string, RowObject>
   ? {
     [K in FieldsOf<T>]: TypeOf<T[K]>;
   }
@@ -208,11 +219,11 @@ export type CompatibleExpression<T extends ScalarType = ScalarType> =
 /**
  * 可兼容的查询条件
  */
-export type CompatibleCondition<T extends RowObject = any> =
+export type CompatibleCondition<T extends RowObject = DefaultRowObject> =
   | Condition
   | WhereObject<T>;
 
-export type CompatibleSortInfo<T extends RowObject = any> = SortInfo[] | SortObject<T> | [CompatibleExpression, SORT_DIRECTION][];
+export type CompatibleSortInfo<T extends RowObject = DefaultRowObject> = SortInfo[] | SortObject<T> | [CompatibleExpression, SORT_DIRECTION][];
 
 /**
  * 提取类型中的数据库有效字段，即类型为ScalarType的字段列表
@@ -224,6 +235,8 @@ export type FieldsOf<T> = Exclude<
   }[keyof T],
   number | symbol
 >;
+
+export type FieldTypeOf<T, F extends keyof T> = T[F] extends ScalarType ? T[F] : never;
 
 /**
  * 代理后的Rowset类型
@@ -786,12 +799,20 @@ export abstract class Condition extends AST {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
+  static and(conditions: CompatibleCondition[]): Condition
   static and(
     ...conditions: CompatibleCondition[]
+  ): Condition
+
+  static and(
+    ...conditions: CompatibleCondition[] | [CompatibleCondition[]]
   ): Condition {
+    if (Array.isArray(conditions[0])) {
+      conditions = conditions[0];
+    }
     return Condition.join(
       LOGIC_OPERATOR.AND,
-      conditions
+      conditions as CompatibleCondition[]
     );
   }
 
@@ -801,12 +822,20 @@ export abstract class Condition extends AST {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
+  static or(conditions: CompatibleCondition[]): Condition
   static or(
     ...conditions: CompatibleCondition[]
+  ): Condition
+
+  static or(
+    ...conditions: CompatibleCondition[] | [CompatibleCondition[]]
   ): Condition {
+    if (Array.isArray(conditions[0])) {
+      conditions = conditions[0] as CompatibleCondition[];
+    }
     return Condition.join(
       LOGIC_OPERATOR.OR,
-      conditions
+      conditions as CompatibleCondition[]
     );
   }
 
@@ -1202,13 +1231,13 @@ export abstract class Identifier<N extends string = string> extends AST {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param name
    */
-  static table<T extends RowObject = any>(
-    modelClass: ModelConstructor<T>
-  ): ProxiedTable<T, string>;
-  static table<T extends RowObject = any, N extends string = string>(
+  // static table<T extends RowObject = any>(
+  //   modelClass: ModelConstructor<T>
+  // ): ProxiedTable<T, string>;
+  static table<T extends RowObject = DefaultRowObject, N extends string = string>(
     name: Name<N>
   ): ProxiedTable<T, N>;
-  static table<T extends RowObject = any>(
+  static table<T extends RowObject = DefaultRowObject>(
     nameOrModel: Name<string> | ModelConstructor<T>
   ): ProxiedTable<T, string> {
     if (typeof nameOrModel === "function") {
@@ -1229,12 +1258,11 @@ export abstract class Identifier<N extends string = string> extends AST {
   /**
    * 创建一个可供调用的存储过程函数
    */
-  static proc<T extends RowObject = never>(
-    name: Name<string>
-  ): (...args: CompatibleExpression<ScalarType>[]) => Execute<T> {
-    return function (...args: CompatibleExpression<ScalarType>[]): Execute<T> {
-      return new Procedure(name, false).execute(...args);
-    };
+  static proc<R extends ScalarType = number, O extends RowObject[] = never, N extends string = string>(
+    name: Name<N>,
+    buildIn = false,
+  ): Procedure<R, O, N> {
+    return new Procedure<R, O, N>(name, buildIn);
   }
 
   /**
@@ -1250,7 +1278,7 @@ export abstract class Identifier<N extends string = string> extends AST {
     return new BuiltIn(name);
   }
 
-  static var<T extends ScalarType, N extends string>(name: N): Expression<T> {
+  static var<T extends ScalarType, N extends string = string>(name: N): Expression<T> {
     return new Variant(name);
   }
 
@@ -1302,7 +1330,7 @@ export class Func<
     // this.$ftype = type || (FUNCTION_TYPE.SCALAR as K)
   }
 
-  invokeAsTable<T extends RowObject = any>(
+  invokeAsTable<T extends RowObject = DefaultRowObject>(
     ...args: CompatibleExpression<ScalarType>[]
   ): Rowset<T> {
     return new TableFuncInvoke(this, args);
@@ -1358,7 +1386,7 @@ applyMixins(Field, [Identifier]);
  * 数据库行集，混入类型
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
-export abstract class Rowset<T extends RowObject = {}> extends AST {
+export abstract class Rowset<T extends RowObject = RowObject> extends AST {
   /**
    * 别名
    */
@@ -1416,17 +1444,17 @@ export abstract class Rowset<T extends RowObject = {}> extends AST {
   }
 }
 
-export type CompatibleTable<T extends RowObject = any, N extends string = string> =
+export type CompatibleTable<T extends RowObject = DefaultRowObject, N extends string = string> =
   | Name<string>
   | Table<T, N>
   | ProxiedTable<T>;
 
-export type CompatibleRowset<T extends RowObject = any, N extends string = string> =
+export type CompatibleRowset<T extends RowObject = DefaultRowObject, N extends string = string> =
   | CompatibleTable<T, N>
   | Rowset<T>
   | ProxiedRowset<T>;
 
-export class Table<T extends RowObject = any, N extends string = string>
+export class Table<T extends RowObject = DefaultRowObject, N extends string = string>
   extends Rowset<T>
   implements Identifier<N> {
   constructor(name: Name<N>) {
@@ -1534,12 +1562,14 @@ export type SelectAction = {
   /**
    * 选择列
    */
+  <T extends RowObject = any>(a: Star<T>): Select<T>;
   <A extends SelectCloumn>(a: A): Select<RowTypeByColumns<A>>;
+  <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>;
+  <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>;
+  <T extends RowObject>(results: InputObject<T>): Select<T>;
   <T extends ScalarType>(expr: CompatibleExpression<T>): Select<{
     "*no name": T;
   }>;
-  <T extends RowObject>(results: InputObject<T>): Select<T>;
-  <T extends InputObject>(results: T): Select<RowTypeFrom<T>>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     RowTypeByColumns<A, B>
   >;
@@ -2572,11 +2602,11 @@ export abstract class Statement extends AST {
   //   proc: Name<string> | Procedure<T, string>,
   //   params?: InputObject
   // ): Execute<T>
-  static execute<T extends RowObject = any>(
-    proc: Name<string> | Procedure<T, string>,
+  static execute<R extends ScalarType = any, O extends RowObject[] = []>(
+    proc: Name<string> | Procedure<R, O, string>,
     params?: CompatibleExpression<ScalarType>[]
     // | Parameter<JsConstant, string>[] | InputObject
-  ): Execute<T> {
+  ): Execute<R, O> {
     return new Execute(proc, params as any);
   }
 
@@ -2627,9 +2657,9 @@ export abstract class Statement extends AST {
   }
 
   static case<T extends ScalarType>(
-    expr?: CompatibleExpression<T>
-  ): Expression<T> {
-    return new Case(expr);
+    expr?: CompatibleExpression
+  ): Case<T> {
+    return new Case<T>(expr);
   }
 
   /**
@@ -2656,6 +2686,204 @@ export abstract class Statement extends AST {
       if (index < selects.length - 1) sel.unionAll(selects[index + 1]);
     });
     return selects[0];
+  }
+
+
+  static invoke<
+    T extends RowObject
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): () => ProxiedRowset<T>
+  static invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1
+    ) => ProxiedRowset<T>
+  static invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2
+    ) => ProxiedRowset<T>
+  static invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3
+    ) => ProxiedRowset<T>
+  static invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3,
+      arg4: A4
+    ) => ProxiedRowset<T>
+  static invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression,
+    A5 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3,
+      arg4: A4,
+      arg5: A5
+    ) => ProxiedRowset<T>
+
+
+  static invoke(
+    type: 'table',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      ...args: CompatibleExpression[]
+    ) => ProxiedRowset<any>
+
+  static invoke<
+    T extends ScalarType
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): () => Expression<T>
+  static invoke<
+    T extends ScalarType,
+    A1 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1
+    ) => Expression<T>
+  static invoke<
+    T extends ScalarType,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2
+    ) => Expression<T>
+  static invoke<
+    T extends ScalarType,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3
+    ) => Expression<T>
+  static invoke<
+    T extends ScalarType,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3,
+      arg4: A4
+    ) => Expression<T>
+  static invoke<
+    T extends ScalarType,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression,
+    A5 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      arg1: A1,
+      arg2: A2,
+      arg3: A3,
+      arg4: A4,
+      arg5: A5
+    ) => Expression<T>
+
+
+  static invoke(
+    type: 'scalar',
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+      ...args: CompatibleExpression[]
+    ) => Expression<any>
+
+  static invoke(
+    type: 'table' | 'scalar',
+    name: Name<string>,
+    builtIn = false
+  ): (...args: CompatibleExpression[]) => Expression | ProxiedRowset<RowObject> {
+    if (type === 'table') {
+      return function (
+        ...args: CompatibleExpression[]
+      ): ProxiedRowset<RowObject> {
+        return Statement.invokeTableFunction(Identifier.func(name, builtIn), args);
+      }
+    }
+    if (type === 'scalar') {
+      return function (...args: CompatibleExpression<ScalarType>[]): Expression {
+        return Statement.invokeScalarFunction<ScalarType>(
+          Identifier.func(name, builtIn),
+          args
+        );
+      };
+    }
+    throw new Error('invalid arg value of `type`');
   }
 }
 
@@ -3155,7 +3383,7 @@ export class ValuedSelect<
  */
 export class Insert<T extends RowObject = any> extends CrudStatement {
   $table: Table<T, string>;
-  $fields?: Field<ScalarType, FieldsOf<T>>[];
+  $fields?: Field[];
   $values: Expression<ScalarType>[][] | Select<T>;
 
   readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT;
@@ -3183,13 +3411,8 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
     }
   }
 
-  values(select: Select<T>): this;
-  values(row: InputObject<T>): this;
-  values(row: CompatibleExpression<ScalarType>[]): this;
-  values(rows: CompatibleExpression<ScalarType>[][]): this;
-  values(rows: InputObject<T>[]): this;
-  values(...rows: CompatibleExpression<ScalarType>[][]): this;
-  values(...rows: InputObject<T>[]): this;
+  values(rows: Select<T> | InputObject<T> | InputObject<T>[] | CompatibleExpression<ScalarType>[] | CompatibleExpression<ScalarType>[][]): this;
+  values(...rows: CompatibleExpression<ScalarType>[][] | InputObject<T>[]): this;
   values(...args: any[]): this {
     assert(!this.$values, "values is declared");
     assert(args.length > 0, "rows must more than one elements.");
@@ -3308,22 +3531,25 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
   /**
    * @param sets
    */
-  set(sets: InputObject<T>): this;
+  set(sets: InputObject<T> | Assignment<ScalarType>[]): this;
   set(...sets: Assignment<ScalarType>[]): this;
-  set(...sets: InputObject<T>[] | Assignment<ScalarType>[]): this {
+  set(...sets: [InputObject<T> | Assignment<ScalarType>[]] | Assignment<ScalarType>[]): this {
     assert(!this.$sets, "set statement is declared");
     assert(sets.length > 0, "sets must have more than 0 items");
-    if (sets.length > 1 || sets[0] instanceof Assignment) {
-      this.$sets = sets as Assignment<ScalarType>[];
-      return this;
+    if (sets.length === 1) {
+      if (Array.isArray(sets[0])) {
+        this.$sets = sets[0] as Assignment<ScalarType>[];
+        return this
+      } else {
+        const item = sets[0] as InputObject<T>;
+        this.$sets = Object.entries(item).map(
+          ([key, value]: [string, CompatibleExpression]) =>
+            new Assignment(this.$table.field(key as any), ensureExpression(value))
+        );
+        return this;
+      }
     }
-
-    const obj = sets[0];
-    this.$sets = Object.entries(obj).map(
-      ([key, value]: [string, CompatibleExpression]) =>
-        new Assignment(this.$table.field(key as any), ensureExpression(value))
-    );
-    return this;
+    this.$sets = sets as Assignment<ScalarType>[];
   }
 }
 
@@ -3355,21 +3581,27 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   // }
 }
 
+/**
+ * @param N 存储过程名称
+ * @param R 返回值
+ * @param O 输出行集
+ */
 export class Procedure<
-  T extends RowObject = never,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
   N extends string = string
-  > extends Identifier<N> {
+> extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
 
-  execute(...params: CompatibleExpression<ScalarType>[]): Execute<T>;
-  execute(...params: Parameter<ScalarType, string>[]): Execute<T>;
-  execute(params: InputObject): Execute<T>;
+  execute(...params: CompatibleExpression<ScalarType>[]): Execute<R>;
+  execute(...params: Parameter<ScalarType, string>[]): Execute<R>;
+  execute(params: InputObject): Execute<R>;
   execute(
     ...params:
       | [InputObject]
       | Parameter<ScalarType, string>[]
       | CompatibleExpression<ScalarType>[]
-  ): Execute<T> {
+  ): Execute<R, O> {
     return new Execute(this.$name, params as any);
   }
 }
@@ -3393,15 +3625,15 @@ export class Procedure<
 /**
  * 存储过程执行
  */
-export class Execute<T extends RowObject = any> extends Statement {
-  readonly $proc: Procedure<T, string>;
+export class Execute<R extends ScalarType = any, O extends RowObject[] = []> extends Statement {
+  readonly $proc: Procedure<R, O, string>;
   readonly $args: Expression<ScalarType>[];
   // | NamedArgument<JsConstant, string>[];
   readonly $type: SQL_SYMBOLE.EXECUTE = SQL_SYMBOLE.EXECUTE;
 
   // constructor(proc: Name<string> | Procedure<T, string>, params?: InputObject);
   constructor(
-    proc: Name<string> | Procedure<T, string>,
+    proc: Name<string> | Procedure<R, O, string>,
     params?: CompatibleExpression<ScalarType>[] // | InputObject
   ) {
     super();
@@ -3523,7 +3755,7 @@ export class Document extends AST {
   statements: Statement[];
   $type: SQL_SYMBOLE.DOCUMENT = SQL_SYMBOLE.DOCUMENT;
 
-  constructor(...statements: Statement[]) {
+  constructor(statements: Statement[]) {
     super();
     this.statements = statements;
   }

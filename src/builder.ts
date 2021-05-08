@@ -16,6 +16,7 @@ import {
   CompatibleCondition,
   Rowset,
   ProxiedRowset,
+  Execute,
 } from "./ast";
 import {
   isExpression,
@@ -117,9 +118,13 @@ export const $raw = raw;
  * 创建一个SQL文档，包含多条SQL语句、
  * @param statements SQL语句
  */
-export const doc = function (...statements: Statement[]): Document {
-  return new Document(...statements);
-};
+export function doc(statements: Statement[]): Document
+export function doc(...statements: Statement[]): Document
+export function doc(...statements: Statement[] | [Statement[]]): Document {
+  const lines = Array.isArray(statements[0]) ? statements[0] : statements as Statement[];
+  return new Document(lines);
+}
+
 export const $doc = doc;
 
 /**
@@ -130,7 +135,6 @@ export const $insert = Statement.insert;
 
 export const $case = Statement.case;
 export const $with = Statement.with;
-export const With = Statement.with;
 
 /**
  * 创建一个UPDATE语句
@@ -357,132 +361,56 @@ export const $table = Identifier.table;
 // }
 
 export function makeFunc<
-  T extends RowObject,
-  A1 extends CompatibleExpression
->(
-  type: 'table',
-  name: Name<string>,
-  builtIn?: boolean
-): (
-    arg1: A1
-  ) => ProxiedRowset<T>
-export function makeFunc<
-  T extends RowObject,
-  A1 extends CompatibleExpression,
-  A2 extends CompatibleExpression
->(
-  type: 'table',
-  name: Name<string>,
-  builtIn?: boolean
-): (
-    arg1: A1,
-    arg2: A2
-  ) => ProxiedRowset<T>
-export function makeFunc<
-  T extends RowObject,
-  A1 extends CompatibleExpression,
-  A2 extends CompatibleExpression,
-  A3 extends CompatibleExpression
->(
-  type: 'table',
-  name: Name<string>,
-  builtIn?: boolean
-): (
-    arg1: A1,
-    arg2: A2,
-    arg3: A3
-  ) => ProxiedRowset<T>
-export function makeFunc<
-  T extends RowObject,
-  A1 extends CompatibleExpression,
-  A2 extends CompatibleExpression,
-  A3 extends CompatibleExpression,
-  A4 extends CompatibleExpression
->(
-  type: 'table',
-  name: Name<string>,
-  builtIn?: boolean
-): (
-    arg1: A1,
-    arg2: A2,
-    arg3: A3,
-    arg4: A4
-  ) => ProxiedRowset<T>
-export function makeFunc<
-  T extends RowObject,
-  A1 extends CompatibleExpression,
-  A2 extends CompatibleExpression,
-  A3 extends CompatibleExpression,
-  A4 extends CompatibleExpression,
-  A5 extends CompatibleExpression
->(
-  type: 'table',
-  name: Name<string>,
-  builtIn?: boolean
-): (
-    arg1: A1,
-    arg2: A2,
-    arg3: A3,
-    arg4: A4,
-    arg5: A5
-  ) => ProxiedRowset<T>
-
-
-export function makeFunc<
   T extends RowObject
 >(
   type: 'table',
   name: Name<string>,
   builtIn?: boolean
-): (
-    ...args: CompatibleExpression[]
-  ) => ProxiedRowset<T>
-
-
+): () => ProxiedRowset<T>
 export function makeFunc<
-  T extends ScalarType,
+  T extends RowObject,
   A1 extends CompatibleExpression
 >(
-  type: 'scalar',
+  type: 'table',
   name: Name<string>,
   builtIn?: boolean
 ): (
     arg1: A1
-  ) => Expression<T>
+  ) => ProxiedRowset<T>
 export function makeFunc<
-  T extends ScalarType,
+  T extends RowObject,
   A1 extends CompatibleExpression,
   A2 extends CompatibleExpression
 >(
-  type: 'scalar',
+  type: 'table',
   name: Name<string>,
   builtIn?: boolean
 ): (
     arg1: A1,
     arg2: A2
-  ) => Expression<T>
+  ) => ProxiedRowset<T>
 export function makeFunc<
-  T extends ScalarType,
+  T extends RowObject,
   A1 extends CompatibleExpression,
   A2 extends CompatibleExpression,
   A3 extends CompatibleExpression
 >(
-  type: 'scalar',
+  type: 'table',
   name: Name<string>,
   builtIn?: boolean
 ): (
     arg1: A1,
     arg2: A2,
     arg3: A3
-  ) => Expression<T>
+  ) => ProxiedRowset<T>
 export function makeFunc<
-  T extends ScalarType,
+  T extends RowObject,
   A1 extends CompatibleExpression,
   A2 extends CompatibleExpression,
   A3 extends CompatibleExpression,
   A4 extends CompatibleExpression
 >(
-  type: 'scalar',
+  type: 'table',
   name: Name<string>,
   builtIn?: boolean
 ): (
@@ -490,16 +418,16 @@ export function makeFunc<
     arg2: A2,
     arg3: A3,
     arg4: A4
-  ) => Expression<T>
+  ) => ProxiedRowset<T>
 export function makeFunc<
-  T extends ScalarType,
+  T extends RowObject,
   A1 extends CompatibleExpression,
   A2 extends CompatibleExpression,
   A3 extends CompatibleExpression,
   A4 extends CompatibleExpression,
   A5 extends CompatibleExpression
 >(
-  type: 'scalar',
+  type: 'table',
   name: Name<string>,
   builtIn?: boolean
 ): (
@@ -508,8 +436,16 @@ export function makeFunc<
     arg3: A3,
     arg4: A4,
     arg5: A5
-  ) => Expression<T>
+  ) => ProxiedRowset<T>
 
+
+export function makeFunc(
+  type: 'table',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    ...args: CompatibleExpression[]
+  ) => ProxiedRowset<any>
 
 export function makeFunc<
   T extends ScalarType
@@ -517,9 +453,86 @@ export function makeFunc<
   type: 'scalar',
   name: Name<string>,
   builtIn?: boolean
+): () => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4
+  ) => Expression<T>
+export function makeFunc<
+  T extends ScalarType,
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression,
+  A5 extends CompatibleExpression
+>(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4,
+    arg5: A5
+  ) => Expression<T>
+
+
+export function makeFunc(
+  type: 'scalar',
+  name: Name<string>,
+  builtIn?: boolean
 ): (
     ...args: CompatibleExpression[]
-  ) => Expression<T>
+  ) => Expression<any>
 
 export function makeFunc(
   type: 'table' | 'scalar',
@@ -550,6 +563,107 @@ export const $proc = Identifier.proc;
 
 export const procedure = Identifier.proc;
 export const $procedure = Identifier.proc;
+
+/**
+ * 创建一个可供JS调用的存储过程
+ */
+export function makeProc<
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): () => Execute<R, O>
+export function makeProc<
+  A1 extends CompatibleExpression,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+    arg1: A1
+  ) => Execute<R, O>
+export function makeProc<
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+    arg1: A1,
+    arg2: A2
+  ) => Execute<R, O>
+export function makeProc<
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3
+  ) => Execute<R, O>
+export function makeProc<
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4
+  ) => Execute<R, O>
+export function makeProc<
+  A1 extends CompatibleExpression,
+  A2 extends CompatibleExpression,
+  A3 extends CompatibleExpression,
+  A4 extends CompatibleExpression,
+  A5 extends CompatibleExpression,
+  R extends ScalarType = number,
+  O extends RowObject[] = [],
+  >(
+    name: Name<string>,
+    builtIn?: boolean
+  ): (
+    arg1: A1,
+    arg2: A2,
+    arg3: A3,
+    arg4: A4,
+    arg5: A5
+  ) => Execute<R, O>
+
+
+export function makeProc(
+  name: Name<string>,
+  builtIn?: boolean
+): (
+    ...args: CompatibleExpression[]
+  ) => Expression<any>
+
+export function makeProc(
+  name: Name<string>,
+  builtIn = false
+): (...args: CompatibleExpression[]) => void {
+  return function (...args: CompatibleExpression<ScalarType>[]): Execute<any, any> {
+    return Statement.execute(
+      Identifier.proc<ScalarType, any, string>(name, builtIn),
+      args
+    );
+  };
+}
 
 export const literal = Expression.literal;
 export const $literal = Expression.literal;
@@ -616,7 +730,7 @@ export const $enclose = enclose;
 /**
  * 类型转换运算
  */
- export const convert = Expression.convert;
+export const convert = Expression.convert;
 
 /**
  * 语句

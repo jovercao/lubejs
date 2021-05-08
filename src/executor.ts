@@ -23,28 +23,17 @@ import {
   Document,
   Rowset,
   RowTypeFrom,
-  ProxiedRowset
+  ProxiedRowset,
+  Execute
 } from "./ast";
 import { Compiler } from "./compiler";
 import { INSERT_MAXIMUM_ROWS } from "./constants";
 import { Lube } from "./lube";
 import { QueryHandler, QueryResult, Command, SelectOptions } from "./types";
 import { Queryable } from "./queryable";
-import { and, or } from "./builder";
+import { and, doc, or } from "./builder";
 
 export class Executor extends EventEmitter {
-  doQuery: QueryHandler;
-
-  /**
-   * 编译器
-   */
-  readonly compiler: Compiler;
-
-  /**
-   * 是否在事务当中
-   */
-  readonly isTrans: boolean;
-
   /**
    * SQL执行器
    * @param {*} query 查询函数
@@ -61,6 +50,19 @@ export class Executor extends EventEmitter {
     this.compiler = compiler;
     this.isTrans = isTrans;
   }
+
+  doQuery: QueryHandler;
+
+  /**
+   * 编译器
+   */
+  readonly compiler: Compiler;
+
+  /**
+   * 是否在事务当中
+   */
+  readonly isTrans: boolean;
+
 
   on(event: "command", listener: (cmd: Command) => void): this;
   on(event: "commit", listener: (executor: Executor) => void): this;
@@ -85,7 +87,7 @@ export class Executor extends EventEmitter {
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
   // async _internalQuery(sql: string, params: Object): Promise<QueryResult>
   // async _internalQuery(sql: string[], ...params: any[]): Promise<QueryResult>
-  private async _internalQuery(...args: any[]) {
+  private async _internalQuery(...args: any[]): Promise<QueryResult<any, any, any>> {
     let sql: string, params: Parameter[];
     // 如果是AST直接编译
     if (args[0] instanceof AST) {
@@ -123,7 +125,7 @@ export class Executor extends EventEmitter {
         Object.entries(res.output).forEach(([name, value]) => {
           const p = params.find((p) => p.$name === name);
           p.value = value;
-          if (p.$name === "_ReturnValue_") {
+          if (p.$name === this.compiler.options.returnParameterName) {
             res.returnValue = value;
           }
         });
@@ -138,6 +140,12 @@ export class Executor extends EventEmitter {
   }
 
   async query<T extends RowObject = any>(sql: Select<T>): Promise<QueryResult<T>>;
+  /**
+   * 执行一个存储过程执行代码
+   */
+  // eslint-disable-next-line
+  // @ts-ignore
+  async query<R extends ScalarType = number, O extends RowObject[] = []>(sql: Execute<R, O>): Promise<QueryResult<O[0], R, O>>;
   async query<T extends RowObject = any>(sql: string): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: string,
@@ -184,25 +192,28 @@ export class Executor extends EventEmitter {
   }
 
   /**
-   * 插入数据的快捷操作
+   * 插入数据
    */
   async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    values?: InputObject<T> | CompatibleExpression[]
+    values?: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
   ): Promise<number>;
+  /**
+   * 插入数据
+   */
   async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
-    values?: InputObject<T>[]
-  ): Promise<number>;
-  async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
-    value?: InputObject<T> | CompatibleExpression[]
+    values?: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
     fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
     value?: InputObject<T> | InputObject<T>[] | CompatibleExpression[] | CompatibleExpression[][]
+  ): Promise<number>;
+  async insert<T extends RowObject = any>(
+    table: Name<string> | Table<T, string>,
+    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
+    value?: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
     table: Name<string> | Table<T, string>,
@@ -369,42 +380,50 @@ export class Executor extends EventEmitter {
     /**
      * 更新键字段列表
      */
-    keyFields: string[]
+    keyFieldsOrWhere: FieldsOf<T>[] | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number>
 
   async update<T extends RowObject = any>(
     table: string | Table<T, string>,
-    sets: InputObject<T> | Assignment[],
-    whereOrKeys?: WhereObject<T> | Condition | FieldsOf<T>[] | ((table: Readonly<ProxiedRowset<T>>) => Condition)
+    setsOrItems: InputObject<T> | InputObject<T>[] | Assignment[] | Assignment[][],
+    whereOrKeys?:
+      | WhereObject<T>
+      | Condition
+      | FieldsOf<T>[]
+      | ((table: Readonly<ProxiedRowset<T>>) => Condition)
+      | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
+    const t = ensureProxiedRowset(table);
 
-    if (Array.isArray(sets) && !(sets[0] instanceof Assignment)) {
-      const keys = whereOrKeys as FieldsOf<T>[]
-      const items = sets as InputObject<T>[]
-      const docs: Document = new Document(
-        ...items.map(item => {
-          const condition: Partial<T> = {}
-          keys.forEach(field => {
-            Reflect.set(condition, field, item[field])
-          })
+    if (Array.isArray(setsOrItems) && !(setsOrItems[0] instanceof Assignment)) {
+      let keys: FieldsOf<T>[]
+      let where: ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
+      if (typeof whereOrKeys === 'function') {
+        where = whereOrKeys as ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition);
+      } else {
+        keys = whereOrKeys as FieldsOf<T>[];
+      }
+      const items = setsOrItems as T[]
+      const docs: Document = doc(
+        items.map(item => {
+          let condition: CompatibleCondition;
+          if (keys) {
+            condition = and(keys.map(field => t[field].eq(item[field])));
+          } else {
+            condition = where(item, t);
+          }
           const sql = Statement.update(table).set(item).where(condition)
           return sql
         })
       )
-
       const res = await this.query(docs)
       return res.rowsAffected
     }
-
-    const t = ensureProxiedRowset(table);
-    const sql = Statement.update(t);
-    if (Array.isArray(sets)) {
-      sql.set(...sets);
-    } else {
-      sql.set(sets);
-    }
-    if (whereOrKeys) {
-      sql.where(typeof whereOrKeys === 'function' ? whereOrKeys(t) : whereOrKeys as CompatibleCondition<T>);
+    const sets = setsOrItems as Assignment[] | InputObject<T>;
+    const sql = Statement.update(t).set(sets);
+    const where = whereOrKeys as Condition | ((table: Readonly<ProxiedRowset<T>>) => Condition);
+    if (where) {
+      sql.where(typeof where === 'function' ? where(t) : whereOrKeys as CompatibleCondition<T>);
     }
     const res = await this.query(sql);
     return res.rowsAffected;
@@ -423,13 +442,15 @@ export class Executor extends EventEmitter {
     return res.rowsAffected;
   }
 
-  async execute<T extends RowObject>(
-    spName: Name<string> | Procedure<T>,
+  async execute<R extends ScalarType = number, O extends RowObject[] = []> (
+    spName: Name<string> | Procedure<R, O>,
     params?: CompatibleExpression[]
-  ): Promise<QueryResult<T>> {
-    const sql = Statement.execute<T>(spName, params);
+    // eslint-disable-next-line
+    // @ts-ignore
+  ): Promise<QueryResult<O[0], R, O>> {
+    const sql = Statement.execute<R, O>(spName, params);
     const res = await this.query(sql);
-    return res as any;
+    return res;
   }
 
   /**
@@ -437,7 +458,7 @@ export class Executor extends EventEmitter {
    * 通过自动对比与数据库中现有的数据差异而进行提交
    * 遵守不存在的则插入、已存在的则更新的原则；
    */
-   async save<T extends RowObject = any>(table: Table<T, string> | Name<string>, keyFields: FieldsOf<T>[], items: T[] | T): Promise<number> {
+  async save<T extends RowObject = any>(table: Table<T, string> | Name<string>, keyFields: FieldsOf<T>[], items: T[] | T): Promise<number> {
     if (keyFields.length === 0) {
       throw new Error("KeyFields must be specified.");
     }

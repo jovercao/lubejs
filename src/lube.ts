@@ -9,8 +9,8 @@ import { CompileOptions, ConnectOptions, IDbProvider, TransactionHandler } from 
 export class Lube extends Executor {
   private provider: IDbProvider;
 
-  constructor(provider: IDbProvider, compileOptions?: CompileOptions) {
-    const compiler = provider.getCompiler(compileOptions);
+  constructor(provider: IDbProvider) {
+    const compiler = provider.compiler;
     // if (!compiler) {
     //   let compileOptions: CompileOptions = {};
     //   if (options.strict !== undefined) {
@@ -76,7 +76,7 @@ export class Lube extends Executor {
  * @param {*} config
  */
 export async function connect(url: string): Promise<Lube>;
-export async function connect(config: ConnectOptions): Promise<Lube>;
+export async function connect(options: ConnectOptions): Promise<Lube>;
 export async function connect(arg: ConnectOptions | string): Promise<Lube> {
   let config: ConnectOptions;
   if (typeof arg === "string") {
@@ -133,6 +133,6 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
   }
 
   const provider: IDbProvider = await config.driver(config);
-  return new Lube(provider, config);
+  return new Lube(provider);
 }
 

@@ -157,9 +157,12 @@ export function ensureFunction<TName extends string>(
 /**
  * 确保标题函数类型
  */
-export function ensureProcedure<T extends RowObject, N extends string>(
-  name: Name<N> | Procedure<T, N>
-): Procedure<T, N> {
+export function ensureProcedure<
+  R extends ScalarType,
+  O extends RowObject[] = [],
+  N extends string = string>(
+  name: Name<N> | Procedure<R, O, N>
+): Procedure<R, O, N> {
   if (name instanceof AST) return name;
   return new Procedure(name);
 }

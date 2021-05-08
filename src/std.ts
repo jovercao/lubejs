@@ -4,10 +4,10 @@
  */
 
 import { Binary, Expression, CompatibleExpression, ScalarType, Star } from "./ast";
-import { scalarFn } from "./builder";
+import { makeFunc } from "./builder";
 
-export const count: (expr: Star | CompatibleExpression<ScalarType>) => Expression<number> = scalarFn('count', true);
-export const avg: (expr: CompatibleExpression<number>) => Expression<number> = scalarFn('expr', true);
-export const sum: (expr: CompatibleExpression<number>) => Expression<number> = scalarFn('expr', true);
-export const max: <T extends  Exclude<ScalarType, Binary>>(expr: Expression<T>) => Expression<T> = scalarFn('max', true);
-export const min: <T extends  Exclude<ScalarType, Binary>>(expr: Expression<T>) => Expression<T> = scalarFn('min', true);
+export const count: (expr: Star | CompatibleExpression<ScalarType>) => Expression<number> = makeFunc('scalar', 'count', true);
+export const avg: (expr: CompatibleExpression<number>) => Expression<number> = makeFunc('scalar', 'expr', true);
+export const sum: (expr: CompatibleExpression<number>) => Expression<number> = makeFunc('scalar', 'expr', true);
+export const max: <T extends  Exclude<ScalarType, Binary>>(expr: Expression<T>) => Expression<T> = makeFunc('scalar', 'max', true);
+export const min: <T extends  Exclude<ScalarType, Binary>>(expr: Expression<T>) => Expression<T> = makeFunc('scalar', 'min', true);

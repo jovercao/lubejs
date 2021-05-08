@@ -6,29 +6,57 @@ import {
   RowObject,
   Parameter,
   SortInfo,
-  SortObject,
   WhereObject,
   Rowset,
   CompatibleSortInfo,
-  InputObject,
   ProxiedRowset,
 } from "./ast";
 import { Compiler } from "./compiler";
 import { ISOLATION_LEVEL } from "./constants";
 import { Executor } from "./executor";
 
-export interface QueryResult<T extends RowObject = any> {
+/**
+ * 查询结果对象
+ * 为了照顾绝大多数调用，将首个行集类型参数作提前处理。
+ */
+export interface QueryResult<
+  T extends RowObject = never,
+  R extends ScalarType = never,
+  O extends [T, ...RowObject[]] = [T]
+  > {
+  /**
+   * 返回结果集
+   */
   rows?: T[];
+  /**
+   * 输出参数
+   */
   output?: {
     [key: string]: ScalarType;
   };
+  /**
+   * 受影响行数
+   */
   rowsAffected: number;
-  returnValue?: ScalarType;
+  /**
+   * 存储过程调用的返回值
+   */
+  returnValue?: R;
 
   /**
    * 多数据集返回，仅支持mssql
    */
-  rowsets?: any[];
+  rowsets?: never extends O
+  ? any[]
+  : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
+  ? [O1[], O2[], O3[], O4[], O5[]]
+  : O extends [infer O1, infer O2, infer O3, infer O4]
+  ? [O1[], O2[], O3[], O4[]]
+  : O extends [infer O1, infer O2, infer O3]
+  ? [O1[], O2[], O3[]]
+  : O extends [infer O1, infer O2]
+  ? [O1[], O2[]]
+  : [T[]]
 }
 
 // interface QueryParameter {
@@ -37,9 +65,9 @@ export interface QueryResult<T extends RowObject = any> {
 //    direction?: ParameterDirection
 // }
 
-export interface QueryHandler<T extends RowObject = any> {
+export interface QueryHandler {
   (sql: string, params: Parameter<ScalarType, string>[]): Promise<
-    QueryResult<T>
+    QueryResult<any, any, any>
   >;
 }
 export interface SelectOptions<T extends RowObject = any> {
@@ -60,9 +88,9 @@ export type TransactionHandler<T> = (
  * 数据库事务
  */
 export interface Transaction {
-  query(sql: string, params: Parameter[]): Promise<QueryResult>;
-  commit(): void;
-  rollback(): void;
+  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
 }
 
 // /**
@@ -119,7 +147,8 @@ export type ConnectOptions = {
    * 其它配置项，针对各种数据的专门配置
    */
   [key: string]: any;
-} & Pick<CompileOptions, 'strict' | 'returnParameterName'>
+  compileOptions?: CompileOptions,
+}
 
 /**
  * 数据库提供驱动程序
@@ -128,9 +157,10 @@ export interface IDbProvider {
   /**
    * 必须实现编译器
    */
-  getCompiler(options: CompileOptions): Compiler;
-  query(sql: string, params: Parameter[]): Promise<QueryResult>;
-  beginTrans(isolationLevel: ISOLATION_LEVEL): Transaction;
+  // getCompiler(options: CompileOptions): Compiler;
+  readonly compiler: Compiler;
+  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
+  beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
 }
 
@@ -139,7 +169,7 @@ export interface IDbProvider {
  * 实际上为一个工厂函数，通过实现该方法来扩展驱动支持
  */
 export interface Driver {
-  (config: ConnectOptions): IDbProvider
+  (config: ConnectOptions): Promise<IDbProvider>
 }
 
 
@@ -182,4 +212,19 @@ export interface CompileOptions {
    * 返回参数名称
    */
   returnParameterName?: string;
+
+  /**
+   * 集合别名连接词，默认为 'AS'
+   */
+  setsAliasJoinWith?: string;
+
+  /**
+   * 输出参数尾词，默认为 'OUT'
+   */
+  parameterOutWord?: string;
+
+  /**
+   * 字段别名连接字符器，默认为 'AS'
+   */
+  fieldAliasJoinWith?: string;
 }
