@@ -1,230 +1,186 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  Condition,
-  CompatibleExpression,
-  ScalarType,
-  RowObject,
-  Parameter,
-  SortInfo,
-  WhereObject,
-  Rowset,
-  CompatibleSortInfo,
-  ProxiedRowset,
-} from "./ast";
-import { Compiler } from "./compiler";
-import { ISOLATION_LEVEL } from "./constants";
-import { Executor } from "./executor";
-
-/**
- * 查询结果对象
- * 为了照顾绝大多数调用，将首个行集类型参数作提前处理。
- */
-export interface QueryResult<
-  T extends RowObject = never,
-  R extends ScalarType = never,
-  O extends [T, ...RowObject[]] = [T]
-  > {
-  /**
-   * 返回结果集
-   */
-  rows?: T[];
-  /**
-   * 输出参数
-   */
-  output?: {
-    [key: string]: ScalarType;
-  };
-  /**
-   * 受影响行数
-   */
-  rowsAffected: number;
-  /**
-   * 存储过程调用的返回值
-   */
-  returnValue?: R;
-
-  /**
-   * 多数据集返回，仅支持mssql
-   */
-  rowsets?: never extends O
-  ? any[]
-  : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
-  ? [O1[], O2[], O3[], O4[], O5[]]
-  : O extends [infer O1, infer O2, infer O3, infer O4]
-  ? [O1[], O2[], O3[], O4[]]
-  : O extends [infer O1, infer O2, infer O3]
-  ? [O1[], O2[], O3[]]
-  : O extends [infer O1, infer O2]
-  ? [O1[], O2[]]
-  : [T[]]
-}
-
 // interface QueryParameter {
 //    name: string,
 //    value: any,
 //    direction?: ParameterDirection
 // }
 
-export interface QueryHandler {
-  (sql: string, params: Parameter<ScalarType, string>[]): Promise<
-    QueryResult<any, any, any>
-  >;
-}
-export interface SelectOptions<T extends RowObject = any> {
-  where?: WhereObject<T> | Condition | ((table: Readonly<ProxiedRowset<T>>) => Condition);
-  top?: number;
-  offset?: number;
-  limit?: number;
-  distinct?: boolean;
-  sorts?: CompatibleSortInfo | ((rowset: Rowset<T>) => SortInfo[]);
-}
+// **********************************类型声明******************************************
 
-export type TransactionHandler<T> = (
-  executor: Executor,
-  abort: () => Promise<void>
-) => Promise<T>;
+export type Binary = ArrayBuffer | SharedArrayBuffer
 
 /**
- * 数据库事务
+ * 标量类型
+ * 对应数据库标量类型的JS类型集
  */
-export interface Transaction {
-  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
-  commit(): Promise<void>;
-  rollback(): Promise<void>;
+export type ScalarType =
+  | string
+  | Date
+  | boolean
+  | null
+  | number
+  | Binary
+  | bigint
+
+export type INT64 = {
+  readonly name: 'int64'
 }
 
-// /**
-//  * Js常量类型构造函数
-//  */
-// export type JsTypeConstructor =
-//   | typeof String
-//   | typeof Number
-//   | typeof ArrayBuffer
-//   | typeof Date
-//   | typeof Boolean
-//   | typeof BigInt;
-
-//   /**
-//    * Js常量类型名称
-//    */
-// export type JsTypeName =
-//   | "string"
-//   | "number"
-//   | "date"
-//   | "boolean"
-//   | "bigint"
-//   | "binary";
-
-// TODO: 建立命令查询器，针对model的
-/**
- * 命令生成器
- * 用于深度查询
- */
-export interface CommandBuilder {
-  sql: string[];
-  params: Set<Parameter>;
+export type INT32 = {
+  readonly name: 'int32'
+  readonly length?: 8 | 16 | 32 | 64
 }
 
+export type INT16 = {
+  readonly name: 'int16'
+}
 
-export type ConnectOptions = {
+export type INT8 = {
+  readonly name: 'int8'
+}
+
+export type NUMERIC = {
+  readonly name: 'numeric'
+  readonly precision: number
+  readonly digit?: number
+}
+
+export type FLOAT = {
+  readonly name: 'float'
+}
+
+export type DOUBLE = {
+  readonly name: 'double'
+}
+
+export type STRING = {
+  readonly name: 'string'
   /**
-   * 数据库方言，必须安装相应的驱动才可正常使用
+   * 为0时表示无限大
    */
-  dialect?: string;
-  /**
-   * 驱动程序，与dialect二选一，优先使用driver
-   */
-  driver?: Driver;
-  host: string;
-  port?: number;
-  user: string;
-  password: string;
-  database: string;
-  poolMax: number;
-  poolMin: number;
-  idelTimeout: number;
-  /**
-   * 其它配置项，针对各种数据的专门配置
-   */
-  [key: string]: any;
-  compileOptions?: CompileOptions,
+  readonly length: number
 }
 
-/**
- * 数据库提供驱动程序
- */
-export interface IDbProvider {
-  /**
-   * 必须实现编译器
-   */
-  // getCompiler(options: CompileOptions): Compiler;
-  readonly compiler: Compiler;
-  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
-  beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
-  close(): Promise<void>;
+export type DATE = {
+  readonly name: 'date'
 }
 
-/**
- * 驱动程序
- * 实际上为一个工厂函数，通过实现该方法来扩展驱动支持
- */
-export interface Driver {
-  (config: ConnectOptions): Promise<IDbProvider>
+export type DATETIME = {
+  readonly name: 'datetime'
 }
 
-
-export interface Command {
-  sql: string;
-  params: Parameter[];
+export type BINARY = {
+  readonly name: 'binary'
+  readonly length: number
 }
 
-// TODO: 使用命令生成器优化SQL字符串拼接
+export type BOOLEAN = {
+  readonly name: 'boolean'
+}
+
+export type UUID = {
+  readonly name: 'uuid'
+}
+
+export type DbType =
+  | INT8
+  | INT16
+  | INT32
+  | INT64
+  | NUMERIC
+  | FLOAT
+  | DOUBLE
+  | STRING
+  | DATE
+  | DATETIME
+  | BINARY
+  | BOOLEAN
+  | UUID
 
 /**
- * 编译选项
+ * 数据库类型映射
  */
-export interface CompileOptions {
-  /**
-   * 是否启用严格模式，默认启用
-   * 如果为false，则生成的SQL标识不会被[]或""包括
-   */
-  strict?: boolean;
-  /**
-   * 标识符引用，左
-   */
-  quotedLeft?: string;
-  /**
-   * 标识符引用，右
-   */
-  quotedRight?: string;
+export type DbTypeMap = {
+  int8: number
+  int16: number
+  int32: number
+  int64: number
+  numeric: number
+  float: number
+  double: number
+  string: string
+  date: Date
+  datetime: Date
+  binary: Binary
+  boolean: boolean
+  uuid: string
+}
 
-  /**
-   * 参数前缀
-   */
-  parameterPrefix?: string;
+/**
+ * 解释值的类型
+ */
+export function parseValueType (value: ScalarType): DbType {
+  if (value === null || value === undefined)
+    throw new Error('Do not parse DbType from null or undefined')
+  switch (value.constructor) {
+    case String:
+      return type.string(0)
+    case Number:
+      return type.int32
+    case Date:
+      return type.datetime
+    case Boolean:
+      return type.boolean
+    case Buffer:
+    case ArrayBuffer:
+    case SharedArrayBuffer:
+      return type.binary(0)
+    default:
+      throw new Error('Invalid value.')
+  }
+}
 
-  /**
-   * 变量前缀
-   */
-  variantPrefix?: string;
-
-  /**
-   * 返回参数名称
-   */
-  returnParameterName?: string;
-
-  /**
-   * 集合别名连接词，默认为 'AS'
-   */
-  setsAliasJoinWith?: string;
-
-  /**
-   * 输出参数尾词，默认为 'OUT'
-   */
-  parameterOutWord?: string;
-
-  /**
-   * 字段别名连接字符器，默认为 'AS'
-   */
-  fieldAliasJoinWith?: string;
+export const type = {
+  int8: {
+    name: 'int8'
+  } as INT8,
+  int16: { name: 'int16' } as INT16,
+  int32: { name: 'int32' } as INT32,
+  int64: { name: 'int64' } as INT64,
+  numeric (precision: number, digit?: number): NUMERIC {
+    return {
+      name: 'numeric',
+      precision,
+      digit
+    }
+  },
+  float: {
+    name: 'float'
+  } as FLOAT,
+  double: {
+    name: 'double'
+  } as DOUBLE,
+  string (length: number): STRING {
+    return {
+      name: 'string',
+      length
+    }
+  },
+  date: {
+    name: 'date'
+  } as DATE,
+  datetime: {
+    name: 'datetime'
+  } as DATETIME,
+  binary (length: number): BINARY {
+    return {
+      name: 'binary',
+      length
+    }
+  },
+  boolean: {
+    name: 'boolean'
+  } as BOOLEAN,
+  uuid: {
+    name: 'uuid'
+  } as UUID
 }

@@ -8,8 +8,10 @@ export * from './constants'
 
 export * from './ast'
 
-export * from './compiler'
+export * from './compile'
 
-export * from './executor'
+export * from './execute'
 
 export * from './types'
+
+export * from './queryable'

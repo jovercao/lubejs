@@ -5,7 +5,6 @@ import {
   CompatibleExpression,
   Expression,
   AST,
-  ScalarType,
   Proxied,
   Func,
   Name,
@@ -50,108 +49,108 @@ import {
   ParenthesesCondition,
   UnaryCompareCondition,
   UnaryLogicCondition,
-  Binary,
   With,
   CrudStatement,
   SortInfo,
   ProxiedRowset,
   ProxiedTable
-} from "./ast";
+} from './ast'
 import {
   CONDITION_KIND,
   IDENTOFIER_KIND,
   OPERATION_KIND,
   $IsProxy,
-  SQL_SYMBOLE,
-} from "./constants";
-
+  SQL_SYMBOLE
+} from './constants'
+import { Binary, DbType, ScalarType, type } from './types'
 
 /**
  * 断言
  * @param except 预期结果
  * @param message 错误消息
  */
-export function assert(except: any, message: string): asserts except {
+export function assert (except: any, message: string): asserts except {
   if (!except) {
-    throw new Error(message);
+    throw new Error(message)
   }
 }
 
 /**
  * 返回表达式
  */
-export function ensureExpression<T extends ScalarType>(
+export function ensureExpression<T extends ScalarType> (
   expr: CompatibleExpression<T>
 ): Expression<T> {
   if (!(expr instanceof AST)) {
-    return Expression.literal(expr);
+    return Expression.literal(expr)
   }
-  return expr;
+  return expr
 }
 
 /**
  * 确保字段类型
  */
-export function ensureField<T extends ScalarType, N extends string>(
+export function ensureField<T extends ScalarType, N extends string> (
   name: Name<N> | Field<T, N>
 ): Field<T, N> {
   if (!(name instanceof AST)) {
-    return new Field(name);
+    return new Field(name)
   }
-  return name;
+  return name
 }
 
-export function ensureVariant<T extends string, N extends string>(
+export function ensureVariant<T extends string, N extends string> (
   name: N | Variant<T, N>
 ): Variant<T, N> {
-  if (typeof name === "string") {
-    return new Variant(name);
+  if (typeof name === 'string') {
+    return new Variant(name)
   }
-  return name;
+  return name
 }
 
 /**
  * 确保表格类型
  */
-export function ensureRowset<TModel extends RowObject>(
+export function ensureRowset<TModel extends RowObject> (
   name: Name<string> | Table<TModel>
 ): Table<TModel>
-export function ensureRowset<TModel extends RowObject>(
+export function ensureRowset<TModel extends RowObject> (
   name: Name<string> | Rowset<TModel>
 ): Rowset<TModel>
-export function ensureRowset<TModel extends RowObject>(
+export function ensureRowset<TModel extends RowObject> (
   name: Name<string> | Rowset<TModel> | Table<TModel>
-): Rowset<TModel> {
-  if (name instanceof AST) return name;
-  return new Table(name);
+): Rowset<TModel> | Table<TModel> {
+  if (name instanceof AST) return name
+  return new Table(name)
 }
 
-export function ensureProxiedRowset<TModel extends RowObject>(
-  name: Name<string> | Table<TModel>
-): ProxiedTable<TModel>
-export function ensureProxiedRowset<TModel extends RowObject>(
-  name: Name<string> | Rowset<TModel>
-): ProxiedRowset<TModel>
-export function ensureProxiedRowset<TModel extends RowObject>(
-  name: Name<string> | Rowset<TModel> | Table<TModel>
-): ProxiedRowset<TModel> {
+export function ensureProxiedRowset<T extends RowObject> (
+  name: Name<string> | Table<T>
+): ProxiedTable<T>
+export function ensureProxiedRowset<T extends RowObject> (
+  name: Name<string> | Rowset<T>
+): ProxiedRowset<T>
+export function ensureProxiedRowset<T extends RowObject> (
+  name: Name<string> | Rowset<T> | Table<T>
+): ProxiedRowset<T> | ProxiedTable<T> {
   if (isRowset(name)) {
     if (isProxiedRowset(name)) {
-      return name;
+      return name
     }
-    return makeProxiedRowset(name);
+    return makeProxiedRowset(name)
   }
-  return makeProxiedRowset(ensureRowset(name));
+  const table = ensureRowset<T>(name)
+  return makeProxiedRowset(table)
 }
 
 /**
  * 确保函数类型
  */
-export function ensureFunction<TName extends string>(
+export function ensureFunction<TName extends string> (
   name: Name<TName> | Func<TName>
 ): Func<TName> {
-  if (name instanceof AST) return name;
-  return new Func(name);
+  if (name instanceof AST) return name
+  return new Func(name)
 }
 
 /**
@@ -160,11 +159,10 @@ export function ensureFunction<TName extends string>(
 export function ensureProcedure<
   R extends ScalarType,
   O extends RowObject[] = [],
-  N extends string = string>(
-  name: Name<N> | Procedure<R, O, N>
-): Procedure<R, O, N> {
-  if (name instanceof AST) return name;
-  return new Procedure(name);
+  N extends string = string
+> (name: Name<N> | Procedure<R, O, N>): Procedure<R, O, N> {
+  if (name instanceof AST) return name
+  return new Procedure(name)
 }
 
 /**
@@ -172,16 +170,19 @@ export function ensureProcedure<
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition<T extends RowObject>(
+export function ensureCondition<T extends RowObject> (
   condition: Condition | WhereObject<T>,
   rowset?: Rowset<T> | Name<string>
 ): Condition {
-  if (condition instanceof Condition) return condition;
+  if (condition instanceof Condition) return condition
   const compares = Object.entries(condition).map(([key, value]) => {
     let field: Field<any, string>
     if (rowset) {
       if (Array.isArray(rowset)) {
-        field = new Field([...(Array.isArray(rowset) ? rowset : [rowset]), key] as Name<string>);
+        field = new Field([
+          ...(Array.isArray(rowset) ? rowset : [rowset]),
+          key
+        ] as Name<string>)
       } else if (rowset instanceof Rowset) {
         field = rowset.$(key as any)
       }
@@ -189,38 +190,48 @@ export function ensureCondition<T extends RowObject>(
       field = new Field(key)
     }
     if (value === null || value === undefined) {
-      return Condition.isNull(field);
+      return Condition.isNull(field)
     }
     if (Array.isArray(value)) {
-      return Condition.in(field, value);
+      return Condition.in(field, value)
     }
-    return Condition.eq(field, value as any);
-  });
+    return Condition.eq(field, value as any)
+  })
 
-  return compares.length >= 2 ? Condition.and.call(Condition, ...compares) : compares[0];
+  return compares.length >= 2
+    ? Condition.and.call(Condition, ...compares)
+    : compares[0]
 }
 const RowsetFixedProps: string[] = [
-  "field",
-  "clone",
-  "_",
-  "as",
-  "$alias",
-  "$",
-  "star",
-  "as",
-  "$builtin",
-  "$type",
-  "$kind",
-  "$statement",
-  "$select"
-];
+  'field',
+  'clone',
+  '_',
+  'as',
+  '$alias',
+  '$',
+  'star',
+  'as',
+  '$builtin',
+  '$type',
+  '$kind',
+  '$statement',
+  '$select'
+]
 
 /**
  * 将制作rowset的代理，用于通过属性访问字段
  */
-export function makeProxiedRowset<T extends Rowset>(rowset: T): Proxied<T> {
+export function makeProxiedRowset<T extends RowObject = any> (
+  rowset: Table<T>
+): ProxiedTable<T>
+export function makeProxiedRowset<T extends RowObject> (
+  rowset: Rowset<T>
+): ProxiedRowset<T>
+export function makeProxiedRowset<T extends RowObject> (
+  rowset: Table<T> | Rowset<T>
+): Proxied<T> {
   return new Proxy(rowset as any, {
-    get(target: any, prop: string | symbol | number): any {
+    get (target: any, prop: string | symbol | number): any {
       /**
        * 标记为Proxy
        */
@@ -238,37 +249,43 @@ export function makeProxiedRowset<T extends Rowset>(rowset: T): Proxied<T> {
 
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;
-      if (prop.startsWith("$")) {
-        prop = prop.substring(1);
+      if (prop.startsWith('$')) {
+        prop = prop.substring(1)
       }
-      return target.field(prop);
-    },
-  }) as any;
+      return target.field(prop)
+    }
+  }) as any
 }
 
-export function isScalar(value: any): value is ScalarType {
+export function isScalar (value: any): value is ScalarType {
   return (
-    typeof value === "string" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint" ||
-    typeof value === "number" ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'number' ||
     value === null ||
     value === undefined ||
     value instanceof Date ||
     isBinary(value)
-  );
+  )
 }
 
-export function isLiteral(value: any): value is Literal {
+export function isDbType (value: any): value is DbType {
+  if (!value) return false
+  return !!Reflect.get(type, value.name)
+}
+
+export function isLiteral (value: any): value is Literal {
   return value.$type === SQL_SYMBOLE.LITERAL
 }
 
-export function isSortInfo(value: any): value is SortInfo {
-  return value.$type === SQL_SYMBOLE.SORT;
+export function isSortInfo (value: any): value is SortInfo {
+  return value.$type === SQL_SYMBOLE.SORT
 }
 
-export function isBinary(value: any): value is Binary {
-  return value instanceof ArrayBuffer ||
+export function isBinary (value: any): value is Binary {
+  return (
+    value instanceof ArrayBuffer ||
     value instanceof Uint8Array ||
     value instanceof Uint16Array ||
     value instanceof Uint32Array ||
@@ -281,9 +298,12 @@ export function isBinary(value: any): value is Binary {
     value instanceof Float64Array ||
     value instanceof Uint8ClampedArray ||
     value instanceof SharedArrayBuffer
+  )
 }
 
-export function isProxiedRowset<T extends RowObject>(rowset: Rowset<T>): rowset is ProxiedRowset<T> {
+export function isProxiedRowset<T extends RowObject> (
+  rowset: Rowset<T>
+): rowset is ProxiedRowset<T> {
   return Reflect.get(rowset, $IsProxy) === true
 }
 
@@ -339,29 +359,29 @@ export function isProxiedRowset<T extends RowObject>(rowset: Rowset<T>): rowset 
 //   return cls;
 // }
 
-export function pickName(name: Name<string>): string {
-  if (typeof name === "string") {
-    return name;
+export function pickName (name: Name<string>): string {
+  if (typeof name === 'string') {
+    return name
   }
-  return name[name.length - 1];
+  return name[name.length - 1]
 }
 
-export function pathName<T extends string>(name: Name<T>): PathedName<T> {
-  if (typeof name === "string") {
-    return [name];
+export function pathName<T extends string> (name: Name<T>): PathedName<T> {
+  if (typeof name === 'string') {
+    return [name]
   }
-  return name;
+  return name
 }
 
-export function isPlainObject(obj: any): boolean {
-  return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
+export function isPlainObject (obj: any): boolean {
+  return [Object.prototype, null].includes(Object.getPrototypeOf(obj))
 }
 
-function fix(num: number, digits: number): string {
-  return num.toString().padStart(digits, "0");
+function fix (num: number, digits: number): string {
+  return num.toString().padStart(digits, '0')
 }
 
-export function dateToString(date: Date): string {
+export function dateToString (date: Date): string {
   return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(
     date.getDate(),
     2
@@ -369,43 +389,43 @@ export function dateToString(date: Date): string {
     date.getSeconds(),
     2
   )}.${fix(date.getMilliseconds(), 3)}${
-    date.getTimezoneOffset() > 0 ? "-" : "+"
-  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
+    date.getTimezoneOffset() > 0 ? '-' : '+'
+  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`
 }
 
-export function isRaw(value: any): value is Raw {
-  return value.$type === SQL_SYMBOLE.RAW;
+export function isRaw (value: any): value is Raw {
+  return value.$type === SQL_SYMBOLE.RAW
 }
 
-export function isSelect(value: any): value is Select {
-  return value.$type === SQL_SYMBOLE.SELECT;
+export function isSelect (value: any): value is Select {
+  return value.$type === SQL_SYMBOLE.SELECT
 }
 
-export function isUpdate(value: any): value is Update {
-  return value.$type === SQL_SYMBOLE.UPDATE;
+export function isUpdate (value: any): value is Update {
+  return value.$type === SQL_SYMBOLE.UPDATE
 }
 
-export function isDelete(value: any): value is Delete {
-  return value.$type === SQL_SYMBOLE.DELETE;
+export function isDelete (value: any): value is Delete {
+  return value.$type === SQL_SYMBOLE.DELETE
 }
 
-export function isInsert(value: any): value is Insert {
-  return value.$type === SQL_SYMBOLE.INSERT;
+export function isInsert (value: any): value is Insert {
+  return value.$type === SQL_SYMBOLE.INSERT
 }
 
-export function isAssignment(value: any): value is Assignment {
-  return value.$type === SQL_SYMBOLE.ASSIGNMENT;
+export function isAssignment (value: any): value is Assignment {
+  return value.$type === SQL_SYMBOLE.ASSIGNMENT
 }
 
-export function isDeclare(value: any): value is Declare {
-  return value.$type === SQL_SYMBOLE.DECLARE;
+export function isDeclare (value: any): value is Declare {
+  return value.$type === SQL_SYMBOLE.DECLARE
 }
 
-export function isExecute(value: any): value is Execute {
-  return value.$type === SQL_SYMBOLE.EXECUTE;
+export function isExecute (value: any): value is Execute {
+  return value.$type === SQL_SYMBOLE.EXECUTE
 }
 
-export function isStatement(value: any): value is Statement {
+export function isStatement (value: any): value is Statement {
   return (
     isSelect(value) ||
     isUpdate(value) ||
@@ -415,72 +435,69 @@ export function isStatement(value: any): value is Statement {
     isAssignment(value) ||
     isWith(value) ||
     isExecute(value)
-  );
-}
-
-export function isCrudStatement(value: any): value is CrudStatement {
-  return (
-    isSelect(value) ||
-    isUpdate(value) ||
-    isDelete(value) ||
-    isInsert(value)
   )
 }
 
-export function isIdentifier(value: any): value is Identifier {
-  return value.$type === SQL_SYMBOLE.IDENTIFIER;
+export function isCrudStatement (value: any): value is CrudStatement {
+  return (
+    isSelect(value) || isUpdate(value) || isDelete(value) || isInsert(value)
+  )
 }
 
-export function isTable(value: any): value is Table {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE;
+export function isIdentifier (value: any): value is Identifier {
+  return value.$type === SQL_SYMBOLE.IDENTIFIER
 }
 
-export function isField(value: any): value is Field {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD;
+export function isTable (value: any): value is Table {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE
 }
 
-export function isConstant(value: any): value is Literal {
-  return value.$type === SQL_SYMBOLE.LITERAL;
+export function isField (value: any): value is Field {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD
 }
 
-export function isNamedSelect(value: any): value is NamedSelect {
-  return value.$type === SQL_SYMBOLE.NAMED_SELECT;
+export function isConstant (value: any): value is Literal {
+  return value.$type === SQL_SYMBOLE.LITERAL
 }
 
-export function isWithSelect(value: any): value is NamedSelect {
-  return isNamedSelect(value) && value.$inWith;
+export function isNamedSelect (value: any): value is NamedSelect {
+  return value.$type === SQL_SYMBOLE.NAMED_SELECT
 }
 
-export function isWith(value: any): value is With {
+export function isWithSelect (value: any): value is NamedSelect {
+  return isNamedSelect(value) && value.$inWith
+}
+
+export function isWith (value: any): value is With {
   return value && value.$type === SQL_SYMBOLE.WITH
 }
 
-export function isTableFuncInvoke(value: any): value is TableFuncInvoke {
-  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
+export function isTableFuncInvoke (value: any): value is TableFuncInvoke {
+  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE
 }
 
-export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
-  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
+export function isScalarFuncInvoke (value: any): value is ScalarFuncInvoke {
+  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE
 }
 
-export function isTableVariant(value: any): value is TableVariant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
+export function isTableVariant (value: any): value is TableVariant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT
 }
 
-export function isVariant(value: any): value is Variant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
+export function isVariant (value: any): value is Variant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT
 }
 
-export function isRowset(value: any): value is Rowset {
+export function isRowset (value: any): value is Rowset {
   return (
     isTable(value) ||
     isNamedSelect(value) ||
     isTableFuncInvoke(value) ||
     isTableVariant(value)
-  );
+  )
 }
 
-export function isExpression(value: any): value is Expression {
+export function isExpression (value: any): value is Expression {
   return (
     isField(value) ||
     isConstant(value) ||
@@ -491,104 +508,110 @@ export function isExpression(value: any): value is Expression {
     isBracket(value) ||
     isValuedSelect(value) ||
     isParameter(value)
-  );
+  )
 }
 
-export function isCase(value: any): value is Case {
-  return value.$type === SQL_SYMBOLE.CASE;
+export function isCase (value: any): value is Case {
+  return value.$type === SQL_SYMBOLE.CASE
 }
 
-export function isBracket(value: any): value is ParenthesesExpression {
-  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
+export function isBracket (value: any): value is ParenthesesExpression {
+  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION
 }
 
-export function isValuedSelect(value: any): value is ValuedSelect {
-  return value.$type === SQL_SYMBOLE.VALUED_SELECT;
+export function isValuedSelect (value: any): value is ValuedSelect {
+  return value.$type === SQL_SYMBOLE.VALUED_SELECT
 }
 
-export function isOperation(value: any): value is Operation {
-  return value.$type === SQL_SYMBOLE.OPERATION;
+export function isOperation (value: any): value is Operation {
+  return value.$type === SQL_SYMBOLE.OPERATION
 }
 
-export function isUnaryOperation(value: Operation): value is UnaryOperation {
-  return value.$kind === OPERATION_KIND.UNARY;
+export function isUnaryOperation (value: Operation): value is UnaryOperation {
+  return value.$kind === OPERATION_KIND.UNARY
 }
 
-export function isBinaryOperation(value: Operation): value is BinaryOperation {
-  return value.$kind === OPERATION_KIND.BINARY;
+export function isBinaryOperation (value: Operation): value is BinaryOperation {
+  return value.$kind === OPERATION_KIND.BINARY
 }
 
-export function isConvertOperation(value: Operation): value is ConvertOperation {
-  return value.$kind === OPERATION_KIND.CONVERT;
+export function isConvertOperation (
+  value: Operation
+): value is ConvertOperation {
+  return value.$kind === OPERATION_KIND.CONVERT
 }
 
-export function isParameter(value: any): value is Parameter {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER;
+export function isParameter (value: any): value is Parameter {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER
 }
 
-export function isStar(value: any): value is Star {
-  return value.$type === SQL_SYMBOLE.STAR;
+export function isStar (value: any): value is Star {
+  return value.$type === SQL_SYMBOLE.STAR
 }
 
-export function isBuiltIn(value: any): value is BuiltIn {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN;
+export function isBuiltIn (value: any): value is BuiltIn {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN
 }
 
-export function isColumn(value: any): value is Column {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN;
+export function isColumn (value: any): value is Column {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN
 }
 
-export function isCondition(value: any): value is Condition {
-  return value.$type === SQL_SYMBOLE.CONDITION;
+export function isCondition (value: any): value is Condition {
+  return value.$type === SQL_SYMBOLE.CONDITION
 }
 
-export function isUnaryCompareCondition(
+export function isUnaryCompareCondition (
   value: Condition
 ): value is UnaryCompareCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE
 }
 
-export function isBinaryCompareCondition(
+export function isBinaryCompareCondition (
   value: Condition
 ): value is BinaryCompareCondition {
-  return value.$kind === CONDITION_KIND.BINARY_COMPARE;
+  return value.$kind === CONDITION_KIND.BINARY_COMPARE
 }
 
-export function isUnaryLogicCondition(
+export function isUnaryLogicCondition (
   value: Condition
 ): value is UnaryLogicCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE
 }
 
-export function isBinaryLogicCondition(
+export function isBinaryLogicCondition (
   value: Condition
 ): value is BinaryLogicCondition {
-  return value.$kind === CONDITION_KIND.BINARY_LOGIC;
+  return value.$kind === CONDITION_KIND.BINARY_LOGIC
 }
 
-export function isGroupCondition(value: Condition): value is ParenthesesCondition {
-  return value.$kind === CONDITION_KIND.BRACKET_CONDITION;
+export function isGroupCondition (
+  value: Condition
+): value is ParenthesesCondition {
+  return value.$kind === CONDITION_KIND.BRACKET_CONDITION
 }
 
-export function isExistsCondition(value: Condition): value is ExistsCondition {
-  return value.$kind === CONDITION_KIND.EXISTS;
+export function isExistsCondition (value: Condition): value is ExistsCondition {
+  return value.$kind === CONDITION_KIND.EXISTS
 }
 
-export function isDocument(value: any): value is Document {
-  return value.$type === SQL_SYMBOLE.DOCUMENT;
+export function isDocument (value: any): value is Document {
+  return value.$type === SQL_SYMBOLE.DOCUMENT
 }
 
-export function invalidAST(type: string, value: any) {
-  console.debug(`Invalid ${type} AST：`, value);
-  throw new Error(`Invalid ${type} AST.`);
+export function invalidAST (type: string, value: any) {
+  console.debug(`Invalid ${type} AST：`, value)
+  throw new Error(`Invalid ${type} AST.`)
 }
 
-export function clone<T>(value: T): T {
+export function clone<T> (value: T): T {
   if (Array.isArray(value)) {
-    return value.map(item => item instanceof AST ? item.clone() : clone(item)) as any
+    return value.map(item =>
+      item instanceof AST ? item.clone() : clone(item)
+    ) as any
   }
   if (value && typeof value === 'object') {
-    const copied: any = {};
+    const copied: any = {}
     Object.entries(value).forEach(([k, v]) => {
       copied[k] = v instanceof AST ? v.clone() : clone(v)
     })

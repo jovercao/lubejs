@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ScalarType, Select } from "./ast";
+import { ScalarType } from ".";
+import { Select } from "./ast";
 
 /**
  * 外键架构
