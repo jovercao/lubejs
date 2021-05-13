@@ -4,7 +4,7 @@
   "description": "An easy-to-use nodejs oracledb client",
   "main": "dist/index.js",
   "directories": {
-    "lib": "lib"
+    "dist": "dist"
   },
   "scripts": {
     "test": "npm run build && mocha test",

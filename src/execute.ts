@@ -525,7 +525,13 @@ export class Executor extends EventEmitter {
           return sql
         })
       )
-      const res = await this.query(docs)
+      let res: QueryResult<T>;
+      // 批量操作开启事务
+      if (this instanceof Lube && !this.isTrans) {
+        res = await this.trans(async (executer) => await executer.query(docs));
+      } else {
+        res = await this.query(docs)
+      }
       return res.rowsAffected
     }
     const sets = setsOrItems as Assignment[] | InputObject<T>

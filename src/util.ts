@@ -16,7 +16,7 @@ import {
   ParenthesesExpression,
   BuiltIn,
   Case,
-  Column,
+  SelectColumn,
   Literal,
   ConvertOperation,
   Declare,
@@ -553,7 +553,7 @@ export function isBuiltIn (value: any): value is BuiltIn {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN
 }
 
-export function isColumn (value: any): value is Column {
+export function isColumn (value: any): value is SelectColumn {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN
 }
 

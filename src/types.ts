@@ -1,8 +1,13 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/ban-types */
 // interface QueryParameter {
 //    name: string,
 //    value: any,
 //    direction?: ParameterDirection
 // }
+
+import { RowObject } from "./ast"
 
 // **********************************类型声明******************************************
 
@@ -21,39 +26,49 @@ export type ScalarType =
   | Binary
   | bigint
 
+export type ScalarTypeConstructor =
+  | String
+  | Date
+  | Boolean
+  | Number
+  | BigInt
+  | ArrayBuffer
+  | Buffer
+  | SharedArrayBuffer
+
 export type INT64 = {
-  readonly name: 'int64'
+  readonly name: 'INT64'
 }
 
 export type INT32 = {
-  readonly name: 'int32'
+  readonly name: 'INT32'
   readonly length?: 8 | 16 | 32 | 64
 }
 
 export type INT16 = {
-  readonly name: 'int16'
+  readonly name: 'INT16'
 }
 
 export type INT8 = {
-  readonly name: 'int8'
+  readonly name: 'INT8'
 }
 
 export type NUMERIC = {
-  readonly name: 'numeric'
+  readonly name: 'NUMERIC'
   readonly precision: number
   readonly digit?: number
 }
 
 export type FLOAT = {
-  readonly name: 'float'
+  readonly name: 'FLOAT'
 }
 
 export type DOUBLE = {
-  readonly name: 'double'
+  readonly name: 'DOUBLE'
 }
 
 export type STRING = {
-  readonly name: 'string'
+  readonly name: 'STRING'
   /**
    * 为0时表示无限大
    */
@@ -61,24 +76,49 @@ export type STRING = {
 }
 
 export type DATE = {
-  readonly name: 'date'
+  readonly name: 'DATE'
 }
 
 export type DATETIME = {
-  readonly name: 'datetime'
+  readonly name: 'DATETIME'
 }
 
 export type BINARY = {
-  readonly name: 'binary'
+  readonly name: 'BINARY'
   readonly length: number
 }
 
 export type BOOLEAN = {
-  readonly name: 'boolean'
+  readonly name: 'BOOLEAN'
 }
 
 export type UUID = {
-  readonly name: 'uuid'
+  readonly name: 'UUID'
+}
+
+/**
+ * 行标识列，如sqlserver的timestamp
+ */
+export type ROWFLAG = {
+  readonly name: 'ROWFLAG'
+}
+
+/**
+ * 对象类型
+ */
+export type OBJECT<T extends object = any> = {
+  readonly name: 'OBJECT'
+}
+
+/**
+ * 列表类型，即数组
+ */
+export type LIST<T extends DbType> = {
+  readonly name: 'LIST'
+  /**
+   * 元素类型
+   */
+  readonly type: DbType;
 }
 
 export type DbType =
@@ -95,25 +135,72 @@ export type DbType =
   | BINARY
   | BOOLEAN
   | UUID
+  | ROWFLAG
+  | OBJECT
+  | LIST<any>
+
+
 
 /**
  * 数据库类型映射
  */
-export type DbTypeMap = {
-  int8: number
-  int16: number
-  int32: number
-  int64: number
-  numeric: number
-  float: number
-  double: number
-  string: string
-  date: Date
-  datetime: Date
-  binary: Binary
-  boolean: boolean
-  uuid: string
-}
+// export type DbTypeMap = {
+//   int8: number
+//   int16: number
+//   int32: number
+//   int64: number
+//   numeric: number
+//   float: number
+//   double: number
+//   string: string
+//   date: Date
+//   datetime: Date
+//   binary: Binary
+//   boolean: boolean
+//   uuid: string
+//   rowflag: any
+//   object: any
+//   list: any[]
+// }
+
+export type DbTypeToTsType<T extends DbType> =
+  T extends INT8 | INT16 | INT32 | INT64 | Number | FLOAT | DOUBLE
+  ? number
+  : T extends STRING | UUID
+  ? string
+  : T extends DATE | DATETIME
+  ? Date
+  : T extends BOOLEAN
+  ? boolean
+  : T extends BINARY
+  ? Binary
+  : T extends ROWFLAG
+  ? any
+  : T extends OBJECT<infer M>
+  ? M
+  : T extends LIST<infer M>
+  ? DbTypeToTsType<M>[]
+  : never;
+
+/**
+ * 转换
+ */
+export type TsTypeToDbType<T> =
+  T extends string
+  ? STRING
+  : T extends number
+  ? NUMERIC | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
+  : T extends Date
+  ? DATETIME | DATE
+  : T extends boolean
+  ? BOOLEAN
+  : T extends Binary
+  ? BINARY
+  : T extends Array<infer M>
+  ? LIST<TsTypeToDbType<M>>
+  : T extends RowObject
+  ? OBJECT<T>
+  : never
 
 /**
  * 解释值的类型
@@ -141,46 +228,57 @@ export function parseValueType (value: ScalarType): DbType {
 
 export const type = {
   int8: {
-    name: 'int8'
+    name: 'INT8'
   } as INT8,
-  int16: { name: 'int16' } as INT16,
-  int32: { name: 'int32' } as INT32,
-  int64: { name: 'int64' } as INT64,
+  int16: { name: 'INT16' } as INT16,
+  int32: { name: 'INT32' } as INT32,
+  int64: { name: 'INT64' } as INT64,
   numeric (precision: number, digit?: number): NUMERIC {
     return {
-      name: 'numeric',
+      name: 'NUMERIC',
       precision,
       digit
     }
   },
   float: {
-    name: 'float'
+    name: 'FLOAT'
   } as FLOAT,
   double: {
-    name: 'double'
+    name: 'DOUBLE'
   } as DOUBLE,
   string (length: number): STRING {
     return {
-      name: 'string',
+      name: 'STRING',
       length
     }
   },
   date: {
-    name: 'date'
+    name: 'DATE'
   } as DATE,
   datetime: {
-    name: 'datetime'
+    name: 'DATETIME'
   } as DATETIME,
   binary (length: number): BINARY {
     return {
-      name: 'binary',
+      name: 'BINARY',
       length
     }
   },
   boolean: {
-    name: 'boolean'
+    name: 'BOOLEAN'
   } as BOOLEAN,
   uuid: {
-    name: 'uuid'
-  } as UUID
+    name: 'UUID'
+  } as UUID,
+  object: (<T extends object = any>(): OBJECT<T> => {
+    return {
+      name: 'OBJECT'
+    }
+  }),
+  list<T extends DbType>(type: T): LIST<DbTypeToTsType<T>> {
+    return {
+      name: 'LIST',
+      type
+    }
+  }
 }

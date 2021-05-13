@@ -37,7 +37,7 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION
 } from './constants'
-import { DbType, DbTypeMap, parseValueType } from './types'
+import { DbType, parseValueType, DbTypeToTsType, TsTypeToDbType } from './types'
 import { ScalarType } from './types'
 
 /**
@@ -117,7 +117,7 @@ export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @ty
   ? {
       [K in N]: V
     }
-  : T extends Column<infer V, infer N>
+  : T extends SelectColumn<infer V, infer N>
   ? {
       [K in N]: V
     }
@@ -140,7 +140,7 @@ export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @ty
  */
 export type SelectCloumn =
   | Field<ScalarType, string>
-  | Column<ScalarType, string>
+  | SelectColumn<ScalarType, string>
   | Star<any>
 
 export type RowTypeByColumns<
@@ -553,8 +553,8 @@ export abstract class Expression<
   /**
    * 将表达式转换为列，并指定列名
    */
-  as<N extends string> (name: N): Column<T, N> {
-    return new Column<T, N>(name, this)
+  as<N extends string> (name: N): SelectColumn<T, N> {
+    return new SelectColumn<T, N>(name, this)
   }
 
   /**
@@ -567,7 +567,7 @@ export abstract class Expression<
   /**
    * 将当前表达式转换为指定的类型
    */
-  to<T extends DbType> (type: T): Expression<DbTypeMap[T['name']]> {
+  to<T extends DbType> (type: T): Expression<DbTypeToTsType<T>> {
     return Expression.convert(this, type)
   }
 
@@ -743,7 +743,7 @@ export abstract class Expression<
   static convert<T extends DbType> (
     expr: CompatibleExpression<ScalarType>,
     toType: T
-  ): Expression<DbTypeMap[T['name']]> {
+  ): Expression<DbTypeToTsType<T>> {
     return new ConvertOperation(expr, toType) as any
   }
 
@@ -1574,7 +1574,7 @@ applyMixins(TableVariant, [Identifier])
 /**
  * 列表达式
  */
-export class Column<
+export class SelectColumn<
   T extends ScalarType = ScalarType,
   N extends string = string
 > extends Identifier<N> {
@@ -2550,7 +2550,7 @@ export type SelectAction = {
   >
   (...exprs: CompatibleExpression[]): Select<any>
   <T extends RowObject>(
-    ...columns: (Column | CompatibleExpression | Star<any>)[]
+    ...columns: (SelectColumn | CompatibleExpression | Star<any>)[]
   ): Select<T>
 }
 
@@ -3414,7 +3414,7 @@ export class Select<T extends RowObject = any> extends Fromable {
   $offset?: number
   $limit?: number
   $distinct?: boolean
-  $columns: (Expression<ScalarType> | Column<ScalarType, string> | Star<any>)[]
+  $columns: (Expression<ScalarType> | SelectColumn<ScalarType, string> | Star<any>)[]
   $sorts?: SortInfo[]
   $groups?: Expression<any>[]
   $having?: Condition
@@ -3426,7 +3426,7 @@ export class Select<T extends RowObject = any> extends Fromable {
   constructor (
     ...columns: (
       | CompatibleExpression<ScalarType>
-      | Column<ScalarType, string>
+      | SelectColumn<ScalarType, string>
       | Star<any>
     )[]
   )
@@ -3440,7 +3440,7 @@ export class Select<T extends RowObject = any> extends Fromable {
       const results = columns[0]
       this.$columns = Object.entries(results as InputObject<T>).map(
         ([name, expr]: [string, CompatibleExpression]) => {
-          return new Column(name, ensureExpression(expr))
+          return new SelectColumn(name, ensureExpression(expr))
         }
       )
       return
@@ -3448,7 +3448,7 @@ export class Select<T extends RowObject = any> extends Fromable {
     // 实例化
     this.$columns = (columns as (
       | CompatibleExpression<ScalarType>
-      | Column<ScalarType, string>
+      | SelectColumn<ScalarType, string>
     )[]).map(item => {
       if (item instanceof AST) return item
       return ensureExpression(item)
@@ -3998,9 +3998,10 @@ export class Parameter<T extends ScalarType = any, N extends string = string>
    */
   static input<T extends ScalarType, N extends string> (
     name: N,
-    value: T
+    value: T,
+    type?: TsTypeToDbType<T>
   ): Parameter<T, N> {
-    return new Parameter(name, null, value, PARAMETER_DIRECTION.INPUT)
+    return new Parameter(name, type, value, PARAMETER_DIRECTION.INPUT)
   }
 
   /**
@@ -4009,8 +4010,8 @@ export class Parameter<T extends ScalarType = any, N extends string = string>
   static output<T extends DbType, N extends string> (
     name: N,
     type: T,
-    value?: DbTypeMap[T['name']]
-  ): Parameter<DbTypeMap[T['name']], N> {
+    value?: DbTypeToTsType<T>
+  ): Parameter<DbTypeToTsType<T>, N> {
     return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT)
   }
 }

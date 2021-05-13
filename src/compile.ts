@@ -7,7 +7,7 @@ import {
   Identifier,
   Literal,
   When,
-  Column,
+  SelectColumn,
   Declare,
   Delete,
   Insert,
@@ -457,7 +457,7 @@ export abstract class Compiler {
   }
 
   protected compileColumn (
-    column: Column<ScalarType, string> | Star | Expression<ScalarType>,
+    column: SelectColumn<ScalarType, string> | Star | Expression<ScalarType>,
     params: Set<Parameter<ScalarType, string>>,
     parent: AST
   ): string {
