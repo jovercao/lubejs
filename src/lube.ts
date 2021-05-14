@@ -8,26 +8,64 @@ import { Parameter } from './ast'
 
 export type ConnectOptions = {
   /**
-   * 数据库方言，必须安装相应的驱动才可正常使用
+   * 数据库方言(必须是已注册的言)，与driver二选一，必须安装相应的驱动才可正常使用
    */
   dialect?: string
   /**
    * 驱动程序，与dialect二选一，优先使用driver
    */
   driver?: Driver
-  host: string
-  port?: number
-  user: string
-  password: string
-  database: string
-  poolMax: number
-  poolMin: number
-  idelTimeout: number
   /**
-   * 其它配置项，针对各种数据的专门配置
+   * 主机名
    */
-  [key: string]: any
+  host: string
+  /**
+   * 端口号
+   */
+  port?: number
+  /**
+   * 连接用户名
+   */
+  user: string
+  /**
+   * 密码
+   */
+  password: string
+  /**
+   * 数据库名称
+   */
+  database: string
+  /**
+   * 连接池最大连接数，单位为秒
+   */
+  maxConnections: number
+  /**
+   * 连接池最小连接数，默认为1
+   */
+  minConnections: number
+  /**
+   * 连接超时时长，单位: ms，默认为15000ms
+   */
+  connectionTimeout?: number
+  /**
+   * 单个查询超时时长,单位: ms，默认为15000ms
+   */
+  requestTimeout?: number
+  /**
+   * 回收未使用的连接等待时长，单位: ms，默认为30000ms
+   */
+  recoveryConnection: number
+  /**
+   * 编译选项
+   */
   compileOptions?: CompileOptions
+}
+
+const defaultConnectOptions: Partial<ConnectOptions> = {
+  connectionTimeout: 30,
+  requestTimeout: 10 * 60,
+  minConnections: 0,
+  maxConnections: 5,
 }
 
 export type TransactionHandler<T> = (
@@ -168,15 +206,15 @@ export async function connect (arg: ConnectOptions | string): Promise<Lube> {
         ...options
       }
     } catch (error) {
-      throw new Error('Unsupport or uninstalled dialect: ' + dialect)
+      throw new Error('Unregister or uninstalled dialect: ' + dialect)
     }
   } else {
-    config = arg
+    config = Object.assign({}, defaultConnectOptions, arg)
   }
 
   assert(
     config.driver || config.dialect,
-    'One of the dialect and driver items must be specified.'
+    'One of the dialect and driver must be specified.'
   )
 
   if (!config.driver) {
