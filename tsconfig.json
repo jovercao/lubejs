@@ -12,6 +12,7 @@
     "node_modules",
     "test",
     "dist",
-    "**/node_modules/*"
+    "**/node_modules/*",
+    "example"
   ]
 }
