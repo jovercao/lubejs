@@ -4,7 +4,7 @@
 
 ## Hierarchy
 
-  ↳ [Executor](_executor_.executor.md)
+* [Executor](_execute_.executor.md)
 
   ↳ **Lube**
 
@@ -16,36 +16,27 @@
 
 ### Properties
 
-* [_provider](_lube_.lube.md#private-_provider)
+* [_emitter](_lube_.lube.md#protected-_emitter)
 * [compiler](_lube_.lube.md#readonly-compiler)
-* [doQuery](_lube_.lube.md#doquery)
 * [isTrans](_lube_.lube.md#readonly-istrans)
+* [provider](_lube_.lube.md#private-provider)
 
 ### Methods
 
-* [addListener](_lube_.lube.md#addlistener)
 * [close](_lube_.lube.md#close)
 * [delete](_lube_.lube.md#delete)
 * [emit](_lube_.lube.md#emit)
-* [eventNames](_lube_.lube.md#eventnames)
 * [execute](_lube_.lube.md#execute)
 * [find](_lube_.lube.md#find)
-* [getMaxListeners](_lube_.lube.md#getmaxlisteners)
+* [getQueryable](_lube_.lube.md#getqueryable)
 * [insert](_lube_.lube.md#insert)
-* [listenerCount](_lube_.lube.md#listenercount)
-* [listeners](_lube_.lube.md#listeners)
 * [off](_lube_.lube.md#off)
 * [on](_lube_.lube.md#on)
-* [once](_lube_.lube.md#once)
-* [prependListener](_lube_.lube.md#prependlistener)
-* [prependOnceListener](_lube_.lube.md#prependoncelistener)
 * [query](_lube_.lube.md#query)
 * [queryScalar](_lube_.lube.md#queryscalar)
-* [rawListeners](_lube_.lube.md#rawlisteners)
-* [removeAllListeners](_lube_.lube.md#removealllisteners)
-* [removeListener](_lube_.lube.md#removelistener)
+* [queryable](_lube_.lube.md#queryable)
+* [save](_lube_.lube.md#save)
 * [select](_lube_.lube.md#select)
-* [setMaxListeners](_lube_.lube.md#setmaxlisteners)
 * [trans](_lube_.lube.md#trans)
 * [update](_lube_.lube.md#update)
 
@@ -53,48 +44,41 @@
 
 ###  constructor
 
-\+ **new Lube**(`provider`: [IDbProvider](../interfaces/_lube_.idbprovider.md), `options`: [ConnectOptions](../interfaces/_lube_.connectoptions.md)): *[Lube](_lube_.lube.md)*
+\+ **new Lube**(`provider`: [IDbProvider](../interfaces/_lube_.idbprovider.md)): *[Lube](_lube_.lube.md)*
 
-*Overrides [Executor](_executor_.executor.md).[constructor](_executor_.executor.md#protected-constructor)*
+*Overrides [Executor](_execute_.executor.md).[constructor](_execute_.executor.md#protected-constructor)*
 
-Defined in src/lube.ts:32
+Defined in lube.ts:108
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
 `provider` | [IDbProvider](../interfaces/_lube_.idbprovider.md) |
-`options` | [ConnectOptions](../interfaces/_lube_.connectoptions.md) |
 
 **Returns:** *[Lube](_lube_.lube.md)*
 
 ## Properties
 
-### `Private` _provider
+### `Protected` _emitter
 
-• **_provider**: *[IDbProvider](../interfaces/_lube_.idbprovider.md)*
+• **_emitter**: *EventEmitter* = new EventEmitter()
 
-Defined in src/lube.ts:32
+*Inherited from [Lube](_lube_.lube.md).[_emitter](_lube_.lube.md#protected-_emitter)*
+
+Defined in execute.ts:114
 
 ___
 
 ### `Readonly` compiler
 
-• **compiler**: *[Compiler](_compiler_.compiler.md)*
+• **compiler**: *[Compiler](_compile_.compiler.md)*
 
 *Inherited from [Lube](_lube_.lube.md).[compiler](_lube_.lube.md#readonly-compiler)*
 
-Defined in src/executor.ts:97
+Defined in execute.ts:142
 
-___
-
-###  doQuery
-
-• **doQuery**: *[QueryHandler](../interfaces/_executor_.queryhandler.md)*
-
-*Inherited from [Lube](_lube_.lube.md).[doQuery](_lube_.lube.md#doquery)*
-
-Defined in src/executor.ts:96
+编译器
 
 ___
 
@@ -104,41 +88,25 @@ ___
 
 *Inherited from [Lube](_lube_.lube.md).[isTrans](_lube_.lube.md#readonly-istrans)*
 
-Defined in src/executor.ts:99
+Defined in execute.ts:147
 
-## Methods
-
-###  addListener
-
-▸ **addListener**(`event`: string | symbol, `listener`: function): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[addListener](_lube_.lube.md#addlistener)*
-
-Defined in node_modules/@types/node/globals.d.ts:553
-
-**Parameters:**
-
-▪ **event**: *string | symbol*
-
-▪ **listener**: *function*
-
-▸ (...`args`: any[]): *void*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`...args` | any[] |
-
-**Returns:** *this*
+是否在事务当中
 
 ___
+
+### `Private` provider
+
+• **provider**: *[IDbProvider](../interfaces/_lube_.idbprovider.md)*
+
+Defined in lube.ts:108
+
+## Methods
 
 ###  close
 
 ▸ **close**(): *Promise‹void›*
 
-Defined in src/lube.ts:81
+Defined in lube.ts:167
 
 **Returns:** *Promise‹void›*
 
@@ -146,18 +114,22 @@ ___
 
 ###  delete
 
-▸ **delete**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `where?`: [UnsureCondition](../modules/_lube_.md#unsurecondition)): *Promise‹number›*
+▸ **delete**‹**T**›(`table`: [Table](_ast_.table.md)‹T, string› | [Name](../modules/_ast_.md#name)‹string›, `where?`: [WhereObject](../modules/_ast_.md#whereobject)‹T› | [Condition](_ast_.condition.md) | function): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[delete](_lube_.lube.md#delete)*
 
-Defined in src/executor.ts:309
+Defined in execute.ts:563
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`where?` | [UnsureCondition](../modules/_lube_.md#unsurecondition) |
+`table` | [Table](_ast_.table.md)‹T, string› &#124; [Name](../modules/_ast_.md#name)‹string› |
+`where?` | [WhereObject](../modules/_ast_.md#whereobject)‹T› &#124; [Condition](_ast_.condition.md) &#124; function |
 
 **Returns:** *Promise‹number›*
 
@@ -165,347 +137,269 @@ ___
 
 ###  emit
 
-▸ **emit**(`event`: string | symbol, ...`args`: any[]): *boolean*
+▸ **emit**(`event`: string, ...`args`: any): *this*
 
 *Inherited from [Lube](_lube_.lube.md).[emit](_lube_.lube.md#emit)*
 
-Defined in node_modules/@types/node/globals.d.ts:563
+Defined in execute.ts:171
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`event` | string &#124; symbol |
-`...args` | any[] |
+`event` | string |
+`...args` | any |
 
-**Returns:** *boolean*
-
-___
-
-###  eventNames
-
-▸ **eventNames**(): *Array‹string | symbol›*
-
-*Inherited from [Lube](_lube_.lube.md).[eventNames](_lube_.lube.md#eventnames)*
-
-Defined in node_modules/@types/node/globals.d.ts:568
-
-**Returns:** *Array‹string | symbol›*
+**Returns:** *this*
 
 ___
 
 ###  execute
 
-▸ **execute**‹**T**›(`spname`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `params`: [UnsureExpression](../modules/_lube_.md#unsureexpression)[]): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹T››*
+▸ **execute**‹**R**, **O**›(`spName`: [Name](../modules/_ast_.md#name)‹string› | [Procedure](_ast_.procedure.md)‹R, O›, `params?`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹O[0], R, O››*
 
 *Inherited from [Lube](_lube_.lube.md).[execute](_lube_.lube.md#execute)*
 
-Defined in src/executor.ts:316
+Defined in execute.ts:579
 
 **Type parameters:**
 
-▪ **T**
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`spname` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`params` | [UnsureExpression](../modules/_lube_.md#unsureexpression)[] |
+`spName` | [Name](../modules/_ast_.md#name)‹string› &#124; [Procedure](_ast_.procedure.md)‹R, O› |
+`params?` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹T››*
-
-▸ **execute**‹**T**›(`spname`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `params`: [Parameter](_ast_.parameter.md)[]): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹T››*
-
-*Inherited from [Lube](_lube_.lube.md).[execute](_lube_.lube.md#execute)*
-
-Defined in src/executor.ts:317
-
-**Type parameters:**
-
-▪ **T**
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`spname` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`params` | [Parameter](_ast_.parameter.md)[] |
-
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹T››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹O[0], R, O››*
 
 ___
 
 ###  find
 
-▸ **find**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `where`: [UnsureCondition](../modules/_lube_.md#unsurecondition), `fields?`: string[]): *Promise‹T›*
+▸ **find**‹**T**›(`table`: [Table](_ast_.table.md)‹T, string› | [Name](../modules/_ast_.md#name)‹string›, `where`: [Condition](_ast_.condition.md) | [WhereObject](../modules/_ast_.md#whereobject)‹T› | function, `fields?`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] | [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[]): *Promise‹T›*
 
 *Inherited from [Lube](_lube_.lube.md).[find](_lube_.lube.md#find)*
 
-Defined in src/executor.ts:244
+Defined in execute.ts:385
 
 **Type parameters:**
 
-▪ **T**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`where` | [UnsureCondition](../modules/_lube_.md#unsurecondition) |
-`fields?` | string[] |
+`table` | [Table](_ast_.table.md)‹T, string› &#124; [Name](../modules/_ast_.md#name)‹string› |
+`where` | [Condition](_ast_.condition.md) &#124; [WhereObject](../modules/_ast_.md#whereobject)‹T› &#124; function |
+`fields?` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] &#124; [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[] |
 
 **Returns:** *Promise‹T›*
 
 ___
 
-###  getMaxListeners
+###  getQueryable
 
-▸ **getMaxListeners**(): *number*
+▸ **getQueryable**‹**T**, **N**›(`table`: [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, N›): *[Queryable](_queryable_.queryable.md)‹T›*
 
-*Inherited from [Lube](_lube_.lube.md).[getMaxListeners](_lube_.lube.md#getmaxlisteners)*
+*Inherited from [Lube](_lube_.lube.md).[getQueryable](_lube_.lube.md#getqueryable)*
 
-Defined in node_modules/@types/node/globals.d.ts:560
+Defined in execute.ts:133
 
-**Returns:** *number*
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **N**: *string*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`table` | [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, N› |
+
+**Returns:** *[Queryable](_queryable_.queryable.md)‹T›*
 
 ___
 
 ###  insert
 
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `select`: [Select](_ast_.select.md)): *Promise‹number›*
+▸ **insert**‹**T**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `values?`: [InputObject](../modules/_ast_.md#inputobject)‹T› | [InputObject](../modules/_ast_.md#inputobject)‹T›[] | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
 
-Defined in src/executor.ts:196
+Defined in execute.ts:293
 
-插入数据的快捷操作
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`select` | [Select](_ast_.select.md) |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `fields`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[], `select`: [Select](_ast_.select.md)): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:197
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`fields` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[] |
-`select` | [Select](_ast_.select.md) |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `rows`: [UnsureExpression](../modules/_lube_.md#unsureexpression)[][]): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:198
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`rows` | [UnsureExpression](../modules/_lube_.md#unsureexpression)[][] |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `row`: [UnsureExpression](../modules/_lube_.md#unsureexpression)[]): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:199
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`row` | [UnsureExpression](../modules/_lube_.md#unsureexpression)[] |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `fields`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[], `row`: [UnsureExpression](../modules/_lube_.md#unsureexpression)[]): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:200
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`fields` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[] |
-`row` | [UnsureExpression](../modules/_lube_.md#unsureexpression)[] |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `fields`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[], `rows`: [UnsureExpression](../modules/_lube_.md#unsureexpression)[][]): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:201
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`fields` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[] |
-`rows` | [UnsureExpression](../modules/_lube_.md#unsureexpression)[][] |
-
-**Returns:** *Promise‹number›*
-
-▸ **insert**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `items`: T[]): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
-
-Defined in src/executor.ts:202
+插入数据
 
 **Type parameters:**
 
-▪ **T**: *[KeyValueObject](../interfaces/_ast_.keyvalueobject.md)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`items` | T[] |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Table](_ast_.table.md)‹T, string› |
+`values?` | [InputObject](../modules/_ast_.md#inputobject)‹T› &#124; [InputObject](../modules/_ast_.md#inputobject)‹T›[] &#124; [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
 
 **Returns:** *Promise‹number›*
 
-▸ **insert**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `item`: T): *Promise‹number›*
+▸ **insert**‹**T**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `values?`: T | T[]): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
 
-Defined in src/executor.ts:203
+Defined in execute.ts:300
+
+插入数据
 
 **Type parameters:**
 
-▪ **T**: *[KeyValueObject](../interfaces/_ast_.keyvalueobject.md)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`item` | T |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Table](_ast_.table.md)‹T, string› |
+`values?` | T &#124; T[] |
 
 **Returns:** *Promise‹number›*
 
-▸ **insert**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `fields`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[], `items`: T[]): *Promise‹number›*
+▸ **insert**‹**T**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `fields`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] | [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[], `value?`: [InputObject](../modules/_ast_.md#inputobject)‹T› | [InputObject](../modules/_ast_.md#inputobject)‹T›[] | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[][]): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
 
-Defined in src/executor.ts:204
+Defined in execute.ts:304
 
 **Type parameters:**
 
-▪ **T**: *[KeyValueObject](../interfaces/_ast_.keyvalueobject.md)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`fields` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[] |
-`items` | T[] |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Table](_ast_.table.md)‹T, string› |
+`fields` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] &#124; [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[] |
+`value?` | [InputObject](../modules/_ast_.md#inputobject)‹T› &#124; [InputObject](../modules/_ast_.md#inputobject)‹T›[] &#124; [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] &#124; [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[][] |
 
 **Returns:** *Promise‹number›*
 
-▸ **insert**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `fields`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[], `item`: T): *Promise‹number›*
+▸ **insert**‹**T**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `fields`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] | [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[], `value?`: T | T[]): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[insert](_lube_.lube.md#insert)*
 
-Defined in src/executor.ts:205
+Defined in execute.ts:313
 
 **Type parameters:**
 
-▪ **T**: *[KeyValueObject](../interfaces/_ast_.keyvalueobject.md)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`fields` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier)[] |
-`item` | T |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Table](_ast_.table.md)‹T, string› |
+`fields` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] &#124; [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[] |
+`value?` | T &#124; T[] |
 
 **Returns:** *Promise‹number›*
-
-___
-
-###  listenerCount
-
-▸ **listenerCount**(`type`: string | symbol): *number*
-
-*Inherited from [Lube](_lube_.lube.md).[listenerCount](_lube_.lube.md#listenercount)*
-
-Defined in node_modules/@types/node/globals.d.ts:564
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`type` | string &#124; symbol |
-
-**Returns:** *number*
-
-___
-
-###  listeners
-
-▸ **listeners**(`event`: string | symbol): *Function[]*
-
-*Inherited from [Lube](_lube_.lube.md).[listeners](_lube_.lube.md#listeners)*
-
-Defined in node_modules/@types/node/globals.d.ts:561
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`event` | string &#124; symbol |
-
-**Returns:** *Function[]*
 
 ___
 
 ###  off
 
-▸ **off**(`event`: string | symbol, `listener`: function): *this*
+▸ **off**(`event`: "command", `listener?`: function): *this*
 
 *Inherited from [Lube](_lube_.lube.md).[off](_lube_.lube.md#off)*
 
-Defined in node_modules/@types/node/globals.d.ts:557
+Defined in execute.ts:158
 
 **Parameters:**
 
-▪ **event**: *string | symbol*
+▪ **event**: *"command"*
 
-▪ **listener**: *function*
+▪`Optional`  **listener**: *function*
 
-▸ (...`args`: any[]): *void*
+▸ (`cmd`: [Command](../interfaces/_execute_.command.md)): *void*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...args` | any[] |
+`cmd` | [Command](../interfaces/_execute_.command.md) |
+
+**Returns:** *this*
+
+▸ **off**(`event`: "commit", `listener?`: function): *this*
+
+*Inherited from [Lube](_lube_.lube.md).[off](_lube_.lube.md#off)*
+
+Defined in execute.ts:159
+
+**Parameters:**
+
+▪ **event**: *"commit"*
+
+▪`Optional`  **listener**: *function*
+
+▸ (`executor`: [Executor](_execute_.executor.md)): *void*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`executor` | [Executor](_execute_.executor.md) |
+
+**Returns:** *this*
+
+▸ **off**(`event`: "rollback", `listener?`: function): *this*
+
+*Inherited from [Lube](_lube_.lube.md).[off](_lube_.lube.md#off)*
+
+Defined in execute.ts:160
+
+**Parameters:**
+
+▪ **event**: *"rollback"*
+
+▪`Optional`  **listener**: *function*
+
+▸ (`executor`: [Executor](_execute_.executor.md)): *void*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`executor` | [Executor](_execute_.executor.md) |
+
+**Returns:** *this*
+
+▸ **off**(`event`: "error", `listener?`: function): *this*
+
+*Inherited from [Lube](_lube_.lube.md).[off](_lube_.lube.md#off)*
+
+Defined in execute.ts:161
+
+**Parameters:**
+
+▪ **event**: *"error"*
+
+▪`Optional`  **listener**: *function*
+
+▸ (`error`: Error): *any*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`error` | Error |
 
 **Returns:** *this*
 
@@ -513,103 +407,91 @@ ___
 
 ###  on
 
-▸ **on**(`event`: string | symbol, `listener`: function): *this*
+▸ **on**(`event`: "command", `listener`: function): *this*
 
 *Inherited from [Lube](_lube_.lube.md).[on](_lube_.lube.md#on)*
 
-Defined in node_modules/@types/node/globals.d.ts:554
+Defined in execute.ts:149
 
 **Parameters:**
 
-▪ **event**: *string | symbol*
+▪ **event**: *"command"*
 
 ▪ **listener**: *function*
 
-▸ (...`args`: any[]): *void*
+▸ (`cmd`: [Command](../interfaces/_execute_.command.md)): *void*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...args` | any[] |
+`cmd` | [Command](../interfaces/_execute_.command.md) |
 
 **Returns:** *this*
 
-___
+▸ **on**(`event`: "commit", `listener`: function): *this*
 
-###  once
+*Inherited from [Lube](_lube_.lube.md).[on](_lube_.lube.md#on)*
 
-▸ **once**(`event`: string | symbol, `listener`: function): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[once](_lube_.lube.md#once)*
-
-Defined in node_modules/@types/node/globals.d.ts:555
+Defined in execute.ts:150
 
 **Parameters:**
 
-▪ **event**: *string | symbol*
+▪ **event**: *"commit"*
 
 ▪ **listener**: *function*
 
-▸ (...`args`: any[]): *void*
+▸ (`executor`: [Executor](_execute_.executor.md)): *void*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...args` | any[] |
+`executor` | [Executor](_execute_.executor.md) |
 
 **Returns:** *this*
 
-___
+▸ **on**(`event`: "rollback", `listener`: function): *this*
 
-###  prependListener
+*Inherited from [Lube](_lube_.lube.md).[on](_lube_.lube.md#on)*
 
-▸ **prependListener**(`event`: string | symbol, `listener`: function): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[prependListener](_lube_.lube.md#prependlistener)*
-
-Defined in node_modules/@types/node/globals.d.ts:566
+Defined in execute.ts:151
 
 **Parameters:**
 
-▪ **event**: *string | symbol*
+▪ **event**: *"rollback"*
 
 ▪ **listener**: *function*
 
-▸ (...`args`: any[]): *void*
+▸ (`executor`: [Executor](_execute_.executor.md)): *void*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...args` | any[] |
+`executor` | [Executor](_execute_.executor.md) |
 
 **Returns:** *this*
 
-___
+▸ **on**(`event`: "error", `listener`: function): *this*
 
-###  prependOnceListener
+*Inherited from [Lube](_lube_.lube.md).[on](_lube_.lube.md#on)*
 
-▸ **prependOnceListener**(`event`: string | symbol, `listener`: function): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[prependOnceListener](_lube_.lube.md#prependoncelistener)*
-
-Defined in node_modules/@types/node/globals.d.ts:567
+Defined in execute.ts:152
 
 **Parameters:**
 
-▪ **event**: *string | symbol*
+▪ **event**: *"error"*
 
 ▪ **listener**: *function*
 
-▸ (...`args`: any[]): *void*
+▸ (`error`: Error): *any*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...args` | any[] |
+`error` | Error |
 
 **Returns:** *this*
 
@@ -617,15 +499,55 @@ ___
 
 ###  query
 
-▸ **query**‹**TResult**›(`sql`: string): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+▸ **query**‹**T**›(`sql`: [Select](_ast_.select.md)‹T›): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
 
-Defined in src/executor.ts:169
+Defined in execute.ts:232
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`sql` | [Select](_ast_.select.md)‹T› |
+
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
+
+▸ **query**‹**R**, **O**›(`sql`: [Execute](_ast_.execute.md)‹R, O›): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹O[0], R, O››*
+
+*Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
+
+Defined in execute.ts:238
+
+执行一个存储过程执行代码
+
+**Type parameters:**
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`sql` | [Execute](_ast_.execute.md)‹R, O› |
+
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹O[0], R, O››*
+
+▸ **query**‹**T**›(`sql`: string): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
+
+*Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
+
+Defined in execute.ts:243
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
@@ -633,17 +555,17 @@ Name | Type |
 ------ | ------ |
 `sql` | string |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
-▸ **query**‹**TResult**›(`sql`: string, `params`: [Parameter](_ast_.parameter.md)[]): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+▸ **query**‹**T**›(`sql`: string, `params`: [Parameter](_ast_.parameter.md)[]): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
 
-Defined in src/executor.ts:170
+Defined in execute.ts:244
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
@@ -652,54 +574,54 @@ Name | Type |
 `sql` | string |
 `params` | [Parameter](_ast_.parameter.md)[] |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
-▸ **query**‹**TResult**›(`sql`: string, `params`: Object): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+▸ **query**‹**T**›(`sql`: string, `params`: Record‹string, [ScalarType](../modules/_types_.md#scalartype)›): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
 
-Defined in src/executor.ts:171
+Defined in execute.ts:248
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
 `sql` | string |
-`params` | Object |
+`params` | Record‹string, [ScalarType](../modules/_types_.md#scalartype)› |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
-▸ **query**‹**TResult**›(`sql`: [Statement](_ast_.statement.md) | Document): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+▸ **query**‹**T**›(`sql`: [Statement](_ast_.statement.md) | [Document](_ast_.document.md)): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
 
-Defined in src/executor.ts:172
+Defined in execute.ts:252
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`sql` | [Statement](_ast_.statement.md) &#124; Document |
+`sql` | [Statement](_ast_.statement.md) &#124; [Document](_ast_.document.md) |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
-▸ **query**‹**TResult**›(`sql`: TemplateStringsArray, ...`params`: any[]): *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+▸ **query**‹**T**›(`sql`: TemplateStringsArray, ...`params`: any[]): *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[query](_lube_.lube.md#query)*
 
-Defined in src/executor.ts:173
+Defined in execute.ts:255
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
@@ -708,23 +630,23 @@ Name | Type |
 `sql` | TemplateStringsArray |
 `...params` | any[] |
 
-**Returns:** *Promise‹[QueryResult](../interfaces/_executor_.queryresult.md)‹TResult››*
+**Returns:** *Promise‹[QueryResult](../interfaces/_execute_.queryresult.md)‹T››*
 
 ___
 
 ###  queryScalar
 
-▸ **queryScalar**‹**TResult**›(`sql`: string, `params?`: [Parameter](_ast_.parameter.md)[]): *Promise‹TResult›*
+▸ **queryScalar**‹**T**›(`sql`: string, `params?`: [Parameter](_ast_.parameter.md)[]): *Promise‹T›*
 
 *Inherited from [Lube](_lube_.lube.md).[queryScalar](_lube_.lube.md#queryscalar)*
 
-Defined in src/executor.ts:182
+Defined in execute.ts:267
 
 执行一个查询并获取返回的第一个标量值
 
 **Type parameters:**
 
-▪ **TResult**: *[JsConstant](../modules/_lube_.md#jsconstant)*
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
@@ -733,224 +655,254 @@ Name | Type | Description |
 `sql` | string |   |
 `params?` | [Parameter](_ast_.parameter.md)[] | - |
 
-**Returns:** *Promise‹TResult›*
+**Returns:** *Promise‹T›*
 
-▸ **queryScalar**‹**TResult**›(`sql`: string, `params?`: Object): *Promise‹TResult›*
+▸ **queryScalar**‹**T**›(`sql`: string, `params?`: [InputObject](../modules/_ast_.md#inputobject)): *Promise‹T›*
 
 *Inherited from [Lube](_lube_.lube.md).[queryScalar](_lube_.lube.md#queryscalar)*
 
-Defined in src/executor.ts:183
+Defined in execute.ts:271
 
 **Type parameters:**
 
-▪ **TResult**: *[JsConstant](../modules/_lube_.md#jsconstant)*
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
 `sql` | string |
-`params?` | Object |
+`params?` | [InputObject](../modules/_ast_.md#inputobject) |
 
-**Returns:** *Promise‹TResult›*
+**Returns:** *Promise‹T›*
 
-▸ **queryScalar**‹**TResult**›(`sql`: [Statement](_ast_.statement.md) | Document): *Promise‹TResult›*
+▸ **queryScalar**‹**T**›(`sql`: [Select](_ast_.select.md)‹T›): *Promise‹[AsScalarType](../modules/_ast_.md#asscalartype)‹T››*
 
 *Inherited from [Lube](_lube_.lube.md).[queryScalar](_lube_.lube.md#queryscalar)*
 
-Defined in src/executor.ts:184
+Defined in execute.ts:275
 
 **Type parameters:**
 
-▪ **TResult**: *[JsConstant](../modules/_lube_.md#jsconstant)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`sql` | [Statement](_ast_.statement.md) &#124; Document |
+`sql` | [Select](_ast_.select.md)‹T› |
 
-**Returns:** *Promise‹TResult›*
+**Returns:** *Promise‹[AsScalarType](../modules/_ast_.md#asscalartype)‹T››*
 
-▸ **queryScalar**‹**TResult**›(`sql`: string[], ...`params`: any[]): *Promise‹TResult›*
+▸ **queryScalar**‹**T**›(`sql`: [Select](_ast_.select.md)‹any›): *Promise‹T›*
 
 *Inherited from [Lube](_lube_.lube.md).[queryScalar](_lube_.lube.md#queryscalar)*
 
-Defined in src/executor.ts:185
+Defined in execute.ts:278
 
 **Type parameters:**
 
-▪ **TResult**: *[JsConstant](../modules/_lube_.md#jsconstant)*
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`sql` | string[] |
+`sql` | [Select](_ast_.select.md)‹any› |
+
+**Returns:** *Promise‹T›*
+
+▸ **queryScalar**‹**T**›(`sql`: TemplateStringsArray, ...`params`: any[]): *Promise‹T›*
+
+*Inherited from [Lube](_lube_.lube.md).[queryScalar](_lube_.lube.md#queryscalar)*
+
+Defined in execute.ts:279
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`sql` | TemplateStringsArray |
 `...params` | any[] |
 
-**Returns:** *Promise‹TResult›*
+**Returns:** *Promise‹T›*
 
 ___
 
-###  rawListeners
+###  queryable
 
-▸ **rawListeners**(`event`: string | symbol): *Function[]*
+▸ **queryable**‹**T**›(`table`: [Table](_ast_.table.md)‹T, string› | [Name](../modules/_ast_.md#name)‹string›): *[Queryable](_queryable_.queryable.md)‹T›*
 
-*Inherited from [Lube](_lube_.lube.md).[rawListeners](_lube_.lube.md#rawlisteners)*
+*Inherited from [Lube](_lube_.lube.md).[queryable](_lube_.lube.md#queryable)*
 
-Defined in node_modules/@types/node/globals.d.ts:562
+Defined in execute.ts:651
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`event` | string &#124; symbol |
+`table` | [Table](_ast_.table.md)‹T, string› &#124; [Name](../modules/_ast_.md#name)‹string› |
 
-**Returns:** *Function[]*
+**Returns:** *[Queryable](_queryable_.queryable.md)‹T›*
 
 ___
 
-###  removeAllListeners
+###  save
 
-▸ **removeAllListeners**(`event?`: string | symbol): *this*
+▸ **save**‹**T**›(`table`: [Table](_ast_.table.md)‹T, string› | [Name](../modules/_ast_.md#name)‹string›, `keyFields`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[], `items`: T[] | T): *Promise‹number›*
 
-*Inherited from [Lube](_lube_.lube.md).[removeAllListeners](_lube_.lube.md#removealllisteners)*
+*Inherited from [Lube](_lube_.lube.md).[save](_lube_.lube.md#save)*
 
-Defined in node_modules/@types/node/globals.d.ts:558
+Defined in execute.ts:595
+
+保存数据，必须指定主键后才允许使用
+通过自动对比与数据库中现有的数据差异而进行提交
+遵守不存在的则插入、已存在的则更新的原则；
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`event?` | string &#124; symbol |
+`table` | [Table](_ast_.table.md)‹T, string› &#124; [Name](../modules/_ast_.md#name)‹string› |
+`keyFields` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] |
+`items` | T[] &#124; T |
 
-**Returns:** *this*
-
-___
-
-###  removeListener
-
-▸ **removeListener**(`event`: string | symbol, `listener`: function): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[removeListener](_lube_.lube.md#removelistener)*
-
-Defined in node_modules/@types/node/globals.d.ts:556
-
-**Parameters:**
-
-▪ **event**: *string | symbol*
-
-▪ **listener**: *function*
-
-▸ (...`args`: any[]): *void*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`...args` | any[] |
-
-**Returns:** *this*
+**Returns:** *Promise‹number›*
 
 ___
 
 ###  select
 
-▸ **select**‹**TResult**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `options`: [SelectOptions](../interfaces/_executor_.selectoptions.md)‹TResult›): *Promise‹TResult[]›*
+▸ **select**‹**T**, **G**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `results`: function, `options?`: [SelectOptions](../interfaces/_execute_.selectoptions.md)‹T›): *Promise‹[RowTypeFrom](../modules/_ast_.md#rowtypefrom)‹G›[]›*
 
 *Inherited from [Lube](_lube_.lube.md).[select](_lube_.lube.md#select)*
 
-Defined in src/executor.ts:265
+Defined in execute.ts:417
 
 简化版的SELECT查询，用于快速查询，如果要用复杂的查询，请使用select语句
 
 **Type parameters:**
 
-▪ **TResult**
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **G**: *[InputObject](../modules/_ast_.md#inputobject)*
 
 **Parameters:**
 
-Name | Type | Default | Description |
------- | ------ | ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) | - | - |
-`options` | [SelectOptions](../interfaces/_executor_.selectoptions.md)‹TResult› | {} |   |
+▪ **table**: *[Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›*
 
-**Returns:** *Promise‹TResult[]›*
+▪ **results**: *function*
 
-___
-
-###  setMaxListeners
-
-▸ **setMaxListeners**(`n`: number): *this*
-
-*Inherited from [Lube](_lube_.lube.md).[setMaxListeners](_lube_.lube.md#setmaxlisteners)*
-
-Defined in node_modules/@types/node/globals.d.ts:559
+▸ (`rowset`: Readonly‹[Rowset](_ast_.rowset.md)‹T››): *G*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`n` | number |
+`rowset` | Readonly‹[Rowset](_ast_.rowset.md)‹T›› |
 
-**Returns:** *this*
+▪`Optional`  **options**: *[SelectOptions](../interfaces/_execute_.selectoptions.md)‹T›*
+
+**Returns:** *Promise‹[RowTypeFrom](../modules/_ast_.md#rowtypefrom)‹G›[]›*
+
+▸ **select**‹**T**›(`table`: [Name](../modules/_ast_.md#name)‹string› | [Table](_ast_.table.md)‹T, string›, `options?`: [SelectOptions](../interfaces/_execute_.selectoptions.md)‹T›): *Promise‹T[]›*
+
+*Inherited from [Lube](_lube_.lube.md).[select](_lube_.lube.md#select)*
+
+Defined in execute.ts:422
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Table](_ast_.table.md)‹T, string› |
+`options?` | [SelectOptions](../interfaces/_execute_.selectoptions.md)‹T› |
+
+**Returns:** *Promise‹T[]›*
 
 ___
 
 ###  trans
 
-▸ **trans**(`handler`: [TransactionHandler](../modules/_lube_.md#transactionhandler), `isolationLevel`: [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md)): *Promise‹any›*
+▸ **trans**‹**T**›(`handler`: [TransactionHandler](../modules/_lube_.md#transactionhandler)‹T›, `isolationLevel`: [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md)): *Promise‹T›*
 
-Defined in src/lube.ts:54
+Defined in lube.ts:130
 
 开启一个事务并自动提交
+
+**Type parameters:**
+
+▪ **T**
 
 **Parameters:**
 
 Name | Type | Default | Description |
 ------ | ------ | ------ | ------ |
-`handler` | [TransactionHandler](../modules/_lube_.md#transactionhandler) | - | (exeutor, cancel) => false |
+`handler` | [TransactionHandler](../modules/_lube_.md#transactionhandler)‹T› | - | (exeutor, cancel) => false |
 `isolationLevel` | [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md) | ISOLATION_LEVEL.READ_COMMIT | 事务隔离级别  |
 
-**Returns:** *Promise‹any›*
+**Returns:** *Promise‹T›*
 
 ___
 
 ###  update
 
-▸ **update**(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `sets`: [Assignment](_ast_.assignment.md)[], `where?`: [UnsureCondition](../modules/_lube_.md#unsurecondition)): *Promise‹number›*
+▸ **update**‹**T**›(`table`: string | [Table](_ast_.table.md)‹T, string›, `sets`: [InputObject](../modules/_ast_.md#inputobject)‹T› | [Assignment](_ast_.assignment.md)[], `where?`: [WhereObject](../modules/_ast_.md#whereobject)‹T› | [Condition](_ast_.condition.md) | function): *Promise‹number›*
 
 *Inherited from [Lube](_lube_.lube.md).[update](_lube_.lube.md#update)*
 
-Defined in src/executor.ts:295
+Defined in execute.ts:474
 
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`sets` | [Assignment](_ast_.assignment.md)[] |
-`where?` | [UnsureCondition](../modules/_lube_.md#unsurecondition) |
-
-**Returns:** *Promise‹number›*
-
-▸ **update**‹**T**›(`table`: [UnsureIdentifier](../modules/_lube_.md#unsureidentifier), `sets`: T, `where?`: [UnsureCondition](../modules/_lube_.md#unsurecondition)): *Promise‹number›*
-
-*Inherited from [Lube](_lube_.lube.md).[update](_lube_.lube.md#update)*
-
-Defined in src/executor.ts:296
+更新表
 
 **Type parameters:**
 
-▪ **T**: *[ValuesObject](../modules/_lube_.md#valuesobject)*
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_lube_.md#unsureidentifier) |
-`sets` | T |
-`where?` | [UnsureCondition](../modules/_lube_.md#unsurecondition) |
+`table` | string &#124; [Table](_ast_.table.md)‹T, string› |
+`sets` | [InputObject](../modules/_ast_.md#inputobject)‹T› &#124; [Assignment](_ast_.assignment.md)[] |
+`where?` | [WhereObject](../modules/_ast_.md#whereobject)‹T› &#124; [Condition](_ast_.condition.md) &#124; function |
+
+**Returns:** *Promise‹number›*
+
+▸ **update**‹**T**›(`table`: string | [Table](_ast_.table.md)‹T, string›, `items`: T[], `keyFieldsOrWhere`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] | function): *Promise‹number›*
+
+*Inherited from [Lube](_lube_.lube.md).[update](_lube_.lube.md#update)*
+
+Defined in execute.ts:485
+
+通过主键更新
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`table` | string &#124; [Table](_ast_.table.md)‹T, string› |
+`items` | T[] |
+`keyFieldsOrWhere` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] &#124; function |
 
 **Returns:** *Promise‹number›*

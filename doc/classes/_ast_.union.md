@@ -1,8 +1,12 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [Union](_ast_.union.md)
 
-# Class: Union
+# Class: Union ‹**T**›
 
 联接查询
+
+## Type parameters
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 ## Hierarchy
 
@@ -18,77 +22,76 @@
 
 ### Properties
 
-* [all](_ast_.union.md#all)
-* [select](_ast_.union.md#select)
-* [type](_ast_.union.md#readonly-type)
+* [$all](_ast_.union.md#all)
+* [$isRecurse](_ast_.union.md#isrecurse)
+* [$select](_ast_.union.md#select)
+* [$type](_ast_.union.md#type)
 
 ### Methods
 
-* [bracket](_ast_.union.md#static-bracket)
+* [clone](_ast_.union.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new Union**(`select`: [SelectExpression](../modules/_ast_.md#selectexpression), `all`: boolean): *[Union](_ast_.union.md)*
+\+ **new Union**(`select`: [Select](_ast_.select.md)‹T›, `all`: boolean): *[Union](_ast_.union.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1806
+Defined in ast.ts:3307
 
 **Parameters:**
 
 Name | Type | Default | Description |
 ------ | ------ | ------ | ------ |
-`select` | [SelectExpression](../modules/_ast_.md#selectexpression) | - | SELECT语句 |
+`select` | [Select](_ast_.select.md)‹T› | - | SELECT语句 |
 `all` | boolean | false | 是否所有查询  |
 
 **Returns:** *[Union](_ast_.union.md)*
 
 ## Properties
 
-###  all
+###  $all
 
-• **all**: *boolean*
+• **$all**: *boolean*
 
-Defined in src/ast.ts:1806
-
-___
-
-###  select
-
-• **select**: *[SelectExpression](../modules/_ast_.md#selectexpression)*
-
-Defined in src/ast.ts:1805
+Defined in ast.ts:3305
 
 ___
 
-### `Readonly` type
+###  $isRecurse
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$isRecurse**: *boolean*
 
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
+Defined in ast.ts:3307
 
-Defined in src/ast.ts:73
+___
+
+###  $select
+
+• **$select**: *[Select](_ast_.select.md)‹T›*
+
+Defined in ast.ts:3304
+
+___
+
+###  $type
+
+• **$type**: *[UNION](../enums/_constants_.sql_symbole.md#union)* = SQL_SYMBOLE.UNION
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:3306
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

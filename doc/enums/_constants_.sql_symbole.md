@@ -8,81 +8,43 @@ SQL运算符
 
 ### Enumeration members
 
-* [ALIAS](_constants_.sql_symbole.md#alias)
 * [ASSIGNMENT](_constants_.sql_symbole.md#assignment)
-* [BINARY_CALCULATE](_constants_.sql_symbole.md#binary_calculate)
-* [BINARY_COMPARE](_constants_.sql_symbole.md#binary_compare)
-* [BINARY_LOGIC](_constants_.sql_symbole.md#binary_logic)
 * [BRACKET_EXPRESSION](_constants_.sql_symbole.md#bracket_expression)
-* [BUILDIN_IDENTIFIER](_constants_.sql_symbole.md#buildin_identifier)
 * [CASE](_constants_.sql_symbole.md#case)
-* [COLUMN_LIST](_constants_.sql_symbole.md#column_list)
-* [CONSTANT](_constants_.sql_symbole.md#constant)
+* [CONDITION](_constants_.sql_symbole.md#condition)
 * [DECLARE](_constants_.sql_symbole.md#declare)
 * [DELETE](_constants_.sql_symbole.md#delete)
 * [DOCUMENT](_constants_.sql_symbole.md#document)
 * [EXECUTE](_constants_.sql_symbole.md#execute)
 * [EXECUTE_ARGUMENT_LIST](_constants_.sql_symbole.md#execute_argument_list)
-* [EXISTS](_constants_.sql_symbole.md#exists)
+* [FUNCTION](_constants_.sql_symbole.md#function)
 * [IDENTIFIER](_constants_.sql_symbole.md#identifier)
 * [INSERT](_constants_.sql_symbole.md#insert)
-* [INVOKE](_constants_.sql_symbole.md#invoke)
 * [INVOKE_ARGUMENT_LIST](_constants_.sql_symbole.md#invoke_argument_list)
 * [JOIN](_constants_.sql_symbole.md#join)
-* [PARAMETER](_constants_.sql_symbole.md#parameter)
-* [QUOTED_CONDITION](_constants_.sql_symbole.md#quoted_condition)
+* [LITERAL](_constants_.sql_symbole.md#literal)
+* [NAMED_SELECT](_constants_.sql_symbole.md#named_select)
+* [OPERATION](_constants_.sql_symbole.md#operation)
 * [RAW](_constants_.sql_symbole.md#raw)
+* [SCALAR_FUNCTION_INVOKE](_constants_.sql_symbole.md#scalar_function_invoke)
 * [SELECT](_constants_.sql_symbole.md#select)
 * [SORT](_constants_.sql_symbole.md#sort)
-* [UNARY_CALCULATE](_constants_.sql_symbole.md#unary_calculate)
-* [UNARY_COMPARE](_constants_.sql_symbole.md#unary_compare)
-* [UNARY_LOGIC](_constants_.sql_symbole.md#unary_logic)
+* [STAR](_constants_.sql_symbole.md#star)
+* [TABLE_FUNCTION_INVOKE](_constants_.sql_symbole.md#table_function_invoke)
 * [UNION](_constants_.sql_symbole.md#union)
 * [UPDATE](_constants_.sql_symbole.md#update)
-* [VALUE_LIST](_constants_.sql_symbole.md#value_list)
-* [VARAINT](_constants_.sql_symbole.md#varaint)
+* [VALUED_SELECT](_constants_.sql_symbole.md#valued_select)
 * [VARAINT_DECLARE](_constants_.sql_symbole.md#varaint_declare)
 * [WHEN](_constants_.sql_symbole.md#when)
+* [WITH](_constants_.sql_symbole.md#with)
 
 ## Enumeration members
-
-###  ALIAS
-
-• **ALIAS**: = "ALIAS"
-
-Defined in src/constants.ts:112
-
-___
 
 ###  ASSIGNMENT
 
 • **ASSIGNMENT**: = "ASSIGNMENT"
 
-Defined in src/constants.ts:101
-
-___
-
-###  BINARY_CALCULATE
-
-• **BINARY_CALCULATE**: = "BINARY_CALCULATE"
-
-Defined in src/constants.ts:118
-
-___
-
-###  BINARY_COMPARE
-
-• **BINARY_COMPARE**: = "BINARY_COMPARE"
-
-Defined in src/constants.ts:117
-
-___
-
-###  BINARY_LOGIC
-
-• **BINARY_LOGIC**: = "BINARY_LOGIC"
-
-Defined in src/constants.ts:119
+Defined in constants.ts:111
 
 ___
 
@@ -90,17 +52,7 @@ ___
 
 • **BRACKET_EXPRESSION**: = "BRACKET_EXPRESSION"
 
-Defined in src/constants.ts:107
-
-___
-
-###  BUILDIN_IDENTIFIER
-
-• **BUILDIN_IDENTIFIER**: = "BUILDIN_IDENTIFIER"
-
-Defined in src/constants.ts:92
-
-系统内建标识符，如COUNT, SUM等系统函数
+Defined in constants.ts:121
 
 ___
 
@@ -108,23 +60,15 @@ ___
 
 • **CASE**: = "CASE"
 
-Defined in src/constants.ts:128
+Defined in constants.ts:117
 
 ___
 
-###  COLUMN_LIST
+###  CONDITION
 
-• **COLUMN_LIST**: = "COLUMN_LIST"
+• **CONDITION**: = "CONDITION"
 
-Defined in src/constants.ts:84
-
-___
-
-###  CONSTANT
-
-• **CONSTANT**: = "CONSTANT"
-
-Defined in src/constants.ts:102
+Defined in constants.ts:124
 
 ___
 
@@ -132,7 +76,7 @@ ___
 
 • **DECLARE**: = "DECLARE"
 
-Defined in src/constants.ts:129
+Defined in constants.ts:118
 
 ___
 
@@ -140,7 +84,7 @@ ___
 
 • **DELETE**: = "DELETE"
 
-Defined in src/constants.ts:98
+Defined in constants.ts:107
 
 ___
 
@@ -148,7 +92,7 @@ ___
 
 • **DOCUMENT**: = "DOCUMENT"
 
-Defined in src/constants.ts:130
+Defined in constants.ts:119
 
 ___
 
@@ -156,7 +100,7 @@ ___
 
 • **EXECUTE**: = "EXECUTE"
 
-Defined in src/constants.ts:99
+Defined in constants.ts:108
 
 ___
 
@@ -164,15 +108,15 @@ ___
 
 • **EXECUTE_ARGUMENT_LIST**: = "EXECUTE_ARGUMENT_LIST"
 
-Defined in src/constants.ts:86
+Defined in constants.ts:101
 
 ___
 
-###  EXISTS
+###  FUNCTION
 
-• **EXISTS**: = "EXISTS"
+• **FUNCTION**: = "FUNCTION"
 
-Defined in src/constants.ts:114
+Defined in constants.ts:97
 
 ___
 
@@ -180,7 +124,7 @@ ___
 
 • **IDENTIFIER**: = "IDENTIFIER"
 
-Defined in src/constants.ts:88
+Defined in constants.ts:103
 
 ___
 
@@ -188,15 +132,7 @@ ___
 
 • **INSERT**: = "INSERT"
 
-Defined in src/constants.ts:97
-
-___
-
-###  INVOKE
-
-• **INVOKE**: = "INVOKE"
-
-Defined in src/constants.ts:100
+Defined in constants.ts:106
 
 ___
 
@@ -204,7 +140,7 @@ ___
 
 • **INVOKE_ARGUMENT_LIST**: = "INVOKE_ARGUMENT_LIST"
 
-Defined in src/constants.ts:85
+Defined in constants.ts:100
 
 ___
 
@@ -212,25 +148,31 @@ ___
 
 • **JOIN**: = "JOIN"
 
-Defined in src/constants.ts:125
+Defined in constants.ts:114
 
 ___
 
-###  PARAMETER
+###  LITERAL
 
-• **PARAMETER**: = "PARAMETER"
+• **LITERAL**: = "LITERAL"
 
-Defined in src/constants.ts:93
+Defined in constants.ts:112
 
 ___
 
-###  QUOTED_CONDITION
+###  NAMED_SELECT
 
-• **QUOTED_CONDITION**: = "QUOTED_CONDITION"
+• **NAMED_SELECT**: = "NAMED_SELECT"
 
-Defined in src/constants.ts:111
+Defined in constants.ts:122
 
-条件组
+___
+
+###  OPERATION
+
+• **OPERATION**: = "OPERATION"
+
+Defined in constants.ts:125
 
 ___
 
@@ -238,7 +180,15 @@ ___
 
 • **RAW**: = "RAW"
 
-Defined in src/constants.ts:81
+Defined in constants.ts:98
+
+___
+
+###  SCALAR_FUNCTION_INVOKE
+
+• **SCALAR_FUNCTION_INVOKE**: = "SCALAR_FUNCTION_INVOKE"
+
+Defined in constants.ts:109
 
 ___
 
@@ -246,7 +196,7 @@ ___
 
 • **SELECT**: = "SELECT"
 
-Defined in src/constants.ts:95
+Defined in constants.ts:104
 
 ___
 
@@ -254,31 +204,23 @@ ___
 
 • **SORT**: = "SORT"
 
-Defined in src/constants.ts:106
+Defined in constants.ts:113
 
 ___
 
-###  UNARY_CALCULATE
+###  STAR
 
-• **UNARY_CALCULATE**: = "UNARY_CALCULATE"
+• **STAR**: = "STAR"
 
-Defined in src/constants.ts:123
-
-___
-
-###  UNARY_COMPARE
-
-• **UNARY_COMPARE**: = "UNARY_COMPARE"
-
-Defined in src/constants.ts:122
+Defined in constants.ts:96
 
 ___
 
-###  UNARY_LOGIC
+###  TABLE_FUNCTION_INVOKE
 
-• **UNARY_LOGIC**: = "UNARY_LOGIC"
+• **TABLE_FUNCTION_INVOKE**: = "TABLE_FUNCTION_INVOKE"
 
-Defined in src/constants.ts:124
+Defined in constants.ts:110
 
 ___
 
@@ -286,7 +228,7 @@ ___
 
 • **UNION**: = "UNION"
 
-Defined in src/constants.ts:126
+Defined in constants.ts:115
 
 ___
 
@@ -294,23 +236,15 @@ ___
 
 • **UPDATE**: = "UPDATE"
 
-Defined in src/constants.ts:96
+Defined in constants.ts:105
 
 ___
 
-###  VALUE_LIST
+###  VALUED_SELECT
 
-• **VALUE_LIST**: = "VALUE_LIST"
+• **VALUED_SELECT**: = "VALUED_SELECT"
 
-Defined in src/constants.ts:83
-
-___
-
-###  VARAINT
-
-• **VARAINT**: = "VARAINT"
-
-Defined in src/constants.ts:94
+Defined in constants.ts:126
 
 ___
 
@@ -318,7 +252,7 @@ ___
 
 • **VARAINT_DECLARE**: = "VARAINT_DECLARE"
 
-Defined in src/constants.ts:87
+Defined in constants.ts:102
 
 ___
 
@@ -326,4 +260,12 @@ ___
 
 • **WHEN**: = "WHEN"
 
-Defined in src/constants.ts:127
+Defined in constants.ts:116
+
+___
+
+###  WITH
+
+• **WITH**: = "WITH"
+
+Defined in constants.ts:120

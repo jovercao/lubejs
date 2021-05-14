@@ -18,24 +18,22 @@
 
 ### Properties
 
-* [left](_ast_.join.md#left)
-* [on](_ast_.join.md#on)
-* [table](_ast_.join.md#table)
-* [type](_ast_.join.md#readonly-type)
+* [$left](_ast_.join.md#left)
+* [$on](_ast_.join.md#on)
+* [$table](_ast_.join.md#table)
+* [$type](_ast_.join.md#readonly-type)
 
 ### Methods
 
-* [bracket](_ast_.join.md#static-bracket)
+* [clone](_ast_.join.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new Join**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `on`: [Condition](_ast_.condition.md), `left`: boolean): *[Join](_ast_.join.md)*
+\+ **new Join**(`table`: [Name](../modules/_ast_.md#name)‹string› | [Rowset](_ast_.rowset.md), `on`: [Condition](_ast_.condition.md), `left`: boolean): *[Join](_ast_.join.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1131
+Defined in ast.ts:1170
 
 创建一个表关联
 
@@ -43,7 +41,7 @@ Defined in src/ast.ts:1131
 
 Name | Type | Default | Description |
 ------ | ------ | ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - | - |
+`table` | [Name](../modules/_ast_.md#name)‹string› &#124; [Rowset](_ast_.rowset.md) | - | - |
 `on` | [Condition](_ast_.condition.md) | - | 关联条件 |
 `left` | boolean | false | 是否左联接  |
 
@@ -51,56 +49,48 @@ Name | Type | Default | Description |
 
 ## Properties
 
-###  left
+###  $left
 
-• **left**: *boolean*
+• **$left**: *boolean*
 
-Defined in src/ast.ts:1129
-
-___
-
-###  on
-
-• **on**: *[Condition](_ast_.condition.md)*
-
-Defined in src/ast.ts:1131
+Defined in ast.ts:1168
 
 ___
 
-###  table
+###  $on
 
-• **table**: *[Identifier](_ast_.identifier.md)*
+• **$on**: *[Condition](_ast_.condition.md)*
 
-Defined in src/ast.ts:1130
+Defined in ast.ts:1170
 
 ___
 
-### `Readonly` type
+###  $table
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$table**: *[Rowset](_ast_.rowset.md)*
 
-*Overrides [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
+Defined in ast.ts:1169
 
-Defined in src/ast.ts:1128
+___
+
+### `Readonly` $type
+
+• **$type**: *[JOIN](../enums/_constants_.sql_symbole.md#join)* = SQL_SYMBOLE.JOIN
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:1167
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

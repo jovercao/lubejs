@@ -18,38 +18,38 @@
 
 ###  READ_COMMIT
 
-• **READ_COMMIT**: = 1
+• **READ_COMMIT**: = "READ_COMMIT"
 
-Defined in src/constants.ts:21
+Defined in constants.ts:21
 
 ___
 
 ###  READ_UNCOMMIT
 
-• **READ_UNCOMMIT**: = 2
+• **READ_UNCOMMIT**: = "READ_UNCOMMIT"
 
-Defined in src/constants.ts:22
+Defined in constants.ts:22
 
 ___
 
 ###  REPEATABLE_READ
 
-• **REPEATABLE_READ**: = 3
+• **REPEATABLE_READ**: = "REPEATABLE_READ"
 
-Defined in src/constants.ts:23
+Defined in constants.ts:23
 
 ___
 
 ###  SERIALIZABLE
 
-• **SERIALIZABLE**: = 4
+• **SERIALIZABLE**: = "SERIALIZABLE"
 
-Defined in src/constants.ts:24
+Defined in constants.ts:24
 
 ___
 
 ###  SNAPSHOT
 
-• **SNAPSHOT**: = 5
+• **SNAPSHOT**: = "SNAPSHOT"
 
-Defined in src/constants.ts:25
+Defined in constants.ts:25

@@ -14,17 +14,15 @@ AST 基类
 
   ↳ [Join](_ast_.join.md)
 
-  ↳ [Raw](_ast_.raw.md)
+  ↳ [Star](_ast_.star.md)
+
+  ↳ [Identifier](_ast_.identifier.md)
+
+  ↳ [Rowset](_ast_.rowset.md)
 
   ↳ [Statement](_ast_.statement.md)
 
   ↳ [When](_ast_.when.md)
-
-  ↳ [List](_ast_.list.md)
-
-  ↳ [IBinary](../interfaces/_ast_.ibinary.md)
-
-  ↳ [IUnary](../interfaces/_ast_.iunary.md)
 
   ↳ [Union](_ast_.union.md)
 
@@ -34,60 +32,36 @@ AST 基类
 
   ↳ [Document](_ast_.document.md)
 
+  ↳ [Raw](_ast_.raw.md)
+
+  ↳ [With](_ast_.with.md)
+
 ## Index
-
-### Constructors
-
-* [constructor](_ast_.ast.md#constructor)
 
 ### Properties
 
-* [type](_ast_.ast.md#readonly-type)
+* [$type](_ast_.ast.md#readonly-type)
 
 ### Methods
 
-* [bracket](_ast_.ast.md#static-bracket)
-
-## Constructors
-
-###  constructor
-
-\+ **new AST**(`type`: [SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)): *[AST](_ast_.ast.md)*
-
-Defined in src/ast.ts:68
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`type` | [SQL_SYMBOLE](../enums/_constants_.sql_symbole.md) |
-
-**Returns:** *[AST](_ast_.ast.md)*
+* [clone](_ast_.ast.md#clone)
 
 ## Properties
 
-### `Readonly` type
+### `Readonly` $type
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
 
-Defined in src/ast.ts:73
+Defined in ast.ts:281
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

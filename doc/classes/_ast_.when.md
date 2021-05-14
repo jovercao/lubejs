@@ -1,8 +1,12 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [When](_ast_.when.md)
 
-# Class: When
+# Class: When ‹**T**›
 
 When语句
+
+## Type parameters
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 ## Hierarchy
 
@@ -18,77 +22,67 @@ When语句
 
 ### Properties
 
-* [expr](_ast_.when.md#expr)
-* [type](_ast_.when.md#readonly-type)
-* [value](_ast_.when.md#value)
+* [$expr](_ast_.when.md#expr)
+* [$type](_ast_.when.md#type)
+* [$value](_ast_.when.md#value)
 
 ### Methods
 
-* [bracket](_ast_.when.md#static-bracket)
+* [clone](_ast_.when.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new When**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression) | [UnsureCondition](../modules/_ast_.md#unsurecondition), `then`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[When](_ast_.when.md)*
+\+ **new When**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› | [Condition](_ast_.condition.md), `then`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[When](_ast_.when.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1396
+Defined in ast.ts:3127
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) &#124; [UnsureCondition](../modules/_ast_.md#unsurecondition) |
-`then` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› &#124; [Condition](_ast_.condition.md) |
+`then` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |
 
 **Returns:** *[When](_ast_.when.md)*
 
 ## Properties
 
-###  expr
+###  $expr
 
-• **expr**: *[Expression](_ast_.expression.md) | [Condition](_ast_.condition.md)*
+• **$expr**: *[Expression](_ast_.expression.md)‹[ScalarType](../modules/_types_.md#scalartype)› | [Condition](_ast_.condition.md)*
 
-Defined in src/ast.ts:1395
-
-___
-
-### `Readonly` type
-
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
-
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
-
-Defined in src/ast.ts:73
+Defined in ast.ts:3125
 
 ___
 
-###  value
+###  $type
 
-• **value**: *[Expression](_ast_.expression.md)*
+• **$type**: *[WHEN](../enums/_constants_.sql_symbole.md#when)* = SQL_SYMBOLE.WHEN
 
-Defined in src/ast.ts:1396
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:3127
+
+___
+
+###  $value
+
+• **$value**: *[Expression](_ast_.expression.md)‹T›*
+
+Defined in ast.ts:3126
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

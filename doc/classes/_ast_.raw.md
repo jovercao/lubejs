@@ -2,6 +2,8 @@
 
 # Class: Raw
 
+源始SQL，用于将SQL代码插入语句任何部位
+
 ## Hierarchy
 
 * [AST](_ast_.ast.md)
@@ -16,12 +18,12 @@
 
 ### Properties
 
-* [sql](_ast_.raw.md#sql)
-* [type](_ast_.raw.md#readonly-type)
+* [$sql](_ast_.raw.md#sql)
+* [$type](_ast_.raw.md#readonly-type)
 
 ### Methods
 
-* [bracket](_ast_.raw.md#static-bracket)
+* [clone](_ast_.raw.md#clone)
 
 ## Constructors
 
@@ -29,9 +31,7 @@
 
 \+ **new Raw**(`sql`: string): *[Raw](_ast_.raw.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1162
+Defined in ast.ts:4045
 
 **Parameters:**
 
@@ -43,40 +43,32 @@ Name | Type |
 
 ## Properties
 
-###  sql
+###  $sql
 
-• **sql**: *string*
+• **$sql**: *string*
 
-Defined in src/ast.ts:1162
+Defined in ast.ts:4045
 
 ___
 
-### `Readonly` type
+### `Readonly` $type
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$type**: *[RAW](../enums/_constants_.sql_symbole.md#raw)* = SQL_SYMBOLE.RAW
 
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
 
-Defined in src/ast.ts:73
+Defined in ast.ts:4043
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

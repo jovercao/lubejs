@@ -1,8 +1,12 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [Assignment](_ast_.assignment.md)
 
-# Class: Assignment
+# Class: Assignment ‹**T**›
 
 赋值语句
+
+## Type parameters
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 ## Hierarchy
 
@@ -18,129 +22,135 @@
 
 ### Properties
 
+* [$type](_ast_.assignment.md#type)
 * [left](_ast_.assignment.md#left)
 * [right](_ast_.assignment.md#right)
-* [type](_ast_.assignment.md#readonly-type)
 
 ### Methods
 
+* [clone](_ast_.assignment.md#clone)
 * [assign](_ast_.assignment.md#static-assign)
-* [bracket](_ast_.assignment.md#static-bracket)
 * [case](_ast_.assignment.md#static-case)
 * [declare](_ast_.assignment.md#static-declare)
 * [delete](_ast_.assignment.md#static-delete)
-* [exec](_ast_.assignment.md#static-exec)
 * [execute](_ast_.assignment.md#static-execute)
 * [insert](_ast_.assignment.md#static-insert)
+* [invoke](_ast_.assignment.md#static-invoke)
+* [invokeScalarFunction](_ast_.assignment.md#static-invokescalarfunction)
+* [invokeTableFunction](_ast_.assignment.md#static-invoketablefunction)
+* [makeFunc](_ast_.assignment.md#static-makefunc)
+* [makeProc](_ast_.assignment.md#static-makeproc)
+* [raw](_ast_.assignment.md#static-raw)
 * [select](_ast_.assignment.md#static-select)
+* [union](_ast_.assignment.md#static-union)
+* [unionAll](_ast_.assignment.md#static-unionall)
 * [update](_ast_.assignment.md#static-update)
 * [when](_ast_.assignment.md#static-when)
+* [with](_ast_.assignment.md#static-with)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new Assignment**(`left`: [Expression](_ast_.expression.md), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Assignment](_ast_.assignment.md)*
+\+ **new Assignment**(`left`: [Assignable](_ast_.assignable.md)‹T›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Assignment](_ast_.assignment.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:2269
+Defined in ast.ts:3922
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`left` | [Expression](_ast_.expression.md) |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`left` | [Assignable](_ast_.assignable.md)‹T› |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |
 
 **Returns:** *[Assignment](_ast_.assignment.md)*
 
 ## Properties
 
+###  $type
+
+• **$type**: *[ASSIGNMENT](../enums/_constants_.sql_symbole.md#assignment)* = SQL_SYMBOLE.ASSIGNMENT
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:3922
+
+___
+
 ###  left
 
-• **left**: *[Expression](_ast_.expression.md)*
+• **left**: *[Assignable](_ast_.assignable.md)‹T›*
 
-Defined in src/ast.ts:2268
+Defined in ast.ts:3920
 
 ___
 
 ###  right
 
-• **right**: *[Expression](_ast_.expression.md)*
+• **right**: *[Expression](_ast_.expression.md)‹T›*
 
-Defined in src/ast.ts:2269
-
-___
-
-### `Readonly` type
-
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
-
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
-
-Defined in src/ast.ts:73
+Defined in ast.ts:3921
 
 ## Methods
 
+###  clone
+
+▸ **clone**(): *this*
+
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
+
+Defined in ast.ts:285
+
+克隆自身
+
+**Returns:** *this*
+
+___
+
 ### `Static` assign
 
-▸ **assign**(`left`: [Expression](_ast_.expression.md), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Assignment](_ast_.assignment.md)‹›*
+▸ **assign**‹**T**›(`left`: [Assignable](_ast_.assignable.md)‹T›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Assignment](_ast_.assignment.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[assign](_ast_.statement.md#static-assign)*
 
-Defined in src/ast.ts:1365
+Defined in ast.ts:2906
 
 赋值语句
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [Expression](_ast_.expression.md) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值  |
+`left` | [Assignable](_ast_.assignable.md)‹T› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 右值  |
 
-**Returns:** *[Assignment](_ast_.assignment.md)‹›*
-
-___
-
-### `Static` bracket
-
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
-
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
-
-Defined in src/ast.ts:75
-
-**Type parameters:**
-
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *[Assignment](_ast_.assignment.md)‹T›*
 
 ___
 
 ### `Static` case
 
-▸ **case**(`expr?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Case](_ast_.case.md)‹›*
+▸ **case**‹**T**›(`expr?`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)): *[Case](_ast_.case.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[case](_ast_.statement.md#static-case)*
 
-Defined in src/ast.ts:1386
+Defined in ast.ts:2933
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr?` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr?` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression) |
 
-**Returns:** *[Case](_ast_.case.md)‹›*
+**Returns:** *[Case](_ast_.case.md)‹T›*
 
 ___
 
@@ -150,7 +160,7 @@ ___
 
 *Inherited from [Statement](_ast_.statement.md).[declare](_ast_.statement.md#static-declare)*
 
-Defined in src/ast.ts:1373
+Defined in ast.ts:2917
 
 变量声明
 
@@ -166,186 +176,1432 @@ ___
 
 ### `Static` delete
 
-▸ **delete**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Delete](_ast_.delete.md)‹›*
+▸ **delete**‹**T**›(`table`: [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string›): *[Delete](_ast_.delete.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[delete](_ast_.statement.md#static-delete)*
 
-Defined in src/ast.ts:1325
+Defined in ast.ts:2630
 
 删除一个表格
 
-**Parameters:**
+**Type parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | 表格  |
-
-**Returns:** *[Delete](_ast_.delete.md)‹›*
-
-___
-
-### `Static` exec
-
-▸ **exec**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[Execute](_ast_.execute.md)*
-
-*Inherited from [Statement](_ast_.statement.md).[exec](_ast_.statement.md#static-exec)*
-
-Defined in src/ast.ts:1354
-
-执行一个存储过程，execute的别名
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | 存储过程 |
-`params` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] | 参数  |
+`table` | [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string› | 表格  |
 
-**Returns:** *[Execute](_ast_.execute.md)*
-
-▸ **exec**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params`: [Parameter](_ast_.parameter.md)[]): *[Execute](_ast_.execute.md)*
-
-*Inherited from [Statement](_ast_.statement.md).[exec](_ast_.statement.md#static-exec)*
-
-Defined in src/ast.ts:1355
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |
-`params` | [Parameter](_ast_.parameter.md)[] |
-
-**Returns:** *[Execute](_ast_.execute.md)*
+**Returns:** *[Delete](_ast_.delete.md)‹T›*
 
 ___
 
 ### `Static` execute
 
-▸ **execute**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[Execute](_ast_.execute.md)*
+▸ **execute**‹**R**, **O**›(`proc`: [Name](../modules/_ast_.md#name)‹string› | [Procedure](_ast_.procedure.md)‹R, O, string›, `params?`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[]): *[Execute](_ast_.execute.md)‹R, O›*
 
 *Inherited from [Statement](_ast_.statement.md).[execute](_ast_.statement.md#static-execute)*
 
-Defined in src/ast.ts:1343
+Defined in ast.ts:2657
 
 执行一个存储过程
+
+**Type parameters:**
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - |
-`params?` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] |   |
+`proc` | [Name](../modules/_ast_.md#name)‹string› &#124; [Procedure](_ast_.procedure.md)‹R, O, string› | - |
+`params?` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[] |   |
 
-**Returns:** *[Execute](_ast_.execute.md)*
-
-▸ **execute**(`proc`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params?`: [Parameter](_ast_.parameter.md)[]): *[Execute](_ast_.execute.md)*
-
-*Inherited from [Statement](_ast_.statement.md).[execute](_ast_.statement.md#static-execute)*
-
-Defined in src/ast.ts:1344
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`proc` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |
-`params?` | [Parameter](_ast_.parameter.md)[] |
-
-**Returns:** *[Execute](_ast_.execute.md)*
+**Returns:** *[Execute](_ast_.execute.md)‹R, O›*
 
 ___
 
 ### `Static` insert
 
-▸ **insert**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `fields?`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[]): *[Insert](_ast_.insert.md)‹›*
+▸ **insert**‹**T**›(`table`: [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string›, `fields?`: [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] | [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[]): *[Insert](_ast_.insert.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[insert](_ast_.statement.md#static-insert)*
 
-Defined in src/ast.ts:1309
+Defined in ast.ts:2609
 
 插入至表,into的别名
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | - |
-`fields?` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)[] |   |
+`table` | [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string› | - |
+`fields?` | [FieldsOf](../modules/_ast_.md#fieldsof)‹T›[] &#124; [Field](_ast_.field.md)‹[ScalarType](../modules/_types_.md#scalartype), [FieldsOf](../modules/_ast_.md#fieldsof)‹T››[] |   |
 
-**Returns:** *[Insert](_ast_.insert.md)‹›*
+**Returns:** *[Insert](_ast_.insert.md)‹T›*
+
+___
+
+### `Static` invoke
+
+▸ **invoke**‹**T**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:2965
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+▸ **invoke**‹**T**, **A1**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:2970
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+
+▸ **invoke**‹**T**, **A1**, **A2**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:2975
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:2984
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**, **A4**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:2994
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**, **A4**, **A5**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3005
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A5**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4, `arg5`: A5): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+`arg5` | A5 |
+
+▸ **invoke**(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3018
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (...`args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹any›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
+
+▸ **invoke**‹**T**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3024
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (): *[Expression](_ast_.expression.md)‹T›*
+
+▸ **invoke**‹**T**, **A1**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3029
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+
+▸ **invoke**‹**T**, **A1**, **A2**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3034
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3043
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**, **A4**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3053
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+
+▸ **invoke**‹**T**, **A1**, **A2**, **A3**, **A4**, **A5**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3064
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A5**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4, `arg5`: A5): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+`arg5` | A5 |
+
+▸ **invoke**(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[invoke](_ast_.statement.md#static-invoke)*
+
+Defined in ast.ts:3077
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (...`args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *[Expression](_ast_.expression.md)‹any›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
+
+___
+
+### `Static` invokeScalarFunction
+
+▸ **invokeScalarFunction**‹**T**›(`func`: [Name](../modules/_ast_.md#name)‹string› | [Func](_ast_.func.md)‹string›, `args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[]): *[ScalarFuncInvoke](_ast_.scalarfuncinvoke.md)‹T›*
+
+*Inherited from [Statement](_ast_.statement.md).[invokeScalarFunction](_ast_.statement.md#static-invokescalarfunction)*
+
+Defined in ast.ts:2672
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`func` | [Name](../modules/_ast_.md#name)‹string› &#124; [Func](_ast_.func.md)‹string› |
+`args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[] |
+
+**Returns:** *[ScalarFuncInvoke](_ast_.scalarfuncinvoke.md)‹T›*
+
+___
+
+### `Static` invokeTableFunction
+
+▸ **invokeTableFunction**‹**T**›(`func`: [Name](../modules/_ast_.md#name)‹string› | [Func](_ast_.func.md)‹string›, `args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[]): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+*Inherited from [Statement](_ast_.statement.md).[invokeTableFunction](_ast_.statement.md#static-invoketablefunction)*
+
+Defined in ast.ts:2665
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`func` | [Name](../modules/_ast_.md#name)‹string› &#124; [Func](_ast_.func.md)‹string› |
+`args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›[] |
+
+**Returns:** *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+___
+
+### `Static` makeFunc
+
+▸ **makeFunc**‹**T**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2679
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+▸ **makeFunc**‹**T**, **A1**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2684
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2689
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2698
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**, **A4**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2708
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**, **A4**, **A5**›(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2719
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A5**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4, `arg5`: A5): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+`arg5` | A5 |
+
+▸ **makeFunc**(`type`: "table", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2732
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "table" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (...`args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *[ProxiedRowset](../modules/_ast_.md#proxiedrowset)‹any›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
+
+▸ **makeFunc**‹**T**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2738
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (): *[Expression](_ast_.expression.md)‹T›*
+
+▸ **makeFunc**‹**T**, **A1**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2743
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2748
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2757
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**, **A4**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2767
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+
+▸ **makeFunc**‹**T**, **A1**, **A2**, **A3**, **A4**, **A5**›(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2778
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A5**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4, `arg5`: A5): *[Expression](_ast_.expression.md)‹T›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+`arg5` | A5 |
+
+▸ **makeFunc**(`type`: "scalar", `name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeFunc](_ast_.statement.md#static-makefunc)*
+
+Defined in ast.ts:2791
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | "scalar" |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (...`args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *[Expression](_ast_.expression.md)‹any›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
+
+___
+
+### `Static` makeProc
+
+▸ **makeProc**‹**R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2830
+
+创建一个可供JS调用的存储过程
+
+**Type parameters:**
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (): *[Execute](_ast_.execute.md)‹R, O›*
+
+▸ **makeProc**‹**A1**, **R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2834
+
+**Type parameters:**
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1): *[Execute](_ast_.execute.md)‹R, O›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+
+▸ **makeProc**‹**A1**, **A2**, **R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2839
+
+**Type parameters:**
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2): *[Execute](_ast_.execute.md)‹R, O›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+
+▸ **makeProc**‹**A1**, **A2**, **A3**, **R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2848
+
+**Type parameters:**
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3): *[Execute](_ast_.execute.md)‹R, O›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+
+▸ **makeProc**‹**A1**, **A2**, **A3**, **A4**, **R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2858
+
+**Type parameters:**
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4): *[Execute](_ast_.execute.md)‹R, O›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+
+▸ **makeProc**‹**A1**, **A2**, **A3**, **A4**, **A5**, **R**, **O**›(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2869
+
+**Type parameters:**
+
+▪ **A1**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A2**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A3**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A4**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **A5**: *[CompatibleExpression](../modules/_ast_.md#compatibleexpression)*
+
+▪ **R**: *[ScalarType](../modules/_types_.md#scalartype)*
+
+▪ **O**: *[RowObject](../modules/_ast_.md#rowobject)[]*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (`arg1`: A1, `arg2`: A2, `arg3`: A3, `arg4`: A4, `arg5`: A5): *[Execute](_ast_.execute.md)‹R, O›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`arg1` | A1 |
+`arg2` | A2 |
+`arg3` | A3 |
+`arg4` | A4 |
+`arg5` | A5 |
+
+▸ **makeProc**(`name`: [Name](../modules/_ast_.md#name)‹string›, `builtIn?`: boolean): *function*
+
+*Inherited from [Statement](_ast_.statement.md).[makeProc](_ast_.statement.md#static-makeproc)*
+
+Defined in ast.ts:2882
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`name` | [Name](../modules/_ast_.md#name)‹string› |
+`builtIn?` | boolean |
+
+**Returns:** *function*
+
+▸ (...`args`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[]): *[Expression](_ast_.expression.md)‹any›*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...args` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)[] |
+
+___
+
+### `Static` raw
+
+▸ **raw**(`sql`: string): *any*
+
+*Inherited from [Statement](_ast_.statement.md).[raw](_ast_.statement.md#static-raw)*
+
+Defined in ast.ts:2640
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`sql` | string |
+
+**Returns:** *any*
 
 ___
 
 ### `Static` select
 
-▸ **select**(`columns`: [KeyValueObject](../interfaces/_ast_.keyvalueobject.md)): *[Select](_ast_.select.md)*
+▸ **select**(...`args`: any[]): *any*
 
 *Inherited from [Statement](_ast_.statement.md).[select](_ast_.statement.md#static-select)*
 
-Defined in src/ast.ts:1332
-
-选择列
+Defined in ast.ts:2636
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`columns` | [KeyValueObject](../interfaces/_ast_.keyvalueobject.md) |
+`...args` | any[] |
 
-**Returns:** *[Select](_ast_.select.md)*
+**Returns:** *any*
 
-▸ **select**(...`columns`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[Select](_ast_.select.md)*
+___
 
-*Inherited from [Statement](_ast_.statement.md).[select](_ast_.statement.md#static-select)*
+### `Static` union
 
-Defined in src/ast.ts:1333
+▸ **union**‹**T**›(...`selects`: [Select](_ast_.select.md)‹T›[]): *[Select](_ast_.select.md)‹T›*
+
+*Inherited from [Statement](_ast_.statement.md).[union](_ast_.statement.md#static-union)*
+
+Defined in ast.ts:2949
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...columns` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] |
+`...selects` | [Select](_ast_.select.md)‹T›[] |
 
-**Returns:** *[Select](_ast_.select.md)*
+**Returns:** *[Select](_ast_.select.md)‹T›*
+
+___
+
+### `Static` unionAll
+
+▸ **unionAll**‹**T**›(...`selects`: [Select](_ast_.select.md)‹T›[]): *[Select](_ast_.select.md)‹T›*
+
+*Inherited from [Statement](_ast_.statement.md).[unionAll](_ast_.statement.md#static-unionall)*
+
+Defined in ast.ts:2956
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...selects` | [Select](_ast_.select.md)‹T›[] |
+
+**Returns:** *[Select](_ast_.select.md)‹T›*
 
 ___
 
 ### `Static` update
 
-▸ **update**(`table`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Update](_ast_.update.md)‹›*
+▸ **update**‹**T**›(`table`: [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string›): *[Update](_ast_.update.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[update](_ast_.statement.md#static-update)*
 
-Defined in src/ast.ts:1317
+Defined in ast.ts:2620
 
 更新一个表格
+
+**Type parameters:**
+
+▪ **T**: *[RowObject](../modules/_ast_.md#rowobject)*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`table` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |   |
+`table` | [CompatibleTable](../modules/_ast_.md#compatibletable)‹T, string› |   |
 
-**Returns:** *[Update](_ast_.update.md)‹›*
+**Returns:** *[Update](_ast_.update.md)‹T›*
 
 ___
 
 ### `Static` when
 
-▸ **when**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `value?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[When](_ast_.when.md)‹›*
+▸ **when**‹**T**›(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›, `value?`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[When](_ast_.when.md)‹T›*
 
 *Inherited from [Statement](_ast_.statement.md).[when](_ast_.statement.md#static-when)*
 
-Defined in src/ast.ts:1382
+Defined in ast.ts:2926
 
 WHEN 语句块
+
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | - |
-`value?` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |   |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› | - |
+`value?` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |   |
 
-**Returns:** *[When](_ast_.when.md)‹›*
+**Returns:** *[When](_ast_.when.md)‹T›*
+
+___
+
+### `Static` with
+
+▸ **with**(...`rowsets`: [CompatibleNamedSelect](../modules/_ast_.md#compatiblenamedselect)[]): *[With](_ast_.with.md)*
+
+*Inherited from [Statement](_ast_.statement.md).[with](_ast_.statement.md#static-with)*
+
+Defined in ast.ts:2940
+
+With语句
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...rowsets` | [CompatibleNamedSelect](../modules/_ast_.md#compatiblenamedselect)[] |
+
+**Returns:** *[With](_ast_.with.md)*
+
+▸ **with**(`rowsets`: Record‹string, [Select](_ast_.select.md)›): *[With](_ast_.with.md)*
+
+*Inherited from [Statement](_ast_.statement.md).[with](_ast_.statement.md#static-with)*
+
+Defined in ast.ts:2941
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`rowsets` | Record‹string, [Select](_ast_.select.md)› |
+
+**Returns:** *[With](_ast_.with.md)*

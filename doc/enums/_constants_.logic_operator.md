@@ -18,7 +18,7 @@
 
 • **AND**: = "AND"
 
-Defined in src/constants.ts:32
+Defined in constants.ts:32
 
 ___
 
@@ -26,7 +26,7 @@ ___
 
 • **NOT**: = "NOT"
 
-Defined in src/constants.ts:34
+Defined in constants.ts:34
 
 ___
 
@@ -34,4 +34,4 @@ ___
 
 • **OR**: = "OR"
 
-Defined in src/constants.ts:33
+Defined in constants.ts:33

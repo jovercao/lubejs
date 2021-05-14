@@ -17,7 +17,7 @@
 
 • **ASC**: = "ASC"
 
-Defined in src/constants.ts:5
+Defined in constants.ts:5
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **DESC**: = "DESC"
 
-Defined in src/constants.ts:6
+Defined in constants.ts:6

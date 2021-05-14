@@ -1,12 +1,16 @@
 [lubejs](../README.md) › [Globals](../globals.md) › ["ast"](../modules/_ast_.md) › [Case](_ast_.case.md)
 
-# Class: Case
+# Class: Case ‹**T**›
 
 CASE表达式
 
+## Type parameters
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
+
 ## Hierarchy
 
-  ↳ [Expression](_ast_.expression.md)
+  ↳ [Expression](_ast_.expression.md)‹T›
 
   ↳ **Case**
 
@@ -18,14 +22,10 @@ CASE表达式
 
 ### Properties
 
-* [defaults](_ast_.case.md#optional-defaults)
-* [expr](_ast_.case.md#expr)
-* [type](_ast_.case.md#readonly-type)
-* [whens](_ast_.case.md#whens)
-
-### Accessors
-
-* [lvalue](_ast_.case.md#lvalue)
+* [$default](_ast_.case.md#optional-default)
+* [$expr](_ast_.case.md#expr)
+* [$type](_ast_.case.md#type)
+* [$whens](_ast_.case.md#whens)
 
 ### Methods
 
@@ -33,9 +33,12 @@ CASE表达式
 * [and](_ast_.case.md#and)
 * [as](_ast_.case.md#as)
 * [asc](_ast_.case.md#asc)
+* [clone](_ast_.case.md#clone)
+* [concat](_ast_.case.md#concat)
 * [desc](_ast_.case.md#desc)
 * [div](_ast_.case.md#div)
 * [else](_ast_.case.md#else)
+* [enclose](_ast_.case.md#enclose)
 * [eq](_ast_.case.md#eq)
 * [gt](_ast_.case.md#gt)
 * [gte](_ast_.case.md#gte)
@@ -56,126 +59,105 @@ CASE表达式
 * [shl](_ast_.case.md#shl)
 * [shr](_ast_.case.md#shr)
 * [sub](_ast_.case.md#sub)
+* [to](_ast_.case.md#to)
 * [when](_ast_.case.md#when)
 * [xor](_ast_.case.md#xor)
 * [add](_ast_.case.md#static-add)
-* [alias](_ast_.case.md#static-alias)
 * [and](_ast_.case.md#static-and)
-* [any](_ast_.case.md#static-any)
-* [bracket](_ast_.case.md#static-bracket)
-* [const](_ast_.case.md#static-const)
-* [constant](_ast_.case.md#static-constant)
+* [concat](_ast_.case.md#static-concat)
+* [convert](_ast_.case.md#static-convert)
 * [div](_ast_.case.md#static-div)
-* [field](_ast_.case.md#static-field)
-* [identifier](_ast_.case.md#static-identifier)
-* [invoke](_ast_.case.md#static-invoke)
+* [enclose](_ast_.case.md#static-enclose)
+* [literal](_ast_.case.md#static-literal)
 * [mod](_ast_.case.md#static-mod)
 * [mul](_ast_.case.md#static-mul)
 * [neg](_ast_.case.md#static-neg)
 * [not](_ast_.case.md#static-not)
 * [or](_ast_.case.md#static-or)
-* [proxiedIdentifier](_ast_.case.md#static-proxiedidentifier)
 * [shl](_ast_.case.md#static-shl)
 * [shr](_ast_.case.md#static-shr)
 * [sub](_ast_.case.md#static-sub)
-* [table](_ast_.case.md#static-table)
-* [var](_ast_.case.md#static-var)
-* [variant](_ast_.case.md#static-variant)
 * [xor](_ast_.case.md#static-xor)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new Case**(`expr?`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[Case](_ast_.case.md)*
+\+ **new Case**(`expr?`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›): *[Case](_ast_.case.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1422
+Defined in ast.ts:3153
 
 **Parameters:**
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr?` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |   |
+`expr?` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› |   |
 
 **Returns:** *[Case](_ast_.case.md)*
 
 ## Properties
 
-### `Optional` defaults
+### `Optional` $default
 
-• **defaults**? : *[Expression](_ast_.expression.md)*
+• **$default**? : *[Expression](_ast_.expression.md)‹T›*
 
-Defined in src/ast.ts:1422
-
-___
-
-###  expr
-
-• **expr**: *[Expression](_ast_.expression.md) | [Condition](_ast_.condition.md)*
-
-Defined in src/ast.ts:1420
+Defined in ast.ts:3152
 
 ___
 
-### `Readonly` type
+###  $expr
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$expr**: *[Expression](_ast_.expression.md)‹any›*
 
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
-
-Defined in src/ast.ts:73
+Defined in ast.ts:3150
 
 ___
 
-###  whens
+###  $type
 
-• **whens**: *[When](_ast_.when.md)[]*
+• **$type**: *[CASE](../enums/_constants_.sql_symbole.md#case)* = SQL_SYMBOLE.CASE
 
-Defined in src/ast.ts:1421
+*Overrides [Expression](_ast_.expression.md).[$type](_ast_.expression.md#type)*
 
-## Accessors
+Defined in ast.ts:3153
 
-###  lvalue
+___
 
-• **get lvalue**(): *boolean*
+###  $whens
 
-*Overrides [Expression](_ast_.expression.md).[lvalue](_ast_.expression.md#lvalue)*
+• **$whens**: *[When](_ast_.when.md)‹T›[]*
 
-Defined in src/ast.ts:1416
-
-**Returns:** *boolean*
+Defined in ast.ts:3151
 
 ## Methods
 
 ###  add
 
-▸ **add**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **add**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[add](_ast_.expression.md#add)*
 
-Defined in src/ast.ts:256
+Defined in ast.ts:318
 
-加法运算
+加法运算，返回数值，如果是字符串相加，请使用join函数连接
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 ___
 
 ###  and
 
-▸ **and**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **and**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[and](_ast_.expression.md#and)*
 
-Defined in src/ast.ts:298
+Defined in ast.ts:360
 
 位运算 &
 
@@ -183,9 +165,9 @@ Defined in src/ast.ts:298
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -193,21 +175,25 @@ ___
 
 ###  as
 
-▸ **as**(`alias`: string): *[ProxiedIdentifier](../modules/_ast_.md#proxiedidentifier)*
+▸ **as**‹**N**›(`name`: N): *[SelectColumn](_ast_.selectcolumn.md)‹T, N›*
 
 *Inherited from [Expression](_ast_.expression.md).[as](_ast_.expression.md#as)*
 
-Defined in src/ast.ts:480
+Defined in ast.ts:556
 
-为当前表达式添加别名
+将表达式转换为列，并指定列名
+
+**Type parameters:**
+
+▪ **N**: *string*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`alias` | string |
+`name` | N |
 
-**Returns:** *[ProxiedIdentifier](../modules/_ast_.md#proxiedidentifier)*
+**Returns:** *[SelectColumn](_ast_.selectcolumn.md)‹T, N›*
 
 ___
 
@@ -217,7 +203,7 @@ ___
 
 *Inherited from [Expression](_ast_.expression.md).[asc](_ast_.expression.md#asc)*
 
-Defined in src/ast.ts:465
+Defined in ast.ts:541
 
 正序
 
@@ -227,13 +213,47 @@ Defined in src/ast.ts:465
 
 ___
 
+###  clone
+
+▸ **clone**(): *this*
+
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
+
+Defined in ast.ts:285
+
+克隆自身
+
+**Returns:** *this*
+
+___
+
+###  concat
+
+▸ **concat**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string›): *[Expression](_ast_.expression.md)‹string›*
+
+*Inherited from [Expression](_ast_.expression.md).[concat](_ast_.expression.md#concat)*
+
+Defined in ast.ts:311
+
+字符串连接运算
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string› |
+
+**Returns:** *[Expression](_ast_.expression.md)‹string›*
+
+___
+
 ###  desc
 
 ▸ **desc**(): *[SortInfo](_ast_.sortinfo.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[desc](_ast_.expression.md#desc)*
 
-Defined in src/ast.ts:473
+Defined in ast.ts:549
 
 倒序
 
@@ -245,11 +265,11 @@ ___
 
 ###  div
 
-▸ **div**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **div**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[div](_ast_.expression.md#div)*
 
-Defined in src/ast.ts:280
+Defined in ast.ts:342
 
 除法运算
 
@@ -257,9 +277,9 @@ Defined in src/ast.ts:280
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -267,9 +287,9 @@ ___
 
 ###  else
 
-▸ **else**(`defaults`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *this*
+▸ **else**(`defaults`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *this*
 
-Defined in src/ast.ts:1443
+Defined in ast.ts:3174
 
 ELSE语句
 
@@ -277,19 +297,33 @@ ELSE语句
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`defaults` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |   |
+`defaults` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |   |
 
 **Returns:** *this*
 
 ___
 
+###  enclose
+
+▸ **enclose**(): *[Expression](_ast_.expression.md)‹T›*
+
+*Inherited from [Expression](_ast_.expression.md).[enclose](_ast_.expression.md#enclose)*
+
+Defined in ast.ts:563
+
+将本表达式括起来
+
+**Returns:** *[Expression](_ast_.expression.md)‹T›*
+
+___
+
 ###  eq
 
-▸ **eq**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **eq**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[eq](_ast_.expression.md#eq)*
 
-Defined in src/ast.ts:352
+Defined in ast.ts:414
 
 比较是否相等 =
 
@@ -297,9 +331,9 @@ Defined in src/ast.ts:352
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -307,11 +341,11 @@ ___
 
 ###  gt
 
-▸ **gt**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **gt**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[gt](_ast_.expression.md#gt)*
 
-Defined in src/ast.ts:388
+Defined in ast.ts:450
 
 比较是否大于 >
 
@@ -319,9 +353,9 @@ Defined in src/ast.ts:388
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -329,11 +363,11 @@ ___
 
 ###  gte
 
-▸ **gte**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **gte**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[gte](_ast_.expression.md#gte)*
 
-Defined in src/ast.ts:397
+Defined in ast.ts:459
 
 比较是否小于等于 >=
 
@@ -341,9 +375,9 @@ Defined in src/ast.ts:397
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -351,37 +385,65 @@ ___
 
 ###  in
 
-▸ **in**(...`values`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **in**(`select`: [Select](_ast_.select.md)‹any›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[in](_ast_.expression.md#in)*
 
-Defined in src/ast.ts:424
+Defined in ast.ts:486
 
 比较是否不包含于 IN
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`...values` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] | 要与当前表达式相比较的表达式数组 |
+Name | Type |
+------ | ------ |
+`select` | [Select](_ast_.select.md)‹any› |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
+
+▸ **in**(`values`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[]): *[Condition](_ast_.condition.md)*
+
+*Inherited from [Expression](_ast_.expression.md).[in](_ast_.expression.md#in)*
+
+Defined in ast.ts:487
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`values` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[] |
+
+**Returns:** *[Condition](_ast_.condition.md)*
+
+▸ **in**(...`values`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[]): *[Condition](_ast_.condition.md)*
+
+*Inherited from [Expression](_ast_.expression.md).[in](_ast_.expression.md#in)*
+
+Defined in ast.ts:488
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`...values` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[] |
+
+**Returns:** *[Condition](_ast_.condition.md)*
 
 ___
 
 ###  isNotNull
 
-▸ **isNotNull**(): *[IsNotNullCondition](_ast_.isnotnullcondition.md)‹›*
+▸ **isNotNull**(): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[isNotNull](_ast_.expression.md#isnotnull)*
 
-Defined in src/ast.ts:449
+Defined in ast.ts:525
 
 比较是否为空 IS NOT NULL
 
-**Returns:** *[IsNotNullCondition](_ast_.isnotnullcondition.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -389,15 +451,15 @@ ___
 
 ###  isNull
 
-▸ **isNull**(): *[IsNullCondition](_ast_.isnullcondition.md)‹›*
+▸ **isNull**(): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[isNull](_ast_.expression.md#isnull)*
 
-Defined in src/ast.ts:441
+Defined in ast.ts:517
 
 比较是否为空 IS NULL
 
-**Returns:** *[IsNullCondition](_ast_.isnullcondition.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -405,11 +467,11 @@ ___
 
 ###  like
 
-▸ **like**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **like**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[like](_ast_.expression.md#like)*
 
-Defined in src/ast.ts:406
+Defined in ast.ts:468
 
 比较是相像 LIKE
 
@@ -417,9 +479,9 @@ Defined in src/ast.ts:406
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -427,11 +489,11 @@ ___
 
 ###  lt
 
-▸ **lt**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **lt**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[lt](_ast_.expression.md#lt)*
 
-Defined in src/ast.ts:370
+Defined in ast.ts:432
 
 比较是否小于 <
 
@@ -439,9 +501,9 @@ Defined in src/ast.ts:370
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -449,11 +511,11 @@ ___
 
 ###  lte
 
-▸ **lte**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **lte**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[lte](_ast_.expression.md#lte)*
 
-Defined in src/ast.ts:379
+Defined in ast.ts:441
 
 比较是否小于等于 <=
 
@@ -461,9 +523,9 @@ Defined in src/ast.ts:379
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -471,11 +533,11 @@ ___
 
 ###  mod
 
-▸ **mod**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **mod**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[mod](_ast_.expression.md#mod)*
 
-Defined in src/ast.ts:289
+Defined in ast.ts:351
 
 算术运算 %
 
@@ -483,9 +545,9 @@ Defined in src/ast.ts:289
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -493,11 +555,11 @@ ___
 
 ###  mul
 
-▸ **mul**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **mul**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[mul](_ast_.expression.md#mul)*
 
-Defined in src/ast.ts:271
+Defined in ast.ts:333
 
 乘法运算
 
@@ -505,19 +567,19 @@ Defined in src/ast.ts:271
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相乘的表达式  |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相乘的表达式  |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 ___
 
 ###  neq
 
-▸ **neq**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **neq**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[neq](_ast_.expression.md#neq)*
 
-Defined in src/ast.ts:361
+Defined in ast.ts:423
 
 比较是否不等于 <>
 
@@ -525,9 +587,9 @@ Defined in src/ast.ts:361
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -535,21 +597,15 @@ ___
 
 ###  not
 
-▸ **not**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **not**(): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[not](_ast_.expression.md#not)*
 
-Defined in src/ast.ts:316
+Defined in ast.ts:378
 
 位运算 ~
 
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
-
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -557,11 +613,11 @@ ___
 
 ###  notIn
 
-▸ **notIn**(...`values`: [UnsureExpression](../modules/_ast_.md#unsureexpression)[]): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **notIn**(...`values`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[]): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[notIn](_ast_.expression.md#notin)*
 
-Defined in src/ast.ts:433
+Defined in ast.ts:509
 
 比较是否不包含于 NOT IN
 
@@ -569,9 +625,9 @@ Defined in src/ast.ts:433
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`...values` | [UnsureExpression](../modules/_ast_.md#unsureexpression)[] | 要与当前表达式相比较的表达式 |
+`...values` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›[] | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -579,11 +635,11 @@ ___
 
 ###  notLike
 
-▸ **notLike**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCompare](_ast_.binarycompare.md)‹›*
+▸ **notLike**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string›): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[notLike](_ast_.expression.md#notlike)*
 
-Defined in src/ast.ts:415
+Defined in ast.ts:477
 
 比较是否不想像 NOT LIKE
 
@@ -591,9 +647,9 @@ Defined in src/ast.ts:415
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相比较的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string› | 要与当前表达式相比较的表达式 |
 
-**Returns:** *[BinaryCompare](_ast_.binarycompare.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -601,15 +657,15 @@ ___
 
 ###  notNull
 
-▸ **notNull**(): *[IsNotNullCondition](_ast_.isnotnullcondition.md)‹›*
+▸ **notNull**(): *[Condition](_ast_.condition.md)*
 
 *Inherited from [Expression](_ast_.expression.md).[notNull](_ast_.expression.md#notnull)*
 
-Defined in src/ast.ts:457
+Defined in ast.ts:533
 
 isNotNull 的简称别名
 
-**Returns:** *[IsNotNullCondition](_ast_.isnotnullcondition.md)‹›*
+**Returns:** *[Condition](_ast_.condition.md)*
 
 返回对比条件表达式
 
@@ -617,11 +673,11 @@ ___
 
 ###  or
 
-▸ **or**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **or**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[or](_ast_.expression.md#or)*
 
-Defined in src/ast.ts:307
+Defined in ast.ts:369
 
 位运算 |
 
@@ -629,9 +685,9 @@ Defined in src/ast.ts:307
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -639,11 +695,11 @@ ___
 
 ###  shl
 
-▸ **shl**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **shl**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[shl](_ast_.expression.md#shl)*
 
-Defined in src/ast.ts:334
+Defined in ast.ts:396
 
 位运算 <<
 
@@ -651,9 +707,9 @@ Defined in src/ast.ts:334
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -661,11 +717,11 @@ ___
 
 ###  shr
 
-▸ **shr**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **shr**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[shr](_ast_.expression.md#shr)*
 
-Defined in src/ast.ts:343
+Defined in ast.ts:405
 
 位运算 >>
 
@@ -673,9 +729,9 @@ Defined in src/ast.ts:343
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -683,11 +739,11 @@ ___
 
 ###  sub
 
-▸ **sub**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **sub**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[sub](_ast_.expression.md#sub)*
 
-Defined in src/ast.ts:263
+Defined in ast.ts:325
 
 减法运算
 
@@ -695,17 +751,41 @@ Defined in src/ast.ts:263
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
+
+___
+
+###  to
+
+▸ **to**‹**T**›(`type`: T): *[Expression](_ast_.expression.md)‹[DbTypeToTsType](../modules/_types_.md#dbtypetotstype)‹T››*
+
+*Inherited from [Expression](_ast_.expression.md).[to](_ast_.expression.md#to)*
+
+Defined in ast.ts:570
+
+将当前表达式转换为指定的类型
+
+**Type parameters:**
+
+▪ **T**: *[DbType](../modules/_types_.md#dbtype)*
+
+**Parameters:**
+
+Name | Type |
+------ | ------ |
+`type` | T |
+
+**Returns:** *[Expression](_ast_.expression.md)‹[DbTypeToTsType](../modules/_types_.md#dbtypetotstype)‹T››*
 
 ___
 
 ###  when
 
-▸ **when**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression) | [UnsureCondition](../modules/_ast_.md#unsurecondition), `then`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *this*
+▸ **when**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› | [Condition](_ast_.condition.md), `then`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *this*
 
-Defined in src/ast.ts:1453
+Defined in ast.ts:3184
 
 WHEN语句
 
@@ -713,8 +793,8 @@ WHEN语句
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) &#124; [UnsureCondition](../modules/_ast_.md#unsurecondition) | - |
-`then` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |   |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› &#124; [Condition](_ast_.condition.md) | - |
+`then` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |   |
 
 **Returns:** *this*
 
@@ -722,11 +802,11 @@ ___
 
 ###  xor
 
-▸ **xor**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **xor**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[xor](_ast_.expression.md#xor)*
 
-Defined in src/ast.ts:325
+Defined in ast.ts:387
 
 位运算 ^
 
@@ -734,9 +814,9 @@ Defined in src/ast.ts:325
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 要与当前表达式相除的表达式 |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 要与当前表达式相除的表达式 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回运算后的表达式
 
@@ -744,11 +824,11 @@ ___
 
 ### `Static` add
 
-▸ **add**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **add**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[add](_ast_.expression.md#add)*
 
-Defined in src/ast.ts:507
+Defined in ast.ts:609
 
 算术运算 +
 
@@ -756,41 +836,22 @@ Defined in src/ast.ts:507
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
 ___
 
-### `Static` alias
-
-▸ **alias**(`expr`: [Expression](_ast_.expression.md), `name`: string): *[Alias](_ast_.alias.md)‹›*
-
-*Inherited from [Expression](_ast_.expression.md).[alias](_ast_.expression.md#static-alias)*
-
-Defined in src/ast.ts:643
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`expr` | [Expression](_ast_.expression.md) |
-`name` | string |
-
-**Returns:** *[Alias](_ast_.alias.md)‹›*
-
-___
-
 ### `Static` and
 
-▸ **and**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **and**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[and](_ast_.expression.md#and)*
 
-Defined in src/ast.ts:557
+Defined in ast.ts:674
 
 位算术运算 &
 
@@ -798,104 +859,66 @@ Defined in src/ast.ts:557
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
 ___
 
-### `Static` any
+### `Static` concat
 
-▸ **any**(`parent?`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Identifier](_ast_.identifier.md)‹›*
+▸ **concat**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string›): *[Expression](_ast_.expression.md)‹string›*
 
-*Inherited from [Expression](_ast_.expression.md).[any](_ast_.expression.md#static-any)*
+*Inherited from [Expression](_ast_.expression.md).[concat](_ast_.expression.md#concat)*
 
-Defined in src/ast.ts:651
+Defined in ast.ts:596
 
-任意字段 *
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`parent?` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | parent identifier  |
-
-**Returns:** *[Identifier](_ast_.identifier.md)‹›*
-
-___
-
-### `Static` bracket
-
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
-
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
-
-Defined in src/ast.ts:75
-
-**Type parameters:**
-
-▪ **T**: *[AST](_ast_.ast.md)*
+字符串连接运算
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`context` | T |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string› |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹string› |
 
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
-
-___
-
-### `Static` const
-
-▸ **const**(`value`: [JsConstant](../modules/_ast_.md#jsconstant)): *[Constant](_ast_.constant.md)‹›*
-
-*Inherited from [Expression](_ast_.expression.md).[const](_ast_.expression.md#static-const)*
-
-Defined in src/ast.ts:623
-
-常量，constant 的别名
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`value` | [JsConstant](../modules/_ast_.md#jsconstant) | 常量值  |
-
-**Returns:** *[Constant](_ast_.constant.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹string›*
 
 ___
 
-### `Static` constant
+### `Static` convert
 
-▸ **constant**(`value`: [JsConstant](../modules/_ast_.md#jsconstant)): *[Constant](_ast_.constant.md)‹›*
+▸ **convert**‹**T**›(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›, `toType`: T): *[Expression](_ast_.expression.md)‹[DbTypeToTsType](../modules/_types_.md#dbtypetotstype)‹T››*
 
-*Inherited from [Expression](_ast_.expression.md).[constant](_ast_.expression.md#static-constant)*
+*Inherited from [Expression](_ast_.expression.md).[convert](_ast_.expression.md#static-convert)*
 
-Defined in src/ast.ts:615
+Defined in ast.ts:743
 
-常量
+**Type parameters:**
+
+▪ **T**: *[DbType](../modules/_types_.md#dbtype)*
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`value` | [JsConstant](../modules/_ast_.md#jsconstant) | 常量值  |
+Name | Type |
+------ | ------ |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› |
+`toType` | T |
 
-**Returns:** *[Constant](_ast_.constant.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹[DbTypeToTsType](../modules/_types_.md#dbtypetotstype)‹T››*
 
 ___
 
 ### `Static` div
 
-▸ **div**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **div**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[div](_ast_.expression.md#div)*
 
-Defined in src/ast.ts:537
+Defined in ast.ts:648
 
 算术运算 /
 
@@ -903,83 +926,68 @@ Defined in src/ast.ts:537
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
 ___
 
-### `Static` field
+### `Static` enclose
 
-▸ **field**(...`names`: string[]): *[Identifier](_ast_.identifier.md)‹›*
+▸ **enclose**‹**T**›(`value`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T›): *[Expression](_ast_.expression.md)‹T›*
 
-*Inherited from [Expression](_ast_.expression.md).[field](_ast_.expression.md#static-field)*
+*Inherited from [Expression](_ast_.expression.md).[enclose](_ast_.expression.md#enclose)*
 
-Defined in src/ast.ts:692
+Defined in ast.ts:577
 
-字段，实为 identifier(...names) 别名
+括号表达式，将表达式括起来，如优先级
 
-**Parameters:**
+**Type parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`...names` | string[] |   |
-
-**Returns:** *[Identifier](_ast_.identifier.md)‹›*
-
-___
-
-### `Static` identifier
-
-▸ **identifier**(...`names`: string[]): *[Identifier](_ast_.identifier.md)*
-
-*Inherited from [Expression](_ast_.expression.md).[identifier](_ast_.expression.md#static-identifier)*
-
-Defined in src/ast.ts:658
-
-标识符
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...names` | string[] |
+`value` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹T› |
 
-**Returns:** *[Identifier](_ast_.identifier.md)*
+**Returns:** *[Expression](_ast_.expression.md)‹T›*
 
 ___
 
-### `Static` invoke
+### `Static` literal
 
-▸ **invoke**(`func`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier), `params`: string | number | bigint | false | true | [Expression](_ast_.expression.md)‹› | Date | Buffer‹›[]): *[Invoke](_ast_.invoke.md)‹›*
+▸ **literal**‹**T**›(`value`: T): *[Literal](_ast_.literal.md)‹T›*
 
-*Inherited from [Expression](_ast_.expression.md).[invoke](_ast_.expression.md#static-invoke)*
+*Inherited from [Expression](_ast_.expression.md).[literal](_ast_.expression.md#static-literal)*
 
-Defined in src/ast.ts:701
+Defined in ast.ts:750
 
-调用表达式
+**Type parameters:**
+
+▪ **T**: *[ScalarType](../modules/_types_.md#scalartype)*
 
 **Parameters:**
 
-Name | Type | Description |
------- | ------ | ------ |
-`func` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) | 函数 |
-`params` | string &#124; number &#124; bigint &#124; false &#124; true &#124; [Expression](_ast_.expression.md)‹› &#124; Date &#124; Buffer‹›[] | 参数  |
+Name | Type |
+------ | ------ |
+`value` | T |
 
-**Returns:** *[Invoke](_ast_.invoke.md)‹›*
+**Returns:** *[Literal](_ast_.literal.md)‹T›*
 
 ___
 
 ### `Static` mod
 
-▸ **mod**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **mod**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[mod](_ast_.expression.md#mod)*
 
-Defined in src/ast.ts:547
+Defined in ast.ts:661
 
 算术运算 %
 
@@ -987,10 +995,10 @@ Defined in src/ast.ts:547
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -998,11 +1006,11 @@ ___
 
 ### `Static` mul
 
-▸ **mul**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **mul**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[mul](_ast_.expression.md#mul)*
 
-Defined in src/ast.ts:527
+Defined in ast.ts:635
 
 算术运算 *
 
@@ -1010,10 +1018,10 @@ Defined in src/ast.ts:527
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -1021,11 +1029,11 @@ ___
 
 ### `Static` neg
 
-▸ **neg**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[UnaryCalculate](_ast_.unarycalculate.md)‹›*
+▸ **neg**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[neg](_ast_.expression.md#static-neg)*
 
-Defined in src/ast.ts:497
+Defined in ast.ts:589
 
 算术运算 +
 
@@ -1033,9 +1041,9 @@ Defined in src/ast.ts:497
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› |
 
-**Returns:** *[UnaryCalculate](_ast_.unarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -1043,11 +1051,11 @@ ___
 
 ### `Static` not
 
-▸ **not**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **not**(`value`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[not](_ast_.expression.md#not)*
 
-Defined in src/ast.ts:587
+Defined in ast.ts:713
 
 位算术运算 ~
 
@@ -1055,10 +1063,9 @@ Defined in src/ast.ts:587
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`value` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -1066,11 +1073,11 @@ ___
 
 ### `Static` or
 
-▸ **or**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **or**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[or](_ast_.expression.md#or)*
 
-Defined in src/ast.ts:567
+Defined in ast.ts:687
 
 位算术运算 |
 
@@ -1078,42 +1085,22 @@ Defined in src/ast.ts:567
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
 ___
 
-### `Static` proxiedIdentifier
-
-▸ **proxiedIdentifier**(`name`: [UnsureIdentifier](../modules/_ast_.md#unsureidentifier)): *[Identifier](_ast_.identifier.md)‹› & object*
-
-*Inherited from [Expression](_ast_.expression.md).[proxiedIdentifier](_ast_.expression.md#static-proxiedidentifier)*
-
-Defined in src/ast.ts:676
-
-代理化的identifier，可以自动接受字段名
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`name` | [UnsureIdentifier](../modules/_ast_.md#unsureidentifier) |   |
-
-**Returns:** *[Identifier](_ast_.identifier.md)‹› & object*
-
-___
-
 ### `Static` shl
 
-▸ **shl**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **shl**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[shl](_ast_.expression.md#shl)*
 
-Defined in src/ast.ts:597
+Defined in ast.ts:723
 
 位算术运算 <<
 
@@ -1121,10 +1108,10 @@ Defined in src/ast.ts:597
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -1132,11 +1119,11 @@ ___
 
 ### `Static` shr
 
-▸ **shr**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **shr**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[shr](_ast_.expression.md#shr)*
 
-Defined in src/ast.ts:607
+Defined in ast.ts:736
 
 位算术运算 >>
 
@@ -1144,10 +1131,10 @@ Defined in src/ast.ts:607
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
@@ -1155,11 +1142,11 @@ ___
 
 ### `Static` sub
 
-▸ **sub**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **sub**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[sub](_ast_.expression.md#sub)*
 
-Defined in src/ast.ts:517
+Defined in ast.ts:622
 
 算术运算 -
 
@@ -1167,82 +1154,22 @@ Defined in src/ast.ts:517
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式
 
 ___
 
-### `Static` table
-
-▸ **table**(...`names`: string[]): *[Identifier](_ast_.identifier.md)‹› & object*
-
-*Inherited from [Expression](_ast_.expression.md).[table](_ast_.expression.md#static-table)*
-
-Defined in src/ast.ts:684
-
-创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`...names` | string[] |   |
-
-**Returns:** *[Identifier](_ast_.identifier.md)‹› & object*
-
-___
-
-### `Static` var
-
-▸ **var**(`name`: string): *[Variant](_ast_.variant.md)‹›*
-
-*Inherited from [Expression](_ast_.expression.md).[var](_ast_.expression.md#static-var)*
-
-Defined in src/ast.ts:639
-
-变量，variant的别名
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`name` | string | 变量名，不需要带前缀  |
-
-**Returns:** *[Variant](_ast_.variant.md)‹›*
-
-___
-
-### `Static` variant
-
-▸ **variant**(`name`: string): *[Variant](_ast_.variant.md)‹›*
-
-*Inherited from [Expression](_ast_.expression.md).[variant](_ast_.expression.md#static-variant)*
-
-Defined in src/ast.ts:631
-
-变量
-
-**Parameters:**
-
-Name | Type | Description |
------- | ------ | ------ |
-`name` | string | 变量名称，不需要带前缀  |
-
-**Returns:** *[Variant](_ast_.variant.md)‹›*
-
-___
-
 ### `Static` xor
 
-▸ **xor**(`left`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `right`: [UnsureExpression](../modules/_ast_.md#unsureexpression)): *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+▸ **xor**(`left`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›, `right`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number›): *[Expression](_ast_.expression.md)‹number›*
 
 *Inherited from [Expression](_ast_.expression.md).[xor](_ast_.expression.md#xor)*
 
-Defined in src/ast.ts:577
+Defined in ast.ts:700
 
 位算术运算 ^
 
@@ -1250,9 +1177,9 @@ Defined in src/ast.ts:577
 
 Name | Type | Description |
 ------ | ------ | ------ |
-`left` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 左值 |
-`right` | [UnsureExpression](../modules/_ast_.md#unsureexpression) | 右值 |
+`left` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 左值 |
+`right` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹number› | 右值 |
 
-**Returns:** *[BinaryCalculate](_ast_.binarycalculate.md)‹›*
+**Returns:** *[Expression](_ast_.expression.md)‹number›*
 
 返回算术运算表达式

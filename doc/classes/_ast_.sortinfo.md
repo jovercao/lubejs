@@ -16,77 +16,67 @@
 
 ### Properties
 
-* [direction](_ast_.sortinfo.md#optional-direction)
-* [expr](_ast_.sortinfo.md#expr)
-* [type](_ast_.sortinfo.md#readonly-type)
+* [$direction](_ast_.sortinfo.md#optional-direction)
+* [$expr](_ast_.sortinfo.md#expr)
+* [$type](_ast_.sortinfo.md#type)
 
 ### Methods
 
-* [bracket](_ast_.sortinfo.md#static-bracket)
+* [clone](_ast_.sortinfo.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new SortInfo**(`expr`: [UnsureExpression](../modules/_ast_.md#unsureexpression), `direction?`: [SORT_DIRECTION](../enums/_constants_.sort_direction.md)): *[SortInfo](_ast_.sortinfo.md)*
+\+ **new SortInfo**(`expr`: [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)›, `direction?`: [SORT_DIRECTION](../enums/_constants_.sort_direction.md)): *[SortInfo](_ast_.sortinfo.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:1895
+Defined in ast.ts:3398
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`expr` | [UnsureExpression](../modules/_ast_.md#unsureexpression) |
+`expr` | [CompatibleExpression](../modules/_ast_.md#compatibleexpression)‹[ScalarType](../modules/_types_.md#scalartype)› |
 `direction?` | [SORT_DIRECTION](../enums/_constants_.sort_direction.md) |
 
 **Returns:** *[SortInfo](_ast_.sortinfo.md)*
 
 ## Properties
 
-### `Optional` direction
+### `Optional` $direction
 
-• **direction**? : *[SORT_DIRECTION](../enums/_constants_.sort_direction.md)*
+• **$direction**? : *[SORT_DIRECTION](../enums/_constants_.sort_direction.md)*
 
-Defined in src/ast.ts:1895
-
-___
-
-###  expr
-
-• **expr**: *[Expression](_ast_.expression.md)*
-
-Defined in src/ast.ts:1894
+Defined in ast.ts:3398
 
 ___
 
-### `Readonly` type
+###  $expr
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$expr**: *[Expression](_ast_.expression.md)‹[ScalarType](../modules/_types_.md#scalartype)›*
 
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
+Defined in ast.ts:3397
 
-Defined in src/ast.ts:73
+___
+
+###  $type
+
+• **$type**: *[SORT](../enums/_constants_.sql_symbole.md#sort)* = SQL_SYMBOLE.SORT
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:3396
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*

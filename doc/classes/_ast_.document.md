@@ -18,67 +18,74 @@ SQL 文档
 
 ### Properties
 
+* [$type](_ast_.document.md#type)
 * [statements](_ast_.document.md#statements)
-* [type](_ast_.document.md#readonly-type)
 
 ### Methods
 
-* [bracket](_ast_.document.md#static-bracket)
+* [append](_ast_.document.md#append)
+* [clone](_ast_.document.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new Document**(...`statements`: [Statement](_ast_.statement.md)[]): *[Document](_ast_.document.md)*
+\+ **new Document**(`statements`: [Statement](_ast_.statement.md)[]): *[Document](_ast_.document.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:2353
+Defined in ast.ts:4027
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`...statements` | [Statement](_ast_.statement.md)[] |
+`statements` | [Statement](_ast_.statement.md)[] |
 
 **Returns:** *[Document](_ast_.document.md)*
 
 ## Properties
 
+###  $type
+
+• **$type**: *[DOCUMENT](../enums/_constants_.sql_symbole.md#document)* = SQL_SYMBOLE.DOCUMENT
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:4027
+
+___
+
 ###  statements
 
 • **statements**: *[Statement](_ast_.statement.md)[]*
 
-Defined in src/ast.ts:2353
-
-___
-
-### `Readonly` type
-
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
-
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
-
-Defined in src/ast.ts:73
+Defined in ast.ts:4026
 
 ## Methods
 
-### `Static` bracket
+###  append
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **append**(`sql`: [Statement](_ast_.statement.md)): *void*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
-
-Defined in src/ast.ts:75
-
-**Type parameters:**
-
-▪ **T**: *[AST](_ast_.ast.md)*
+Defined in ast.ts:4034
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`context` | T |
+`sql` | [Statement](_ast_.statement.md) |
 
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *void*
+
+___
+
+###  clone
+
+▸ **clone**(): *this*
+
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
+
+Defined in ast.ts:285
+
+克隆自身
+
+**Returns:** *this*

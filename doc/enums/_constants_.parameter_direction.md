@@ -17,7 +17,7 @@
 
 • **INPUT**: = "INPUT"
 
-Defined in src/constants.ts:13
+Defined in constants.ts:13
 
 ___
 
@@ -25,4 +25,4 @@ ___
 
 • **OUTPUT**: = "OUTPUT"
 
-Defined in src/constants.ts:14
+Defined in constants.ts:14

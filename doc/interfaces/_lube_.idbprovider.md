@@ -12,8 +12,7 @@
 
 ### Properties
 
-* [compiler](_lube_.idbprovider.md#optional-compiler)
-* [ployfill](_lube_.idbprovider.md#optional-ployfill)
+* [compiler](_lube_.idbprovider.md#readonly-compiler)
 
 ### Methods
 
@@ -23,27 +22,21 @@
 
 ## Properties
 
-### `Optional` compiler
+### `Readonly` compiler
 
-• **compiler**? : *[Compiler](../classes/_compiler_.compiler.md)*
+• **compiler**: *[Compiler](../classes/_compile_.compiler.md)*
 
-Defined in src/lube.ts:25
+Defined in lube.ts:84
 
-___
-
-### `Optional` ployfill
-
-• **ployfill**? : *[CompileOptions](_compiler_.compileoptions.md)*
-
-Defined in src/lube.ts:24
+必须实现编译器
 
 ## Methods
 
 ###  beginTrans
 
-▸ **beginTrans**(`isolationLevel`: [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md)): *[ITransaction](_lube_.itransaction.md)*
+▸ **beginTrans**(`isolationLevel`: [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md)): *Promise‹[Transaction](_lube_.transaction.md)›*
 
-Defined in src/lube.ts:27
+Defined in lube.ts:86
 
 **Parameters:**
 
@@ -51,7 +44,7 @@ Name | Type |
 ------ | ------ |
 `isolationLevel` | [ISOLATION_LEVEL](../enums/_constants_.isolation_level.md) |
 
-**Returns:** *[ITransaction](_lube_.itransaction.md)*
+**Returns:** *Promise‹[Transaction](_lube_.transaction.md)›*
 
 ___
 
@@ -59,7 +52,7 @@ ___
 
 ▸ **close**(): *Promise‹void›*
 
-Defined in src/lube.ts:28
+Defined in lube.ts:87
 
 **Returns:** *Promise‹void›*
 
@@ -67,9 +60,9 @@ ___
 
 ###  query
 
-▸ **query**(`sql`: string, `params`: [Parameter](../classes/_ast_.parameter.md)[]): *Promise‹[QueryResult](_executor_.queryresult.md)›*
+▸ **query**(`sql`: string, `params`: [Parameter](../classes/_ast_.parameter.md)[]): *Promise‹[QueryResult](_execute_.queryresult.md)‹any, any, any››*
 
-Defined in src/lube.ts:26
+Defined in lube.ts:85
 
 **Parameters:**
 
@@ -78,4 +71,4 @@ Name | Type |
 `sql` | string |
 `params` | [Parameter](../classes/_ast_.parameter.md)[] |
 
-**Returns:** *Promise‹[QueryResult](_executor_.queryresult.md)›*
+**Returns:** *Promise‹[QueryResult](_execute_.queryresult.md)‹any, any, any››*

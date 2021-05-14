@@ -9,9 +9,9 @@
 
 - mssql - 目前支持microsoft sqlserver 2012 或更高版本, 库基于 `node-mssql`开发.
 
-## Queick Start
+## 快速开始
 
-### Install
+### 安装
 
 使用 npm 安装:
 
@@ -23,7 +23,7 @@ npm install lubejs --save
 npm install lubejs-mssql
 ```
 
-### 使用方法
+### 使用
 
 ```js
 const { connect, select, update, insert, $delete, table, SQL } = require('lubejs')

@@ -16,77 +16,67 @@
 
 ### Properties
 
-* [dataType](_ast_.variantdeclare.md#datatype)
-* [name](_ast_.variantdeclare.md#name)
-* [type](_ast_.variantdeclare.md#readonly-type)
+* [$dataType](_ast_.variantdeclare.md#datatype)
+* [$name](_ast_.variantdeclare.md#name)
+* [$type](_ast_.variantdeclare.md#readonly-type)
 
 ### Methods
 
-* [bracket](_ast_.variantdeclare.md#static-bracket)
+* [clone](_ast_.variantdeclare.md#clone)
 
 ## Constructors
 
 ###  constructor
 
-\+ **new VariantDeclare**(`name`: string, `dataType`: string): *[VariantDeclare](_ast_.variantdeclare.md)*
+\+ **new VariantDeclare**(`name`: string | [Variant](_ast_.variant.md), `dataType`: [DbType](../modules/_types_.md#dbtype)): *[VariantDeclare](_ast_.variantdeclare.md)*
 
-*Overrides [AST](_ast_.ast.md).[constructor](_ast_.ast.md#constructor)*
-
-Defined in src/ast.ts:2279
+Defined in ast.ts:3932
 
 **Parameters:**
 
 Name | Type |
 ------ | ------ |
-`name` | string |
-`dataType` | string |
+`name` | string &#124; [Variant](_ast_.variant.md) |
+`dataType` | [DbType](../modules/_types_.md#dbtype) |
 
 **Returns:** *[VariantDeclare](_ast_.variantdeclare.md)*
 
 ## Properties
 
-###  dataType
+###  $dataType
 
-• **dataType**: *string*
+• **$dataType**: *[DbType](../modules/_types_.md#dbtype)*
 
-Defined in src/ast.ts:2287
-
-___
-
-###  name
-
-• **name**: *string*
-
-Defined in src/ast.ts:2286
+Defined in ast.ts:3941
 
 ___
 
-### `Readonly` type
+###  $name
 
-• **type**: *[SQL_SYMBOLE](../enums/_constants_.sql_symbole.md)*
+• **$name**: *[Variant](_ast_.variant.md)*
 
-*Inherited from [AST](_ast_.ast.md).[type](_ast_.ast.md#readonly-type)*
+Defined in ast.ts:3940
 
-Defined in src/ast.ts:73
+___
+
+### `Readonly` $type
+
+• **$type**: *[VARAINT_DECLARE](../enums/_constants_.sql_symbole.md#varaint_declare)* = SQL_SYMBOLE.VARAINT_DECLARE
+
+*Overrides [AST](_ast_.ast.md).[$type](_ast_.ast.md#readonly-type)*
+
+Defined in ast.ts:3932
 
 ## Methods
 
-### `Static` bracket
+###  clone
 
-▸ **bracket**‹**T**›(`context`: T): *[Bracket](_ast_.bracket.md)‹T›*
+▸ **clone**(): *this*
 
-*Inherited from [AST](_ast_.ast.md).[bracket](_ast_.ast.md#static-bracket)*
+*Inherited from [AST](_ast_.ast.md).[clone](_ast_.ast.md#clone)*
 
-Defined in src/ast.ts:75
+Defined in ast.ts:285
 
-**Type parameters:**
+克隆自身
 
-▪ **T**: *[AST](_ast_.ast.md)*
-
-**Parameters:**
-
-Name | Type |
------- | ------ |
-`context` | T |
-
-**Returns:** *[Bracket](_ast_.bracket.md)‹T›*
+**Returns:** *this*
