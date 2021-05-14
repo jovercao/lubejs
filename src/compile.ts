@@ -241,7 +241,9 @@ export abstract class Compiler {
     return this.compileName(identifier.$name, identifier.$builtin)
   }
 
-
+  /**
+   * 通过模板参数创建一个SQL命令
+   */
   makeCommand(arr: TemplateStringsArray, paramValues: any[]): Command {
     const params: Parameter[] = []
     const sql = arr.reduce((text, current, index) => {
@@ -315,6 +317,9 @@ export abstract class Compiler {
     throw new Error('unsupport constant value type:' + typeof value)
   }
 
+  /**
+   * 将AST编译成一个可供执行的命令
+   */
   public compile (ast: Statement | Document): Command {
     const params = new Set<Parameter<ScalarType, string>>()
     let sql: string
