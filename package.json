@@ -6,6 +6,9 @@
   "directories": {
     "dist": "dist"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "test": "npm run build && mocha test",
     "build": "tsc",

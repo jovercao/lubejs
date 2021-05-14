@@ -3,9 +3,20 @@
 - [X] 批量insert，需要添加事务支持
 - [X] MSSQL 事务隔离级别尚未测试
 - [X] 存储过程返回值
+- [ ] ROWFLOAT类型持续研究
+- [ ] ScalarType 包含LIST及OBJECT
 - [ ] 优化批量操作性能
 - [ ] 完成表变量功能
 - [ ] 添加JSON类型支持
 - [ ] 添加数组类型支持
-- [ ] MySql支持
-- [ ] PgSql支持
+- [ ] MySql驱动支持
+- [ ] PgSql驱动支持
+- [ ] 编译器优化
+- [ ] 文档编写
+  - [ ] 入门文档
+  - [ ] 参考手册
+  - [ ] API文档完善
+- [ ] METADATA支持，添加Reposity结构化访问接口
+  - [ ] 支持类实例化数据
+  - [ ] 添加MetaData元数据声明及管理
+  - [ ] 添加Reposity结构化访问接口

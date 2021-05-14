@@ -3,7 +3,9 @@ import {
   assert,
   ensureProxiedRowset,
   ensureRowset,
+  isDocument,
   isScalar,
+  isStatement,
   makeProxiedRowset
 } from './util'
 import { EventEmitter } from 'events'
@@ -179,41 +181,34 @@ export class Executor {
   private async _internalQuery (
     ...args: any[]
   ): Promise<QueryResult<any, any, any>> {
-    let sql: string, params: Parameter[]
+    let command: Command;
     // 如果是AST直接编译
-    if (args[0] instanceof AST) {
-      ({ sql, params } = this.compiler.compile(args[0]))
+    if (isStatement(args[0]) || isDocument(args[0])) {
+      command = this.compiler.compile(args[0])
     }
     // 如果是模板字符串
-    else if (Array.isArray(args[0])) {
-      params = []
-      sql = args[0].reduce((previous, current, index) => {
-        previous += current
-        if (index < args.length - 1) {
-          const name = '__p__' + index
-          const param = Parameter.input(name, args[index + 1])
-          params.push(param)
-          previous += this.compiler.stringifyParameterName(param)
-        }
-        return previous
-      }, '')
+    else if (Array.isArray(args[0] && args[0].raw)) {
+      command = this.compiler.makeCommand(args[0], args[1]);
     } else {
       assert(typeof args[0] === 'string', 'sql 必须是字符串或者模板调用')
-      sql = args[0]
-
+      let params: Parameter[] = []
       if (typeof args[1] === 'object') {
         params = Object.entries(args[1]).map(([name, value]: any) =>
           Parameter.input(name, value)
         )
       }
+      command = {
+        sql: args[0],
+        params
+      }
     }
 
     try {
-      const res = await this.doQuery(sql, params)
+      const res = await this.doQuery(command.sql, command.params)
       // 如果有输出参数
       if (res.output) {
         Object.entries(res.output).forEach(([name, value]) => {
-          const p = params.find(p => p.$name === name)
+          const p = command.params.find(p => p.$name === name)
           p.value = value
           if (p.$name === this.compiler.options.returnParameterName) {
             res.returnValue = value
@@ -225,7 +220,7 @@ export class Executor {
       this.emit('error', ex)
       throw ex
     } finally {
-      this.emit('command', { sql, params })
+      this.emit('command', command)
     }
   }
 

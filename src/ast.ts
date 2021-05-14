@@ -2601,6 +2601,15 @@ export class TableFuncInvoke<TReturn extends RowObject = any> extends Rowset<
  * SQL 语句
  */
 export abstract class Statement extends AST {
+  $type:
+    | SQL_SYMBOLE.SELECT
+    | SQL_SYMBOLE.UPDATE
+    | SQL_SYMBOLE.INSERT
+    | SQL_SYMBOLE.EXECUTE
+    | SQL_SYMBOLE.DELETE
+    | SQL_SYMBOLE.DECLARE
+    | SQL_SYMBOLE.RAW
+    | SQL_SYMBOLE.ASSIGNMENT
   /**
    * 插入至表,into的别名
    * @param table
@@ -3414,7 +3423,11 @@ export class Select<T extends RowObject = any> extends Fromable {
   $offset?: number
   $limit?: number
   $distinct?: boolean
-  $columns: (Expression<ScalarType> | SelectColumn<ScalarType, string> | Star<any>)[]
+  $columns: (
+    | Expression<ScalarType>
+    | SelectColumn<ScalarType, string>
+    | Star<any>
+  )[]
   $sorts?: SortInfo[]
   $groups?: Expression<any>[]
   $having?: Condition
@@ -3493,9 +3506,7 @@ export class Select<T extends RowObject = any> extends Fromable {
       | [CompatibleExpression, SORT_DIRECTION]
     )[]
   ): this
-  orderBy (
-    sorts: CompatibleSortInfo
-  ): this
+  orderBy (sorts: CompatibleSortInfo): this
   orderBy (...args: any[]): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(args.length > 0, 'must have one or more order basis')

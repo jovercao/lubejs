@@ -171,7 +171,7 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
 }
 
 /**
- * AST到SQL的编译器
+ * AST到SQL的编译器基类，包含大部分标准实现
  */
 export abstract class Compiler {
   options: CompileOptions
@@ -205,10 +205,6 @@ export abstract class Compiler {
     return this.quoted(field.$name[field.$name.length - 1])
   }
 
-  protected stringifyIdentifier (identifier: Identifier<string>): string {
-    return this.compileName(identifier.$name, identifier.$builtin)
-  }
-
   /**
    * 标识符转换，避免关键字被冲突问题
    * @param {string} name 标识符
@@ -233,12 +229,33 @@ export abstract class Compiler {
     return this.stringifyParameterName(param)
   }
 
-  public stringifyParameterName (p: Parameter<ScalarType, string>): string {
+  protected stringifyParameterName (p: Parameter<ScalarType, string>): string {
     return this.options.parameterPrefix + (p.$name || '')
   }
 
   protected stringifyVariantName (variant: Variant | TableVariant): string {
     return this.options.variantPrefix + variant.$name
+  }
+
+  protected stringifyIdentifier (identifier: Identifier<string>): string {
+    return this.compileName(identifier.$name, identifier.$builtin)
+  }
+
+
+  makeCommand(arr: TemplateStringsArray, paramValues: any[]): Command {
+    const params: Parameter[] = []
+    const sql = arr.reduce((text, current, index) => {
+      text += current
+      const name = '__p__' + index
+      const param = Parameter.input(name, paramValues[index + 1])
+      text += this.stringifyParameterName(param)
+      params.push(param)
+      return text
+    }, '')
+    return {
+      sql,
+      params,
+    }
   }
 
   protected compileVariant (variant: Variant): string {
@@ -304,10 +321,10 @@ export abstract class Compiler {
     if (isDocument(ast)) {
       sql = this.compileDocument(ast, params)
     } else {
-      sql
+      sql = this.compileStatement(ast, params)
     }
     return {
-      sql: this.compileStatement(ast, params),
+      sql,
       params: Array.from(params)
     }
   }
