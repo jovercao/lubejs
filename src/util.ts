@@ -53,7 +53,8 @@ import {
   CrudStatement,
   SortInfo,
   ProxiedRowset,
-  ProxiedTable
+  ProxiedTable,
+  CompatibleRowset
 } from './ast'
 import {
   CONDITION_KIND,
@@ -172,7 +173,7 @@ export function ensureProcedure<
  */
 export function ensureCondition<T extends RowObject> (
   condition: Condition | WhereObject<T>,
-  rowset?: Rowset<T> | Name<string>
+  rowset?: CompatibleRowset
 ): Condition {
   if (condition instanceof Condition) return condition
   const compares = Object.entries(condition).map(([key, value]) => {
@@ -184,7 +185,7 @@ export function ensureCondition<T extends RowObject> (
           key
         ] as Name<string>)
       } else if (rowset instanceof Rowset) {
-        field = rowset.$(key as any)
+        field = Reflect.get(rowset, key)
       }
     } else {
       field = new Field(key)
@@ -273,10 +274,6 @@ export function isScalar (value: any): value is ScalarType {
 export function isDbType (value: any): value is DbType {
   if (!value) return false
   return !!Reflect.get(type, value.name)
-}
-
-export function isLiteral (value: any): value is Literal {
-  return value.$type === SQL_SYMBOLE.LITERAL
 }
 
 export function isSortInfo (value: any): value is SortInfo {
@@ -456,7 +453,7 @@ export function isField (value: any): value is Field {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD
 }
 
-export function isConstant (value: any): value is Literal {
+export function isLiteral (value: any): value is Literal {
   return value.$type === SQL_SYMBOLE.LITERAL
 }
 
@@ -500,7 +497,7 @@ export function isRowset (value: any): value is Rowset {
 export function isExpression (value: any): value is Expression {
   return (
     isField(value) ||
-    isConstant(value) ||
+    isLiteral(value) ||
     isVariant(value) ||
     isOperation(value) ||
     isScalarFuncInvoke(value) ||

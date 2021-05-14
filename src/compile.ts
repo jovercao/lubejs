@@ -65,7 +65,7 @@ import {
   isCase,
   isColumn,
   isCondition,
-  isConstant,
+  isLiteral,
   isConvertOperation,
   isDeclare,
   isDelete,
@@ -690,7 +690,7 @@ export abstract class Compiler {
     if (isRaw(expr)) {
       return expr.$sql
     }
-    if (isConstant(expr)) {
+    if (isLiteral(expr)) {
       return this.compileLiteral(expr)
     }
 
@@ -835,18 +835,21 @@ export abstract class Compiler {
         ' ORDER BY ' +
         $sorts.map(sort => this.compileSort(sort, params)).join(', ')
     }
-
-    if (typeof $offset === 'number') {
-      sql += ` OFFSET ${$offset || 0} ROWS`
-    }
-    if (typeof $limit === 'number') {
-      sql += ` FETCH NEXT ${$limit} ROWS ONLY`
-    }
-
+    sql += this.compileOffsetLimit(select, params)
     if ($union) {
       sql += ' ' + this.compileUnion($union, params)
     }
+    return sql
+  }
 
+  protected compileOffsetLimit(select: Select<any>, params: Set<Parameter<ScalarType, string>>): string {
+    let sql = ''
+    if (typeof select.$offset === 'number') {
+      sql += ` OFFSET ${select.$offset || 0}`
+    }
+    if (typeof select.$limit === 'number') {
+      sql += ` LIMIT ${select.$limit}`
+    }
     return sql
   }
 

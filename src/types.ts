@@ -25,6 +25,9 @@ export type ScalarType =
   | number
   | Binary
   | bigint
+// TODO: 适配 JSON 和 ARRAY数据类型
+  // | RowObject
+  // | Array<ScalarType>
 
 export type ScalarTypeConstructor =
   | String
@@ -104,14 +107,14 @@ export type ROWFLAG = {
 }
 
 /**
- * 对象类型
+ * 对象类型,不使用JSON，是因为冲突
  */
 export type OBJECT<T extends object = any> = {
   readonly name: 'OBJECT'
 }
 
 /**
- * 列表类型，即数组
+ * 列表类型，即数组，不使用ARRAY，亦是因为命名冲突
  */
 export type LIST<T extends DbType> = {
   readonly name: 'LIST'
@@ -139,30 +142,9 @@ export type DbType =
   | OBJECT
   | LIST<any>
 
-
-
 /**
- * 数据库类型映射
+ * 类型转换
  */
-// export type DbTypeMap = {
-//   int8: number
-//   int16: number
-//   int32: number
-//   int64: number
-//   numeric: number
-//   float: number
-//   double: number
-//   string: string
-//   date: Date
-//   datetime: Date
-//   binary: Binary
-//   boolean: boolean
-//   uuid: string
-//   rowflag: any
-//   object: any
-//   list: any[]
-// }
-
 export type DbTypeToTsType<T extends DbType> =
   T extends INT8 | INT16 | INT32 | INT64 | Number | FLOAT | DOUBLE
   ? number

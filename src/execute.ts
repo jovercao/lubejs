@@ -107,7 +107,11 @@ export interface QueryHandler {
   >
 }
 
-export class Executor extends EventEmitter {
+/**
+ * 数据执行器
+ */
+export class Executor {
+  protected _emitter: EventEmitter = new EventEmitter()
   /**
    * SQL执行器
    * @param {*} query 查询函数
@@ -118,7 +122,6 @@ export class Executor extends EventEmitter {
     compiler: Compiler,
     isTrans = false
   ) {
-    super()
     // 是否启用严格模式，避免关键字等问题
     this.doQuery = query
     this.compiler = compiler
@@ -148,7 +151,8 @@ export class Executor extends EventEmitter {
   on (event: 'rollback', listener: (executor: Executor) => void): this
   on (event: 'error', listener: (error: Error) => any): this
   on (event: string, listener: (...args: any[]) => any): this {
-    return super.on(event, listener)
+    this._emitter.on(event, listener)
+    return this
   }
 
   off (event: 'command', listener?: (cmd: Command) => void): this
@@ -157,10 +161,16 @@ export class Executor extends EventEmitter {
   off (event: 'error', listener?: (error: Error) => any): this
   off (event: string, listener?: (...args: any[]) => any): this {
     if (!listener) {
-      return super.removeAllListeners(event)
+      this._emitter.removeAllListeners(event)
     } else {
-      return super.off(event, listener)
+      this._emitter.off(event, listener)
     }
+    return this;
+  }
+
+  emit(event: string, ...args: any): this {
+    this._emitter.emit(event, ...args);
+    return this;
   }
 
   // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>

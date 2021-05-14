@@ -2659,7 +2659,7 @@ export abstract class Statement extends AST {
     params?: CompatibleExpression<ScalarType>[]
     // | Parameter<JsConstant, string>[] | InputObject
   ): Execute<R, O> {
-    return new Execute(proc, params as any)
+    return new Execute(proc, params)
   }
 
   static invokeTableFunction<T extends RowObject = any> (
@@ -3493,6 +3493,9 @@ export class Select<T extends RowObject = any> extends Fromable {
       | [CompatibleExpression, SORT_DIRECTION]
     )[]
   ): this
+  orderBy (
+    sorts: CompatibleSortInfo
+  ): this
   orderBy (...args: any[]): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(args.length > 0, 'must have one or more order basis')
@@ -3900,13 +3903,13 @@ export class Execute<
     //     ([name, expr]) => new NamedArgument(name, expr)
     //   );
     // } else
-    if (params[0] instanceof Parameter) {
-      this.$args = params as Parameter<ScalarType, string>[]
-    } else {
-      this.$args = (params as CompatibleExpression<ScalarType>[]).map(expr =>
-        ensureExpression(expr)
-      )
-    }
+    // if (params[0] instanceof Parameter) {
+    //   this.$args = params as Parameter<ScalarType, string>[]
+    // } else {
+    this.$args = (params as CompatibleExpression<ScalarType>[]).map(expr =>
+      ensureExpression(expr)
+    )
+    // }
   }
 }
 
@@ -3967,27 +3970,25 @@ export class Parameter<T extends ScalarType = any, N extends string = string>
   type: DbType
   value: T
 
-  constructor (name: N, value?: T)
+  // constructor (name: N, value?: T)
+  // constructor (
+  //   name: N,
+  //   type: DbType,
+  //   value?: T,
+  //   direction?: PARAMETER_DIRECTION
+  // )
   constructor (
     name: N,
-    type: DbType,
-    value?: T,
-    direction?: PARAMETER_DIRECTION
-  )
-  constructor (
-    name: N,
-    valueOrtype?: T | DbType,
+    type?: DbType,
     value?: T,
     direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT
   ) {
     super()
-    if (isDbType(valueOrtype)) {
-      this.type = valueOrtype
-      this.value = value
-    } else {
-      this.value = valueOrtype
-      this.type = parseValueType(value)
+    if (!type && (value === null || value === undefined)) {
+      throw new Error('Parameter must assign one of `value` or `type`.')
     }
+
+    this.type = type ? type : parseValueType(value)
     this.$name = name
     this.value = value // ensureConstant(value)
     this.direction = direction

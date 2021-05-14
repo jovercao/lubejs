@@ -10,12 +10,13 @@ import {
   SortInfo,
   SortObject,
   Condition,
-  Select
+  Select,
+  CompatibleSortInfo
 } from './ast'
-import { select } from './builder'
+import { and, select } from './builder'
 import { ROWSET_ALIAS } from './constants'
 import { Executor } from './execute'
-import { isProxiedRowset, makeProxiedRowset } from './util'
+import { ensureCondition, isProxiedRowset, makeProxiedRowset } from './util'
 // import { getMetadata } from 'typeorm'
 
 /**
@@ -33,6 +34,8 @@ import { isProxiedRowset, makeProxiedRowset } from './util'
 // eslint-disable-next-line @typescript-eslint/ban-types
 export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   private _rowset: ProxiedRowset<T>
+  private _where: CompatibleCondition;
+  private _sorts: CompatibleSortInfo;
 
   constructor (protected readonly executor: Executor, rowset: Rowset<T>) {
     if (isProxiedRowset(rowset)) {
@@ -40,6 +43,14 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     } else {
       this._rowset = makeProxiedRowset(rowset)
     }
+  }
+
+  private _appendWhere(where: CompatibleCondition): this {
+    if (!this._where) {
+      this._where = where
+    }
+    this._where = and(this._where, where)
+    return this
   }
 
   /**
@@ -74,8 +85,14 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
-  private _buildSelectSql (): Select<T> {
-    return select(this._rowset._).from(this._rowset)
+  private _buildSelectSql(): Select<T>
+  private _buildSelectSql <G extends InputObject>(results: (p: ProxiedRowset<T>) => G): Select<RowTypeFrom<G>>
+  private _buildSelectSql <G extends InputObject>(results?: (p: ProxiedRowset<T>) => G): Select {
+    const sql = select(results ? results(this._rowset) : this._rowset._)
+      .from(this._rowset)
+    if (this._where) sql.where(this._where)
+    if (this._sorts) sql.orderBy(this._sorts)
+    return sql;
   }
 
   /**
@@ -84,40 +101,37 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   filter (
     condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
   ): Queryable<T> {
-    const rowset = this._buildSelectSql()
-      .where(condition(this._rowset))
-      .as(ROWSET_ALIAS)
-    return new Queryable<T>(this.executor, rowset)
+    return this._appendWhere(condition(this._rowset))
   }
 
   map<G extends InputObject> (
     results: (p: ProxiedRowset<T>) => G
   ): Queryable<RowTypeFrom<G>> {
+    const sql = this._buildSelectSql(results);
     return new Queryable<RowTypeFrom<G>>(
       this.executor,
-      select(results(this._rowset))
-        .from(this._rowset)
-        .as(ROWSET_ALIAS)
+      sql.as(ROWSET_ALIAS)
     )
   }
 
   sort (
     sorts: (p: ProxiedRowset<T>) => SortInfo[] | SortObject<T>
   ): Queryable<T> {
-    const orders = sorts(this._rowset)
-    const sql = this._buildSelectSql().orderBy(orders)
-    return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
+    if (this._sorts) {
+      throw new Error('sort is exists;')
+    }
+    this._sorts = sorts(this._rowset)
+    return this
+    // const sql = this._buildSelectSql().orderBy(orders)
+    // return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
   /**
    * 添加过滤条件，并限定返回头一条记录
    */
-  find (filter: (p: ProxiedRowset<T>) => CompatibleCondition): Queryable<T> {
-    const sql = this._buildSelectSql()
-      .where(filter(this._rowset))
-      .offset(0)
-      .limit(1)
-    return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
+  find (filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
+    this.filter(filter);
+    return this.take(1);
   }
 
   groupBy<G extends InputObject> (
@@ -125,8 +139,10 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
     where?: (p: ProxiedRowset<T>) => Condition
   ): Queryable<RowTypeFrom<G>> {
-    const sql = select(results(this._rowset)).groupBy(...groups(this._rowset))
-    if (where) sql.where(where(this._rowset))
+    if (where) {
+      this.filter(where);
+    }
+    const sql = this._buildSelectSql(results).groupBy(...groups(this._rowset))
     return new Queryable<RowTypeFrom<G>>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
@@ -222,7 +238,6 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   async first (): Promise<T> {
     const sql = select<T>(this._rowset._)
       .from(this._rowset)
-      .offset(0)
       .limit(1)
     const { rows } = await this.executor.query(sql)
     return rows[0]

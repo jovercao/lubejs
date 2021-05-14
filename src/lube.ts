@@ -110,8 +110,8 @@ export class Lube extends Executor {
       await commit()
       executor.emit('commit', executor)
     }
-    executor.on('command', cmd => this.emit('command', cmd))
-    executor.on('error', cmd => this.emit('error', cmd))
+    executor.on('command', cmd => this._emitter.emit('command', cmd))
+    executor.on('error', cmd => this._emitter.emit('error', cmd))
     try {
       const res = await handler(executor, abort)
       if (!canceled) {
