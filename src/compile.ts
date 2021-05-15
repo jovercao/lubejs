@@ -45,7 +45,8 @@ import {
   ConvertOperation,
   ParenthesesExpression,
   ValuedSelect,
-  TableVariant
+  TableVariant,
+  IdentityValue
 } from './ast'
 import { PARAMETER_DIRECTION } from './constants'
 import { Command } from './execute'
@@ -521,6 +522,8 @@ export abstract class Compiler {
         .join(', ')
     )
   }
+
+  protected abstract compileIdentityValue(ast: IdentityValue, params: Set<Parameter>): string;
 
   protected compileDocument (
     doc: Document,

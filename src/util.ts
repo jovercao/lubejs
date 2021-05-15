@@ -54,7 +54,8 @@ import {
   SortInfo,
   ProxiedRowset,
   ProxiedTable,
-  CompatibleRowset
+  CompatibleRowset,
+  FieldsOf
 } from './ast'
 import {
   CONDITION_KIND,
@@ -63,6 +64,7 @@ import {
   $IsProxy,
   SQL_SYMBOLE
 } from './constants'
+import { EntityMetadata } from './metadata'
 import { Binary, DbType, ScalarType, type } from './types'
 
 /**
@@ -173,34 +175,40 @@ export function ensureProcedure<
  */
 export function ensureCondition<T extends RowObject> (
   condition: Condition | WhereObject<T>,
-  rowset?: CompatibleRowset
+  rowsetOrMetadata?: CompatibleRowset<T> | EntityMetadata
 ): Condition {
-  if (condition instanceof Condition) return condition
-  const compares = Object.entries(condition).map(([key, value]) => {
-    let field: Field<any, string>
-    if (rowset) {
-      if (Array.isArray(rowset)) {
-        field = new Field([
-          ...(Array.isArray(rowset) ? rowset : [rowset]),
-          key
-        ] as Name<string>)
-      } else if (rowset instanceof Rowset) {
-        field = Reflect.get(rowset, key)
-      }
+  if (isCondition(condition)) return condition
+
+  let makeField: (name: string) => Field;
+  if (rowsetOrMetadata) {
+    if (typeof rowsetOrMetadata === 'string' || Array.isArray(rowsetOrMetadata)) {
+      makeField = (key: string) => new Field([
+        ...(Array.isArray(rowsetOrMetadata) ? rowsetOrMetadata : [rowsetOrMetadata]),
+        key
+      ] as Name<string>)
+    } else if (isRowset(rowsetOrMetadata)) {
+      makeField = (key: string) => rowsetOrMetadata.field(key as FieldsOf<T>)
     } else {
-      field = new Field(key)
+      const rowset = makeProxied(new Table<T>(rowsetOrMetadata.table.name), rowsetOrMetadata)
+      makeField = (key: string) => rowset.field(key as FieldsOf<T>)
     }
+  } else {
+    makeField = (key: string) => new Field(key)
+  }
+
+  const compares = Object.entries(condition).map(([key, value]) => {
+    const field: Field<any, string> = makeField(key)
     if (value === null || value === undefined) {
-      return Condition.isNull(field)
+      return field.isNull()
     }
     if (Array.isArray(value)) {
-      return Condition.in(field, value)
+      return field.in(value)
     }
-    return Condition.eq(field, value as any)
+    return field.eq(value)
   })
 
   return compares.length >= 2
-    ? Condition.and.call(Condition, ...compares)
+    ? Condition.and(compares)
     : compares[0]
 }
 const RowsetFixedProps: string[] = [
@@ -219,19 +227,8 @@ const RowsetFixedProps: string[] = [
   '$select'
 ]
 
-/**
- * 将制作rowset的代理，用于通过属性访问字段
- */
-export function makeProxiedRowset<T extends RowObject = any> (
-  rowset: Table<T>
-): ProxiedTable<T>
-export function makeProxiedRowset<T extends RowObject> (
-  rowset: Rowset<T>
-): ProxiedRowset<T>
-export function makeProxiedRowset<T extends RowObject> (
-  rowset: Table<T> | Rowset<T>
-): Proxied<T> {
-  return new Proxy(rowset as any, {
+function makeProxied<T extends RowObject>(table: Table<T> | Rowset<T>, metadata?: EntityMetadata): ProxiedTable<T> | ProxiedRowset<T> {
+  return new Proxy(table, {
     get (target: any, prop: string | symbol | number): any {
       /**
        * 标记为Proxy
@@ -253,9 +250,37 @@ export function makeProxiedRowset<T extends RowObject> (
       if (prop.startsWith('$')) {
         prop = prop.substring(1)
       }
+      if (metadata) {
+        const column = metadata.getProperty(prop)?.column
+        if (!column) {
+          return target.field(column.name)
+          // throw new Error(`Property ${prop} is not a column.`)
+        }
+      }
       return target.field(prop)
     }
-  }) as any
+  })
+}
+
+/**
+ * 将制作rowset的代理，用于通过属性访问字段
+ */
+export function makeProxiedRowset<T extends RowObject> (
+  rowset: Table<T>,
+): ProxiedTable<T>
+export function makeProxiedRowset<T extends RowObject> (
+  rowset: Rowset<T>,
+): ProxiedRowset<T>
+export function makeProxiedRowset<T extends RowObject> (
+  metadata?: EntityMetadata
+): ProxiedTable<T>
+export function makeProxiedRowset<T extends RowObject> (
+  rowsetOrMetadata: Table<T> | Rowset<T> | EntityMetadata
+): ProxiedTable<T> | ProxiedRowset<T> {
+  if (rowsetOrMetadata instanceof EntityMetadata) {
+    return makeProxied(new Table<T>(rowsetOrMetadata.table.name), rowsetOrMetadata)
+  }
+  return makeProxied(rowsetOrMetadata)
 }
 
 export function isScalar (value: any): value is ScalarType {

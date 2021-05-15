@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CompatibleExpression, Select } from "./ast";
+import { CompatibleExpression, RowObject, Select } from "./ast";
 import { DbType, ScalarTypeConstructor } from "./types";
 
 /*********************************
@@ -20,10 +20,8 @@ import { DbType, ScalarTypeConstructor } from "./types";
 export interface ForeignKeySchema {
   primaryTable: TableSchema;
   foreignTable: TableSchema;
-  columns: {
-    primaryColumn: ColumnSchema;
-    foreignColumn: ColumnSchema;
-  }
+  primaryColumn: ColumnSchema;
+  foreignColumn: ColumnSchema;
 }
 
 /**
@@ -36,6 +34,7 @@ export interface TableSchema {
    */
   name: string;
   primaryKey: IndexSchema;
+  primaryColumn: ColumnSchema;
   description?: string;
   columns: ColumnSchema[];
   foreignKeys: ForeignKeySchema[];
@@ -119,20 +118,36 @@ export type ListType = {
   type: DataType
 }
 
+export type EntityConstructor<T extends RowObject = any> = {
+  new (...args: any): T
+};
+
 /**
  * Schema的数据类型
  */
-export type DataType = ScalarTypeConstructor | ModelInfo | ListType;
-export type Constructor = Function;
+export type DataType = ScalarTypeConstructor | EntityConstructor | ListType;
 
 /**
  * 模型声明
  */
-export interface ModelInfo {
+export class EntityMetadata {
+  constructor(data: EntityMetadata) {
+    Object.assign(this, data)
+
+    this.propertyMap = {}
+    this.properties.forEach(prop => {
+      this.propertyMap[prop.name] = prop
+    })
+  }
+
+  private propertyMap: {
+    [name: string]: PropertyMetadata
+  }
+
   /**
    * 构造函数
    */
-  class: Constructor
+  class: EntityConstructor
   /**
    * 类型
    */
@@ -145,126 +160,177 @@ export interface ModelInfo {
    * 是否只读
    */
   readonly: boolean;
-  properties: PropertyInfo[];
+  /**
+   * 摘要描述
+   */
+  description?: string;
+  /**
+   * 属性列表
+   */
+  properties: PropertyMetadata[];
   /**
    * 关联关系
    */
-  relations: (OneToOneInfo | OneToManyInfo)[];
+  relations: (OneToOneMetadata | OneToManyMetadata)[];
   /**
    * 表或声明
    */
-  schema?: TableSchema | ViewSchema;
-  rowflagProperty?: PropertyInfo;
-  idProperty?: PropertyInfo;
-  computeProperties: PropertyInfo[];
+  table: TableSchema | ViewSchema;
+  /**
+   * 行标记属性
+   */
+  rowflagProperty?: PropertyMetadata;
+  /**
+   * 主键属性
+   */
+  idProperty?: PropertyMetadata;
+
+  /**
+   * 序列属性
+   */
+  identityProperty?: PropertyMetadata;
+  /**
+   * 计算属性列表
+   */
+  computeProperties: PropertyMetadata[];
+
+  getProperty(name: string): PropertyMetadata {
+    return this.propertyMap[name]
+  }
 }
 
 /**
  * 字段声明
  */
-export interface PropertyInfo {
-  name: string;
-  type: DataType;
+export class PropertyMetadata {
+  constructor(data: EntityMetadata) {
+    Object.assign(this, data)
+  }
   /**
-   * 关系
+   * 属性名称
    */
-  relation?: OneToOneInfo | OneToManyInfo;
+  name: string;
   /**
-   * 计算函数
+   * 数据类型
+   */
+  type: DataType | JSON;
+  /**
+   * 该属性所关联的关系
+   */
+  relation?: OneToOneMetadata | OneToManyMetadata | ManyToManyMetadata;
+  /**
+   * 计算函数,如果是非计算属性，则为空
    */
   compute?: (item: any) => any;
   /**
    * 列声明
    */
-  schema?: ColumnSchema;
+  column: ColumnSchema;
 }
 
 /**
  * 一对一引用属性
  */
-export interface OneToOneInfo {
-  kind: 'ONETOONE'
+export interface OneToOneMetadata {
+  kind: 'ONE_TO_ONE'
   /**
    * 主Model
    */
-  mmodel: ModelInfo
+  primaryEntity: EntityMetadata
   /**
    * 主Model属性
    */
-  mproperty: PropertyInfo
+  primaryProperty: PropertyMetadata
   /**
    * 从Model
    */
-  smodel: ModelInfo
+  foreignEntity: EntityMetadata
   /**
    * 从Model属性
    */
-  sproperty: PropertyInfo
-  // 摘要说明
-  description?: string;
+  foreignProperty: PropertyMetadata
+  /**
+   * 摘要描述
+   */
+  description?: string
   /**
    * 外键声明
    */
-  schema: ForeignKeySchema
+  relationKey: ForeignKeySchema
+  /**
+   * 唯一索引
+   */
+  uniqIndex: IndexSchema
 }
 
 /**
  * 一对多引用属性
  */
-export interface OneToManyInfo {
-  kind: 'ONETOMANY'
+export interface OneToManyMetadata {
+  kind: 'ONE_TO_MANY'
   /**
-   * 主Model
+   * 主键实体
    */
-  mmodel: ModelInfo
+  primaryEntity: EntityMetadata
   /**
-   * 主Model属性
+   * 主键属性
    */
-  mproperty: PropertyInfo
+  primaryProperty: PropertyMetadata
   /**
-   * 从Model
+   * 外键实体
    */
-  smodel: ModelInfo
+  foreignEntity: EntityMetadata
   /**
-   * 从Model属性
+   * 外键属性
    */
-  sproperty: PropertyInfo
-  // 摘要说明
+  foreignProperty: PropertyMetadata
+  /**
+   * 摘要描述
+   */
   description?: string;
   /**
-   * 外键声明
+   * 关联关系的外键声明
    */
-  schema: ForeignKeySchema
+  relationKey: ForeignKeySchema
 }
-
 
 /**
  * 多对多引用属性,系统会自动创建中间关系表
  */
-export interface ManyToManyInfo {
-  kind: 'MANYTOMANY'
+export interface ManyToManyMetadata {
+  kind: 'MANY_TO_MANY'
   /**
    * Model1
    */
-  model1: ModelInfo
+  entity1: EntityMetadata
   /**
    * Model1属性
    */
-  property1: PropertyInfo
+  property1: PropertyMetadata
   /**
    * Model2
    */
-  model2: ModelInfo
+  entity2: EntityMetadata
   /**
    * Model2属性
    */
-  property2: PropertyInfo
-  // 摘要说明
+  property2: PropertyMetadata
+  /**
+   * 摘要描述
+   */
   description?: string;
   /**
    * 中间关系表声明
    */
-  schema: TableSchema;
+  relationTable: TableSchema;
+  /**
+   * 属性1所关联中间表的外键声明
+   */
+  relationKey1: ForeignKeySchema;
+  /**
+   * 属性2所关联的中间表外键声明
+   */
+  relationKey2: ForeignKeySchema;
 }
 
 /**********************************装饰器声明*************************************/
@@ -272,7 +338,17 @@ export interface ManyToManyInfo {
 /**
  * 将一个类标记为一个Model
  */
-function Model(ctr: Function)  {
+function Entity(ctr: EntityConstructor)  {
   ctr.length;
+}
+
+function Property() {
+
+}
+
+export const MetadataStore = {
+  get(model: EntityConstructor): EntityMetadata {
+    throw new Error('尚未实现')
+  }
 }
 

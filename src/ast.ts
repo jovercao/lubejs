@@ -571,6 +571,10 @@ export abstract class Expression<
     return Expression.convert(this, type)
   }
 
+  static identityValue(table: string, column: string): Expression<number> {
+    return new IdentityValue(table, column)
+  }
+
   /**
    * 括号表达式，将表达式括起来，如优先级
    */
@@ -753,6 +757,19 @@ export abstract class Expression<
 }
 
 /**
+ * 获取当前新增的标识列值
+ */
+export class IdentityValue extends Expression<number> {
+  constructor(
+    public readonly $table: string,
+    public readonly $column: string,
+    ) {
+    super()
+  }
+  readonly $type = SQL_SYMBOLE.IDENTITY_VALUE
+}
+
+/**
  * 查询条件
  */
 export abstract class Condition extends AST {
@@ -808,7 +825,7 @@ export abstract class Condition extends AST {
    * @returns 返回逻辑表达式
    */
   static and (conditions: CompatibleCondition[]): Condition
-  static and (...conditions: CompatibleCondition[]): Condition
+  static and (...conditions: [CompatibleCondition, CompatibleCondition, ...CompatibleCondition[]]): Condition
 
   static and (
     ...conditions: CompatibleCondition[] | [CompatibleCondition[]]
@@ -829,7 +846,7 @@ export abstract class Condition extends AST {
    * @returns 返回逻辑表达式
    */
   static or (conditions: CompatibleCondition[]): Condition
-  static or (...conditions: CompatibleCondition[]): Condition
+  static or (...conditions: [CompatibleCondition, CompatibleCondition, ...CompatibleCondition[]]): Condition
 
   static or (
     ...conditions: CompatibleCondition[] | [CompatibleCondition[]]

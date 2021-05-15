@@ -38,6 +38,7 @@ export type ScalarTypeConstructor =
   | ArrayBuffer
   | Buffer
   | SharedArrayBuffer
+  | JSON
 
 export type INT64 = {
   readonly name: 'INT64'

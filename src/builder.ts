@@ -8,17 +8,15 @@ import {
   Expression,
   CompatibleExpression,
   CompatibleCondition,
-} from "./ast";
-import {
-  isExpression,
-  isScalar,
-} from "./util";
+  IdentityValue
+} from './ast'
+import { isExpression, isScalar } from './util'
 
 /**
  * not 查询条件运算
  */
-export const not = Condition.not;
-export const $not = Condition.not;
+export const not = Condition.not
+export const $not = Condition.not
 
 /**
  * 使用and关联多个查询条件
@@ -27,8 +25,8 @@ export const $not = Condition.not;
  * @returns  condition
  * @memberof SQL
  */
-export const and = Condition.and;
-export const $and = Condition.and;
+export const and = Condition.and
+export const $and = Condition.and
 
 /**
  * 使用or关联多个查询条件
@@ -37,8 +35,8 @@ export const $and = Condition.and;
  * @returns  condition
  * @memberof SQL
  */
-export const or = Condition.or;
-export const $or = Condition.or;
+export const or = Condition.or
+export const $or = Condition.or
 
 /**
  * exists语句
@@ -47,20 +45,20 @@ export const $or = Condition.or;
  * @returns
  * @memberof SQL
  */
-export const exists = Condition.exists;
-export const $exists = Condition.exists;
+export const exists = Condition.exists
+export const $exists = Condition.exists
 
-export const exec = Statement.execute;
-export const $exec = Statement.execute;
+export const exec = Statement.execute
+export const $exec = Statement.execute
 
-export const execute = Statement.execute;
-export const $execute = Statement.execute;
+export const execute = Statement.execute
+export const $execute = Statement.execute
 
-export const when = Statement.when;
-export const $when = Statement.when;
+export const when = Statement.when
+export const $when = Statement.when
 
-export const func = Identifier.func;
-export const $function = Identifier.func;
+export const func = Identifier.func
+export const $function = Identifier.func
 
 // /**
 //  * 分组查询条件
@@ -71,26 +69,26 @@ export const $function = Identifier.func;
 /**
  * input 参数
  */
-export const input = Parameter.input;
-export const $input = Parameter.input;
+export const input = Parameter.input
+export const $input = Parameter.input
 
 /**
  * output参数
  */
-export const output = Parameter.output;
-export const $output = Parameter.output;
+export const output = Parameter.output
+export const $output = Parameter.output
 
 /**
  * 创建一个SELECT语句
  */
-export const select = Statement.select;
-export const $select = Statement.select;
+export const select = Statement.select
+export const $select = Statement.select
 
 /**
  * 创建一个字段
  */
-export const field = Identifier.field;
-export const $field = Identifier.field;
+export const field = Identifier.field
+export const $field = Identifier.field
 
 /**
  * 创建一个原始的SQL片段
@@ -98,75 +96,76 @@ export const $field = Identifier.field;
  * @param sql 原始SQL
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const raw = Statement.raw;
+export const raw = Statement.raw
 
-export const $raw = raw;
+export const $raw = raw
 
 /**
  * 创建一个SQL文档，包含多条SQL语句、
  * @param statements SQL语句
  */
-export function doc(statements: Statement[]): Document
-export function doc(...statements: Statement[]): Document
-export function doc(...statements: Statement[] | [Statement[]]): Document {
-  const lines = Array.isArray(statements[0]) ? statements[0] : statements as Statement[];
-  return new Document(lines);
+export function doc (statements: Statement[]): Document
+export function doc (...statements: Statement[]): Document
+export function doc (...statements: Statement[] | [Statement[]]): Document {
+  const lines = Array.isArray(statements[0])
+    ? statements[0]
+    : (statements as Statement[])
+  return new Document(lines)
 }
 
-export const $doc = doc;
+export const $doc = doc
 
 /**
  * 创建一个INSERT语句
  */
-export const insert = Statement.insert;
-export const $insert = Statement.insert;
+export const insert = Statement.insert
+export const $insert = Statement.insert
 
-export const $case = Statement.case;
-export const $with = Statement.with;
+export const $case = Statement.case
+export const $with = Statement.with
 
 /**
  * 创建一个UPDATE语句
  */
-export const update = Statement.update;
-export const $update = Statement.update;
+export const update = Statement.update
+export const $update = Statement.update
 
 /**
  * 内建标识符，不会被 [] 包裹，buildIn的别名
  * @param name
  */
-export const builtIn = Identifier.builtIn;
-export const $builtIn = Identifier.builtIn;
+export const builtIn = Identifier.builtIn
+export const $builtIn = Identifier.builtIn
 
 /**
  * 创建一个DELETE语句
  */
-export const del = Statement.delete;
-export const $del = Statement.delete;
+export const del = Statement.delete
+export const $del = Statement.delete
 
 /**
  * 删除语句
  */
-export const $delete = Statement.delete;
+export const $delete = Statement.delete
 
 /**
  * 星号
  */
-export const star = Identifier.star;
-export const $star = Identifier.star;
+export const star = Identifier.star
+export const $star = Identifier.star
 
 /**
  * 等效于star
  */
-export const _ = Identifier.star;
-export const $ = Identifier.star;
+export const _ = Identifier.star
+export const $ = Identifier.star
 
 /**
  * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
  * @param name
  */
-export const table = Identifier.table;
-export const $table = Identifier.table;
-
+export const table = Identifier.table
+export const $table = Identifier.table
 
 // /**
 //  * 创建一个可调用的表值函数
@@ -348,82 +347,84 @@ export const $table = Identifier.table;
 //   };
 // }
 
-export const makeFunc = Statement.makeFunc;
+export const makeFunc = Statement.makeFunc
 
-export const proc = Identifier.proc;
-export const $proc = Identifier.proc;
+export const proc = Identifier.proc
+export const $proc = Identifier.proc
 
-export const procedure = Identifier.proc;
-export const $procedure = Identifier.proc;
+export const procedure = Identifier.proc
+export const $procedure = Identifier.proc
 
-export const makeProce = Statement.makeProc;
+export const makeProce = Statement.makeProc
 
-export const literal = Expression.literal;
-export const $literal = Expression.literal;
+export const literal = Expression.literal
+export const $literal = Expression.literal
 
-export const val = Expression.literal;
-export const $val = Expression.literal;
+export const val = Expression.literal
+export const $val = Expression.literal
 
-export const value = Expression.literal;
-export const $value = Expression.literal;
+export const value = Expression.literal
+export const $value = Expression.literal
 
-export const variant = Identifier.var;
-export const $variant = Identifier.var;
+export const variant = Identifier.var
+export const $variant = Identifier.var
 
-export const union = Statement.union;
-export const $union = Statement.union;
+export const union = Statement.union
+export const $union = Statement.union
 
-export const unionAll = Statement.unionAll;
-export const $unionAll = Statement.unionAll;
+export const unionAll = Statement.unionAll
+export const $unionAll = Statement.unionAll
 
-export const add = Expression.add;
-export const div = Expression.div;
-export const mul = Expression.mul;
-export const sub = Expression.sub;
-export const bitAnd = Expression.and;
-export const bitOr = Expression.or;
-export const bitXor = Expression.xor;
-export const shl = Expression.shl;
-export const shr = Expression.shr;
-export const bitNot = Expression.not;
-export const neg = Expression.neg;
-export const mod = Expression.mod;
+export const add = Expression.add
+export const div = Expression.div
+export const mul = Expression.mul
+export const sub = Expression.sub
+export const bitAnd = Expression.and
+export const bitOr = Expression.or
+export const bitXor = Expression.xor
+export const shl = Expression.shl
+export const shr = Expression.shr
+export const bitNot = Expression.not
+export const neg = Expression.neg
+export const mod = Expression.mod
 /**
  * 字符串连接运算
  */
-export const concat = Expression.concat;
+export const concat = Expression.concat
 
-export const $add = Expression.add;
-export const $div = Expression.div;
-export const $mul = Expression.mul;
-export const $sub = Expression.sub;
-export const $bitAnd = Expression.and;
-export const $bitOr = Expression.or;
-export const $bitXor = Expression.xor;
-export const $shl = Expression.shl;
-export const $shr = Expression.shr;
-export const $bitNot = Expression.not;
-export const $neg = Expression.neg;
-export const $mod = Expression.mod;
-export const $concat = Expression.concat;
+export const $add = Expression.add
+export const $div = Expression.div
+export const $mul = Expression.mul
+export const $sub = Expression.sub
+export const $bitAnd = Expression.and
+export const $bitOr = Expression.or
+export const $bitXor = Expression.xor
+export const $shl = Expression.shl
+export const $shr = Expression.shr
+export const $bitNot = Expression.not
+export const $neg = Expression.neg
+export const $mod = Expression.mod
+export const $concat = Expression.concat
 
 /**
  * 为表达式或者查询条件添加括号
  */
-export function enclose<T extends CompatibleExpression | CompatibleCondition>(
+export function enclose<T extends CompatibleExpression | CompatibleCondition> (
   exprOrCondition: T
 ): T extends CompatibleExpression<infer S> ? Expression<S> : Condition {
   if (isScalar(exprOrCondition) || isExpression(exprOrCondition)) {
-    return Expression.enclose(exprOrCondition) as any;
+    return Expression.enclose(exprOrCondition) as any
   }
-  return Condition.enclose(exprOrCondition as CompatibleCondition) as any;
+  return Condition.enclose(exprOrCondition as CompatibleCondition) as any
 }
-export const $enclose = enclose;
+export const $enclose = enclose
 
 /**
  * 类型转换运算
  */
-export const convert = Expression.convert;
+export const convert = Expression.convert
+
+export const identityValue = Expression.identityValue
 
 /**
  * 语句
@@ -501,6 +502,7 @@ export const SQL = {
   concat,
   enclose,
   convert,
-};
+  identityValue
+}
 
-export default SQL;
+export default SQL

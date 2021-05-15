@@ -622,8 +622,8 @@ export class Executor {
 
     const existsItems = await this.select(t, {
       where: or(
-        ...hasKeyItems.map(item =>
-          and(...keyFields.map(field => t[field].eq(item[field])))
+        hasKeyItems.map(item =>
+          and(keyFields.map(field => t[field].eq(item[field])))
         )
       )
     })
