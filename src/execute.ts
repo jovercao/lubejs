@@ -42,6 +42,8 @@ import { Lube } from './lube'
 import { Queryable } from './queryable'
 import { and, doc, or } from './builder'
 import { ScalarType } from './types'
+import { Constructor } from './metadata'
+import { Repository } from './repository'
 
 export interface Command {
   sql: string
@@ -131,12 +133,6 @@ export class Executor {
   }
 
   private doQuery: QueryHandler
-
-  getQueryable<T extends RowObject, N extends string> (
-    table: CompatibleTable<T, N>
-  ): Queryable<T> {
-    return new Queryable(this, ensureRowset(table))
-  }
 
   /**
    * 编译器

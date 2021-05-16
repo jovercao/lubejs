@@ -21,7 +21,7 @@ import {
 import { and, select, table } from './builder'
 import { ROWSET_ALIAS } from './constants'
 import { Executor } from './execute'
-import { EntityConstructor, EntityMetadata, MetadataStore, TableSchema } from './metadata'
+import { Constructor, EntityMetadata, isManyToMany, isManyToOne, isOneToMany, isOneToOne, MetadataStore, OneToOneMetadata, TableSchema } from './metadata'
 import { FetchOptions, FetchProps, isEntityConstructor, RefKeyOf } from './repository'
 import { ensureCondition, ensureRowset, isProxiedRowset, makeProxiedRowset } from './util'
 // import { getMetadata } from 'typeorm'
@@ -42,43 +42,45 @@ export const FROM_DB = Symbol('FROM_DB')
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
 export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
-  protected rowset: ProxiedRowset<T>
+  protected readonly rowset: ProxiedRowset<T>
   protected readonly metadata?: EntityMetadata
-  private where: CompatibleCondition
-  private sorts: CompatibleSortInfo
-  private includes: FetchProps<T>
-  protected readonly executor: Executor
+  private _where: CompatibleCondition
+  private _sorts: CompatibleSortInfo
+  private _includes: FetchProps<T>
+  protected executor: Executor
   /**
    * 默认使用缓存
    */
-  private nocache: boolean = false
+  private _nocache: boolean = false
+  private _withDetail: boolean
 
-  constructor(executor: Executor, metadata: EntityMetadata)
+  constructor(executor: Executor, ctr: Constructor<T>)
   constructor (
     executor: Executor,
     rowset: CompatibleRowset<T>
   )
   constructor (
     executor: Executor,
-    rowsetOrMetadata: CompatibleRowset<T> | EntityMetadata
+    rowsetOrCtr: CompatibleRowset<T> | Constructor<T>
   ) {
     this.executor = executor
-    if (typeof rowsetOrMetadata === 'string' || Array.isArray(rowsetOrMetadata)) {
-      rowsetOrMetadata = ensureRowset<T>(rowsetOrMetadata);
-    } else if (rowsetOrMetadata instanceof EntityMetadata) {
-      this.metadata = rowsetOrMetadata
-      rowsetOrMetadata = makeProxiedRowset(rowsetOrMetadata)
-    } else if (!isProxiedRowset(rowsetOrMetadata)) {
-      rowsetOrMetadata = makeProxiedRowset(rowsetOrMetadata)
+    if (typeof rowsetOrCtr === 'string' || Array.isArray(rowsetOrCtr)) {
+      rowsetOrCtr = ensureRowset<T>(rowsetOrCtr);
+      if (!isProxiedRowset(rowsetOrCtr)) {
+        rowsetOrCtr = makeProxiedRowset(rowsetOrCtr)
+      }
+      this.rowset = rowsetOrCtr as ProxiedRowset<T>
+    } else if (typeof rowsetOrCtr === 'function') {
+      this.metadata = MetadataStore.getEntity(rowsetOrCtr)
+      this.rowset = makeProxiedRowset(this.metadata)
     }
-    this.rowset = rowsetOrMetadata as ProxiedRowset<T>
   }
 
   private _appendWhere (where: CompatibleCondition<T>): this {
-    if (!this.where) {
-      this.where = where
+    if (!this._where) {
+      this._where = where
     }
-    this.where = and(this.where, ensureCondition(where, this.rowset))
+    this._where = and(this._where, ensureCondition(where, this.rowset))
     return this
   }
 
@@ -124,17 +126,17 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     const sql = select(results ? results : this.rowset._).from(
       this.rowset
     )
-    if (this.where) sql.where(this.where)
-    if (this.sorts) sql.orderBy(this.sorts)
+    if (this._where) sql.where(this._where)
+    if (this._sorts) sql.orderBy(this._sorts)
     return sql
   }
 
+  /**
+   * 克隆当前对象用于添加信息，以免污染当前对象
+   */
   private clone(): Queryable<T> {
-    const queryable = this.metadata ? new Queryable<T>(this.executor, this.metadata) : new Queryable<T>(this.executor, this.rowset)
-    queryable.where = this.where
-    queryable.sorts = this.sorts
-    queryable.includes = this.includes
-    queryable.nocache = this.nocache
+    const queryable: Queryable<T> = Object.create(Queryable.prototype)
+    Object.assign(queryable, this)
     return queryable
   }
 
@@ -149,6 +151,9 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     return queryable
   }
 
+  /**
+   * 返回一个新的类型
+   */
   map<G extends InputObject> (
     results: (p: ProxiedRowset<T>) => G
   ): Queryable<RowTypeFrom<G>> {
@@ -160,7 +165,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     sorts: (p: ProxiedRowset<T>) => SortInfo[] | SortObject<T>
   ): Queryable<T> {
     const queryable = this.clone()
-    queryable.sorts = sorts(this.rowset)
+    queryable._sorts = sorts(this.rowset)
     return queryable
   }
 
@@ -192,10 +197,10 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   }
 
   join <J extends RowObject, G extends InputObject>(
-    entity: EntityConstructor<J>,
+    entity: Constructor<J>,
     on: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => Condition,
     results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G): Queryable<RowTypeFrom<G>> {
-    const rightMetadata = MetadataStore.get(entity);
+    const rightMetadata = MetadataStore.getEntity(entity);
     const rightRowset = makeProxiedRowset<J>(rightMetadata)
     const newRowset = this._buildSelectSql(results(this.rowset, rightRowset)).join(rightRowset, on(this.rowset, rightRowset), true).as(ROWSET_ALIAS)
     return new Queryable<RowTypeFrom<G>>(this.executor, newRowset)
@@ -206,13 +211,19 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
    */
   include(props: FetchProps<T>): Queryable<T> {
     const queryable = this.clone()
-    queryable.includes = props
+    queryable._includes = props
+    return queryable
+  }
+
+  withDetail(): Queryable<T> {
+    const queryable = this.clone()
+    queryable._withDetail = true
     return queryable
   }
 
   withNocache(): Queryable<T> {
     const query = this.clone()
-    query.nocache = true;
+    query._nocache = true;
     return query
   }
 
@@ -245,57 +256,56 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       if (!prop) {
         throw new Error(`Invalid include property name ${propName}`)
       }
-      if (!isEntityConstructor(prop.type)) {
-        throw new Error('Property name ${propName} is not entity type')
+      const relation = prop.relation
+      if (!relation) {
+        throw new Error(`Property ${propName} is not a relation property.`)
       }
       let subIncludes = Reflect.get(includes, propName)
       if (subIncludes === true) subIncludes = null
-      const subMetadata = MetadataStore.get(prop.type)
-      let subQueryable = new Queryable(this.executor, subMetadata)
+
+      const relationQueryable = new Queryable<any>(this.executor, prop.type as Constructor<any>)
       if (subIncludes) {
-        subQueryable = subQueryable.include(subIncludes)
+        relationQueryable._includes = subIncludes
       }
-      if (prop.relation.kind === 'ONE_TO_ONE') {
+      // 复制当前选项
+      relationQueryable._withDetail = this._withDetail
+
+      if (isOneToOne(prop.relation)) {
         const relation = prop.relation
         // 本表为主表
-        if (relation.primaryEntity === this.metadata) {
+        if (relation.isPrimary) {
           const idValue = datarow[this.metadata.idProperty.column.name]
-          const subItem = await subQueryable.filter(rowset => rowset.field(relation.foreignProperty.name).eq(idValue)).fetchFirst()
-          Reflect.set(item, prop.name, subItem)
+          const relationItem = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchFirst()
+          Reflect.set(item, prop.name, relationItem)
           // 本表为次表
         } else {
           const refValue = datarow[relation.relationKey.foreignColumn.name]
-          const subItem = await subQueryable.find(rowset => rowset.field(relation.primaryProperty.name).eq(refValue)).fetchFirst()
-          Reflect.set(item, prop.name, subItem)
+          const relationItem = await relationQueryable.find(rowset => rowset.field(relation.relationEntity.idProperty.name).eq(refValue)).fetchFirst()
+          Reflect.set(item, prop.name, relationItem)
         }
-      } else if (prop.relation.kind === 'ONE_TO_MANY') {
-        const relation = prop.relation
-        // 本表为主表, OneToMany
-        if (relation.primaryEntity === this.metadata) {
-          const idValue = datarow[this.metadata.idProperty.column.name]
-          const subItem = await subQueryable.filter(rowset => rowset.field(relation.foreignProperty.name).eq(idValue)).fetchAll()
-          Reflect.set(item, prop.name, subItem)
-          // 本表为次表，ManyToOne
-        } else {
-          const refValue = datarow[relation.relationKey.foreignColumn.name]
-          const subItem = await subQueryable.find(rowset => rowset.field(relation.primaryProperty.name).eq(refValue)).fetchFirst()
-          Reflect.set(item, prop.name, subItem)
-        }
-        // MANY TO MANY， 通地中间表查询
-      } else {
-        const relation = prop.relation
+      } else if (isOneToMany(relation)) {
+        const idValue = datarow[this.metadata.idProperty.column.name]
+        const relationItems = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchAll()
+        Reflect.set(item, prop.name, relationItems)
+      } else if (isManyToOne(relation)) {
+        const refValue = datarow[relation.relationKey.foreignColumn.name]
+        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.relationEntity.idProperty.name).eq(refValue)).fetchFirst()
+        Reflect.set(item, prop.name, relationItem)
+      } else if (isManyToMany(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
         // 本表为字段1关联
-        const rt = table(relation.relationTable.name)
-        const thisForeignColumn = this.metadata === relation.entity1 ? relation.relationKey1.foreignColumn : relation.relationKey2.foreignColumn
-        const subForeignColumn = this.metadata === relation.entity1 ? relation.relationKey2.foreignColumn : relation.relationKey1.foreignColumn
+        const rt = table(relation.middleTable.name)
+        // 当前外键列
+        const thisForeignColumn = relation.relationKey.foreignColumn
+        // 关联外键列
+        const relationForeignColumn = relation.relationProperty.relation.relationKey.foreignColumn
 
-        const subIdsSelect = select(rt.field(subForeignColumn.name))
+        const relationIdsSelect = select(rt.field(relationForeignColumn.name))
           .from(rt)
           .where(
             rt.field(thisForeignColumn.name).eq(idValue)
           )
-        const subItems = subQueryable.filter(rowset => rowset.field(subMetadata.idProperty.name).in(subIdsSelect)).fetchAll()
+        const subItems = relationQueryable.filter(rowset => rowset.field(relation.relationEntity.idProperty.name).in(relationIdsSelect)).fetchAll()
         Reflect.set(item, prop.name, subItems)
       }
     }
@@ -305,7 +315,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
    * 将数据库记录转换为实体
    */
   protected async toEntity (datarow: any): Promise<T> {
-    const item = new this.metadata.class()
+    const item = new this.metadata.class() as any
     // 标记数据库记录
     item[FROM_DB] = true
 
@@ -320,8 +330,12 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       }
       Reflect.set(item, prop.name, itemValue)
     }
-    if (this.includes) {
-      await this.fetchIncludes(datarow, item, this.includes)
+    // TODO: 添加避免重复加载代码
+    if (this._withDetail) {
+      await this.fetchIncludes(datarow, item, this.metadata.detailIncludes)
+    }
+    if (this._includes) {
+      await this.fetchIncludes(datarow, item, this._includes)
     }
     return item
   }

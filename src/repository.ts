@@ -4,10 +4,16 @@
 import { CompatibleCondition, FieldsOf, ProxiedTable, RowObject, Table } from "./ast";
 import { Executor } from "./execute";
 import { FROM_DB, Queryable } from "./queryable";
-import { EntityConstructor, EntityMetadata, MetadataStore } from "./metadata";
+import { Constructor, EntityMetadata, MetadataStore } from "./metadata";
 import { and, identityValue, val } from "./builder";
 import { ScalarType } from "./types";
 import { ensureCondition } from "./util";
+
+// TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
+
+// TODO: Lube 事务嵌套支持
+
+
 
 export type RefKeyOf<T> = ({ [P in keyof T]: T[P] extends ScalarType ? never : P })[keyof T]
 
@@ -18,17 +24,28 @@ export type FetchProps<T> = {
 export type FetchOptions<T> = {
   includes?: FetchProps<T>
   nocache?: boolean
+  /**
+   * 是否连同明细属性一并查询
+   * 默认为false
+   * 如果为true，则系统会自动查询明细relation属性，并且不需要指定`includes`
+   */
+  withDetail?: boolean
 }
 
-export type UpdateOptions = {
+export type ChangeOptions = {
   /**
-   * 是否重新加被保存的项,默认不重新加载
+   * 是否重新加载被保存的项,默认为false
    */
   reload?: boolean
+
+  /**
+   * 是否联动保存关系属性，默认为true
+   */
+  withRelation?: boolean
 }
 
-export function isEntityConstructor(value: any): value is EntityConstructor {
-  return typeof value === 'function' && !!MetadataStore.get(value)
+export function isEntityConstructor(value: any): value is Constructor<RowObject> {
+  return typeof value === 'function' && !!MetadataStore.getEntity(value)
 }
 
 export function isFromDb(value: object): boolean {
@@ -42,8 +59,8 @@ export class Repository<T extends RowObject> extends Queryable<T> {
 
   constructor(
     executor: Executor,
-    public entityType: EntityConstructor<T>) {
-    super(executor, MetadataStore.get(entityType))
+    public ctr: Constructor<T>) {
+    super(executor, ctr)
   }
 
   /**
@@ -57,17 +74,18 @@ export class Repository<T extends RowObject> extends Queryable<T> {
     return await query.fetchFirst()
   }
 
-  async add(items: T | T[], options?: UpdateOptions): Promise<void> {
+  async add(items: T | T[], options?: ChangeOptions): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items]
     }
     for(const item of items) {
       const data = this.toDataRow(item)
       await this.executor.insert(this.metadata.table.name, data);
-      if (options?.reload && this.metadata.idProperty) {
+      if (options?.reload) {
+        const id = this.metadata.identityProperty ? identityValue(this.metadata.table.name, this.metadata.identityProperty.column.name) : Reflect.get(item, this.metadata.idProperty.name)
         const added = this.toEntity(await this.executor.find(this.metadata.table.name, {
           where: {
-            [this.metadata.identityProperty.column.name]: identityValue(this.metadata.table.name, this.metadata.identityProperty.column.name)
+            [this.metadata.identityProperty.column.name]: id
           }
         }))
         Object.assign(item, added);
@@ -120,7 +138,7 @@ export class Repository<T extends RowObject> extends Queryable<T> {
   /**
    * 将EntityItem 转换为 DataRow
    */
-  private toDataRow(entity: T): any {
+  protected toDataRow(entity: T): any {
     const dbItem: T = Object.create(null)
 
     for (const prop of this.metadata.properties) {

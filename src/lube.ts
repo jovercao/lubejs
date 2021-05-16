@@ -5,6 +5,7 @@ import { ISOLATION_LEVEL } from './constants'
 import * as assert from 'assert'
 import { CompileOptions, Compiler } from './compile'
 import { Parameter } from './ast'
+import { Constructor } from './metadata'
 
 export type ConnectOptions = {
   /**
