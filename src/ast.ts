@@ -1294,7 +1294,7 @@ export abstract class Identifier<N extends string = string> extends AST {
 
   static var<T extends ScalarType, N extends string = string> (
     name: N
-  ): Expression<T> {
+  ): Variant<T, N> {
     return new Variant(name)
   }
 
