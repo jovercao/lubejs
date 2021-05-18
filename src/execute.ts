@@ -41,7 +41,7 @@ import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
 import { Queryable } from './queryable'
 import { and, doc, or } from './builder'
-import { ScalarType } from './types'
+import { Scalar } from './types'
 import { Constructor } from './metadata'
 import { Repository } from './repository'
 
@@ -56,7 +56,7 @@ export interface Command {
  */
 export interface QueryResult<
   T extends RowObject = never,
-  R extends ScalarType = never,
+  R extends Scalar = never,
   O extends [T, ...RowObject[]] = [T]
 > {
   /**
@@ -67,7 +67,7 @@ export interface QueryResult<
    * 输出参数
    */
   output?: {
-    [key: string]: ScalarType
+    [key: string]: Scalar
   }
   /**
    * 受影响行数
@@ -106,7 +106,7 @@ export interface SelectOptions<T extends RowObject = any> {
 }
 
 export interface QueryHandler {
-  (sql: string, params: Parameter<ScalarType, string>[]): Promise<
+  (sql: string, params: Parameter<Scalar, string>[]): Promise<
     QueryResult<any, any, any>
   >
 }
@@ -226,7 +226,7 @@ export class Executor {
   /**
    * 执行一个存储过程执行代码
    */
-  async query<R extends ScalarType = number, O extends RowObject[] = []> (
+  async query<R extends Scalar = number, O extends RowObject[] = []> (
     sql: Execute<R, O>
     // eslint-disable-next-line
     // @ts-ignore
@@ -238,7 +238,7 @@ export class Executor {
   ): Promise<QueryResult<T>>
   async query<T extends RowObject = any> (
     sql: string,
-    params: Record<string, ScalarType>
+    params: Record<string, Scalar>
   ): Promise<QueryResult<T>>
   async query<T extends RowObject = any> (
     sql: Statement | Document
@@ -255,19 +255,19 @@ export class Executor {
    * 执行一个查询并获取返回的第一个标量值
    * @param sql
    */
-  async queryScalar<T extends ScalarType = any> (
+  async queryScalar<T extends Scalar = any> (
     sql: string,
     params?: Parameter[]
   ): Promise<T>
-  async queryScalar<T extends ScalarType = any> (
+  async queryScalar<T extends Scalar = any> (
     sql: string,
     params?: InputObject
   ): Promise<T>
   async queryScalar<T extends RowObject> (
     sql: Select<T>
   ): Promise<AsScalarType<T>>
-  async queryScalar<T extends ScalarType> (sql: Select<any>): Promise<T>
-  async queryScalar<T extends ScalarType = any> (
+  async queryScalar<T extends Scalar> (sql: Select<any>): Promise<T>
+  async queryScalar<T extends Scalar = any> (
     sql: TemplateStringsArray,
     ...params: any[]
   ): Promise<T>
@@ -294,7 +294,7 @@ export class Executor {
   ): Promise<number>
   async insert<T extends RowObject = any> (
     table: Name<string> | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
+    fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
     value?:
       | InputObject<T>
       | InputObject<T>[]
@@ -303,14 +303,14 @@ export class Executor {
   ): Promise<number>
   async insert<T extends RowObject = any> (
     table: Name<string> | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[],
+    fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
     value?: T | T[]
   ): Promise<number>
   async insert<T extends RowObject = any> (
     table: Name<string> | Table<T, string>,
     arg2:
       | FieldsOf<T>[]
-      | Field<ScalarType, FieldsOf<T>>[]
+      | Field<Scalar, FieldsOf<T>>[]
       | InputObject<T>
       | InputObject<T>[]
       | CompatibleExpression
@@ -322,7 +322,7 @@ export class Executor {
       | CompatibleExpression[]
       | undefined
   ): Promise<number> {
-    let fields: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
+    let fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
     let values:
       | InputObject<T>
       | InputObject<T>[]
@@ -334,7 +334,7 @@ export class Executor {
       fields = undefined
     } else {
       values = arg3
-      fields = arg2 as FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
+      fields = arg2 as FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
     }
 
     // 确保装入数组里，以便 使用
@@ -379,7 +379,7 @@ export class Executor {
       | Condition
       | WhereObject<T>
       | ((table: ProxiedRowset<T>) => Condition),
-    fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Promise<T> {
     let columns: any[]
     const t = makeProxiedRowset(ensureRowset(table))
@@ -567,7 +567,7 @@ export class Executor {
     return res.rowsAffected
   }
 
-  async execute<R extends ScalarType = number, O extends RowObject[] = []> (
+  async execute<R extends Scalar = number, O extends RowObject[] = []> (
     spName: Name<string> | Procedure<R, O>,
     params?: CompatibleExpression[]
     // eslint-disable-next-line

@@ -1,3 +1,33 @@
 {
-    "deno.enable": false
+  "deno.enable": false,
+  "todo-tree.general.tags": [
+    "BUG",
+    "HACK",
+    "FIXME",
+    "TODO",
+    "XXX",
+    "ISSUE",
+    "TIPS",
+    "INFO",
+    "TASK",
+    "WARN",
+    "[ ]",
+    "[x]"
+  ],
+  "todo-tree.general.tagGroups": {
+    "TASK": [
+      "[X]",
+      "[ ]",
+    ],
+    "ISSUE": [
+      "BUG",
+      "TODO",
+      "ISSUE"
+    ],
+    "INFO": [
+      "WARN",
+      "TIPS",
+      "HACK"
+    ]
+  },
 }

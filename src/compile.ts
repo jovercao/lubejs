@@ -51,7 +51,7 @@ import {
 import { PARAMETER_DIRECTION } from './constants'
 import { Command } from './execute'
 
-import { DbType, ScalarType, type } from './types'
+import { DbType, Scalar, type } from './types'
 
 import {
   dateToString,
@@ -201,7 +201,7 @@ export abstract class Compiler {
    * 编译Insert语句中的字段，取掉表别名
    * @param field 字段
    */
-  protected compileInsertField (field: Field<ScalarType, string>): string {
+  protected compileInsertField (field: Field<Scalar, string>): string {
     if (typeof field.$name === 'string') return this.quoted(field.$name)
     return this.quoted(field.$name[field.$name.length - 1])
   }
@@ -223,14 +223,14 @@ export abstract class Compiler {
    * @param {any} value 参数值
    */
   protected compileParameter (
-    param: Parameter<ScalarType, string>,
-    params: Set<Parameter<ScalarType, string>>
+    param: Parameter<Scalar, string>,
+    params: Set<Parameter<Scalar, string>>
   ): string {
     params.add(param)
     return this.stringifyParameterName(param)
   }
 
-  protected stringifyParameterName (p: Parameter<ScalarType, string>): string {
+  protected stringifyParameterName (p: Parameter<Scalar, string>): string {
     return this.options.parameterPrefix + (p.$name || '')
   }
 
@@ -289,7 +289,7 @@ export abstract class Compiler {
   /**
    * 编译常量
    */
-  protected compileLiteral (constant: Literal<ScalarType>): string {
+  protected compileLiteral (constant: Literal<Scalar>): string {
     const value = constant.$value
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
@@ -322,7 +322,7 @@ export abstract class Compiler {
    * 将AST编译成一个可供执行的命令
    */
   public compile (ast: Statement | Document): Command {
-    const params = new Set<Parameter<ScalarType, string>>()
+    const params = new Set<Parameter<Scalar, string>>()
     let sql: string
     if (isDocument(ast)) {
       sql = this.compileDocument(ast, params)
@@ -343,7 +343,7 @@ export abstract class Compiler {
     /**
      * 参数容器
      */
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     /**
      * 父级AST
      */
@@ -385,8 +385,8 @@ export abstract class Compiler {
   }
 
   protected compileParenthesesExpression (
-    expr: ParenthesesExpression<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>
+    expr: ParenthesesExpression<Scalar>,
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return `(${this.compileExpression(expr.$inner, params, expr)})`
   }
@@ -395,8 +395,8 @@ export abstract class Compiler {
    * SELECT 语句 当值使用
    */
   protected compileValuedSelect (
-    expr: ValuedSelect<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>,
+    expr: ValuedSelect<Scalar>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     return `(${this.compileSelect(expr.$select, params, parent)})`
@@ -411,7 +411,7 @@ export abstract class Compiler {
 
   protected compileOperation (
     operation: Operation,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     if (isUnaryOperation(operation)) {
@@ -424,7 +424,7 @@ export abstract class Compiler {
 
     if (isConvertOperation(operation)) {
       return this.compileConvert(
-        operation as ConvertOperation<ScalarType>,
+        operation as ConvertOperation<Scalar>,
         params,
         parent
       )
@@ -433,14 +433,14 @@ export abstract class Compiler {
   }
 
   abstract compileConvert (
-    ast: ConvertOperation<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>,
+    ast: ConvertOperation<Scalar>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string
 
   protected compileUnaryOperation (
-    opt: UnaryOperation<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>,
+    opt: UnaryOperation<Scalar>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     return opt.$operator + this.compileExpression(opt.$value, params, parent)
@@ -459,7 +459,7 @@ export abstract class Compiler {
 
   protected compileNamedSelect (
     rowset: NamedSelect,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       '(' +
@@ -480,8 +480,8 @@ export abstract class Compiler {
   }
 
   protected compileColumn (
-    column: SelectColumn<ScalarType, string> | Star | Expression<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>,
+    column: SelectColumn<Scalar, string> | Star | Expression<Scalar>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     if (isColumn(column)) {
@@ -499,7 +499,7 @@ export abstract class Compiler {
 
   protected compileWithSelect (
     item: NamedSelect<any, string> | Raw,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     if (isRaw(item)) return item.$sql
@@ -512,7 +512,7 @@ export abstract class Compiler {
 
   protected compileWith (
     withs: With | Raw,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     if (isRaw(withs)) return withs.$sql
     return (
@@ -527,7 +527,7 @@ export abstract class Compiler {
 
   protected compileDocument (
     doc: Document,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return doc.statements
       .map(statement => this.compileStatement(statement, params, doc))
@@ -536,7 +536,7 @@ export abstract class Compiler {
 
   protected compileExecute (
     exec: Execute,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
@@ -555,8 +555,8 @@ export abstract class Compiler {
   }
 
   protected compileInvokeArgumentList (
-    args: Expression<ScalarType>[],
-    params: Set<Parameter<ScalarType, string>>,
+    args: Expression<Scalar>[],
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
@@ -565,8 +565,8 @@ export abstract class Compiler {
   }
 
   protected compileExecuteArgumentList (
-    args: Expression<ScalarType>[],
-    params: Set<Parameter<ScalarType, string>>,
+    args: Expression<Scalar>[],
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
@@ -574,7 +574,7 @@ export abstract class Compiler {
         let sql = this.compileExpression(ast, params, parent)
         if (
           isParameter(ast) &&
-          (ast as Parameter<ScalarType, string>).direction ===
+          (ast as Parameter<Scalar, string>).direction ===
             PARAMETER_DIRECTION.OUTPUT
         ) {
           sql += ' OUTPUT'
@@ -586,7 +586,7 @@ export abstract class Compiler {
 
   protected compileUnion (
     union: Union,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       'UNION ' +
@@ -599,7 +599,7 @@ export abstract class Compiler {
 
   protected compileCase (
     caseExpr: Case<any>,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     let fragment = 'CASE'
@@ -617,7 +617,7 @@ export abstract class Compiler {
 
   protected compileWhen (
     when: When<any> | Raw,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     if (isRaw(when)) return when.$sql
     return (
@@ -632,14 +632,14 @@ export abstract class Compiler {
 
   protected compileParenthesesCondition (
     expr: ParenthesesCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return '(' + this.compileCondition(expr.$inner, params, expr) + ')'
   }
 
   protected compileBinaryLogicCondition (
     expr: BinaryLogicCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileCondition(expr.$left, params, expr) +
@@ -652,7 +652,7 @@ export abstract class Compiler {
 
   protected compileBinaryCompareCondition (
     expr: BinaryCompareCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
@@ -668,8 +668,8 @@ export abstract class Compiler {
   }
 
   protected compileBinaryOperation (
-    expr: BinaryOperation<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>
+    expr: BinaryOperation<Scalar>,
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
@@ -682,7 +682,7 @@ export abstract class Compiler {
 
   protected compileUnaryCompareCondition (
     expr: UnaryCompareCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileExpression(expr.$expr, params, expr) + ' ' + expr.$operator
@@ -691,14 +691,14 @@ export abstract class Compiler {
 
   protected compileExistsCondition (
     expr: ExistsCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return 'EXISTS(' + this.compileSelect(expr.$statement, params, expr) + ')'
   }
 
   protected compileUnaryLogicCondition (
     expr: UnaryLogicCondition,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       expr.$operator +
@@ -708,8 +708,8 @@ export abstract class Compiler {
   }
 
   protected compileExpression (
-    expr: Expression<ScalarType> | Raw,
-    params: Set<Parameter<ScalarType, string>>,
+    expr: Expression<Scalar> | Raw,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isRaw(expr)) {
@@ -770,8 +770,8 @@ export abstract class Compiler {
    * @memberof Executor
    */
   protected compileScalarInvoke (
-    invoke: ScalarFuncInvoke<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>
+    invoke: ScalarFuncInvoke<Scalar>,
+    params: Set<Parameter<Scalar, string>>
   ): string {
     return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
       .map(v => this.compileScalarInvokeArgs(v, params, invoke))
@@ -780,7 +780,7 @@ export abstract class Compiler {
 
   protected compileJoin (
     join: Join | Raw,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     if (isRaw(join)) return join.$sql
     return (
@@ -794,7 +794,7 @@ export abstract class Compiler {
 
   protected compileSort (
     sort: SortInfo | Raw,
-    params: Set<Parameter<ScalarType, string>>
+    params: Set<Parameter<Scalar, string>>
   ): string {
     if (isRaw(sort)) return sort.$sql
     let sql = this.compileExpression(sort.$expr, params, sort)
@@ -804,7 +804,7 @@ export abstract class Compiler {
 
   protected compileSelect (
     select: Select,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     const {
@@ -867,7 +867,7 @@ export abstract class Compiler {
     return sql
   }
 
-  protected compileOffsetLimit(select: Select<any>, params: Set<Parameter<ScalarType, string>>): string {
+  protected compileOffsetLimit(select: Select<any>, params: Set<Parameter<Scalar, string>>): string {
     let sql = ''
     if (typeof select.$offset === 'number') {
       sql += ` OFFSET ${select.$offset || 0}`
@@ -880,7 +880,7 @@ export abstract class Compiler {
 
   protected compileFrom (
     table: Rowset<any> | Raw,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
   ): string {
@@ -919,7 +919,7 @@ export abstract class Compiler {
 
   protected compileCondition (
     condition: Condition | Raw,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
   ): string {
@@ -962,7 +962,7 @@ export abstract class Compiler {
 
   protected compileInsert (
     insert: Insert,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     const { $table, $values, $fields, $with } = insert
@@ -1003,8 +1003,8 @@ export abstract class Compiler {
   }
 
   protected compileAssignment (
-    assign: Assignment<ScalarType>,
-    params: Set<Parameter<ScalarType, string>>,
+    assign: Assignment<Scalar>,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     const { left, right } = assign
@@ -1032,7 +1032,7 @@ export abstract class Compiler {
 
   protected compileUpdate (
     update: Update,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
@@ -1070,7 +1070,7 @@ export abstract class Compiler {
 
   protected compileDelete (
     del: Delete,
-    params: Set<Parameter<ScalarType, string>>,
+    params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     const { $table, $froms, $joins, $where, $with } = del

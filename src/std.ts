@@ -5,10 +5,10 @@
 
 import { Expression, CompatibleExpression, Star, CompatibleTable, IdentityValue } from './ast'
 import { makeFunc } from './builder'
-import { Binary, DbType, DbTypeToTsType, ScalarType } from './types'
+import { Binary, DbType, DbTypeToTsType, Scalar } from './types'
 
 export const count: (
-  expr: Star | CompatibleExpression<ScalarType>
+  expr: Star | CompatibleExpression<Scalar>
 ) => Expression<number> = makeFunc('scalar', 'count', true)
 export const avg: (
   expr: CompatibleExpression<number>
@@ -16,10 +16,10 @@ export const avg: (
 export const sum: (
   expr: CompatibleExpression<number>
 ) => Expression<number> = makeFunc('scalar', 'expr', true)
-export const max: <T extends Exclude<ScalarType, Binary>>(
+export const max: <T extends Exclude<Scalar, Binary>>(
   expr: Expression<T>
 ) => Expression<T> = makeFunc('scalar', 'max', true)
-export const min: <T extends Exclude<ScalarType, Binary>>(
+export const min: <T extends Exclude<Scalar, Binary>>(
   expr: Expression<T>
 ) => Expression<T> = makeFunc('scalar', 'min', true)
 

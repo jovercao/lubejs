@@ -17,7 +17,7 @@ export type Binary = ArrayBuffer | SharedArrayBuffer
  * 标量类型
  * 对应数据库标量类型的JS类型集
  */
-export type ScalarType =
+export type Scalar =
   | string
   | Date
   | boolean
@@ -29,7 +29,7 @@ export type ScalarType =
   // | RowObject
   // | Array<ScalarType>
 
-export type ScalarTypeConstructor =
+export type ScalarType =
   | String
   | Date
   | Boolean
@@ -188,7 +188,7 @@ export type TsTypeToDbType<T> =
 /**
  * 解释值的类型
  */
-export function parseValueType (value: ScalarType): DbType {
+export function parseValueType (value: Scalar): DbType {
   if (value === null || value === undefined)
     throw new Error('Do not parse DbType from null or undefined')
   switch (value.constructor) {

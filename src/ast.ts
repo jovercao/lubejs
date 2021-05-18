@@ -38,7 +38,7 @@ import {
   SQL_SYMBOLE_EXPRESSION
 } from './constants'
 import { DbType, parseValueType, DbTypeToTsType, TsTypeToDbType } from './types'
-import { ScalarType } from './types'
+import { Scalar } from './types'
 
 /**
  * 混入函数，必须放最前面，避免循环引用导致无法获取
@@ -65,7 +65,7 @@ function applyMixins (derivedCtor: any, baseCtors: any[]) {
  */
 export type AsScalarType<T extends RowObject> = T[FieldsOf<
   T
->] extends ScalarType
+>] extends Scalar
   ? T[FieldsOf<T>]
   : never
 
@@ -73,7 +73,7 @@ export type AsScalarType<T extends RowObject> = T[FieldsOf<
 export type RowObject = object
 
 export type DefaultRowObject = {
-  [P in string]: ScalarType
+  [P in string]: Scalar
 }
 
 // {
@@ -99,7 +99,7 @@ export type InputObject<T extends RowObject = DefaultRowObject> = {
 /**
  * 获取表达式/或者对像所表示的类型
  */
-export type TypeOf<T> = T extends ScalarType
+export type TypeOf<T> = T extends Scalar
   ? T
   : T extends Expression<infer X>
   ? X
@@ -139,8 +139,8 @@ export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @ty
  * select语句可以接收的列
  */
 export type SelectCloumn =
-  | Field<ScalarType, string>
-  | SelectColumn<ScalarType, string>
+  | Field<Scalar, string>
+  | SelectColumn<Scalar, string>
   | Star<any>
 
 export type RowTypeByColumns<
@@ -200,7 +200,7 @@ export type RowTypeByColumns<
 /**
  * 可兼容的表达式
  */
-export type CompatibleExpression<T extends ScalarType = ScalarType> =
+export type CompatibleExpression<T extends Scalar = Scalar> =
   | Expression<T>
   | T
 
@@ -222,12 +222,12 @@ export type CompatibleSortInfo<T extends RowObject = DefaultRowObject> =
  */
 export type FieldsOf<T> = Exclude<
   {
-    [P in keyof T]: T[P] extends ScalarType ? P : never
+    [P in keyof T]: T[P] extends Scalar ? P : never
   }[keyof T],
   number | symbol
 >
 
-export type FieldTypeOf<T, F extends keyof T> = T[F] extends ScalarType
+export type FieldTypeOf<T, F extends keyof T> = T[F] extends Scalar
   ? T[F]
   : never
 
@@ -302,7 +302,7 @@ export type ModelTypeOfConstructor<T> = T extends new (
  * 可以直接使用 instanceof 来判断是否为expression
  */
 export abstract class Expression<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends AST {
   $type: SQL_SYMBOLE_EXPRESSION
   /**
@@ -578,7 +578,7 @@ export abstract class Expression<
   /**
    * 括号表达式，将表达式括起来，如优先级
    */
-  static enclose<T extends ScalarType> (
+  static enclose<T extends Scalar> (
     value: CompatibleExpression<T>
   ): Expression<T> {
     return new ParenthesesExpression(value)
@@ -745,13 +745,13 @@ export abstract class Expression<
   }
 
   static convert<T extends DbType> (
-    expr: CompatibleExpression<ScalarType>,
+    expr: CompatibleExpression<Scalar>,
     toType: T
   ): Expression<DbTypeToTsType<T>> {
     return new ConvertOperation(expr, toType) as any
   }
 
-  static literal<T extends ScalarType> (value: T): Literal<T> {
+  static literal<T extends Scalar> (value: T): Literal<T> {
     return new Literal(value)
   }
 }
@@ -883,7 +883,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static eq<T extends ScalarType> (
+  static eq<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -896,7 +896,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static neq<T extends ScalarType> (
+  static neq<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -909,7 +909,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static lt<T extends ScalarType> (
+  static lt<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -922,7 +922,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static lte<T extends ScalarType> (
+  static lte<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -935,7 +935,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static gt<T extends ScalarType> (
+  static gt<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -948,7 +948,7 @@ export abstract class Condition extends AST {
    * @param right 右值
    * @returns 返回比较运算对比条件
    */
-  static gte<T extends ScalarType> (
+  static gte<T extends Scalar> (
     left: CompatibleExpression<T>,
     right: CompatibleExpression<T>
   ): Condition {
@@ -991,15 +991,15 @@ export abstract class Condition extends AST {
    * @param values 要比较的值列表
    * @returns 返回比较运算对比条件
    */
-  static in<T extends ScalarType> (
+  static in<T extends Scalar> (
     left: CompatibleExpression<T>,
     select: Select<any>
   ): Condition
-  static in<T extends ScalarType> (
+  static in<T extends Scalar> (
     left: CompatibleExpression<T>,
     values: CompatibleExpression<T>[]
   ): Condition
-  static in<T extends ScalarType> (
+  static in<T extends Scalar> (
     left: CompatibleExpression<T>,
     values: CompatibleExpression<T>[] | Select<any>
   ): Condition {
@@ -1016,7 +1016,7 @@ export abstract class Condition extends AST {
    * @param values 要比较的值列表
    * @returns 返回比较运算对比条件
    */
-  static notIn<T extends ScalarType> (
+  static notIn<T extends Scalar> (
     left: CompatibleExpression<T>,
     values: CompatibleExpression<T>[]
   ): Condition {
@@ -1032,7 +1032,7 @@ export abstract class Condition extends AST {
    * @returns 返回比较运算符
    * @param expr 表达式
    */
-  static isNull (expr: CompatibleExpression<ScalarType>): Condition {
+  static isNull (expr: CompatibleExpression<Scalar>): Condition {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NULL, expr)
   }
 
@@ -1041,7 +1041,7 @@ export abstract class Condition extends AST {
    * @param expr 表达式
    * @returns 返回比较运算符
    */
-  static isNotNull (expr: CompatibleExpression<ScalarType>): Condition {
+  static isNotNull (expr: CompatibleExpression<Scalar>): Condition {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NOT_NULL, expr)
   }
 
@@ -1112,8 +1112,8 @@ export type ComparyCondition = BinaryCompareCondition | UnaryCompareCondition
  * 二元比较条件
  */
 export class BinaryCompareCondition extends Condition {
-  $left: Expression<ScalarType>
-  $right: Expression<ScalarType> | Expression<ScalarType>[]
+  $left: Expression<Scalar>
+  $right: Expression<Scalar> | Expression<Scalar>[]
   $operator: BINARY_COMPARE_OPERATOR
   $kind: CONDITION_KIND.BINARY_COMPARE = CONDITION_KIND.BINARY_COMPARE
 
@@ -1122,8 +1122,8 @@ export class BinaryCompareCondition extends Condition {
    */
   constructor (
     operator: BINARY_COMPARE_OPERATOR,
-    left: CompatibleExpression<ScalarType>,
-    right: CompatibleExpression<ScalarType> | CompatibleExpression<ScalarType>[]
+    left: CompatibleExpression<Scalar>,
+    right: CompatibleExpression<Scalar> | CompatibleExpression<Scalar>[]
   ) {
     super()
     this.$operator = operator
@@ -1140,7 +1140,7 @@ export class BinaryCompareCondition extends Condition {
  * 一元比较条件
  */
 export class UnaryCompareCondition extends Condition {
-  $expr: Expression<ScalarType>
+  $expr: Expression<Scalar>
   $operator: UNARY_COMPARE_OPERATOR
   $kind: CONDITION_KIND.UNARY_COMPARE = CONDITION_KIND.UNARY_COMPARE
 
@@ -1151,7 +1151,7 @@ export class UnaryCompareCondition extends Condition {
    */
   constructor (
     operator: UNARY_COMPARE_OPERATOR,
-    expr: CompatibleExpression<ScalarType>
+    expr: CompatibleExpression<Scalar>
   ) {
     super()
     this.$operator = operator
@@ -1272,7 +1272,7 @@ export abstract class Identifier<N extends string = string> extends AST {
    * 创建一个可供调用的存储过程函数
    */
   static proc<
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = never,
     N extends string = string
   > (name: Name<N>, buildIn = false): Procedure<R, O, N> {
@@ -1282,7 +1282,7 @@ export abstract class Identifier<N extends string = string> extends AST {
   /**
    * 创建一个字段
    */
-  static field<T extends ScalarType, N extends string> (
+  static field<T extends Scalar, N extends string> (
     name: Name<N>
   ): Field<T, N> {
     return new Field(name)
@@ -1292,7 +1292,7 @@ export abstract class Identifier<N extends string = string> extends AST {
     return new BuiltIn(name)
   }
 
-  static var<T extends ScalarType, N extends string = string> (
+  static var<T extends Scalar, N extends string = string> (
     name: N
   ): Variant<T, N> {
     return new Variant(name)
@@ -1347,13 +1347,13 @@ export class Func<
   }
 
   invokeAsTable<T extends RowObject = DefaultRowObject> (
-    ...args: CompatibleExpression<ScalarType>[]
+    ...args: CompatibleExpression<Scalar>[]
   ): Rowset<T> {
     return new TableFuncInvoke(this, args)
   }
 
-  invokeAsCalar<T extends ScalarType> (
-    ...args: CompatibleExpression<ScalarType>[]
+  invokeAsCalar<T extends Scalar> (
+    ...args: CompatibleExpression<Scalar>[]
   ): Expression<T> {
     return new ScalarFuncInvoke(this, args)
   }
@@ -1368,7 +1368,7 @@ export type PathedName<T extends string> =
 
 export type Name<T extends string> = T | PathedName<T>
 
-export abstract class Assignable<T extends ScalarType = any> extends Expression<
+export abstract class Assignable<T extends Scalar = any> extends Expression<
   T
 > {
   readonly $lvalue: true = true
@@ -1382,7 +1382,7 @@ export abstract class Assignable<T extends ScalarType = any> extends Expression<
   }
 }
 
-export class Field<T extends ScalarType = any, N extends string = string>
+export class Field<T extends Scalar = any, N extends string = string>
   extends Assignable<T>
   implements Identifier<N> {
   constructor (name: Name<N>) {
@@ -1545,7 +1545,7 @@ applyMixins(Table, [Identifier])
 /**
  * 标量变量引用，暂不支持表变量
  */
-export class Variant<T extends ScalarType = any, N extends string = string>
+export class Variant<T extends Scalar = any, N extends string = string>
   extends Assignable<T>
   implements Identifier<N> {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER
@@ -1592,7 +1592,7 @@ applyMixins(TableVariant, [Identifier])
  * 列表达式
  */
 export class SelectColumn<
-  T extends ScalarType = ScalarType,
+  T extends Scalar = Scalar,
   N extends string = string
 > extends Identifier<N> {
   /**
@@ -1630,7 +1630,7 @@ export type SelectAction = {
   <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>
   <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>
   <T extends RowObject>(results: InputObject<T>): Select<T>
-  <T extends ScalarType>(expr: CompatibleExpression<T>): Select<{
+  <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
     '*no name': T
   }>
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
@@ -2575,17 +2575,17 @@ export type SelectAction = {
  * 函数调用表达式
  */
 export class ScalarFuncInvoke<
-  TReturn extends ScalarType = any
+  TReturn extends Scalar = any
 > extends Expression<TReturn> {
   $func: Func<string>
-  $args: (Expression<ScalarType> | BuiltIn<string> | Star)[]
+  $args: (Expression<Scalar> | BuiltIn<string> | Star)[]
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
     SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE
 
   // TODO: 是否需参数的类型判断，拦截ValuedSelect之类的表达式进入？
   constructor (
     func: Name<string> | Func<string>,
-    args: (CompatibleExpression<ScalarType> | BuiltIn<string> | Star)[]
+    args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ) {
     super()
     this.$func = ensureFunction(func)
@@ -2600,13 +2600,13 @@ export class TableFuncInvoke<TReturn extends RowObject = any> extends Rowset<
   TReturn
 > {
   readonly $func: Func<string>
-  readonly $args: Expression<ScalarType>[]
+  readonly $args: Expression<Scalar>[]
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
     SQL_SYMBOLE.TABLE_FUNCTION_INVOKE
 
   constructor (
     func: Name<string> | Func<string>,
-    args: CompatibleExpression<ScalarType>[]
+    args: CompatibleExpression<Scalar>[]
   ) {
     super()
     this.$func = ensureFunction(func)
@@ -2634,7 +2634,7 @@ export abstract class Statement extends AST {
    */
   static insert<T extends RowObject = any> (
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields)
   }
@@ -2680,9 +2680,9 @@ export abstract class Statement extends AST {
   //   proc: Name<string> | Procedure<T, string>,
   //   params?: InputObject
   // ): Execute<T>
-  static execute<R extends ScalarType = any, O extends RowObject[] = []> (
+  static execute<R extends Scalar = any, O extends RowObject[] = []> (
     proc: Name<string> | Procedure<R, O, string>,
-    params?: CompatibleExpression<ScalarType>[]
+    params?: CompatibleExpression<Scalar>[]
     // | Parameter<JsConstant, string>[] | InputObject
   ): Execute<R, O> {
     return new Execute(proc, params)
@@ -2690,14 +2690,14 @@ export abstract class Statement extends AST {
 
   static invokeTableFunction<T extends RowObject = any> (
     func: Name<string> | Func<string>,
-    args: CompatibleExpression<ScalarType>[]
+    args: CompatibleExpression<Scalar>[]
   ): ProxiedRowset<T> {
     return makeProxiedRowset(new TableFuncInvoke<T>(func, args))
   }
 
-  static invokeScalarFunction<T extends ScalarType = any> (
+  static invokeScalarFunction<T extends Scalar = any> (
     func: Name<string> | Func<string>,
-    args: CompatibleExpression<ScalarType>[]
+    args: CompatibleExpression<Scalar>[]
   ): ScalarFuncInvoke<T> {
     return new ScalarFuncInvoke<T>(func, args)
   }
@@ -2761,18 +2761,18 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>
 
-  static makeFunc<T extends ScalarType> (
+  static makeFunc<T extends Scalar> (
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): () => Expression<T>
-  static makeFunc<T extends ScalarType, A1 extends CompatibleExpression> (
+  static makeFunc<T extends Scalar, A1 extends CompatibleExpression> (
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>
   static makeFunc<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   > (
@@ -2781,7 +2781,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>
   static makeFunc<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
@@ -2791,7 +2791,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>
   static makeFunc<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -2802,7 +2802,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>
   static makeFunc<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -2839,9 +2839,9 @@ export abstract class Statement extends AST {
     }
     if (type === 'scalar') {
       return function (
-        ...args: CompatibleExpression<ScalarType>[]
+        ...args: CompatibleExpression<Scalar>[]
       ): Expression {
-        return Statement.invokeScalarFunction<ScalarType>(
+        return Statement.invokeScalarFunction<Scalar>(
           Identifier.func(name, builtIn),
           args
         )
@@ -2853,19 +2853,19 @@ export abstract class Statement extends AST {
   /**
    * 创建一个可供JS调用的存储过程
    */
-  static makeProc<R extends ScalarType = number, O extends RowObject[] = []> (
+  static makeProc<R extends Scalar = number, O extends RowObject[] = []> (
     name: Name<string>,
     builtIn?: boolean
   ): () => Execute<R, O>
   static makeProc<
     A1 extends CompatibleExpression,
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = []
   > (name: Name<string>, builtIn?: boolean): (arg1: A1) => Execute<R, O>
   static makeProc<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = []
   > (
     name: Name<string>,
@@ -2875,7 +2875,7 @@ export abstract class Statement extends AST {
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = []
   > (
     name: Name<string>,
@@ -2886,7 +2886,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression,
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = []
   > (
     name: Name<string>,
@@ -2898,7 +2898,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression,
     A5 extends CompatibleExpression,
-    R extends ScalarType = number,
+    R extends Scalar = number,
     O extends RowObject[] = []
   > (
     name: Name<string>,
@@ -2915,10 +2915,10 @@ export abstract class Statement extends AST {
     builtIn = false
   ): (...args: CompatibleExpression[]) => void {
     return function (
-      ...args: CompatibleExpression<ScalarType>[]
+      ...args: CompatibleExpression<Scalar>[]
     ): Execute<any, any> {
       return Statement.execute(
-        Identifier.proc<ScalarType, any, string>(name, builtIn),
+        Identifier.proc<Scalar, any, string>(name, builtIn),
         args
       )
     }
@@ -2929,7 +2929,7 @@ export abstract class Statement extends AST {
    * @param left 左值
    * @param right 右值
    */
-  static assign<T extends ScalarType = any> (
+  static assign<T extends Scalar = any> (
     left: Assignable<T>,
     right: CompatibleExpression<T>
   ): Assignment<T> {
@@ -2949,14 +2949,14 @@ export abstract class Statement extends AST {
    * @param expr
    * @param value
    */
-  static when<T extends ScalarType> (
-    expr: CompatibleExpression<ScalarType>,
+  static when<T extends Scalar> (
+    expr: CompatibleExpression<Scalar>,
     value?: CompatibleExpression<T>
   ): When<T> {
     return new When(expr, value)
   }
 
-  static case<T extends ScalarType> (expr?: CompatibleExpression): Case<T> {
+  static case<T extends Scalar> (expr?: CompatibleExpression): Case<T> {
     return new Case<T>(expr)
   }
 
@@ -3047,18 +3047,18 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>
 
-  static invoke<T extends ScalarType> (
+  static invoke<T extends Scalar> (
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): () => Expression<T>
-  static invoke<T extends ScalarType, A1 extends CompatibleExpression> (
+  static invoke<T extends Scalar, A1 extends CompatibleExpression> (
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>
   static invoke<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   > (
@@ -3067,7 +3067,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>
   static invoke<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
@@ -3077,7 +3077,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>
   static invoke<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -3088,7 +3088,7 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>
   static invoke<
-    T extends ScalarType,
+    T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -3125,9 +3125,9 @@ export abstract class Statement extends AST {
     }
     if (type === 'scalar') {
       return function (
-        ...args: CompatibleExpression<ScalarType>[]
+        ...args: CompatibleExpression<Scalar>[]
       ): Expression {
-        return Statement.invokeScalarFunction<ScalarType>(
+        return Statement.invokeScalarFunction<Scalar>(
           Identifier.func(name, builtIn),
           args
         )
@@ -3147,13 +3147,13 @@ export abstract class CrudStatement extends Statement {
 /**
  * When语句
  */
-export class When<T extends ScalarType = any> extends AST {
-  $expr: Expression<ScalarType> | Condition
+export class When<T extends Scalar = any> extends AST {
+  $expr: Expression<Scalar> | Condition
   $value: Expression<T>
   $type: SQL_SYMBOLE.WHEN = SQL_SYMBOLE.WHEN
 
   constructor (
-    expr: CompatibleExpression<ScalarType> | Condition,
+    expr: CompatibleExpression<Scalar> | Condition,
     then: CompatibleExpression<T>
   ) {
     super()
@@ -3161,7 +3161,7 @@ export class When<T extends ScalarType = any> extends AST {
       this.$expr = expr
     }
     if (isScalar(expr)) {
-      this.$expr = ensureExpression(expr as ScalarType)
+      this.$expr = ensureExpression(expr as Scalar)
     } else {
       this.$expr = expr
     }
@@ -3172,7 +3172,7 @@ export class When<T extends ScalarType = any> extends AST {
 /**
  * CASE表达式
  */
-export class Case<T extends ScalarType = any> extends Expression<T> {
+export class Case<T extends Scalar = any> extends Expression<T> {
   $expr: Expression<any>
   $whens: When<T>[]
   $default?: Expression<T>
@@ -3182,7 +3182,7 @@ export class Case<T extends ScalarType = any> extends Expression<T> {
    *
    * @param expr
    */
-  constructor (expr?: CompatibleExpression<ScalarType>) {
+  constructor (expr?: CompatibleExpression<Scalar>) {
     super()
     if (expr !== undefined) {
       this.$expr = ensureExpression(expr)
@@ -3208,7 +3208,7 @@ export class Case<T extends ScalarType = any> extends Expression<T> {
    * @param then
    */
   when (
-    expr: CompatibleExpression<ScalarType> | Condition,
+    expr: CompatibleExpression<Scalar> | Condition,
     then: CompatibleExpression<T>
   ): this {
     this.$whens.push(new When(expr, then))
@@ -3219,7 +3219,7 @@ export class Case<T extends ScalarType = any> extends Expression<T> {
 /**
  * 字面量表达式
  */
-export class Literal<T extends ScalarType = ScalarType> extends Expression<T> {
+export class Literal<T extends Scalar = Scalar> extends Expression<T> {
   $type: SQL_SYMBOLE.LITERAL = SQL_SYMBOLE.LITERAL
 
   /**
@@ -3249,7 +3249,7 @@ export class ParenthesesCondition extends Condition {
  * 括号表达式
  */
 export class ParenthesesExpression<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET_EXPRESSION = SQL_SYMBOLE.BRACKET_EXPRESSION
   $inner: Expression<T>
@@ -3263,7 +3263,7 @@ export class ParenthesesExpression<
  * 运算表达式基类
  */
 export abstract class Operation<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION
   readonly $kind: OPERATION_KIND
@@ -3274,7 +3274,7 @@ export abstract class Operation<
  * 二元运算表达式
  */
 export class BinaryOperation<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends Operation<T> {
   readonly $kind: OPERATION_KIND.BINARY = OPERATION_KIND.BINARY
   $left: Expression<T>
@@ -3303,9 +3303,9 @@ export class BinaryOperation<
  * 一元运算符
  */
 export class UnaryOperation<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends Operation<T> {
-  readonly $value: Expression<ScalarType>
+  readonly $value: Expression<Scalar>
   readonly $kind: OPERATION_KIND.UNARY = OPERATION_KIND.UNARY
   readonly $operator: UNARY_OPERATION_OPERATOR
 
@@ -3315,7 +3315,7 @@ export class UnaryOperation<
    */
   constructor (
     operator: UNARY_OPERATION_OPERATOR,
-    value: CompatibleExpression<ScalarType>
+    value: CompatibleExpression<Scalar>
   ) {
     super()
     this.$operator = operator
@@ -3420,10 +3420,10 @@ abstract class Fromable<T extends RowObject = any> extends CrudStatement {
 
 export class SortInfo extends AST {
   $type: SQL_SYMBOLE.SORT = SQL_SYMBOLE.SORT
-  $expr: Expression<ScalarType>
+  $expr: Expression<Scalar>
   $direction?: SORT_DIRECTION
   constructor (
-    expr: CompatibleExpression<ScalarType>,
+    expr: CompatibleExpression<Scalar>,
     direction?: SORT_DIRECTION
   ) {
     super()
@@ -3441,8 +3441,8 @@ export class Select<T extends RowObject = any> extends Fromable {
   $limit?: number
   $distinct?: boolean
   $columns: (
-    | Expression<ScalarType>
-    | SelectColumn<ScalarType, string>
+    | Expression<Scalar>
+    | SelectColumn<Scalar, string>
     | Star<any>
   )[]
   $sorts?: SortInfo[]
@@ -3455,8 +3455,8 @@ export class Select<T extends RowObject = any> extends Fromable {
   constructor (results?: InputObject<T>)
   constructor (
     ...columns: (
-      | CompatibleExpression<ScalarType>
-      | SelectColumn<ScalarType, string>
+      | CompatibleExpression<Scalar>
+      | SelectColumn<Scalar, string>
       | Star<any>
     )[]
   )
@@ -3477,8 +3477,8 @@ export class Select<T extends RowObject = any> extends Fromable {
     }
     // 实例化
     this.$columns = (columns as (
-      | CompatibleExpression<ScalarType>
-      | SelectColumn<ScalarType, string>
+      | CompatibleExpression<Scalar>
+      | SelectColumn<Scalar, string>
     )[]).map(item => {
       if (item instanceof AST) return item
       return ensureExpression(item)
@@ -3512,14 +3512,14 @@ export class Select<T extends RowObject = any> extends Fromable {
       | SortObject<T>
       | (
           | SortInfo
-          | CompatibleExpression<ScalarType>
+          | CompatibleExpression<Scalar>
           | [CompatibleExpression, SORT_DIRECTION]
         )[]
   ): this
   orderBy (
     ...sorts: (
       | SortInfo
-      | CompatibleExpression<ScalarType>
+      | CompatibleExpression<Scalar>
       | [CompatibleExpression, SORT_DIRECTION]
     )[]
   ): this
@@ -3542,14 +3542,14 @@ export class Select<T extends RowObject = any> extends Fromable {
     }
     const sorts = args as (
       | SortInfo
-      | CompatibleExpression<ScalarType>
+      | CompatibleExpression<Scalar>
       | [CompatibleExpression, SORT_DIRECTION]
     )[]
     this.$sorts = sorts.map(item =>
       isSortInfo(item)
         ? item
         : isScalar(item) || isExpression(item)
-        ? new SortInfo(item as CompatibleExpression<ScalarType>)
+        ? new SortInfo(item as CompatibleExpression<Scalar>)
         : new SortInfo(item[0], item[1])
     )
     return this
@@ -3559,7 +3559,7 @@ export class Select<T extends RowObject = any> extends Fromable {
    * 分组查询
    * @param groups
    */
-  groupBy (...groups: CompatibleExpression<ScalarType>[]) {
+  groupBy (...groups: CompatibleExpression<Scalar>[]) {
     this.$groups = groups.map(expr => ensureExpression(expr))
     return this
   }
@@ -3626,7 +3626,7 @@ export class Select<T extends RowObject = any> extends Fromable {
   /**
    * 将本次查询结果转换为值
    */
-  asValue<V extends ScalarType = AsScalarType<T>> () {
+  asValue<V extends Scalar = AsScalarType<T>> () {
     return new ValuedSelect<V>(this)
   }
 
@@ -3638,7 +3638,7 @@ export class Select<T extends RowObject = any> extends Fromable {
 /**
  * 表达式化后的SELECT语句，通常用于 in 语句，或者当作值当行值使用
  */
-export class ValuedSelect<T extends ScalarType = ScalarType> extends Expression<
+export class ValuedSelect<T extends Scalar = Scalar> extends Expression<
   T
 > {
   $select: Select<any>
@@ -3655,7 +3655,7 @@ export class ValuedSelect<T extends ScalarType = ScalarType> extends Expression<
 export class Insert<T extends RowObject = any> extends CrudStatement {
   $table: Table<T, string>
   $fields?: Field[]
-  $values: Expression<ScalarType>[][] | Select<T>
+  $values: Expression<Scalar>[][] | Select<T>
 
   readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT
 
@@ -3664,7 +3664,7 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
    */
   constructor (
     table: CompatibleTable<T, string>,
-    fields?: Field<ScalarType, FieldsOf<T>>[] | FieldsOf<T>[]
+    fields?: Field<Scalar, FieldsOf<T>>[] | FieldsOf<T>[]
   ) {
     super()
     this.$table = ensureRowset(table) as Table<T, string>
@@ -3677,7 +3677,7 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
           this.$table.field(field)
         )
       } else {
-        this.$fields = fields as Field<ScalarType, FieldsOf<T>>[]
+        this.$fields = fields as Field<Scalar, FieldsOf<T>>[]
       }
     }
   }
@@ -3687,16 +3687,16 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
       | Select<T>
       | InputObject<T>
       | InputObject<T>[]
-      | CompatibleExpression<ScalarType>[]
-      | CompatibleExpression<ScalarType>[][]
+      | CompatibleExpression<Scalar>[]
+      | CompatibleExpression<Scalar>[][]
   ): this
   values (
-    ...rows: CompatibleExpression<ScalarType>[][] | InputObject<T>[]
+    ...rows: CompatibleExpression<Scalar>[][] | InputObject<T>[]
   ): this
   values (...args: any[]): this {
     assert(!this.$values, 'values is declared')
     assert(args.length > 0, 'rows must more than one elements.')
-    let items: InputObject<T>[], rows: CompatibleExpression<ScalarType>[][]
+    let items: InputObject<T>[], rows: CompatibleExpression<Scalar>[][]
     // 单个参数
     if (args.length === 1) {
       const values = args[0]
@@ -3793,7 +3793,7 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
  */
 export class Update<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T, string>
-  $sets: Assignment<ScalarType>[]
+  $sets: Assignment<Scalar>[]
 
   readonly $type: SQL_SYMBOLE.UPDATE = SQL_SYMBOLE.UPDATE
 
@@ -3809,18 +3809,18 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
   /**
    * @param sets
    */
-  set (sets: InputObject<T> | Assignment<ScalarType>[]): this
-  set (...sets: Assignment<ScalarType>[]): this
+  set (sets: InputObject<T> | Assignment<Scalar>[]): this
+  set (...sets: Assignment<Scalar>[]): this
   set (
     ...sets:
-      | [InputObject<T> | Assignment<ScalarType>[]]
-      | Assignment<ScalarType>[]
+      | [InputObject<T> | Assignment<Scalar>[]]
+      | Assignment<Scalar>[]
   ): this {
     assert(!this.$sets, 'set statement is declared')
     assert(sets.length > 0, 'sets must have more than 0 items')
     if (sets.length === 1) {
       if (Array.isArray(sets[0])) {
-        this.$sets = sets[0] as Assignment<ScalarType>[]
+        this.$sets = sets[0] as Assignment<Scalar>[]
         return this
       } else {
         const item = sets[0] as InputObject<T>
@@ -3834,7 +3834,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
         return this
       }
     }
-    this.$sets = sets as Assignment<ScalarType>[]
+    this.$sets = sets as Assignment<Scalar>[]
   }
 }
 
@@ -3872,20 +3872,20 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
  * @param O 输出行集
  */
 export class Procedure<
-  R extends ScalarType = number,
+  R extends Scalar = number,
   O extends RowObject[] = [],
   N extends string = string
 > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE
 
-  execute (...params: CompatibleExpression<ScalarType>[]): Execute<R>
-  execute (...params: Parameter<ScalarType, string>[]): Execute<R>
+  execute (...params: CompatibleExpression<Scalar>[]): Execute<R>
+  execute (...params: Parameter<Scalar, string>[]): Execute<R>
   execute (params: InputObject): Execute<R>
   execute (
     ...params:
       | [InputObject]
-      | Parameter<ScalarType, string>[]
-      | CompatibleExpression<ScalarType>[]
+      | Parameter<Scalar, string>[]
+      | CompatibleExpression<Scalar>[]
   ): Execute<R, O> {
     return new Execute(this.$name, params as any)
   }
@@ -3911,18 +3911,18 @@ export class Procedure<
  * 存储过程执行
  */
 export class Execute<
-  R extends ScalarType = any,
+  R extends Scalar = any,
   O extends RowObject[] = []
 > extends Statement {
   readonly $proc: Procedure<R, O, string>
-  readonly $args: Expression<ScalarType>[]
+  readonly $args: Expression<Scalar>[]
   // | NamedArgument<JsConstant, string>[];
   readonly $type: SQL_SYMBOLE.EXECUTE = SQL_SYMBOLE.EXECUTE
 
   // constructor(proc: Name<string> | Procedure<T, string>, params?: InputObject);
   constructor (
     proc: Name<string> | Procedure<R, O, string>,
-    params?: CompatibleExpression<ScalarType>[] // | InputObject
+    params?: CompatibleExpression<Scalar>[] // | InputObject
   ) {
     super()
     this.$proc = ensureProcedure(proc)
@@ -3934,7 +3934,7 @@ export class Execute<
     // if (params[0] instanceof Parameter) {
     //   this.$args = params as Parameter<ScalarType, string>[]
     // } else {
-    this.$args = (params as CompatibleExpression<ScalarType>[]).map(expr =>
+    this.$args = (params as CompatibleExpression<Scalar>[]).map(expr =>
       ensureExpression(expr)
     )
     // }
@@ -3944,7 +3944,7 @@ export class Execute<
 /**
  * 赋值语句
  */
-export class Assignment<T extends ScalarType = ScalarType> extends Statement {
+export class Assignment<T extends Scalar = Scalar> extends Statement {
   left: Assignable<T>
   right: Expression<T>
   $type: SQL_SYMBOLE.ASSIGNMENT = SQL_SYMBOLE.ASSIGNMENT
@@ -3984,7 +3984,7 @@ export class Declare extends Statement {
 /**
  * 程序与数据库间传递值所使用的参数
  */
-export class Parameter<T extends ScalarType = any, N extends string = string>
+export class Parameter<T extends Scalar = any, N extends string = string>
   extends Expression<T>
   implements Identifier<N> {
   $name: N
@@ -4025,7 +4025,7 @@ export class Parameter<T extends ScalarType = any, N extends string = string>
   /**
    * input 参数
    */
-  static input<T extends ScalarType, N extends string> (
+  static input<T extends Scalar, N extends string> (
     name: N,
     value: T,
     type?: TsTypeToDbType<T>
@@ -4168,7 +4168,7 @@ export class With extends AST {
    */
   insert<T extends RowObject = any> (
     table: Name<string> | CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<ScalarType, FieldsOf<T>>[]
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Insert<T> {
     const sql = Statement.insert(table, fields)
     sql.$with = this
@@ -4204,15 +4204,15 @@ export class With extends AST {
  * 类型转换运算符
  */
 export class ConvertOperation<
-  T extends ScalarType = ScalarType
+  T extends Scalar = Scalar
 > extends Operation<T> {
   $kind: OPERATION_KIND.CONVERT = OPERATION_KIND.CONVERT
   /**
    * 转换到类型
    */
   $to: DbType
-  $expr: Expression<ScalarType>
-  constructor (expr: CompatibleExpression<ScalarType>, to: DbType) {
+  $expr: Expression<Scalar>
+  constructor (expr: CompatibleExpression<Scalar>, to: DbType) {
     super()
     this.$to = to
     this.$expr = ensureExpression(expr)

@@ -21,8 +21,8 @@ import {
 import { and, select, table } from './builder'
 import { ROWSET_ALIAS } from './constants'
 import { Executor } from './execute'
-import { Constructor, EntityMetadata, isManyToMany, isManyToOne, isOneToMany, isOneToOne, MetadataStore, OneToOneMetadata, TableSchema } from './metadata'
-import { FetchOptions, FetchProps, isEntityConstructor, RefKeyOf } from './repository'
+import { Constructor, EntityMetadata, isForeignOneToOne, isManyToMany, isManyToOne, isOneToMany, isOneToOne, isPrimaryOneToOne, metadataStore, OneToOneMetadata, TableSchema } from './metadata'
+import { Entity, FetchOptions, FetchRelations, isEntityConstructor, RelationKeyOf } from './repository'
 import { ensureCondition, ensureRowset, isProxiedRowset, makeProxiedRowset } from './util'
 // import { getMetadata } from 'typeorm'
 
@@ -30,7 +30,6 @@ export const FROM_DB = Symbol('FROM_DB')
 
 /**
  * 可查询对象，接口类似js自带的`Array`对象，并且其本身是一个异步可迭代对象，实现了延迟加载功能，数据将在调用`toArray`，或者对其进行遍历时才执行加载
- * // INFO:
  * // TODO: 实现延迟在线逐条查询功能
  * // TODO: 性能优化，不再每一个动作产生一个SQL子查询
  * ```ts
@@ -46,7 +45,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   protected readonly metadata?: EntityMetadata
   private _where: CompatibleCondition
   private _sorts: CompatibleSortInfo
-  private _includes: FetchProps<T>
+  private _includes: FetchRelations<T>
   protected executor: Executor
   /**
    * 默认使用缓存
@@ -55,13 +54,13 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   private _withDetail: boolean
 
   constructor(executor: Executor, ctr: Constructor<T>)
-  constructor (
+  constructor(
     executor: Executor,
     rowset: CompatibleRowset<T>
   )
-  constructor (
+  constructor(
     executor: Executor,
-    rowsetOrCtr: CompatibleRowset<T> | Constructor<T>
+    rowsetOrCtr: CompatibleRowset<T> | Constructor<T & Entity>
   ) {
     this.executor = executor
     if (typeof rowsetOrCtr === 'string' || Array.isArray(rowsetOrCtr)) {
@@ -71,12 +70,12 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       }
       this.rowset = rowsetOrCtr as ProxiedRowset<T>
     } else if (typeof rowsetOrCtr === 'function') {
-      this.metadata = MetadataStore.getEntity(rowsetOrCtr)
+      this.metadata = metadataStore.getEntity(rowsetOrCtr)
       this.rowset = makeProxiedRowset(this.metadata)
     }
   }
 
-  private _appendWhere (where: CompatibleCondition<T>): this {
+  private _appendWhere(where: CompatibleCondition<T>): this {
     if (!this._where) {
       this._where = where
     }
@@ -87,7 +86,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 异步迭代器，延迟查询的关键点
    */
-  [Symbol.asyncIterator] (): AsyncIterator<T> {
+  [Symbol.asyncIterator](): AsyncIterator<T> {
     let result: T[]
     let i = 0
     return {
@@ -104,7 +103,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     }
   }
 
-  take (count: number, skip = 0): Queryable<T> {
+  take(count: number, skip = 0): Queryable<T> {
     // if (this._take !== undefined) {
     //   this._take = lines;
     //   this._skip = skip;
@@ -116,11 +115,11 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
-  private _buildSelectSql (): Select<any>
-  private _buildSelectSql<G extends InputObject> (
+  private _buildSelectSql(): Select<any>
+  private _buildSelectSql<G extends InputObject>(
     results: G
   ): Select<RowTypeFrom<G>>
-  private _buildSelectSql<G extends InputObject> (
+  private _buildSelectSql<G extends InputObject>(
     results?: (p: ProxiedRowset<T>) => G
   ): Select {
     const sql = select(results ? results : this.rowset._).from(
@@ -143,7 +142,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 过滤数据并返回一个新的Queryable
    */
-  filter (
+  filter(
     condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
   ): Queryable<T> {
     const queryable = this.clone()
@@ -154,14 +153,14 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 返回一个新的类型
    */
-  map<G extends InputObject> (
+  map<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G
   ): Queryable<RowTypeFrom<G>> {
     const sql = this._buildSelectSql(results(this.rowset))
     return new Queryable<RowTypeFrom<G>>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
-  sort (
+  sort(
     sorts: (p: ProxiedRowset<T>) => SortInfo[] | SortObject<T>
   ): Queryable<T> {
     const queryable = this.clone()
@@ -172,11 +171,11 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 添加过滤条件，并限定返回头一条记录
    */
-  find (filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
+  find(filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
     return this.filter(filter).take(1)
   }
 
-  groupBy<G extends InputObject> (
+  groupBy<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G,
     groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
     where?: (p: ProxiedRowset<T>) => Condition
@@ -188,7 +187,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     return new Queryable<RowTypeFrom<G>>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
-  union (...sets: Queryable<T>[]): Queryable<T> {
+  union(...sets: Queryable<T>[]): Queryable<T> {
     const sql = this._buildSelectSql()
     sets.forEach(query => {
       sql.unionAll(query._buildSelectSql())
@@ -196,11 +195,11 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     return new Queryable<T>(this.executor, sql.as(ROWSET_ALIAS))
   }
 
-  join <J extends RowObject, G extends InputObject>(
+  join<J extends Entity, G extends InputObject>(
     entity: Constructor<J>,
     on: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => Condition,
     results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G): Queryable<RowTypeFrom<G>> {
-    const rightMetadata = MetadataStore.getEntity(entity);
+    const rightMetadata = metadataStore.getEntity(entity);
     const rightRowset = makeProxiedRowset<J>(rightMetadata)
     const newRowset = this._buildSelectSql(results(this.rowset, rightRowset)).join(rightRowset, on(this.rowset, rightRowset), true).as(ROWSET_ALIAS)
     return new Queryable<RowTypeFrom<G>>(this.executor, newRowset)
@@ -209,7 +208,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 查询关联属性
    */
-  include(props: FetchProps<T>): Queryable<T> {
+  include(props: FetchRelations<T>): Queryable<T> {
     const queryable = this.clone()
     queryable._includes = props
     return queryable
@@ -230,7 +229,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 执行查询并将结果转换为数组，并获取所有数据返回一个数组
    */
-  async fetchAll (): Promise<T[]> {
+  async fetchAll(): Promise<T[]> {
     const sql = this._buildSelectSql()
     const { rows } = await this.executor.query(sql)
     const items: T[] = []
@@ -243,54 +242,46 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 执行查询，并获取第一行记录
    */
-  async fetchFirst (): Promise<T> {
+  async fetchFirst(): Promise<T> {
     const sql = this._buildSelectSql().limit(1)
     const { rows } = await this.executor.query(sql)
     return this.toEntity(rows[0])
   }
 
   // TODO: 使用DataLoader优化加载性能
-  private async fetchIncludes (datarow: any, item: T, includes: FetchProps<T>) {
-    for (const propName of Object.keys(includes)) {
-      const prop = this.metadata.getProperty(propName)
-      if (!prop) {
-        throw new Error(`Invalid include property name ${propName}`)
-      }
-      const relation = prop.relation
+  private async loadIncludes(datarow: any, item: T, includes: FetchRelations<T>) {
+    for (const relationName of Object.keys(includes)) {
+      const relation = this.metadata.getRelation(relationName)
       if (!relation) {
-        throw new Error(`Property ${propName} is not a relation property.`)
+        throw new Error(`Property ${relationName} is not a relation property.`)
       }
-      let subIncludes = Reflect.get(includes, propName)
+      let subIncludes = Reflect.get(includes, relationName)
       if (subIncludes === true) subIncludes = null
 
-      const relationQueryable = new Queryable<any>(this.executor, prop.type as Constructor<any>)
+      const relationQueryable = new Queryable<any>(this.executor, relation.outerEntity.class as Constructor<any>)
       if (subIncludes) {
         relationQueryable._includes = subIncludes
       }
       // 复制当前选项
       relationQueryable._withDetail = this._withDetail
 
-      if (isOneToOne(prop.relation)) {
-        const relation = prop.relation
-        // 本表为主表
-        if (relation.isPrimary) {
-          const idValue = datarow[this.metadata.idProperty.column.name]
-          const relationItem = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchFirst()
-          Reflect.set(item, prop.name, relationItem)
-          // 本表为次表
-        } else {
-          const refValue = datarow[relation.relationKey.foreignColumn.name]
-          const relationItem = await relationQueryable.find(rowset => rowset.field(relation.relationEntity.idProperty.name).eq(refValue)).fetchFirst()
-          Reflect.set(item, prop.name, relationItem)
-        }
+      if (isPrimaryOneToOne(relation)) {
+        const idValue = datarow[this.metadata.idProperty.column.name]
+        const relationItem = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchFirst()
+        Reflect.set(item, relation.name, relationItem)
+        // 本表为次表
+      } else if (isForeignOneToOne(relation)) {
+        const refValue = datarow[relation.relationKey.foreignColumn.name]
+        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.name).eq(refValue)).fetchFirst()
+        Reflect.set(item, relation.name, relationItem)
       } else if (isOneToMany(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
         const relationItems = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchAll()
-        Reflect.set(item, prop.name, relationItems)
+        Reflect.set(item, relation.name, relationItems)
       } else if (isManyToOne(relation)) {
         const refValue = datarow[relation.relationKey.foreignColumn.name]
-        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.relationEntity.idProperty.name).eq(refValue)).fetchFirst()
-        Reflect.set(item, prop.name, relationItem)
+        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.name).eq(refValue)).fetchFirst()
+        Reflect.set(item, relation.name, relationItem)
       } else if (isManyToMany(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
         // 本表为字段1关联
@@ -298,15 +289,14 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
         // 当前外键列
         const thisForeignColumn = relation.relationKey.foreignColumn
         // 关联外键列
-        const relationForeignColumn = relation.relationProperty.relation.relationKey.foreignColumn
-
+        const relationForeignColumn = relation.outerRelation.relationKey.foreignColumn
         const relationIdsSelect = select(rt.field(relationForeignColumn.name))
           .from(rt)
           .where(
             rt.field(thisForeignColumn.name).eq(idValue)
           )
-        const subItems = relationQueryable.filter(rowset => rowset.field(relation.relationEntity.idProperty.name).in(relationIdsSelect)).fetchAll()
-        Reflect.set(item, prop.name, subItems)
+        const subItems = relationQueryable.filter(rowset => rowset.field(relation.outerEntity.idProperty.name).in(relationIdsSelect)).fetchAll()
+        Reflect.set(item, relation.name, subItems)
       }
     }
   }
@@ -314,13 +304,12 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
   /**
    * 将数据库记录转换为实体
    */
-  protected async toEntity (datarow: any): Promise<T> {
+  protected async toEntity(datarow: any): Promise<T> {
     const item = new this.metadata.class() as any
     // 标记数据库记录
     item[FROM_DB] = true
 
     for (const prop of this.metadata.properties) {
-      if (prop.relation) continue
       const dbValue = Reflect.get(datarow, prop.column.name)
       let itemValue
       if (prop.type === JSON && typeof dbValue === 'string') {
@@ -332,10 +321,10 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     }
     // TODO: 添加避免重复加载代码
     if (this._withDetail) {
-      await this.fetchIncludes(datarow, item, this.metadata.detailIncludes)
+      await this.loadIncludes(datarow, item, this.metadata.detailIncludes)
     }
     if (this._includes) {
-      await this.fetchIncludes(datarow, item, this._includes)
+      await this.loadIncludes(datarow, item, this._includes)
     }
     return item
   }

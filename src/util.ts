@@ -65,7 +65,7 @@ import {
   SQL_SYMBOLE
 } from './constants'
 import { EntityMetadata } from './metadata'
-import { Binary, DbType, ScalarType, type } from './types'
+import { Binary, DbType, Scalar, type } from './types'
 
 /**
  * 断言
@@ -81,7 +81,7 @@ export function assert (except: any, message: string): asserts except {
 /**
  * 返回表达式
  */
-export function ensureExpression<T extends ScalarType> (
+export function ensureExpression<T extends Scalar> (
   expr: CompatibleExpression<T>
 ): Expression<T> {
   if (!(expr instanceof AST)) {
@@ -93,7 +93,7 @@ export function ensureExpression<T extends ScalarType> (
 /**
  * 确保字段类型
  */
-export function ensureField<T extends ScalarType, N extends string> (
+export function ensureField<T extends Scalar, N extends string> (
   name: Name<N> | Field<T, N>
 ): Field<T, N> {
   if (!(name instanceof AST)) {
@@ -160,7 +160,7 @@ export function ensureFunction<TName extends string> (
  * 确保标题函数类型
  */
 export function ensureProcedure<
-  R extends ScalarType,
+  R extends Scalar,
   O extends RowObject[] = [],
   N extends string = string
 > (name: Name<N> | Procedure<R, O, N>): Procedure<R, O, N> {
@@ -283,7 +283,7 @@ export function makeProxiedRowset<T extends RowObject> (
   return makeProxied(rowsetOrMetadata)
 }
 
-export function isScalar (value: any): value is ScalarType {
+export function isScalar (value: any): value is Scalar {
   return (
     typeof value === 'string' ||
     typeof value === 'boolean' ||
@@ -641,4 +641,8 @@ export function clone<T> (value: T): T {
     return copied
   }
   return value
+}
+
+export function merge<D extends object, S extends object>(dest: D, src: S): D & S {
+  throw new Error(`尚未实现`)
 }

@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "npm run build && mocha test",
+    "test": "mocha --fulltrace --full-trace --require ts-node/register --extensions ts,tsx 'test/**/*.{ts,tsx}'",
     "build": "tsc",
     "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ./src --ext .ts",
@@ -61,5 +61,8 @@
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
     "access": "public"
+  },
+  "dependencies": {
+    "reflect-metadata": "^0.1.13"
   }
 }

@@ -4,25 +4,40 @@
 import { CompatibleCondition, FieldsOf, ProxiedTable, RowObject, Table } from "./ast";
 import { Executor } from "./execute";
 import { FROM_DB, Queryable } from "./queryable";
-import { Constructor, EntityMetadata, MetadataStore } from "./metadata";
+import { Constructor, EntityMetadata, metadataStore } from "./metadata";
 import { and, identityValue, val } from "./builder";
-import { ScalarType } from "./types";
+import { Scalar } from "./types";
 import { ensureCondition } from "./util";
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 
 // TODO: Lube 事务嵌套支持
 
+export const EntitySymble = Symbol('LUBEJS#Entity')
 
+/**
+ * 实体类基类,仅为了typescript区分类型
+ * 不一定非得从此继承
+ */
+export class Entity {
+  [EntitySymble]: true
+}
 
-export type RefKeyOf<T> = ({ [P in keyof T]: T[P] extends ScalarType ? never : P })[keyof T]
+/**
+ * 过滤关联关系属性列表
+ */
+export type RelationKeyOf<T> = ({
+  [P in keyof T]: T[P] extends Entity | Entity[]
+    ? P
+    : never
+})[keyof T]
 
-export type FetchProps<T> = {
-  [P in RefKeyOf<T>]?: true | FetchProps<T[P] extends Array<infer X> ? X : T[P]>
+export type FetchRelations<T> = {
+  [P in RelationKeyOf<T>]?: true | FetchRelations<T[P] extends Array<infer X> ? X : T[P]>
 }
 
 export type FetchOptions<T> = {
-  includes?: FetchProps<T>
+  includes?: FetchRelations<T>
   nocache?: boolean
   /**
    * 是否连同明细属性一并查询
@@ -45,7 +60,7 @@ export type ChangeOptions = {
 }
 
 export function isEntityConstructor(value: any): value is Constructor<RowObject> {
-  return typeof value === 'function' && !!MetadataStore.getEntity(value)
+  return typeof value === 'function' && !!metadataStore.getEntity(value)
 }
 
 export function isFromDb(value: object): boolean {
@@ -53,7 +68,7 @@ export function isFromDb(value: object): boolean {
 }
 
 
-export class Repository<T extends RowObject> extends Queryable<T> {
+export class Repository<T extends Entity> extends Queryable<T> {
   protected metadata: EntityMetadata
   protected rowset: ProxiedTable<T>
 
@@ -66,7 +81,7 @@ export class Repository<T extends RowObject> extends Queryable<T> {
   /**
    * 通过主键查询一个项
    */
-  async get(key: ScalarType, options?: FetchOptions<T>): Promise<T> {
+  async get(key: Scalar, options?: FetchOptions<T>): Promise<T> {
     let query = this.filter(rowset => rowset.field(this.metadata.idProperty.name as FieldsOf<T>).eq(key as any))
     if (options?.includes) {
       query = query.include(options.includes)
@@ -142,7 +157,6 @@ export class Repository<T extends RowObject> extends Queryable<T> {
     const dbItem: T = Object.create(null)
 
     for (const prop of this.metadata.properties) {
-      if (prop.relation) continue
       const itemValue = Reflect.get(entity, prop.name)
       let dbValue
       if (itemValue && prop.type === JSON && typeof itemValue !== 'string') {

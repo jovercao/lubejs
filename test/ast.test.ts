@@ -1,4 +1,4 @@
-import { table, select, update, insert, del, $case, } from '..'
+import { table, select, update, insert, del, $case, } from '../src'
 const assert = require('assert')
 class Table1 {
   id: number;
@@ -8,7 +8,7 @@ class Table1 {
 
 describe('AST test', function () {
   it('select', () => {
-    const t = table(Table1).as('t')
+    const t = table<Table1>('Table1').as('t')
 
     const nameField = t.$('name')
 
