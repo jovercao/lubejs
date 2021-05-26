@@ -3871,11 +3871,23 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
 export class Procedure<
   R extends Scalar = number,
   O extends RowObject[] = [],
-  N extends string = string
+  N extends string = string,
+  P1 extends Scalar = never,
+  P2 extends Scalar = never,
+  P3 extends Scalar = never,
+  P4 extends Scalar = never,
+  P5 extends Scalar = never,
+  P6 extends Scalar = never,
+  P7 extends Scalar = never,
+  P8 extends Scalar = never,
+  P9 extends Scalar = never,
+  P10 extends Scalar = never,
+  P11 extends Scalar = never,
+  P12 extends Scalar = never
 > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE
 
-  execute (...params: CompatibleExpression<Scalar>[]): Execute<R>
+  execute (...params: [CompatibleExpression<P1>]): Execute<R>
   execute (...params: Parameter<Scalar, string>[]): Execute<R>
   execute (params: InputObject): Execute<R>
   execute (
@@ -3887,6 +3899,12 @@ export class Procedure<
     return new Execute(this.$name, params as any)
   }
 }
+
+type A = [never, never]
+type B<T extends any[]> = {
+  0:
+}
+
 
 // /**
 //  * 存储过程调用时使用的命名参数
