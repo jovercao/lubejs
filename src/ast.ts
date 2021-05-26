@@ -3900,12 +3900,6 @@ export class Procedure<
   }
 }
 
-type A = [never, never]
-type B<T extends any[]> = {
-  0:
-}
-
-
 // /**
 //  * 存储过程调用时使用的命名参数
 //  */
