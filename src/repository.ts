@@ -4,9 +4,9 @@
 import { CompatibleCondition, FieldsOf, ProxiedTable, RowObject, Table } from "./ast";
 import { Executor } from "./execute";
 import { FROM_DB, Queryable } from "./queryable";
-import { Constructor, EntityMetadata, metadataStore } from "./metadata";
-import { and, identityValue, val } from "./builder";
-import { Scalar } from "./types";
+import { EntityMetadata, metadataStore } from "./metadata";
+import { and, identityValue } from "./builder";
+import { Constructor, Scalar } from "./types";
 import { ensureCondition } from "./util";
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
@@ -82,7 +82,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
    * 通过主键查询一个项
    */
   async get(key: Scalar, options?: FetchOptions<T>): Promise<T> {
-    let query = this.filter(rowset => rowset.field(this.metadata.idProperty.name as FieldsOf<T>).eq(key as any))
+    let query = this.filter(rowset => rowset.field(this.metadata.idProperty.property as FieldsOf<T>).eq(key as any))
     if (options?.includes) {
       query = query.include(options.includes)
     }
@@ -95,10 +95,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
     for(const item of items) {
       const data = this.toDataRow(item)
-      await this.executor.insert(this.metadata.table.name, data);
+      await this.executor.insert(this.metadata.schema.name, data);
       if (options?.reload) {
-        const id = this.metadata.identityProperty ? identityValue(this.metadata.table.name, this.metadata.identityProperty.column.name) : Reflect.get(item, this.metadata.idProperty.name)
-        const added = this.toEntity(await this.executor.find(this.metadata.table.name, {
+        const id = this.metadata.identityProperty ? identityValue(this.metadata.schema.name, this.metadata.identityProperty.column.name) : Reflect.get(item, this.metadata.idProperty.property)
+        const added = this.toEntity(await this.executor.find(this.metadata.schema.name, {
           where: {
             [this.metadata.identityProperty.column.name]: id
           }
@@ -126,10 +126,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
     const condition = this.metadata.rowflagProperty
       ? and(items.map(item =>
-        this.rowset.field(this.metadata.idProperty.name as FieldsOf<T>).eq(Reflect.get(item, this.metadata.idProperty.name))
-        .and(this.rowset.field(this.metadata.rowflagProperty.name as FieldsOf<T>).eq(Reflect.get(item, this.metadata.rowflagProperty.name)))
+        this.rowset.field(this.metadata.idProperty.property as FieldsOf<T>).eq(Reflect.get(item, this.metadata.idProperty.property))
+        .and(this.rowset.field(this.metadata.rowflagProperty.property as FieldsOf<T>).eq(Reflect.get(item, this.metadata.rowflagProperty.property)))
       ))
-      : this.rowset.field(this.metadata.idProperty.name as FieldsOf<T>).in(items.map(item => Reflect.get(item, this.metadata.idProperty.name)))
+      : this.rowset.field(this.metadata.idProperty.property as FieldsOf<T>).in(items.map(item => Reflect.get(item, this.metadata.idProperty.property)))
 
     const deleteCount = await this.executor.delete(this.rowset, condition)
     if (deleteCount !== items.length) {
@@ -147,7 +147,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       items = [items]
     }
     const rows = items.map(item => this.toDataRow(item))
-    return this.executor.save(this.metadata.table.name, [this.metadata.idProperty.column.name], rows)
+    return this.executor.save(this.metadata.schema.name, [this.metadata.idProperty.column.name], rows)
   }
 
   /**
@@ -156,8 +156,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
   protected toDataRow(entity: T): any {
     const dbItem: T = Object.create(null)
 
-    for (const prop of this.metadata.properties) {
-      const itemValue = Reflect.get(entity, prop.name)
+    for (const prop of this.metadata.getColumns()) {
+      const itemValue = Reflect.get(entity, prop.property)
       let dbValue
       if (itemValue && prop.type === JSON && typeof itemValue !== 'string') {
         dbValue = JSON.stringify(itemValue)

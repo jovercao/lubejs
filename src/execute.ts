@@ -33,8 +33,7 @@ import {
   ProxiedRowset,
   Execute,
   CompatibleSortInfo,
-  SortInfo,
-  CompatibleTable
+  SortInfo
 } from './ast'
 import { Compiler } from './compile'
 import { INSERT_MAXIMUM_ROWS } from './constants'
@@ -42,8 +41,6 @@ import { Lube } from './lube'
 import { Queryable } from './queryable'
 import { and, doc, or } from './builder'
 import { Scalar } from './types'
-import { Constructor } from './metadata'
-import { Repository } from './repository'
 
 export interface Command {
   sql: string

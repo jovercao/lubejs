@@ -1,313 +1,23 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CompatibleExpression, RowObject, Select } from './ast'
-import { func } from './builder'
-import { DbContext } from './db-context'
-import { ConnectOptions } from './lube'
-import { Entity, FetchRelations } from './repository'
-import { DbType, Scalar, ScalarType } from './types'
-
-/*********************************
- * [元数据生成顺序]
- * code first:
- * 装饰器(Constructor) => Model => Schema
- * db first:
- * SchemaReader => Schema => Model
- *
- * 推荐使用code first模式，因为db first仅可生成表和列，
- * 关联关系等因缺乏信息完美无法生成，需要手动添加
- **********************************/
-
-/**
- * 外键架构
- */
-export interface ForeignKeySchema {
-  /**
-   * 外键名称
-   */
-  name: string
-  /**
-   * 主键表
-   */
-  primaryTable: TableSchema
-  /**
-   * 外键表
-   */
-  foreignTable: TableSchema
-  /**
-   * 主键列
-   */
-  primaryColumn: ColumnSchema
-  /**
-   * 外键列
-   */
-  foreignColumn: ColumnSchema
-  /**
-   * 列对应
-   */
-  columns: {
-    primaryColumn: ColumnSchema
-    foreignColumn: ColumnSchema
-  }[]
-
-  /**
-   * 级联删除
-   * // WARN 慎用
-   */
-  deleteCascade: boolean
-}
-
-type DataPropertyOf<T> = {
-  [P in keyof T]: T[P] extends Function ? never : P
-}[keyof T]
-
-// TODO: 映射类会将可空属性变为必填属性
-export type DataObjectOf<T> = {
-  [P in DataPropertyOf<T>]: T[P]
-}
-
-export class DatabaseSchema {
-  private tableMap: Record<string, TableSchema> = {}
-  private viewMap: Record<string, ViewSchema> = {}
-  private indexMap: Record<string, IndexSchema> = {}
-  private foreignKeyMap: Record<string, ForeignKeySchema> = {}
-  constructor (data: DataObjectOf<DatabaseSchema>) {
-    Object.assign(this, data)
-    this.tables.forEach(table => (this.tableMap[table.name] = table))
-    this.views.forEach(view => (this.viewMap[view.name] = view))
-    this.indexes.forEach(index => (this.indexMap[index.name] = index))
-    this.foreignKeys.forEach(
-      foreignKey => (this.foreignKeyMap[foreignKey.name] = foreignKey)
-    )
-  }
-
-  /**
-   * 数据库名称
-   */
-  readonly name: string
-
-  /**
-   * 表
-   */
-  readonly tables: TableSchema[]
-  /**
-   * 视图
-   */
-  readonly views: ViewSchema[]
-
-  /**
-   * 索引列表
-   */
-  readonly indexes: IndexSchema[]
-
-  /**
-   * 外键列表
-   */
-  readonly foreignKeys: ForeignKeySchema[]
-
-  // readonly functions: FunctionSchema[]
-  // readonly procedures: ProcedureSchema[]
-  // readonly sequence: SequenceSchema[]
-  // readonly indexes
-
-  /**
-   * 获取一个表
-   */
-  getTable (name: string): TableSchema {
-    return this.tableMap[name]
-  }
-
-  /**
-   * 获取一个视图
-   */
-  getView (name: string): ViewSchema {
-    return this.viewMap[name]
-  }
-}
-
-/**
- * 表架构声明
- */
-export class TableSchema {
-  private columnMap: {
-    [name: string]: ColumnSchema
-  }
-  constructor (data: DataObjectOf<TableSchema>) {
-    Object.assign(this, data)
-    this.columnMap = {}
-    this.columns.forEach(column => (this.columnMap[column.name] = column))
-  }
-
-  kind: 'TABLE'
-  /**
-   * 数据库对象名称
-   */
-  name: string
-  /**
-   * 主键索引
-   */
-  primaryKey: IndexSchema
-  /**
-   * 主键
-   */
-  primaryColumn: ColumnSchema
-  /**
-   * 摘要说明
-   */
-  description?: string
-  /**
-   * 列
-   */
-  columns: ColumnSchema[]
-  /**
-   * 外键
-   */
-  foreignKeys: ForeignKeySchema[]
-  /**
-   * 索引
-   */
-  indexes: IndexSchema[]
-  /**
-   * 获取一个列
-   */
-  getColumn (name: string): ColumnSchema {
-    return this.columnMap[name]
-  }
-}
-
-/**
- * 视图架构
- */
-export class ViewSchema {
-  private columnMap: {
-    [name: string]: ColumnSchema
-  }
-  constructor (data: DataObjectOf<ViewSchema>) {
-    Object.assign(this, data)
-    this.columnMap = {}
-    this.columns.forEach(column => (this.columnMap[column.name] = column))
-  }
-
-  /**
-   * 类型
-   */
-  kind: 'VIEW'
-  /**
-   * 视图名称
-   */
-  name: string
-  /**
-   * 列定义
-   */
-  columns: ColumnSchema[]
-  /**
-   * 声明语句
-   */
-  statement: Select
-  /**
-   * 索引
-   */
-  indexes: IndexSchema[]
-  /**
-   * 摘要说明
-   */
-  description?: string
-}
-
-/**
- * 列架构
- */
-export interface ColumnSchema {
-  /**
-   * 字段名
-   */
-  name: string
-  /**
-   * 数据类型
-   */
-  type: DbType
-  /**
-   * 是否可空
-   */
-  nullable?: boolean
-  /**
-   * 默认值
-   */
-  defaultValue?: CompatibleExpression
-  /**
-   * 主键
-   */
-  isPrimaryKey: boolean
-  /**
-   * 是否标识列
-   */
-  isIdentity: boolean
-  /**
-   * 是否行标识列
-   */
-  isRowFlag: boolean
-  /**
-   * 标识列种子
-   */
-  identitySeed: number
-  /**
-   * 标识列步长
-   */
-  identityStep: number
-  /**
-   * 是否计算列
-   */
-  isComputed: boolean
-  /**
-   * 计算表达式
-   */
-  computeExpr?: CompatibleExpression
-  /**
-   * 摘要说明
-   */
-  description?: string
-}
-
-/**
- * 索引
- */
-export interface IndexSchema {
-  name: string
-  isUnique: boolean
-  isPrimaryKey: boolean
-  columns: ColumnSchema[]
-  description?: string
-}
-
-/**
- * 实体构造函数，即类本身
- */
-export type Constructor<T = object> = {
-  new (...args: any): T
-}
-
-export type EntityType = Constructor<Entity>
-
-/******************************* Model 相关声明 *********************************/
-export type ListType = {
-  kind: 'LIST'
-  /**
-   * 元素类型
-   */
-  type: Scalar | EntityType
-}
-
-/**
- * Schema的数据类型
- */
-export type DataType = ScalarType | EntityType | ListType | JSON
+import { CompatibleExpression, Select } from "./ast";
+import { DbContext } from "./db-context";
+import { Entity } from "./repository";
+import {
+  Constructor,
+  DataType,
+  DbType,
+  EntityType,
+  ListType,
+  ScalarType,
+} from "./types";
 
 /**
  * 是否列表类型
  */
-export function isListType (type: any): type is ListType {
-  return type?.kind === 'LIST'
+export function isListType(type: any): type is ListType {
+  return type?.kind === "LIST";
 }
 
 /**
@@ -315,251 +25,315 @@ export function isListType (type: any): type is ListType {
  * 注意，此方法在编译目标为ES5及以下版本中无效！
  */
 // HACK： 此方法为hack方法，存在不确定性，并且已知在编译目标为ES5及以下版本中无效！
-export function isClass (func: Function): boolean {
-  return func.toString().startsWith('class ')
+export function isClass(func: Function): boolean {
+  return func.toString().startsWith("class ");
 }
 
 /**
  * 是否实体类型
  */
-export function isEntityType (type: any): type is EntityType {
-  return typeof type === 'function' && isClass(type)
+export function isEntityType(type: any): type is EntityType {
+  return typeof type === "function" && isClass(type);
 }
 
 /**
  * 是否标量类型
  */
-export function isScalarType (type: any): type is ScalarType {
-  return typeof type === 'bigint'
+export function isScalarType(type: any): type is ScalarType {
+  return typeof type === "bigint";
 }
 
 /**
  * 是否一对一关系
  */
-export function isOneToOne (
+export function isOneToOne(
   relation: RelationMetadata
 ): relation is OneToOneMetadata {
-  return relation.kind === 'ONE_TO_ONE'
+  return relation.kind === "ONE_TO_ONE";
 }
 
 /**
  * 是否主要一对一关系
  */
-export function isPrimaryOneToOne (
+export function isPrimaryOneToOne(
   relation: RelationMetadata
-): relation is PrimaryOneToOneMetadata {
-  return isOneToOne(relation) && relation.isPrimary === true
+): relation is PincipalOneToOneMetadata {
+  return isOneToOne(relation) && relation.isPrimary === true;
 }
 
 /**
  * 是否外键一对一关系
  */
-export function isForeignOneToOne (
+export function isForeignOneToOne(
   relation: RelationMetadata
 ): relation is ForeignOneToOneMetadata {
-  return isOneToOne(relation) && relation.isPrimary === false
+  return isOneToOne(relation) && relation.isPrimary === false;
 }
 
 /**
  * 是否一对多关系
  */
-export function isOneToMany (
+export function isOneToMany(
   relation: RelationMetadata
 ): relation is OneToManyMetadata {
-  return relation.kind === 'ONE_TO_MANY'
+  return relation.kind === "ONE_TO_MANY";
 }
 
 /**
  * 是否多对一关系
  */
-export function isManyToOne (
+export function isManyToOne(
   relation: RelationMetadata
 ): relation is ManyToOneMetadata {
-  return relation.kind === 'MANY_TO_ONE'
+  return relation.kind === "MANY_TO_ONE";
 }
 
 /**
  * 是否多对多关系
  */
-export function isManyToMany (
+export function isManyToMany(
   relation: RelationMetadata
 ): relation is ManyToManyMetadata {
-  return relation.kind === 'MANY_TO_MANY'
+  return relation.kind === "MANY_TO_MANY";
 }
 
 /**
  * 实体元数据
  */
-export class EntityMetadata {
-  constructor (data: DataObjectOf<EntityMetadata>) {
-    Object.assign(this, data)
+export type EntityMetadata =
+  | TableEntityMetadata
+  | ViewEntityMetadata
+  | QueryEntityMetadata;
 
-    this.propertyMap = {}
-    this.properties.forEach(prop => {
-      this.propertyMap[prop.name] = prop
-    })
-
-    this.relationMap = {}
-    this.relations.forEach(relation => {
-      this.relationMap[relation.name] = relation
-    })
-  }
-
-  private propertyMap: {
-    [name: string]: PropertyMetadata
-  }
-
-  private relationMap: Record<string, RelationMetadata>
+/**
+ * 表格实体元数据
+ */
+export interface TableEntityMetadata {
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
+  /**
+   * 类型
+   */
+  kind: "TABLE";
 
   /**
-   * 关联的上下文类
+   * 表名
    */
-  contextClass: Constructor<DbContext>
+  dbName: string;
 
   /**
    * 构造函数
    */
-  class: Constructor<Entity>
+  readonly class: Constructor<Entity>;
+
   /**
    * 模型名称
    */
-  name: string
+  readonly name: string;
+
+  /**
+   * 主键属性名称
+   */
+  primaryKey?: string;
+
   /**
    * 是否只读
    */
-  readonly: boolean
+  readonly: boolean;
+
   /**
    * 摘要描述
    */
-  description?: string
+  description?: string;
+
   /**
    * 属性列表
    */
-  properties: PropertyMetadata[]
-  /**
-   * 关联关系
-   */
-  relations: RelationMetadata[]
-  /**
-   * 表或视图
-   */
-  table: TableSchema | ViewSchema
-  /**
-   * 行标记属性
-   */
-  rowflagProperty?: PropertyMetadata
-  /**
-   * 主键属性，当为视图是可能不存在该属性
-   */
-  idProperty?: PropertyMetadata
-  /**
-   * 序列属性
-   */
-  identityProperty?: PropertyMetadata
-  /**
-   * 计算属性列表
-   */
-  computeProperties: PropertyMetadata[]
-  /**
-   * 获取属性
-   */
-  getProperty (name: string): PropertyMetadata {
-    return this.propertyMap[name]
-  }
-  /**
-   * 获取关系
-   */
-  getRelation (name: string): RelationMetadata {
-    return this.relationMap[name]
-  }
+  members: EntityMemberMetadata[];
 
-  private _detailIncludes: FetchRelations<any>
   /**
-   * 获取明细的includes选项
+   * 数据
    */
-  private getDetailIncludes (): FetchRelations<any> {
-    const includes: any = {}
-    this.relations
-      .filter(relation => relation.isDetail)
-      .forEach(prop => {
-        includes[prop.name] = true
-      })
-    return includes
-  }
-
-  get detailIncludes (): FetchRelations<any> {
-    if (!this._detailIncludes) {
-      this._detailIncludes = this.getDetailIncludes()
-    }
-    return this._detailIncludes
-  }
+  data?: any[];
 }
 
 /**
- * 数据库上下文
+ * 视图实体元数据
  */
-export class DbContextMetadata {
-  constructor (data: DataObjectOf<DbContextMetadata>) {
-    Object.assign(this, data)
-    this.entities.forEach(entity => {
-      this.entityNameMap[entity.name] = entity
-      this.entityClassMap.set(entity.class, entity)
-    })
-  }
+export interface ViewEntityMetadata {
   /**
-   * 类
+   * 是否隐式生成的
    */
-  class: Constructor<DbContext>
+  isImplicit: boolean;
   /**
-   * 数据库架构
+   * 类型
    */
-  database: DatabaseSchema
+  kind: "VIEW"; //| 'function'
+
+  dbName: string;
+
   /**
-   * 实体列表
+   * 查询,视图或者查询的SELECT语句
    */
-  readonly entities: EntityMetadata[]
+  body: Select;
+
   /**
-   * 实体
+   * 构造函数
    */
-  private readonly entityNameMap: Record<string, EntityMetadata> = {}
+  class: Constructor<Entity>;
+
   /**
-   * 实体
+   * 模型名称
    */
-  private readonly entityClassMap: Map<EntityType, EntityMetadata> = new Map()
+  readonly name: string;
+
   /**
-   * 通过名称或者构造函数获取实体
+   * 是否只读
    */
-  getEntity (nameOrCtr: string | EntityType): EntityMetadata {
-    if (typeof nameOrCtr === 'string') {
-      return this.entityNameMap[nameOrCtr]
-    }
-    return this.entityClassMap.get(nameOrCtr)
-  }
+  readonly: true;
+
+  /**
+   * 摘要描述
+   */
+  description?: string;
+
+  /**
+   * 属性列表
+   */
+  members: EntityMemberMetadata[];
 }
 
 /**
- * 字段声明
+ * 查询实体元数据
  */
-export class PropertyMetadata {
-  constructor (data: PropertyMetadata) {
-    Object.assign(this, data)
-  }
+export interface QueryEntityMetadata {
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
+  /**
+   * 类型
+   */
+  kind: "QUERY"; //| 'function'
+
+  /**
+   * 查询,视图或者查询的SELECT语句
+   */
+  sql: Select;
+
+  /**
+   * 构造函数
+   */
+  class: Constructor<Entity>;
+
+  /**
+   * 模型名称
+   */
+  readonly name: string;
+
+  /**
+   * 是否只读
+   */
+  readonly: true;
+
+  /**
+   * 摘要描述
+   */
+  description?: string;
+
+  /**
+   * 属性列表
+   */
+  members: EntityMemberMetadata[];
+}
+
+export interface DbContextMetadata {
+  class: Constructor<DbContext>;
+  entities: EntityMetadata[];
+  dbName: string;
+  name: string;
+  description?: string;
+}
+
+/**
+ * 实体成员元数据
+ */
+export type EntityMemberMetadata =
+  | ColumnMetadata
+  | OneToOneMetadata
+  | OneToManyMetadata
+  | ManyToOneMetadata
+  | ManyToManyMetadata;
+
+/**
+ * 属性元数据
+ */
+export interface ColumnMetadata {
+  /**
+   * 是否由ORM隐式生成
+   */
+  isImplicit: boolean;
+  kind: "COLUMN";
   /**
    * 属性名称
    */
-  name: string
+  name: string;
+
   /**
-   * 数据类型
+   * 类型
    */
-  type: DataType
+  type: ScalarType;
+
   /**
-   * 计算函数,如果是非计算属性，则为空
+   * 字段名
    */
-  compute?: (item: any) => any
+  dbName: string;
   /**
-   * 列声明
+   * 数据库类型
    */
-  column: ColumnSchema
+  dbType: DbType;
+  /**
+   * 是否可空
+   */
+  isNullable: boolean;
+  /**
+   * 默认值
+   */
+  defaultValue: CompatibleExpression;
+  /**
+   * 主键
+   */
+  isPrimaryKey: boolean;
+  /**
+   * 是否标识列
+   */
+  isIdentity: boolean;
+  /**
+   * 是否行标识列
+   */
+  isRowflag: boolean;
+  /**
+   * 标识列种子
+   */
+  identitySeed: number;
+  /**
+   * 标识列步长
+   */
+  identityStep: number;
+  /**
+   * 是否计算列
+   */
+  isCalculate: boolean;
+  /**
+   * 计算表达式
+   */
+  calculateExpr?: CompatibleExpression;
+  /**
+   * 摘要说明
+   */
+  description?: string;
 }
 
 /**
@@ -569,34 +343,159 @@ export type RelationMetadata =
   | OneToOneMetadata
   | OneToManyMetadata
   | ManyToManyMetadata
-  | ManyToOneMetadata
+  | ManyToOneMetadata;
+
+// /**
+//  * 一对一引用属性
+//  * //TODO: OneToOne装饰器需要重载两种方式，主对从及从对主
+//  */
+// export class ForeignOneToOneMetadata {
+//   kind: "ONE_TO_ONE";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+//   /**
+//    * 表示当前实体在该关联关系中是否处于主键地位
+//    */
+//   isPincipal: false;
+//   /**
+//    * 关联对应的实体信息
+//    */
+//   outerEntity: EntityMetadata;
+//   /**
+//    * 关联对应的关系信息
+//    */
+//   outerRelation?: PincipalOneToOneMetadata;
+//   /**
+//    * 不可将父表声明为明细表
+//    */
+//   isDetail: false;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 关联关系的外键声明
+//    */
+//   relationKey: ForeignKeySchema;
+//   /**
+//    * 唯一索引
+//    */
+//   uniqIndex: IndexSchema;
+//   /**
+//    * 表示当前是否自引用
+//    */
+//   isSelfRef: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: boolean;
+// }
+// /**
+//  * 一对一引用属性
+//  */
+// export class PincipalOneToOneMetadata {
+//   kind: "ONE_TO_ONE";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+//   /**
+//    * 表示当前实体在该关联关系中是否处于主键地位
+//    */
+//   isPincipal: true;
+
+//   /**
+//    * 关联对应的实体信息
+//    */
+//   outerEntity: EntityMetadata;
+//   /**
+//    * 关联对应的关系信息
+//    */
+//   outerRelation?: ForeignOneToOneMetadata;
+//   /**
+//    * 仅当在主键实体属性中存在
+//    * 将该关系声明为明细属性，在主从表单据中非常有用；
+//    * 如果指定为true，
+//    * 将改变在Repository.save操作时开启了ChangeOption.withRelation选项的行为，
+//    * 默认情况下ChangeOption.withRelation，仅会新增或者修改现有的关联项，
+//    * 但不会删除未绑定在关联关系中的项，如果需要删除，需要用户主动调用remove来达到解除关联关系的目的
+//    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
+//    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
+//    */
+//   isDetail: boolean;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 关联关系的外键声明
+//    */
+//   relationKey: ForeignKeySchema;
+//   /**
+//    * 唯一索引
+//    */
+//   uniqIndex: undefined;
+//   /**
+//    * 表示当前是否自引用
+//    */
+//   isSelfRef: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: undefined;
+// }
 
 /**
  * 一对一引用属性
  */
 export interface PrimaryOneToOneMetadata {
-  kind: 'ONE_TO_ONE'
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
+  kind: "ONE_TO_ONE";
   /**
    * 属性名称
    */
-  name: string
+  property?: string;
+
   /**
    * 数据类型
    */
-  type: DataType
-  /**
-   * 表示当前实体在该关联关系中是否处于主键地位
-   */
-  isPrimary: true
-
+  type: EntityType;
   /**
    * 关联对应的实体信息
    */
-  outerEntity: EntityMetadata
+  referenceClass: EntityType;
+
   /**
-   * 关联对应的关系信息
+   * 引用的实体数据
    */
-  outerRelation?: ForeignOneToOneMetadata
+  referenceEntity: EntityMetadata;
+
+  /**
+   * 表示当前实体在该关联关系中是否处于主键地位
+   */
+  isPrimary: true;
+
+  /**
+   * 引用实体指向当前表的属性
+   */
+  referenceProperty?: string;
+  /**
+   * 引用实体的关系
+   */
+  referenceRelation: ForeignOneToOneMetadata;
   /**
    * 仅当在主键实体属性中存在
    * 将该关系声明为明细属性，在主从表单据中非常有用；
@@ -607,27 +506,17 @@ export interface PrimaryOneToOneMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail: boolean
+  isDetail?: boolean;
+
   /**
    * 摘要描述
    */
-  description?: string
-  /**
-   * 关联关系的外键声明
-   */
-  relationKey: ForeignKeySchema
-  /**
-   * 唯一索引
-   */
-  uniqIndex: undefined
-  /**
-   * 表示当前是否自引用
-   */
-  isSelfRef: boolean
+  description?: string;
+
   /**
    * 是否可空
    */
-  nullable: undefined
+  isNullable?: undefined;
 }
 
 /**
@@ -635,84 +524,115 @@ export interface PrimaryOneToOneMetadata {
  * //TODO: OneToOne装饰器需要重载两种方式，主对从及从对主
  */
 export interface ForeignOneToOneMetadata {
-  kind: 'ONE_TO_ONE'
   /**
-   * 属性名称
+   * 是否隐式生成的
    */
-  name: string
+  isImplicit: boolean;
+  kind: "ONE_TO_ONE";
+  /**
+   * 属性名称，如果是隐式的，则自动填充
+   */
+  property?: string;
   /**
    * 数据类型
    */
-  type: DataType
+  type: EntityType;
   /**
    * 表示当前实体在该关联关系中是否处于主键地位
    */
-  isPrimary: false
+  isPrimary: false;
   /**
    * 关联对应的实体信息
    */
-  outerEntity: EntityMetadata
+  referenceClass: EntityType;
   /**
-   * 关联对应的关系信息
+   * 所引用的实体
    */
-  outerRelation?: PrimaryOneToOneMetadata
+  referenceEntity: EntityMetadata;
+  /**
+   * 约束名称
+   */
+  constraintName: string;
+  /**
+   * 引用实体指向当前表的属性
+   */
+  referenceProperty: string;
+
+  /**
+   * 对方的引用声明
+   */
+  referenceRelation?: PrimaryOneToOneMetadata;
+  /**
+   * 外键属性
+   */
+  foreignProperty: string;
+  /**
+   * 外键列
+   */
+  foreignColumn: ColumnMetadata;
   /**
    * 不可将父表声明为明细表
    */
-  isDetail: false
+  isDetail?: false;
   /**
    * 摘要描述
    */
-  description?: string
-  /**
-   * 关联关系的外键声明
-   */
-  relationKey: ForeignKeySchema
-  /**
-   * 唯一索引
-   */
-  uniqIndex: IndexSchema
-  /**
-   * 表示当前是否自引用
-   */
-  isSelfRef: boolean
+  description?: string;
   /**
    * 是否可空
    */
-  nullable: boolean
+  isNullable?: boolean;
 }
 
-export type OneToOneMetadata = PrimaryOneToOneMetadata | ForeignOneToOneMetadata
+export type HasOneMetadata = OneToOneMetadata | OneToManyMetadata;
+
+export type HasManyMetadata = ManyToOneMetadata | ManyToManyMetadata;
+
+export type OneToOneMetadata =
+  | PrimaryOneToOneMetadata
+  | ForeignOneToOneMetadata;
 
 /**
  * 一对多引用属性
  */
 export interface OneToManyMetadata {
-  kind: 'ONE_TO_MANY'
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
+  kind: "ONE_TO_MANY";
   /**
    * 属性名称
    */
-  name: string
+  property: string;
   /**
-   * 数据类型
+   * 属性数据类型
    */
-  type: DataType
+  type: [EntityType];
   /**
-   * 外键实体
+   * 引用的实体类型
    */
-  outerEntity: EntityMetadata
+  referenceClass: EntityType;
+
+  /**
+   * 所引用的实体
+   */
+  referenceEntity: EntityMetadata;
+
   /**
    * 关联实体中该关系的属性
    */
-  outerRelation: RelationMetadata
+  referenceProperty: string;
+
+  /**
+   * 所引用的对应关系
+   */
+  referenceRelation: ManyToOneMetadata;
   /**
    * 摘要描述
    */
-  description?: string
-  /**
-   * 关联关系的外键声明
-   */
-  relationKey: ForeignKeySchema
+  description: string;
+
   /**
    * 将该关系声明为明细属性，在主从表单据中非常有用；
    * 如果指定为true，
@@ -722,92 +642,145 @@ export interface OneToManyMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail: boolean
+  isDetail: boolean;
+
   /**
    * 是否可空
    */
-  nullable: boolean
-  /**
-   * 判当前关系是否为自引用关系
-   */
-  isSelfRef: boolean
+  isNullable: boolean;
 }
 /**
  * 一对多引用属性
  */
 export interface ManyToOneMetadata {
-  readonly kind: 'MANY_TO_ONE'
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
+  kind: "MANY_TO_ONE";
   /**
    * 属性名称
    */
-  name: string
+  name: string;
+  /**
+   * 数据库关系名称
+   */
+  dbName: string;
   /**
    * 数据类型
    */
-  type: DataType
+  type: EntityType;
+
+  /**
+   * 引用主键的属性名
+   */
+  foreignProperty?: string;
+
+  /**
+   * 外键列
+   */
+  foreignColumn?: ColumnMetadata;
+
   /**
    * 关联实体
    */
-  outerEntity: EntityMetadata
+  referenceClass: EntityType;
+
   /**
-   * 当前关系所关联的对应的关系
+   * 引用的实体对象
    */
-  outerRelation?: EntityMetadata
+  referenceEntity: EntityMetadata;
+
   /**
-   * 摘要描述
+   * 对方引用属性
    */
-  description?: string
+  referenceProperty?: string;
+
   /**
-   * 关联关系的外键声明
+   * 对方的引用声明
    */
-  relationKey: ForeignKeySchema
+  referenceRelation?: OneToManyMetadata;
+
   /**
-   * 判当前关系是否为自引用关系
+   * 约束名称
    */
-  isSelfRef: boolean
+  constraintName?: string;
+
   /**
    * 是否可空
    */
-  nullable: boolean
+  isNullable: boolean;
+
   /**
    * 永远不可能
    */
-  isDetail: false
+  isDetail?: false;
+
+  /**
+   * 摘要描述
+   */
+  description?: string;
 }
 
 /**
  * 多对多引用属性,系统会自动创建中间关系表
  */
 export interface ManyToManyMetadata {
-  readonly kind: 'MANY_TO_MANY'
+  /**
+   * 是否隐式生成的
+   */
+  isImplicit: boolean;
   /**
    * 属性名称
    */
-  name: string
+  kind: "MANY_TO_MANY";
+  /**
+   * 属性名称
+   */
+  name: string;
   /**
    * 数据类型
    */
-  type: DataType
+  type: [EntityType];
   /**
    * 当前关系所关联的实体
    */
-  outerEntity: EntityMetadata
+  referenceClass: EntityType;
+
   /**
-   * 当前关系所关联实体中对应的关系
+   * 引用的实体对象
    */
-  outerRelation: ManyToManyMetadata
+  referenceEntity: EntityMetadata;
+  /**
+   * 对向引用属性
+   */
+  referenceProperty?: string;
+
+  /**
+   * 对方的引用声明
+   */
+  referenceRelation?: ManyToManyMetadata;
+
+  /**
+   * 关系表名称
+   */
+  relationTableName?: string;
+
+  /**
+   * 关联关系中间表
+   * 可以由用户声明，亦可以隐式生成
+   */
+  relationEntity: TableEntityMetadata;
+
+  /**
+   * 关系约束名称，此名称为关联源名的关系名称
+   */
+  relationConstraintName?: string;
+
   /**
    * 摘要描述
    */
-  description?: string
-  /**
-   * 中间关系表声明
-   */
-  middleTable: TableSchema
-  /**
-   * 当前属性所关联的中间表的外键声明
-   */
-  relationKey: ForeignKeySchema
+  description?: string;
   /**
    * 将该关系声明为明细属性，在主从表单据中非常有用；
    * 如果指定为true，
@@ -817,61 +790,536 @@ export interface ManyToManyMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail: boolean
-  /**
-   * 是否自循环引用
-   */
-  isSelfRef: boolean
+  isDetail: boolean;
   /**
    * 是否可空
    */
-  nullable: boolean
+  isNullable: boolean;
 }
 
-/**********************************装饰器声明*************************************/
+// export type OneToOneMetadata =
+//   | PincipalOneToOneMetadata
+//   | ForeignOneToOneMetadata;
+// /**
+//  * 关联关系
+//  */
+// export type RelationMetadata =
+//   | OneToOneMetadata
+//   | OneToManyMetadata
+//   | ManyToManyMetadata
+//   | ManyToOneMetadata;
+// /**
+//  * 一对多引用属性
+//  */
+// export interface ManyToOneMetadata {
+//   readonly kind: "MANY_TO_ONE";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+//   /**
+//    * 关联实体
+//    */
+//   outerEntity: EntityMetadata;
+//   /**
+//    * 当前关系所关联的对应的关系
+//    */
+//   outerRelation?: EntityMetadata;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 关联关系的外键声明
+//    */
+//   relationKey: ForeignKeySchema;
+//   /**
+//    * 判当前关系是否为自引用关系
+//    */
+//   isSelfRef: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: boolean;
+//   /**
+//    * 永远不可能
+//    */
+//   isDetail: false;
+// }
 
-export class MetadataStore {
-  private entityMap: Map<EntityType, EntityMetadata> = new Map()
-  private contextMap: Map<Constructor<DbContext>, DbContextMetadata> = new Map()
-  /**
-   * 默认DbContext
-   */
-  defaultContext: Constructor<DbContext>
-  /**
-   * 可以通过实体构造函数/实体名称 获取已注册的元数据
-   */
-  getEntity (entityClass: EntityType): EntityMetadata {
-    return this.entityMap.get(entityClass)
-  }
-  /**
-   * 注册一个实体
-   */
-  registerEntity (metadata: EntityMetadata) {
-    if (this.entityMap.has(metadata.class)) {
-      throw new Error(`Entity ${metadata.class.name} is registered.`)
-    }
-    this.entityMap.set(metadata.class, metadata)
-    return this
-  }
-  /**
-   * 获取上下文无数据
-   */
-  getContext (contextClass: Constructor<DbContext>): DbContextMetadata {
-    return this.contextMap.get(contextClass);
-  }
-  /**
-   * 注册上下文
-   */
-  registerContext (metadata: DbContextMetadata): this {
-    if (this.contextMap.has(metadata.class)) {
-      throw new Error(`DbContext ${metadata.class.name} is registered.`)
-    }
-    this.contextMap.set(metadata.class, metadata)
-    return this
-  }
-}
+// export type EntityMemberMetadata =
+//   | ColumnMetadata
+//   | OneToOneMetadata
+//   | OneToManyMetadata
+//   | ManyToOneMetadata
+//   | ManyToManyMetadata;
 
-/**
- * 公共元数据存储
- */
-export const metadataStore = new MetadataStore()
+// /**
+//  * 多对多引用属性,系统会自动创建中间关系表
+//  */
+// export class ManyToManyMetadata {
+//   readonly kind: "MANY_TO_MANY";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+//   /**
+//    * 当前关系所关联的实体
+//    */
+//   outerEntity: EntityMetadata;
+//   /**
+//    * 当前关系所关联实体中对应的关系
+//    */
+//   outerRelation: ManyToManyMetadata;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 中间关系表声明
+//    */
+//   middleTable: TableSchema;
+//   /**
+//    * 当前属性所关联的中间表的外键声明
+//    */
+//   relationKey: ForeignKeySchema;
+//   /**
+//    * 将该关系声明为明细属性，在主从表单据中非常有用；
+//    * 如果指定为true，
+//    * 将改变在Repository.save操作时开启了ChangeOption.withRelation选项的行为，
+//    * 默认情况下ChangeOption.withRelation，仅会新增或者修改现有的关联项，
+//    * 但不会删除未绑定在关联关系中的项，如果需要删除，需要用户主动调用remove来达到解除关联关系的目的
+//    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
+//    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
+//    */
+//   isDetail: boolean;
+//   /**
+//    * 是否自循环引用
+//    */
+//   isSelfRef: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: boolean;
+// }
+
+// /**
+//  * 一对多引用属性
+//  */
+// export class ManyToOneMetadata {
+//   readonly kind: "MANY_TO_ONE";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+//   /**
+//    * 关联实体
+//    */
+//   outerEntity: EntityMetadata;
+//   /**
+//    * 当前关系所关联的对应的关系
+//    */
+//   outerRelation?: EntityMetadata;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 关联关系的外键声明
+//    */
+//   relationKey: ForeignKeySchema;
+//   /**
+//    * 判当前关系是否为自引用关系
+//    */
+//   isSelfRef: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: boolean;
+//   /**
+//    * 永远不可能
+//    */
+//   isDetail: false;
+// }
+// /**
+//  * 一对多引用属性
+//  */
+// export class OneToManyMetadata {
+//   constructor(private econtext: DbContextMetadata, options: OneToManyOptions) {
+//     this.kind = options.kind
+//     this.property = options.property
+//     this.type = options.type
+//     this.referenceClass = options.referenceClass
+//     this.referenceProperty = options.referenceProperty
+//   }
+
+//   kind: "ONE_TO_MANY";
+//   /**
+//    * 属性名称
+//    */
+//   property: string;
+//   /**
+//    * 数据类型
+//    */
+//   type: DataType;
+
+//   readonly referenceClass: EntityType;
+
+//   readonly referenceProperty: string;
+//   /**
+//    * 外键实体数据
+//    */
+//   get referenceEntity(): EntityMetadata {
+//     return this.econtext.getEntity(this.referenceClass)
+//   }
+//   /**
+//    * 关联实体中对向的关系的属性
+//    */
+//   get referenceRelation(): ManyToOneMetadata {
+//     return this.referenceEntity.getRelation(this.referenceProperty) as ManyToOneMetadata
+//   }
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 关联关系的外键声明
+//    */
+//   get referenceKey(): ForeignKeySchema {
+//     return this.referenceRelation?.relationKey
+//   }
+//   /**
+//    * 将该关系声明为明细属性，在主从表单据中非常有用；
+//    * 如果指定为true，
+//    * 将改变在Repository.save操作时开启了ChangeOption.withRelation选项的行为，
+//    * 默认情况下ChangeOption.withRelation，仅会新增或者修改现有的关联项，
+//    * 但不会删除未绑定在关联关系中的项，如果需要删除，需要用户主动调用remove来达到解除关联关系的目的
+//    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
+//    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
+//    */
+//   isDetail: boolean;
+//   /**
+//    * 是否可空
+//    */
+//   nullable: boolean;
+//   /**
+//    * 判当前关系是否为自引用关系
+//    */
+//   isSelfRef: boolean;
+// }
+
+// /**
+//  * 实体元数据
+//  */
+// export abstract class EntityMetadata {
+//   constructor(private ctxMetadata: DbContextMetadata, data: EntityOptions) {
+//     Object.assign(this, data);
+//     this.columns = []
+//     data.members.forEach((prop) => {
+//       let member: EntityMemberMetadata;
+//       switch (prop.kind) {
+//         case "COLUMN":
+//           member = new ColumnMetadata(this, prop);
+//           this.columnMap[prop.name] = member
+//           this.columns.push(member)
+//           break;
+//         case "MANY_TO_MANY":
+//           member = new ManyToManyMetadata(prop);
+//           this.relationMap[prop.name] = member
+//           break;
+//         case "MANY_TO_ONE":
+//           member = new ManyToOneMetadata(prop);
+//           this.relationMap[prop.name] = member
+//           break;
+//         case "ONE_TO_MANY":
+//           member = new OneToManyMetadata(prop);
+//           this.relationMap[prop.property] = member
+//           break;
+//         case "ONE_TO_ONE":
+//           if (prop.isPincipal) {
+//             member = new PincipalOneToOneMetadata(prop);
+//           } else {
+//             member = new ForeignOneToOneMetadata(prop);
+//           }
+//           this.relationMap[prop.property] = member
+//           break;
+//       }
+//       this.memberMap[prop.name] = member;
+//     });
+
+//     this.relationMap = {};
+//     this.relations.forEach((relation) => {
+//       this.relationMap[relation.property] = relation;
+//     });
+//   }
+
+//   columns: ColumnMetadata[]
+
+//   private memberMap: {
+//     [name: string]: EntityMemberMetadata;
+//   } = {};
+
+//   private columnMap: {
+//     [name: string]: ColumnMetadata;
+//   }
+
+//   private relationMap: Record<string, RelationMetadata>;
+
+//   /**
+//    * 关联的上下文类
+//    */
+//   contextClass: Constructor<DbContext>;
+
+//   /**
+//    * 构造函数
+//    */
+//   class: Constructor<Entity>;
+//   /**
+//    * 模型名称
+//    */
+//   name: string;
+//   /**
+//    * 是否只读
+//    */
+//   readonly: boolean;
+//   /**
+//    * 摘要描述
+//    */
+//   description?: string;
+//   /**
+//    * 属性列表
+//    */
+//   properties: ColumnMetadata[];
+//   /**
+//    * 关联关系
+//    */
+//   relations: RelationMetadata[];
+//   /**
+//    * 表或视图
+//    */
+//   schema: TableSchema | ViewSchema;
+//   /**
+//    * 行标记属性
+//    */
+//   rowflagProperty?: ColumnMetadata;
+//   /**
+//    * 主键属性，当为视图是可能不存在该属性
+//    */
+//   idProperty?: ColumnMetadata;
+//   /**
+//    * 序列属性
+//    */
+//   identityProperty?: ColumnMetadata;
+//   /**
+//    * 计算属性列表
+//    */
+//   computeProperties: ColumnMetadata[];
+//   /**
+//    * 获取属性
+//    */
+//   getMember(name: string): EntityMemberMetadata {
+//     return this.memberMap[name];
+//   }
+
+//   /**
+//    * 获取列
+//    */
+//   getColumn(name: string): ColumnMetadata {
+//     return this.columnMap[name];
+//   }
+
+//   getColumns(): ColumnMetadata[] {
+//     return Object.values(this.columnMap)
+//   }
+
+//   getRelations(): RelationMetadata[] {
+//     return Object.values(this.relationMap)
+//   }
+
+//   /**
+//    * 获取关系
+//    */
+//   getRelation(name: string): RelationMetadata {
+//     return this.relationMap[name];
+//   }
+
+//   private _detailIncludes: FetchRelations<any>;
+//   /**
+//    * 获取明细的includes选项
+//    */
+//   private getDetailIncludes(): FetchRelations<any> {
+//     const includes: any = {};
+//     this.relations
+//       .filter((relation) => relation.isDetail)
+//       .forEach((prop) => {
+//         includes[prop.property] = true;
+//       });
+//     return includes;
+//   }
+
+//   get detailIncludes(): FetchRelations<any> {
+//     if (!this._detailIncludes) {
+//       this._detailIncludes = this.getDetailIncludes();
+//     }
+//     return this._detailIncludes;
+//   }
+// }
+
+// /**
+//  * 数据库上下文
+//  */
+// export class DbContextMetadata {
+//   constructor(data: DbContextOptions) {
+//     this.schema = {
+//       name: data.name,
+//       tables: [],
+//       views: [],
+//       indexes: [],
+//       foreignKeys: []
+//     }
+//     // TODO 待实现
+//     data.entities.forEach((entityOptions) => {
+//       const entityMetadata = new EntityMetadata(this, entityOptions)
+//       switch (entityMetadata.table.kind) {
+//         case 'TABLE':
+//           this.schema.tables.push(entityMetadata.table)
+//           break
+//         case 'VIEW':
+//           this.schema.views.push(entityMetadata.table)
+//           break
+//         case 'VIRTUAL_TABLE':
+//           // 虚拟表不加入数据库中
+//           break
+//       }
+
+//       this.entityMap.set(entityOptions.class, entityMetadata);
+//     });
+//     this.entities = Array.from(this.entityMap.values())
+//   }
+//   /**
+//    * 类
+//    */
+//   class: Constructor<DbContext>;
+//   /**
+//    * 数据库架构
+//    */
+//   schema: DatabaseSchema;
+//   /**
+//    * 实体列表
+//    */
+//   readonly entities: Readonly<EntityMetadata[]>;
+//   /**
+//    * 实体
+//    */
+//   private readonly entityMap: Map<EntityType, EntityMetadata> = new Map();
+//   /**
+//    * 通过名称或者构造函数获取实体
+//    */
+//   getEntity(nameOrCtr: EntityType): EntityMetadata {
+//     return this.entityMap.get(nameOrCtr);
+//   }
+// }
+
+// /**
+//  * 字段声明
+//  */
+// export class ColumnMetadata {
+//   constructor(private entityMetadata: EntityMetadata, data: ColumnOptions) {
+//     // Object.assign(this, data);
+//     this.column = {
+//       name: data.dbName,
+//       type: data.dbType,
+//       isPrimaryKey: data.isPrimaryKey,
+//       isIdentity: data.isIdentity,
+//       isRowflag: data.isRowflag,
+//       isCalculate: data.isCalculate,
+//       calculateExpr: data.calculateExpr,
+//       identitySeed: data.identitySeed,
+//       identityStep: data.identityStep,
+//       description: data.description,
+//       nullable: data.nullable ?? true
+//     }
+//     this.property = data.name
+//     this.type = data.type
+//   }
+//   kind: "COLUMN" = 'COLUMN';
+//   property: string;
+//   type: ScalarType;
+//   dbType?: DbType;
+//   nullable?: boolean;
+//   // TODO: 需要将SQL表达式编译成JS表达式
+//   defaultValue?: () => any;
+//   isPrimaryKey?: boolean;
+//   isIdentity?: boolean;
+//   isRowflag?: boolean;
+//   identitySeed?: number;
+//   identityStep?: number;
+//   isCalculate?: boolean;
+//   calculateExpr?: CompatibleExpression<Scalar>;
+//   description?: string;
+
+//   /**
+//    * 列声明
+//    */
+//   column: ColumnSchema;
+// }
+
+// /**********************************装饰器声明*************************************/
+// export class MetadataStore {
+//   private entityMap: Map<EntityType, EntityMetadata> = new Map();
+//   private contextMap: Map<Constructor<DbContext>, DbContextOptions> =
+//     new Map();
+//   /**
+//    * 默认DbContext
+//    */
+//   defaultContext: Constructor<DbContext>;
+//   /**
+//    * 可以通过实体构造函数/实体名称 获取已注册的元数据
+//    */
+//   getEntity(entityClass: EntityType): EntityMetadata {
+//     return this.entityMap.get(entityClass);
+//   }
+//   /**
+//    * 注册一个实体
+//    */
+//   registerEntity(metadata: EntityMetadata) {
+//     if (this.entityMap.has(metadata.class)) {
+//       throw new Error(`Entity ${metadata.class.name} is registered.`);
+//     }
+//     this.entityMap.set(metadata.class, metadata);
+//     return this;
+//   }
+//   /**
+//    * 获取上下文无数据
+//    */
+//   getContext(contextClass: Constructor<DbContext>): DbContextOptions {
+//     return this.contextMap.get(contextClass);
+//   }
+//   /**
+//    * 注册上下文
+//    */
+//   registerContext(metadata: DbContextOptions): this {
+//     if (this.contextMap.has(metadata.class)) {
+//       throw new Error(`DbContext ${metadata.class.name} is registered.`);
+//     }
+//     this.contextMap.set(metadata.class, metadata);
+//     return this;
+//   }
+// }
+
+// /**
+//  * 公共元数据存储
+//  */
+// export const metadataStore = new MetadataStore();

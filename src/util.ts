@@ -187,9 +187,9 @@ export function ensureCondition<T extends RowObject> (
         key
       ] as Name<string>)
     } else if (isRowset(rowsetOrMetadata)) {
-      makeField = (key: string) => rowsetOrMetadata.field(key as FieldsOf<T>)
+      makeField = (key: string) => (rowsetOrMetadata as any).field(key)
     } else {
-      const rowset = makeProxied(new Table<T>(rowsetOrMetadata.table.name), rowsetOrMetadata)
+      const rowset = makeProxied(new Table<T>(rowsetOrMetadata.schema.name), rowsetOrMetadata)
       makeField = (key: string) => rowset.field(key as FieldsOf<T>)
     }
   } else {
@@ -251,7 +251,7 @@ function makeProxied<T extends RowObject>(table: Table<T> | Rowset<T>, metadata?
         prop = prop.substring(1)
       }
       if (metadata) {
-        const column = metadata.getProperty(prop)?.column
+        const column = metadata.getColumn(prop)?.column
         if (!column) {
           return target.field(column.name)
           // throw new Error(`Property ${prop} is not a column.`)
@@ -278,7 +278,7 @@ export function makeProxiedRowset<T extends RowObject> (
   rowsetOrMetadata: Table<T> | Rowset<T> | EntityMetadata
 ): ProxiedTable<T> | ProxiedRowset<T> {
   if (rowsetOrMetadata instanceof EntityMetadata) {
-    return makeProxied(new Table<T>(rowsetOrMetadata.table.name), rowsetOrMetadata)
+    return makeProxied(new Table<T>(rowsetOrMetadata.schema.name), rowsetOrMetadata)
   }
   return makeProxied(rowsetOrMetadata)
 }

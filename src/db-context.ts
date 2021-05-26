@@ -1,6 +1,6 @@
 import { Executor } from './execute'
 import { Lube } from './lube'
-import { Constructor, DbContextMetadata, metadataStore } from './metadata'
+import { Constructor } from './types'
 import { Queryable } from './queryable'
 import { Entity, Repository } from './repository'
 

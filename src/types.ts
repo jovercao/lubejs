@@ -8,10 +8,14 @@
 // }
 
 import { RowObject } from "./ast"
+import { Entity } from "./repository"
 
 // **********************************类型声明******************************************
 
 export type Binary = ArrayBuffer | SharedArrayBuffer
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type RowObject = object
 
 /**
  * 标量类型
@@ -19,25 +23,25 @@ export type Binary = ArrayBuffer | SharedArrayBuffer
  */
 export type Scalar =
   | string
-  | Date
   | boolean
-  | null
+  // | null
   | number
-  | Binary
   | bigint
+  | Date
+  | Binary
 // TODO: 适配 JSON 和 ARRAY数据类型
-  // | RowObject
-  // | Array<ScalarType>
+// | RowObject
+// | Array<ScalarType>
 
 export type ScalarType =
-  | String
-  | Date
-  | Boolean
-  | Number
-  | BigInt
-  | ArrayBuffer
-  | Buffer
-  | SharedArrayBuffer
+  | StringConstructor
+  | DateConstructor
+  | BooleanConstructor
+  | NumberConstructor
+  | BigIntConstructor
+  | ArrayBufferConstructor
+  | typeof Buffer
+  | SharedArrayBufferConstructor
   | JSON
 
 export type INT64 = {
@@ -122,7 +126,7 @@ export type LIST<T extends DbType> = {
   /**
    * 元素类型
    */
-  readonly type: DbType;
+  readonly type: T;
 }
 
 export type DbType =
@@ -186,9 +190,80 @@ export type TsTypeToDbType<T> =
   : never
 
 /**
+ * 转换
+ */
+export type TsTypeToDataType<T> =
+  T extends string
+  ? StringConstructor
+  : T extends number
+  ? NumberConstructor
+  : T extends Date
+  ? DateConstructor
+  : T extends boolean
+  ? BooleanConstructor
+  : T extends Binary
+  ? typeof Buffer | ArrayBufferConstructor | SharedArrayBufferConstructor
+  : T extends object
+  ? ObjectConstructor
+  : T extends (infer M)[]
+  ? M extends object
+  ? [Constructor<M>]
+  : [TsTypeToDataType<M>]
+  : never
+
+export type TsEntityToDataType<T> =
+  T extends Entity
+  ? Constructor<T>
+  : never
+
+export type EntityTypeOf<T> =
+  T extends Entity
+  ? T
+  : T extends (infer M)[]
+  ? M extends Entity
+  ? M
+  : never
+  : never
+
+/**
+ * 实体构造函数，即类本身
+ */
+export type Constructor<T = object> = {
+  new(...args: any): T
+}
+
+export type EntityType = Constructor<Entity>
+
+/******************************* Model 相关声明 *********************************/
+export type ListType<T extends ScalarType | EntityType = ScalarType | EntityType> = [T]
+
+/**
+ * Schema的数据类型
+ */
+export type DataType = ScalarType | EntityType | ListType | JSON
+
+export type DataTypeToTsType<T> = T extends String
+  ? string
+  : T extends JSON
+  ? object
+  : T extends NumberConstructor
+  ? number
+  : T extends BooleanConstructor
+  ? boolean
+  : T extends ListType<infer M>
+  ? DataTypeToTsType<M>[]
+  : T extends BigIntConstructor
+  ? bigint
+  : T extends EntityType
+  ? Entity
+  : T extends DateConstructor | typeof Buffer | typeof ArrayBuffer | typeof SharedArrayBuffer
+  ? T
+  : never
+
+/**
  * 解释值的类型
  */
-export function parseValueType (value: Scalar): DbType {
+export function parseValueType(value: Scalar): DbType {
   if (value === null || value === undefined)
     throw new Error('Do not parse DbType from null or undefined')
   switch (value.constructor) {
@@ -216,7 +291,7 @@ export const type = {
   int16: { name: 'INT16' } as INT16,
   int32: { name: 'INT32' } as INT32,
   int64: { name: 'INT64' } as INT64,
-  numeric (precision: number, digit?: number): NUMERIC {
+  numeric(precision: number, digit?: number): NUMERIC {
     return {
       name: 'NUMERIC',
       precision,
@@ -229,7 +304,7 @@ export const type = {
   double: {
     name: 'DOUBLE'
   } as DOUBLE,
-  string (length: number): STRING {
+  string(length: number): STRING {
     return {
       name: 'STRING',
       length
@@ -241,7 +316,7 @@ export const type = {
   datetime: {
     name: 'DATETIME'
   } as DATETIME,
-  binary (length: number): BINARY {
+  binary(length: number): BINARY {
     return {
       name: 'BINARY',
       length
@@ -258,7 +333,7 @@ export const type = {
       name: 'OBJECT'
     }
   }),
-  list<T extends DbType>(type: T): LIST<DbTypeToTsType<T>> {
+  list<T extends DbType>(type: T): LIST<T> {
     return {
       name: 'LIST',
       type

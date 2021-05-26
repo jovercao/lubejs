@@ -18,7 +18,6 @@ import {
   isProxiedRowset,
   isExpression,
   isSortInfo,
-  isDbType
 } from './util'
 
 import {
@@ -37,7 +36,7 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION
 } from './constants'
-import { DbType, parseValueType, DbTypeToTsType, TsTypeToDbType } from './types'
+import { DbType, parseValueType, DbTypeToTsType, TsTypeToDbType, RowObject } from './types'
 import { Scalar } from './types'
 
 /**
@@ -69,8 +68,6 @@ export type AsScalarType<T extends RowObject> = T[FieldsOf<
   ? T[FieldsOf<T>]
   : never
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-export type RowObject = object
 
 export type DefaultRowObject = {
   [P in string]: Scalar
@@ -1324,7 +1321,7 @@ export class Alias<N extends string> extends Identifier<N> {
 }
 
 export class Func<
-  N extends string
+  N extends string = string
   // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
 > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION

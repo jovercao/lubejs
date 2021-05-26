@@ -16,4 +16,3 @@ export * from './types'
 
 export * from './queryable'
 
-export * from './decorators'

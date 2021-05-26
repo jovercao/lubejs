@@ -7,7 +7,6 @@ import {
   RowObject,
   RowTypeFrom,
   ProxiedRowset,
-  Rowset,
   InputObject,
   SortInfo,
   SortObject,
@@ -15,14 +14,13 @@ import {
   Select,
   CompatibleSortInfo,
   CompatibleRowset,
-  Field,
-  ProxiedTable
 } from './ast'
 import { and, select, table } from './builder'
 import { ROWSET_ALIAS } from './constants'
 import { Executor } from './execute'
-import { Constructor, EntityMetadata, isForeignOneToOne, isManyToMany, isManyToOne, isOneToMany, isOneToOne, isPrimaryOneToOne, metadataStore, OneToOneMetadata, TableSchema } from './metadata'
+import { EntityMetadata, isForeignOneToOne, isManyToMany, isManyToOne, isOneToMany, isOneToOne, isPrimaryOneToOne, metadataStore, OneToOneMetadata, TableSchema } from './metadata'
 import { Entity, FetchOptions, FetchRelations, isEntityConstructor, RelationKeyOf } from './repository'
+import { Constructor } from './types'
 import { ensureCondition, ensureRowset, isProxiedRowset, makeProxiedRowset } from './util'
 // import { getMetadata } from 'typeorm'
 
@@ -258,7 +256,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       let subIncludes = Reflect.get(includes, relationName)
       if (subIncludes === true) subIncludes = null
 
-      const relationQueryable = new Queryable<any>(this.executor, relation.outerEntity.class as Constructor<any>)
+      const relationQueryable = new Queryable<any>(this.executor, relation.referenceEntity.class as Constructor<any>)
       if (subIncludes) {
         relationQueryable._includes = subIncludes
       }
@@ -268,20 +266,20 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       if (isPrimaryOneToOne(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
         const relationItem = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchFirst()
-        Reflect.set(item, relation.name, relationItem)
+        Reflect.set(item, relation.property, relationItem)
         // 本表为次表
       } else if (isForeignOneToOne(relation)) {
         const refValue = datarow[relation.relationKey.foreignColumn.name]
-        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.name).eq(refValue)).fetchFirst()
-        Reflect.set(item, relation.name, relationItem)
+        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.property).eq(refValue)).fetchFirst()
+        Reflect.set(item, relation.property, relationItem)
       } else if (isOneToMany(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
-        const relationItems = await relationQueryable.filter(rowset => rowset.field(relation.relationKey.foreignColumn.name).eq(idValue)).fetchAll()
-        Reflect.set(item, relation.name, relationItems)
+        const relationItems = await relationQueryable.filter(rowset => rowset.field(relation.referenceKey.foreignColumn.name).eq(idValue)).fetchAll()
+        Reflect.set(item, relation.property, relationItems)
       } else if (isManyToOne(relation)) {
         const refValue = datarow[relation.relationKey.foreignColumn.name]
-        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.name).eq(refValue)).fetchFirst()
-        Reflect.set(item, relation.name, relationItem)
+        const relationItem = await relationQueryable.find(rowset => rowset.field(relation.outerEntity.idProperty.property).eq(refValue)).fetchFirst()
+        Reflect.set(item, relation.property, relationItem)
       } else if (isManyToMany(relation)) {
         const idValue = datarow[this.metadata.idProperty.column.name]
         // 本表为字段1关联
@@ -295,8 +293,8 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
           .where(
             rt.field(thisForeignColumn.name).eq(idValue)
           )
-        const subItems = relationQueryable.filter(rowset => rowset.field(relation.outerEntity.idProperty.name).in(relationIdsSelect)).fetchAll()
-        Reflect.set(item, relation.name, subItems)
+        const subItems = relationQueryable.filter(rowset => rowset.field(relation.outerEntity.idProperty.property).in(relationIdsSelect)).fetchAll()
+        Reflect.set(item, relation.property, subItems)
       }
     }
   }
@@ -309,7 +307,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
     // 标记数据库记录
     item[FROM_DB] = true
 
-    for (const prop of this.metadata.properties) {
+    for (const prop of this.metadata.getColumns()) {
       const dbValue = Reflect.get(datarow, prop.column.name)
       let itemValue
       if (prop.type === JSON && typeof dbValue === 'string') {
@@ -317,7 +315,7 @@ export class Queryable<T extends RowObject = any> implements AsyncIterable<T> {
       } else {
         itemValue = dbValue
       }
-      Reflect.set(item, prop.name, itemValue)
+      Reflect.set(item, prop.property, itemValue)
     }
     // TODO: 添加避免重复加载代码
     if (this._withDetail) {
