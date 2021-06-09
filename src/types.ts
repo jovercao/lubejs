@@ -7,8 +7,18 @@
 //    direction?: ParameterDirection
 // }
 
-import { RowObject } from "./ast"
-import { Entity } from "./repository"
+import { deepthEqual } from './util'
+
+
+export const EntitySymble = Symbol('LUBEJS#Entity')
+
+/**
+ * 实体类基类,仅为了typescript区分类型
+ * 不一定非得从此继承
+ */
+export class Entity {
+  [EntitySymble]: true
+}
 
 // **********************************类型声明******************************************
 
@@ -42,7 +52,8 @@ export type ScalarType =
   | ArrayBufferConstructor
   | typeof Buffer
   | SharedArrayBufferConstructor
-  | JSON
+  | ObjectConstructor
+  | ArrayConstructor
 
 export type INT64 = {
   readonly name: 'INT64'
@@ -118,15 +129,23 @@ export type OBJECT<T extends object = any> = {
   readonly name: 'OBJECT'
 }
 
+const DEFAULT_OBJECT: OBJECT<any> = {
+  name: 'OBJECT'
+}
+
 /**
  * 列表类型，即数组，不使用ARRAY，亦是因为命名冲突
  */
-export type LIST<T extends DbType> = {
-  readonly name: 'LIST'
+export type ARRAY<T extends DbType> = {
+  readonly name: 'ARRAY'
   /**
    * 元素类型
    */
   readonly type: T;
+}
+
+export function isSameDbType(type1: DbType, type2: DbType) {
+  return deepthEqual(type1, type2);
 }
 
 export type DbType =
@@ -145,12 +164,12 @@ export type DbType =
   | UUID
   | ROWFLAG
   | OBJECT
-  | LIST<any>
+  | ARRAY<any>
 
 /**
  * 类型转换
  */
-export type DbTypeToTsType<T extends DbType> =
+export type TsTypeOf<T extends DbType> =
   T extends INT8 | INT16 | INT32 | INT64 | Number | FLOAT | DOUBLE
   ? number
   : T extends STRING | UUID
@@ -165,14 +184,14 @@ export type DbTypeToTsType<T extends DbType> =
   ? any
   : T extends OBJECT<infer M>
   ? M
-  : T extends LIST<infer M>
-  ? DbTypeToTsType<M>[]
+  : T extends ARRAY<infer M>
+  ? TsTypeOf<M>[]
   : never;
 
 /**
- * 转换
+ * 从TS Type 转换为DbType的类型
  */
-export type TsTypeToDbType<T> =
+export type DbTypeOf<T> =
   T extends string
   ? STRING
   : T extends number
@@ -183,8 +202,8 @@ export type TsTypeToDbType<T> =
   ? BOOLEAN
   : T extends Binary
   ? BINARY
-  : T extends Array<infer M>
-  ? LIST<TsTypeToDbType<M>>
+  // : T extends Array<infer M>
+  // ? LIST<DbTypeOf<M>>
   : T extends RowObject
   ? OBJECT<T>
   : never
@@ -192,7 +211,7 @@ export type TsTypeToDbType<T> =
 /**
  * 转换
  */
-export type TsTypeToDataType<T> =
+export type DataTypeOf<T> =
   T extends string
   ? StringConstructor
   : T extends number
@@ -208,25 +227,11 @@ export type TsTypeToDataType<T> =
   : T extends (infer M)[]
   ? M extends object
   ? [Constructor<M>]
-  : [TsTypeToDataType<M>]
-  : never
-
-export type TsEntityToDataType<T> =
-  T extends Entity
-  ? Constructor<T>
-  : never
-
-export type EntityTypeOf<T> =
-  T extends Entity
-  ? T
-  : T extends (infer M)[]
-  ? M extends Entity
-  ? M
-  : never
+  : [DataTypeOf<M>]
   : never
 
 /**
- * 实体构造函数，即类本身
+ * 构造函数，即类本身
  */
 export type Constructor<T = object> = {
   new(...args: any): T
@@ -238,53 +243,32 @@ export type EntityType = Constructor<Entity>
 export type ListType<T extends ScalarType | EntityType = ScalarType | EntityType> = [T]
 
 /**
- * Schema的数据类型
+ * Metadata中的数据类型
  */
 export type DataType = ScalarType | EntityType | ListType | JSON
 
-export type DataTypeToTsType<T> = T extends String
-  ? string
-  : T extends JSON
-  ? object
-  : T extends NumberConstructor
-  ? number
-  : T extends BooleanConstructor
-  ? boolean
-  : T extends ListType<infer M>
-  ? DataTypeToTsType<M>[]
-  : T extends BigIntConstructor
-  ? bigint
-  : T extends EntityType
-  ? Entity
-  : T extends DateConstructor | typeof Buffer | typeof ArrayBuffer | typeof SharedArrayBuffer
-  ? T
-  : never
+// export type DataTypeToTsType<T> = T extends String
+//   ? string
+//   : T extends JSON
+//   ? object
+//   : T extends NumberConstructor
+//   ? number
+//   : T extends BooleanConstructor
+//   ? boolean
+//   : T extends ListType<infer M>
+//   ? DataTypeToTsType<M>[]
+//   : T extends BigIntConstructor
+//   ? bigint
+//   : T extends EntityType
+//   ? Entity
+//   : T extends DateConstructor | typeof Buffer | typeof ArrayBuffer | typeof SharedArrayBuffer
+//   ? T
+//   : never
 
 /**
- * 解释值的类型
+ * 数据库标准类型定义
  */
-export function parseValueType(value: Scalar): DbType {
-  if (value === null || value === undefined)
-    throw new Error('Do not parse DbType from null or undefined')
-  switch (value.constructor) {
-    case String:
-      return type.string(0)
-    case Number:
-      return type.int32
-    case Date:
-      return type.datetime
-    case Boolean:
-      return type.boolean
-    case Buffer:
-    case ArrayBuffer:
-    case SharedArrayBuffer:
-      return type.binary(0)
-    default:
-      throw new Error('Invalid value.')
-  }
-}
-
-export const type = {
+export const DbType = {
   int8: {
     name: 'INT8'
   } as INT8,
@@ -329,14 +313,13 @@ export const type = {
     name: 'UUID'
   } as UUID,
   object: (<T extends object = any>(): OBJECT<T> => {
-    return {
-      name: 'OBJECT'
-    }
+    return DEFAULT_OBJECT;
   }),
-  list<T extends DbType>(type: T): LIST<T> {
+  array<T extends DbType>(type: T): ARRAY<T> {
     return {
-      name: 'LIST',
+      name: 'ARRAY',
       type
     }
-  }
+  },
+  MAX: 0
 }

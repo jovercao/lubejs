@@ -21,7 +21,6 @@ import {
   WhereObject,
   Field,
   FieldsOf,
-  RowObject,
   Name,
   Procedure,
   Table,
@@ -40,7 +39,7 @@ import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
 import { Queryable } from './queryable'
 import { and, doc, or } from './builder'
-import { Scalar } from './types'
+import { RowObject, Scalar } from './types'
 
 export interface Command {
   sql: string
@@ -634,11 +633,5 @@ export class Executor {
     // }
     await this.update(t, updateds, keyFields)
     return addeds.length + updateds.length
-  }
-
-  queryable<T extends RowObject = any> (
-    table: Table<T, string> | Name<string>
-  ): Queryable<T> {
-    return new Queryable(this, table as Rowset<T>)
   }
 }

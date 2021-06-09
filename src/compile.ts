@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as assert from 'assert'
+import * as assert from "assert";
 
 import {
   AST,
@@ -42,16 +42,18 @@ import {
   Rowset,
   Star,
   Statement,
-  ConvertOperation,
+  // ConvertOperation,
   ParenthesesExpression,
   ValuedSelect,
   TableVariant,
-  IdentityValue
-} from './ast'
-import { PARAMETER_DIRECTION } from './constants'
-import { Command } from './execute'
+  // IdentityValue,
+  StandardOperation,
+} from "./ast";
+import { PARAMETER_DIRECTION } from "./constants";
+import { Command } from "./execute";
+import * as std from "./std";
 
-import { DbType, Scalar, type } from './types'
+import { DbType, Scalar } from "./types";
 
 import {
   dateToString,
@@ -67,7 +69,6 @@ import {
   isColumn,
   isCondition,
   isLiteral,
-  isConvertOperation,
   isDeclare,
   isDelete,
   isDocument,
@@ -92,8 +93,14 @@ import {
   isUnaryOperation,
   isUpdate,
   isValuedSelect,
-  isVariant
-} from './util'
+  isVariant,
+  isStandardExpression,
+} from "./util";
+
+/**
+ * 标准操作转换器
+ */
+export type StandardTranslation = typeof std;
 
 /**
  * 编译选项
@@ -103,45 +110,45 @@ export interface CompileOptions {
    * 是否启用严格模式，默认启用
    * 如果为false，则生成的SQL标识不会被[]或""包括
    */
-  strict?: boolean
+  strict?: boolean;
   /**
    * 标识符引用，左
    */
-  quotedLeft?: string
+  quotedLeft?: string;
   /**
    * 标识符引用，右
    */
-  quotedRight?: string
+  quotedRight?: string;
 
   /**
    * 参数前缀
    */
-  parameterPrefix?: string
+  parameterPrefix?: string;
 
   /**
    * 变量前缀
    */
-  variantPrefix?: string
+  variantPrefix?: string;
 
   /**
    * 返回参数名称
    */
-  returnParameterName?: string
+  returnParameterName?: string;
 
   /**
    * 集合别名连接词，默认为 'AS'
    */
-  setsAliasJoinWith?: string
+  setsAliasJoinWith?: string;
 
   /**
    * 输出参数尾词，默认为 'OUT'
    */
-  parameterOutWord?: string
+  parameterOutWord?: string;
 
   /**
    * 字段别名连接字符器，默认为 'AS'
    */
-  fieldAliasJoinWith?: string
+  fieldAliasJoinWith?: string;
 }
 
 const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
@@ -159,62 +166,78 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
   /**
    * 参数前缀
    */
-  parameterPrefix: '@',
+  parameterPrefix: "@",
 
   /**
    * 变量前缀
    */
-  variantPrefix: '@',
+  variantPrefix: "@",
   /**
    * 返回参数名称
    */
-  returnParameterName: '__RETURN_VALUE__'
-}
+  returnParameterName: "__RETURN_VALUE__",
+};
 
 /**
  * AST到SQL的编译器基类，包含大部分标准实现
  */
 export abstract class Compiler {
-  options: CompileOptions
+  options: CompileOptions;
 
-  constructor (options?: CompileOptions) {
-    this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options)
+  /**
+   * 必须实现标准转译器
+   */
+  abstract get translator(): StandardTranslation;
+
+  constructor(options?: CompileOptions) {
+    this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  protected compileName (name: Name<string>, buildIn = false): string {
+  protected compileName(name: Name<string>, buildIn = false): string {
     if (Array.isArray(name)) {
       return name
         .map((n, index) => {
           if (index < name.length - 1) {
-            return this.quoted(n)
+            return this.quoted(n);
           }
-          return buildIn ? n : this.quoted(n)
+          return buildIn ? n : this.quoted(n);
         })
-        .join('.')
+        .join(".");
     }
-    return buildIn ? name : this.quoted(name)
+    return buildIn ? name : this.quoted(name);
   }
 
-  protected abstract compileType (type: DbType): string
+  protected abstract compileType(type: DbType): string;
+
+  /**
+   *
+   * @param operation 将标准操作编译成AST
+   */
+  protected translationStandardExpression<T extends Scalar>(
+    operation: StandardOperation<T>
+  ): Expression<T> {
+    const transFn = Reflect.get(this.translator, operation.$kind);
+    return transFn.call(this.translator, ...operation.$datas);
+  }
 
   /**
    * 编译Insert语句中的字段，取掉表别名
    * @param field 字段
    */
-  protected compileInsertField (field: Field<Scalar, string>): string {
-    if (typeof field.$name === 'string') return this.quoted(field.$name)
-    return this.quoted(field.$name[field.$name.length - 1])
+  protected compileInsertField(field: Field<Scalar, string>): string {
+    if (typeof field.$name === "string") return this.quoted(field.$name);
+    return this.quoted(field.$name[field.$name.length - 1]);
   }
 
   /**
    * 标识符转换，避免关键字被冲突问题
    * @param {string} name 标识符
    */
-  protected quoted (name: string): string {
+  protected quoted(name: string): string {
     if (this.options.strict) {
-      return this.options.quotedLeft + name + this.options.quotedRight
+      return this.options.quotedLeft + name + this.options.quotedRight;
     }
-    return name
+    return name;
   }
 
   /**
@@ -222,120 +245,120 @@ export abstract class Compiler {
    * @param {array} values 参数列表
    * @param {any} value 参数值
    */
-  protected compileParameter (
+  protected compileParameter(
     param: Parameter<Scalar, string>,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    params.add(param)
-    return this.stringifyParameterName(param)
+    params.add(param);
+    return this.stringifyParameterName(param);
   }
 
-  protected stringifyParameterName (p: Parameter<Scalar, string>): string {
-    return this.options.parameterPrefix + (p.$name || '')
+  protected stringifyParameterName(p: Parameter<Scalar, string>): string {
+    return this.options.parameterPrefix + (p.$name || "");
   }
 
-  protected stringifyVariantName (variant: Variant | TableVariant): string {
-    return this.options.variantPrefix + variant.$name
+  protected stringifyVariantName(variant: Variant | TableVariant): string {
+    return this.options.variantPrefix + variant.$name;
   }
 
-  protected stringifyIdentifier (identifier: Identifier<string>): string {
-    return this.compileName(identifier.$name, identifier.$builtin)
+  protected stringifyIdentifier(identifier: Identifier<string>): string {
+    return this.compileName(identifier.$name, identifier.$builtin);
   }
 
   /**
    * 通过模板参数创建一个SQL命令
    */
   makeCommand(arr: TemplateStringsArray, paramValues: any[]): Command {
-    const params: Parameter[] = []
+    const params: Parameter[] = [];
     const sql = arr.reduce((text, current, index) => {
-      text += current
-      const name = '__p__' + index
-      const param = Parameter.input(name, paramValues[index + 1])
-      text += this.stringifyParameterName(param)
-      params.push(param)
-      return text
-    }, '')
+      text += current;
+      const name = "__p__" + index;
+      const param = Parameter.input(name, paramValues[index + 1]);
+      text += this.stringifyParameterName(param);
+      params.push(param);
+      return text;
+    }, "");
     return {
       sql,
       params,
-    }
+    };
   }
 
-  protected compileVariant (variant: Variant): string {
-    return this.stringifyVariantName(variant)
+  protected compileVariant(variant: Variant): string {
+    return this.stringifyVariantName(variant);
   }
 
   /**
    * 编译日期常量
    */
-  protected compileDate (date: Date): string {
-    return `'${dateToString(date)}'`
+  protected compileDate(date: Date): string {
+    return `'${dateToString(date)}'`;
   }
 
   /**
    * 编译Boolean常量
    */
-  protected compileBoolean (value: boolean): string {
-    return value ? '1' : '0'
+  protected compileBoolean(value: boolean): string {
+    return value ? "1" : "0";
   }
 
   /**
    * 编译字符串常量
    */
-  protected compileString (value: string): string {
-    return `'${value.replace(/'/g, "''")}'`
+  protected compileString(value: string): string {
+    return `'${value.replace(/'/g, "''")}'`;
   }
 
   /**
    * 编译常量
    */
-  protected compileLiteral (constant: Literal<Scalar>): string {
-    const value = constant.$value
+  protected compileLiteral(constant: Literal<Scalar>): string {
+    const value = constant.$value;
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
-      return 'NULL'
+      return "NULL";
     }
 
-    if (typeof value === 'string') {
-      return this.compileString(value)
+    if (typeof value === "string") {
+      return this.compileString(value);
     }
 
-    if (typeof value === 'number' || typeof value === 'bigint') {
-      return value.toString(10)
+    if (typeof value === "number" || typeof value === "bigint") {
+      return value.toString(10);
     }
 
-    if (typeof value === 'boolean') {
-      return this.compileBoolean(value)
+    if (typeof value === "boolean") {
+      return this.compileBoolean(value);
     }
 
     if (value instanceof Date) {
-      return this.compileDate(value)
+      return this.compileDate(value);
     }
     if (isBinary(value)) {
-      return '0x' + Buffer.from(value).toString('hex')
+      return "0x" + Buffer.from(value).toString("hex");
     }
-    console.debug('unsupport constant value type:', value)
-    throw new Error('unsupport constant value type:' + typeof value)
+    console.debug("unsupport constant value type:", value);
+    throw new Error("unsupport constant value type:" + typeof value);
   }
 
   /**
    * 将AST编译成一个可供执行的命令
    */
-  public compile (ast: Statement | Document): Command {
-    const params = new Set<Parameter<Scalar, string>>()
-    let sql: string
+  public compile(ast: Statement | Document): Command {
+    const params = new Set<Parameter<Scalar, string>>();
+    let sql: string;
     if (isDocument(ast)) {
-      sql = this.compileDocument(ast, params)
+      sql = this.compileDocument(ast, params);
     } else {
-      sql = this.compileStatement(ast, params)
+      sql = this.compileStatement(ast, params);
     }
     return {
       sql,
-      params: Array.from(params)
-    }
+      params: Array.from(params),
+    };
   }
 
-  protected compileStatement (
+  protected compileStatement(
     /**
      * AST
      */
@@ -350,136 +373,136 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     if (isSelect(statement)) {
-      return this.compileSelect(statement, params, parent)
+      return this.compileSelect(statement, params, parent);
     }
 
     if (isUpdate(statement)) {
-      return this.compileUpdate(statement, params, parent)
+      return this.compileUpdate(statement, params, parent);
     }
 
     if (isInsert(statement)) {
-      return this.compileInsert(statement, params, parent)
+      return this.compileInsert(statement, params, parent);
     }
 
     if (isDelete(statement)) {
-      return this.compileDelete(statement, params, parent)
+      return this.compileDelete(statement, params, parent);
     }
 
     if (isDeclare(statement)) {
-      return this.compileDeclare(statement)
+      return this.compileDeclare(statement);
     }
 
     if (isExecute(statement)) {
-      return this.compileExecute(statement, params, parent)
+      return this.compileExecute(statement, params, parent);
     }
 
     if (isAssignment(statement)) {
-      return this.compileAssignment(statement, params, parent)
+      return this.compileAssignment(statement, params, parent);
     }
 
     if (isRaw(statement)) {
-      return statement.$sql
+      return statement.$sql;
     }
 
-    invalidAST('statement', statement)
+    invalidAST("statement", statement);
   }
 
-  protected compileParenthesesExpression (
+  protected compileParenthesesExpression(
     expr: ParenthesesExpression<Scalar>,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    return `(${this.compileExpression(expr.$inner, params, expr)})`
+    return `(${this.compileExpression(expr.$inner, params, expr)})`;
   }
 
   /**
    * SELECT 语句 当值使用
    */
-  protected compileValuedSelect (
+  protected compileValuedSelect(
     expr: ValuedSelect<Scalar>,
     params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
-    return `(${this.compileSelect(expr.$select, params, parent)})`
+    return `(${this.compileSelect(expr.$select, params, parent)})`;
   }
 
-  protected compileStar (star: Star): string {
+  protected compileStar(star: Star): string {
     if (star.$parent) {
-      return this.compileName(star.$parent) + '.*'
+      return this.compileName(star.$parent) + ".*";
     }
-    return '*'
+    return "*";
   }
 
-  protected compileOperation (
+  protected compileOperation(
     operation: Operation,
     params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
     if (isUnaryOperation(operation)) {
-      return this.compileUnaryOperation(operation, params, parent)
+      return this.compileUnaryOperation(operation, params, parent);
     }
 
     if (isBinaryOperation(operation)) {
-      return this.compileBinaryOperation(operation, params)
+      return this.compileBinaryOperation(operation, params);
     }
 
-    if (isConvertOperation(operation)) {
-      return this.compileConvert(
-        operation as ConvertOperation<Scalar>,
-        params,
-        parent
-      )
-    }
-    invalidAST('operation', operation)
+    // if (isConvertOperation(operation)) {
+    //   return this.compileConvert(
+    //     operation as ConvertOperation<Scalar>,
+    //     params,
+    //     parent
+    //   )
+    // }
+    invalidAST("operation", operation);
   }
 
-  abstract compileConvert (
-    ast: ConvertOperation<Scalar>,
-    params: Set<Parameter<Scalar, string>>,
-    parent: AST
-  ): string
+  // abstract compileConvert (
+  //   ast: ConvertOperation<Scalar>,
+  //   params: Set<Parameter<Scalar, string>>,
+  //   parent: AST
+  // ): string
 
-  protected compileUnaryOperation (
+  protected compileUnaryOperation(
     opt: UnaryOperation<Scalar>,
     params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
-    return opt.$operator + this.compileExpression(opt.$value, params, parent)
+    return opt.$operator + this.compileExpression(opt.$value, params, parent);
   }
 
-  protected compileRowsetName (rowset: Rowset | Raw): string {
-    if (isRaw(rowset)) return rowset.$sql
+  protected compileRowsetName(rowset: Rowset | Raw): string {
+    if (isRaw(rowset)) return rowset.$sql;
     if (rowset.$alias) {
-      return this.stringifyIdentifier(rowset.$alias)
+      return this.stringifyIdentifier(rowset.$alias);
     }
     if (isIdentifier(rowset)) {
-      return this.stringifyIdentifier(rowset)
+      return this.stringifyIdentifier(rowset);
     }
-    throw new Error('Rowset must have alias or name.')
+    throw new Error("Rowset must have alias or name.");
   }
 
-  protected compileNamedSelect (
+  protected compileNamedSelect(
     rowset: NamedSelect,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      '(' +
+      "(" +
       this.compileSelect(rowset.$select, params, rowset) +
-      ') AS ' +
+      ") AS " +
       this.compileRowsetName(rowset)
-    )
+    );
   }
 
-  protected compileTableInvoke (): string {
-    throw new Error('Method not implemented.')
+  protected compileTableInvoke(): string {
+    throw new Error("Method not implemented.");
   }
   // compileNamedArgument(arg0: NamedArgument<JsConstant, string>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
   //   throw new Error("Method not implemented.");
   // }
-  protected compileBuildIn (buildIn: BuiltIn<string>): string {
-    return buildIn.$name
+  protected compileBuildIn(buildIn: BuiltIn<string>): string {
+    return buildIn.$name;
   }
 
-  protected compileColumn (
+  protected compileColumn(
     column: SelectColumn<Scalar, string> | Star | Expression<Scalar>,
     params: Set<Parameter<Scalar, string>>,
     parent: AST
@@ -489,52 +512,52 @@ export abstract class Compiler {
         column.$expr,
         params,
         column
-      )} AS ${this.quoted(column.$name)}`
+      )} AS ${this.quoted(column.$name)}`;
     }
     if (isStar(column)) {
-      return this.compileStar(column)
+      return this.compileStar(column);
     }
-    return this.compileExpression(column, params, parent)
+    return this.compileExpression(column, params, parent);
   }
 
-  protected compileWithSelect (
+  protected compileWithSelect(
     item: NamedSelect<any, string> | Raw,
     params: Set<Parameter<Scalar, string>>,
     parent: AST
   ): string {
-    if (isRaw(item)) return item.$sql
+    if (isRaw(item)) return item.$sql;
     return `${this.quoted(item.$alias.$name)} AS (${this.compileSelect(
       item.$select,
       params,
       parent
-    )})`
+    )})`;
   }
 
-  protected compileWith (
+  protected compileWith(
     withs: With | Raw,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    if (isRaw(withs)) return withs.$sql
+    if (isRaw(withs)) return withs.$sql;
     return (
-      'WITH ' +
+      "WITH " +
       withs.$rowsets
-        .map(item => this.compileWithSelect(item, params, withs))
-        .join(', ')
-    )
+        .map((item) => this.compileWithSelect(item, params, withs))
+        .join(", ")
+    );
   }
 
-  protected abstract compileIdentityValue(ast: IdentityValue, params: Set<Parameter>): string;
+  // protected abstract compileIdentityValue(ast: IdentityValue, params: Set<Parameter>): string;
 
-  protected compileDocument (
+  protected compileDocument(
     doc: Document,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return doc.statements
-      .map(statement => this.compileStatement(statement, params, doc))
-      .join('\n')
+      .map((statement) => this.compileStatement(statement, params, doc))
+      .join("\n");
   }
 
-  protected compileExecute (
+  protected compileExecute(
     exec: Execute,
     params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -542,225 +565,233 @@ export abstract class Compiler {
   ): string {
     const returnParam = Parameter.output(
       this.options.returnParameterName,
-      type.int32
-    )
+      DbType.int32
+    );
     return (
-      'EXECUTE ' +
+      "EXECUTE " +
       this.compileParameter(returnParam, params) +
-      ' = ' +
+      " = " +
       this.stringifyIdentifier(exec.$proc) +
-      ' ' +
+      " " +
       this.compileExecuteArgumentList(exec.$args, params, exec)
-    )
+    );
   }
 
-  protected compileInvokeArgumentList (
+  protected compileInvokeArgumentList(
     args: Expression<Scalar>[],
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
-      .map(expr => this.compileExpression(expr, params, parent))
-      .join(', ')
+      .map((expr) => this.compileExpression(expr, params, parent))
+      .join(", ");
   }
 
-  protected compileExecuteArgumentList (
+  protected compileExecuteArgumentList(
     args: Expression<Scalar>[],
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
-      .map(ast => {
-        let sql = this.compileExpression(ast, params, parent)
+      .map((ast) => {
+        let sql = this.compileExpression(ast, params, parent);
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
             PARAMETER_DIRECTION.OUTPUT
         ) {
-          sql += ' OUTPUT'
+          sql += " OUTPUT";
         }
-        return sql
+        return sql;
       })
-      .join(', ')
+      .join(", ");
   }
 
-  protected compileUnion (
+  protected compileUnion(
     union: Union,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      'UNION ' +
-      (union.$all ? 'ALL ' : '') +
+      "UNION " +
+      (union.$all ? "ALL " : "") +
       (isSelect(union.$select)
         ? this.compileSelect(union.$select, params, union)
         : this.compileRowsetName(union.$select))
-    )
+    );
   }
 
-  protected compileCase (
+  protected compileCase(
     caseExpr: Case<any>,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    let fragment = 'CASE'
+    let fragment = "CASE";
     if (caseExpr.$expr)
-      fragment += ' ' + this.compileExpression(caseExpr.$expr, params, parent)
+      fragment += " " + this.compileExpression(caseExpr.$expr, params, parent);
     fragment +=
-      ' ' +
-      caseExpr.$whens.map(when => this.compileWhen(when, params)).join(' ')
+      " " +
+      caseExpr.$whens.map((when) => this.compileWhen(when, params)).join(" ");
     if (caseExpr.$default)
       fragment +=
-        ' ELSE ' + this.compileExpression(caseExpr.$default, params, caseExpr)
-    fragment += ' END'
-    return fragment
+        " ELSE " + this.compileExpression(caseExpr.$default, params, caseExpr);
+    fragment += " END";
+    return fragment;
   }
 
-  protected compileWhen (
+  protected compileWhen(
     when: When<any> | Raw,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    if (isRaw(when)) return when.$sql
+    if (isRaw(when)) return when.$sql;
     return (
-      'WHEN ' +
+      "WHEN " +
       (isCondition(when.$expr)
         ? this.compileCondition(when.$expr, params, when)
         : this.compileExpression(when.$expr, params, when)) +
-      ' THEN ' +
+      " THEN " +
       this.compileExpression(when.$value, params, when)
-    )
+    );
   }
 
-  protected compileParenthesesCondition (
+  protected compileParenthesesCondition(
     expr: ParenthesesCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    return '(' + this.compileCondition(expr.$inner, params, expr) + ')'
+    return "(" + this.compileCondition(expr.$inner, params, expr) + ")";
   }
 
-  protected compileBinaryLogicCondition (
+  protected compileBinaryLogicCondition(
     expr: BinaryLogicCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileCondition(expr.$left, params, expr) +
-      ' ' +
+      " " +
       expr.$operator +
-      ' ' +
+      " " +
       this.compileCondition(expr.$right, params, expr)
-    )
+    );
   }
 
-  protected compileBinaryCompareCondition (
+  protected compileBinaryCompareCondition(
     expr: BinaryCompareCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
-      ' ' +
+      " " +
       expr.$operator +
-      ' ' +
+      " " +
       (Array.isArray(expr.$right)
-        ? '(' +
-          expr.$right.map(p => this.compileExpression(p, params, expr)) +
-          ')'
+        ? "(" +
+          expr.$right.map((p) => this.compileExpression(p, params, expr)) +
+          ")"
         : this.compileExpression(expr.$right, params, expr))
-    )
+    );
   }
 
-  protected compileBinaryOperation (
+  protected compileBinaryOperation(
     expr: BinaryOperation<Scalar>,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
-      ' ' +
+      " " +
       expr.$operator +
-      ' ' +
+      " " +
       this.compileExpression(expr.$right, params, expr)
-    )
+    );
   }
 
-  protected compileUnaryCompareCondition (
+  protected compileUnaryCompareCondition(
     expr: UnaryCompareCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileExpression(expr.$expr, params, expr) + ' ' + expr.$operator
-    )
+      this.compileExpression(expr.$expr, params, expr) + " " + expr.$operator
+    );
   }
 
-  protected compileExistsCondition (
+  protected compileExistsCondition(
     expr: ExistsCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    return 'EXISTS(' + this.compileSelect(expr.$statement, params, expr) + ')'
+    return "EXISTS(" + this.compileSelect(expr.$statement, params, expr) + ")";
   }
 
-  protected compileUnaryLogicCondition (
+  protected compileUnaryLogicCondition(
     expr: UnaryLogicCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
       expr.$operator +
-      ' ' +
+      " " +
       this.compileCondition(expr.$condition, params, expr)
-    )
+    );
   }
 
-  protected compileExpression (
+  protected compileExpression(
     expr: Expression<Scalar> | Raw,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isRaw(expr)) {
-      return expr.$sql
+      return expr.$sql;
+    }
+    // 编译标准操作
+    if (isStandardExpression(expr)) {
+      return this.compileExpression(
+        this.translationStandardExpression(expr),
+        params,
+        parent
+      );
     }
     if (isLiteral(expr)) {
-      return this.compileLiteral(expr)
+      return this.compileLiteral(expr);
     }
 
     if (isOperation(expr)) {
-      return this.compileOperation(expr, params, parent)
+      return this.compileOperation(expr, params, parent);
     }
 
     if (isField(expr)) {
-      return this.stringifyIdentifier(expr)
+      return this.stringifyIdentifier(expr);
     }
 
     if (isBracket(expr)) {
-      return this.compileParenthesesExpression(expr, params)
+      return this.compileParenthesesExpression(expr, params);
     }
 
     if (isValuedSelect(expr)) {
-      return this.compileValuedSelect(expr, params, parent)
+      return this.compileValuedSelect(expr, params, parent);
     }
 
     if (isVariant(expr)) {
-      return this.stringifyVariantName(expr)
+      return this.stringifyVariantName(expr);
     }
 
     if (isParameter(expr)) {
-      return this.compileParameter(expr, params)
+      return this.compileParameter(expr, params);
     }
 
     if (isScalarFuncInvoke(expr)) {
-      return this.compileScalarInvoke(expr, params)
+      return this.compileScalarInvoke(expr, params);
     }
 
     if (isCase(expr)) {
-      return this.compileCase(expr, params, parent)
+      return this.compileCase(expr, params, parent);
     }
-    invalidAST('expression', expr)
+    invalidAST("expression", expr);
   }
 
-  protected compileScalarInvokeArgs (
+  protected compileScalarInvokeArgs(
     arg: Expression | Star | BuiltIn,
     params: Set<Parameter>,
     parent: AST
   ): string {
-    if (isStar(arg)) return this.compileStar(arg)
-    if (isBuiltIn(arg)) return this.compileBuildIn(arg)
-    return this.compileExpression(arg, params, parent)
+    if (isStar(arg)) return this.compileStar(arg);
+    if (isBuiltIn(arg)) return this.compileBuildIn(arg);
+    return this.compileExpression(arg, params, parent);
   }
   /**
    * 函数调用
@@ -769,40 +800,40 @@ export abstract class Compiler {
    * @returns
    * @memberof Executor
    */
-  protected compileScalarInvoke (
+  protected compileScalarInvoke(
     invoke: ScalarFuncInvoke<Scalar>,
     params: Set<Parameter<Scalar, string>>
   ): string {
     return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
-      .map(v => this.compileScalarInvokeArgs(v, params, invoke))
-      .join(', ')})`
+      .map((v) => this.compileScalarInvokeArgs(v, params, invoke))
+      .join(", ")})`;
   }
 
-  protected compileJoin (
+  protected compileJoin(
     join: Join | Raw,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    if (isRaw(join)) return join.$sql
+    if (isRaw(join)) return join.$sql;
     return (
-      (join.$left ? 'LEFT ' : '') +
-      'JOIN ' +
+      (join.$left ? "LEFT " : "") +
+      "JOIN " +
       this.compileFrom(join.$table, params, join) +
-      ' ON ' +
+      " ON " +
       this.compileCondition(join.$on, params, join)
-    )
+    );
   }
 
-  protected compileSort (
+  protected compileSort(
     sort: SortInfo | Raw,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    if (isRaw(sort)) return sort.$sql
-    let sql = this.compileExpression(sort.$expr, params, sort)
-    if (sort.$direction) sql += ' ' + sort.$direction
-    return sql
+    if (isRaw(sort)) return sort.$sql;
+    let sql = this.compileExpression(sort.$expr, params, sort);
+    if (sort.$direction) sql += " " + sort.$direction;
+    return sql;
   }
 
-  protected compileSelect (
+  protected compileSelect(
     select: Select,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -820,278 +851,293 @@ export abstract class Compiler {
       $having,
       $offset,
       $limit,
-      $distinct
-    } = select
-    let sql = ''
+      $distinct,
+    } = select;
+    let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params)
+      sql += this.compileWith($with, params);
     }
-    sql += 'SELECT '
+    sql += "SELECT ";
     if ($distinct) {
-      sql += 'DISTINCT '
+      sql += "DISTINCT ";
     }
-    if (typeof $top === 'number') {
-      sql += `TOP ${$top} `
+    if (typeof $top === "number") {
+      sql += `TOP ${$top} `;
     }
     sql += $columns
-      .map(col => this.compileColumn(col, params, select))
-      .join(', ')
+      .map((col) => this.compileColumn(col, params, select))
+      .join(", ");
     if ($froms) {
       sql +=
-        ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, select)).join(', ')
+        " FROM " +
+        $froms
+          .map((table) => this.compileFrom(table, params, select))
+          .join(", ");
     }
     if ($joins && $joins.length > 0) {
-      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ')
+      sql +=
+        " " + $joins.map((join) => this.compileJoin(join, params)).join(" ");
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, parent)
+      sql += " WHERE " + this.compileCondition($where, params, parent);
     }
     if ($groups && $groups.length) {
       sql +=
-        ' GROUP BY ' +
-        $groups.map(p => this.compileExpression(p, params, parent)).join(', ')
+        " GROUP BY " +
+        $groups
+          .map((p) => this.compileExpression(p, params, parent))
+          .join(", ");
     }
     if ($having) {
-      sql += ' HAVING ' + this.compileCondition($having, params, parent)
+      sql += " HAVING " + this.compileCondition($having, params, parent);
     }
     if ($sorts && $sorts.length > 0) {
       sql +=
-        ' ORDER BY ' +
-        $sorts.map(sort => this.compileSort(sort, params)).join(', ')
+        " ORDER BY " +
+        $sorts.map((sort) => this.compileSort(sort, params)).join(", ");
     }
-    sql += this.compileOffsetLimit(select, params)
+    sql += this.compileOffsetLimit(select, params);
     if ($union) {
-      sql += ' ' + this.compileUnion($union, params)
+      sql += " " + this.compileUnion($union, params);
     }
-    return sql
+    return sql;
   }
 
-  protected compileOffsetLimit(select: Select<any>, params: Set<Parameter<Scalar, string>>): string {
-    let sql = ''
-    if (typeof select.$offset === 'number') {
-      sql += ` OFFSET ${select.$offset || 0}`
+  protected compileOffsetLimit(
+    select: Select<any>,
+    params: Set<Parameter<Scalar, string>>
+  ): string {
+    let sql = "";
+    if (typeof select.$offset === "number") {
+      sql += ` OFFSET ${select.$offset || 0}`;
     }
-    if (typeof select.$limit === 'number') {
-      sql += ` LIMIT ${select.$limit}`
+    if (typeof select.$limit === "number") {
+      sql += ` LIMIT ${select.$limit}`;
     }
-    return sql
+    return sql;
   }
 
-  protected compileFrom (
+  protected compileFrom(
     table: Rowset<any> | Raw,
     params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
   ): string {
     if (isRaw(table)) {
-      return table.$sql
+      return table.$sql;
     }
     if (isTable(table)) {
-      let sql = ''
-      sql += this.stringifyIdentifier(table)
-      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias)
-      return sql
+      let sql = "";
+      sql += this.stringifyIdentifier(table);
+      if (table.$alias) sql += " AS " + this.stringifyIdentifier(table.$alias);
+      return sql;
     }
     if (isTableVariant(table)) {
-      let sql = ''
-      sql += this.stringifyVariantName(table)
-      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias)
-      return sql
+      let sql = "";
+      sql += this.stringifyVariantName(table);
+      if (table.$alias) sql += " AS " + this.stringifyIdentifier(table.$alias);
+      return sql;
     }
     // 如果是命名行集
     if (isNamedSelect(table)) {
       if (table.$inWith) {
-        return this.stringifyIdentifier(table.$alias)
+        return this.stringifyIdentifier(table.$alias);
       } else {
-        return this.compileNamedSelect(table, params)
+        return this.compileNamedSelect(table, params);
       }
     }
     if (isTableFuncInvoke(table)) {
       return (
         this.compileTableInvoke() +
-        ' AS ' +
+        " AS " +
         this.stringifyIdentifier(table.$alias)
-      )
+      );
     }
-    return this.compileRowsetName(table)
+    return this.compileRowsetName(table);
   }
 
-  protected compileCondition (
+  protected compileCondition(
     condition: Condition | Raw,
     params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent: AST
   ): string {
-    if (isRaw(condition)) return condition.$sql
+    if (isRaw(condition)) return condition.$sql;
     if (isExistsCondition(condition)) {
-      return this.compileExistsCondition(condition as ExistsCondition, params)
+      return this.compileExistsCondition(condition as ExistsCondition, params);
     }
     if (isGroupCondition(condition)) {
       return this.compileParenthesesCondition(
         condition as ParenthesesCondition,
         params
-      )
+      );
     }
     if (isBinaryCompareCondition(condition)) {
       return this.compileBinaryCompareCondition(
         condition as BinaryCompareCondition,
         params
-      )
+      );
     }
     if (isUnaryCompareCondition(condition)) {
       return this.compileUnaryCompareCondition(
         condition as UnaryCompareCondition,
         params
-      )
+      );
     }
     if (isBinaryLogicCondition(condition)) {
       return this.compileBinaryLogicCondition(
         condition as BinaryLogicCondition,
         params
-      )
+      );
     }
     if (isUnaryLogicCondition(condition)) {
       return this.compileUnaryLogicCondition(
         condition as UnaryLogicCondition,
         params
-      )
+      );
     }
-    invalidAST('condition', condition)
+    invalidAST("condition", condition);
   }
 
-  protected compileInsert (
+  protected compileInsert(
     insert: Insert,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    const { $table, $values, $fields, $with } = insert
-    let sql = ''
+    const { $table, $values, $fields, $with } = insert;
+    let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params)
+      sql += this.compileWith($with, params);
     }
-    sql += 'INSERT INTO '
+    sql += "INSERT INTO ";
     if ($table.$alias) {
-      throw new Error('Insert statements do not allow aliases on table.')
+      throw new Error("Insert statements do not allow aliases on table.");
     }
-    sql += this.compileRowsetName($table)
+    sql += this.compileRowsetName($table);
 
     if ($fields) {
       sql +=
-        '(' +
-        $fields.map(field => this.compileInsertField(field)).join(', ') +
-        ')'
+        "(" +
+        $fields.map((field) => this.compileInsertField(field)).join(", ") +
+        ")";
     }
 
     if (Array.isArray($values)) {
-      sql += ' VALUES'
+      sql += " VALUES";
       sql += $values
         .map(
-          row =>
-            '(' +
+          (row) =>
+            "(" +
             row
-              .map(expr => this.compileExpression(expr, params, parent))
-              .join(', ') +
-            ')'
+              .map((expr) => this.compileExpression(expr, params, parent))
+              .join(", ") +
+            ")"
         )
-        .join(', ')
+        .join(", ");
     } else {
-      sql += ' ' + this.compileSelect($values, params, parent)
+      sql += " " + this.compileSelect($values, params, parent);
     }
 
-    return sql
+    return sql;
   }
 
-  protected compileAssignment (
+  protected compileAssignment(
     assign: Assignment<Scalar>,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    const { left, right } = assign
+    const { left, right } = assign;
     return (
       this.compileExpression(left, params, parent) +
-      ' = ' +
+      " = " +
       this.compileExpression(right, params, parent)
-    )
+    );
   }
 
-  protected compileDeclare (declare: Declare): string {
+  protected compileDeclare(declare: Declare): string {
     return (
-      'DECLARE ' +
+      "DECLARE " +
       declare.$declares
         .map(
-          varDec =>
+          (varDec) =>
             this.stringifyVariantName(varDec.$name) +
-            ' ' +
+            " " +
             this.compileType(varDec.$dataType)
         )
-        .join(', ') +
-      ';'
-    )
+        .join(", ") +
+      ";"
+    );
   }
 
-  protected compileUpdate (
+  protected compileUpdate(
     update: Update,
     params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
-    const { $table, $sets, $with, $where, $froms, $joins } = update
-    assert($table, 'table is required by update statement')
-    assert($sets, 'set statement un declared')
+    const { $table, $sets, $with, $where, $froms, $joins } = update;
+    assert($table, "table is required by update statement");
+    assert($sets, "set statement un declared");
 
-    let sql = ''
+    let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params)
+      sql += this.compileWith($with, params);
     }
-    sql += 'UPDATE '
-    sql += this.compileRowsetName($table)
+    sql += "UPDATE ";
+    sql += this.compileRowsetName($table);
 
     sql +=
-      ' SET ' +
+      " SET " +
       $sets
-        .map(assign => this.compileAssignment(assign, params, update))
-        .join(', ')
+        .map((assign) => this.compileAssignment(assign, params, update))
+        .join(", ");
 
     if ($froms && $froms.length > 0) {
       sql +=
-        ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, update)).join(', ')
+        " FROM " +
+        $froms
+          .map((table) => this.compileFrom(table, params, update))
+          .join(", ");
     }
 
     if ($joins && $joins.length > 0) {
-      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ')
+      sql +=
+        " " + $joins.map((join) => this.compileJoin(join, params)).join(" ");
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, update)
+      sql += " WHERE " + this.compileCondition($where, params, update);
     }
-    return sql
+    return sql;
   }
 
-  protected compileDelete (
+  protected compileDelete(
     del: Delete,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    const { $table, $froms, $joins, $where, $with } = del
-    let sql = ''
+    const { $table, $froms, $joins, $where, $with } = del;
+    let sql = "";
     if ($with) {
-      sql += this.compileWith($with, params)
+      sql += this.compileWith($with, params);
     }
-    sql += 'DELETE '
-    if ($table) sql += this.compileRowsetName($table)
+    sql += "DELETE ";
+    if ($table) sql += this.compileRowsetName($table);
     if ($froms && $froms.length > 0) {
       sql +=
-        ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, parent)).join(', ')
+        " FROM " +
+        $froms
+          .map((table) => this.compileFrom(table, params, parent))
+          .join(", ");
     }
 
     if ($joins) {
-      sql += $joins.map(join => this.compileJoin(join, params)).join(' ')
+      sql += $joins.map((join) => this.compileJoin(join, params)).join(" ");
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, parent)
+      sql += " WHERE " + this.compileCondition($where, params, parent);
     }
-    return sql
+    return sql;
   }
 }
+
+// TODO 待实现 std, StandardOperation 编译

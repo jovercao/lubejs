@@ -18,13 +18,11 @@ import {
   Case,
   SelectColumn,
   Literal,
-  ConvertOperation,
   Declare,
   Delete,
   Execute,
   Identifier,
   Insert,
-  RowObject,
   NamedSelect,
   Operation,
   Parameter,
@@ -55,105 +53,116 @@ import {
   ProxiedRowset,
   ProxiedTable,
   CompatibleRowset,
-  FieldsOf
-} from './ast'
+  FieldsOf,
+  ProxiedNamedSelect,
+  StandardOperation,
+} from "./ast";
+
 import {
   CONDITION_KIND,
   IDENTOFIER_KIND,
   OPERATION_KIND,
   $IsProxy,
-  SQL_SYMBOLE
-} from './constants'
-import { EntityMetadata } from './metadata'
-import { Binary, DbType, Scalar, type } from './types'
+  SQL_SYMBOLE,
+} from "./constants";
+
+import {
+  Binary,
+  DbType,
+  EntityType,
+  ListType,
+  RowObject,
+  Scalar,
+  ScalarType,
+} from "./types";
 
 /**
  * 断言
  * @param except 预期结果
  * @param message 错误消息
  */
-export function assert (except: any, message: string): asserts except {
+export function assert(except: any, message: string): asserts except {
   if (!except) {
-    throw new Error(message)
+    throw new Error(message);
   }
 }
 
 /**
  * 返回表达式
  */
-export function ensureExpression<T extends Scalar> (
+export function ensureExpression<T extends Scalar>(
   expr: CompatibleExpression<T>
 ): Expression<T> {
   if (!(expr instanceof AST)) {
-    return Expression.literal(expr)
+    return Expression.literal(expr);
   }
-  return expr
+  return expr;
 }
 
 /**
  * 确保字段类型
  */
-export function ensureField<T extends Scalar, N extends string> (
+export function ensureField<T extends Scalar, N extends string>(
   name: Name<N> | Field<T, N>
 ): Field<T, N> {
   if (!(name instanceof AST)) {
-    return new Field(name)
+    return new Field(name);
   }
-  return name
+  return name;
 }
 
-export function ensureVariant<T extends string, N extends string> (
+export function ensureVariant<T extends string, N extends string>(
   name: N | Variant<T, N>
 ): Variant<T, N> {
-  if (typeof name === 'string') {
-    return new Variant(name)
+  if (typeof name === "string") {
+    return new Variant(name);
   }
-  return name
+  return name;
 }
 
 /**
  * 确保表格类型
  */
-export function ensureRowset<TModel extends RowObject> (
+export function ensureRowset<TModel extends RowObject>(
   name: Name<string> | Table<TModel>
-): Table<TModel>
-export function ensureRowset<TModel extends RowObject> (
+): Table<TModel>;
+export function ensureRowset<TModel extends RowObject>(
   name: Name<string> | Rowset<TModel>
-): Rowset<TModel>
-export function ensureRowset<TModel extends RowObject> (
+): Rowset<TModel>;
+export function ensureRowset<TModel extends RowObject>(
   name: Name<string> | Rowset<TModel> | Table<TModel>
 ): Rowset<TModel> | Table<TModel> {
-  if (name instanceof AST) return name
-  return new Table(name)
+  if (name instanceof AST) return name;
+  return new Table(name);
 }
 
-export function ensureProxiedRowset<T extends RowObject> (
+export function ensureProxiedRowset<T extends RowObject>(
   name: Name<string> | Table<T>
-): ProxiedTable<T>
-export function ensureProxiedRowset<T extends RowObject> (
+): ProxiedTable<T>;
+export function ensureProxiedRowset<T extends RowObject>(
   name: Name<string> | Rowset<T>
-): ProxiedRowset<T>
-export function ensureProxiedRowset<T extends RowObject> (
+): ProxiedRowset<T>;
+export function ensureProxiedRowset<T extends RowObject>(
   name: Name<string> | Rowset<T> | Table<T>
 ): ProxiedRowset<T> | ProxiedTable<T> {
   if (isRowset(name)) {
     if (isProxiedRowset(name)) {
-      return name
+      return name;
     }
-    return makeProxiedRowset(name)
+    return makeProxiedRowset(name);
   }
-  const table = ensureRowset<T>(name)
-  return makeProxiedRowset(table)
+  const table = ensureRowset<T>(name);
+  return makeProxiedRowset(table);
 }
 
 /**
  * 确保函数类型
  */
-export function ensureFunction<TName extends string> (
+export function ensureFunction<TName extends string>(
   name: Name<TName> | Func<TName>
 ): Func<TName> {
-  if (name instanceof AST) return name
-  return new Func(name)
+  if (name instanceof AST) return name;
+  return new Func(name);
 }
 
 /**
@@ -163,9 +172,9 @@ export function ensureProcedure<
   R extends Scalar,
   O extends RowObject[] = [],
   N extends string = string
-> (name: Name<N> | Procedure<R, O, N>): Procedure<R, O, N> {
-  if (name instanceof AST) return name
-  return new Procedure(name)
+>(name: Name<N> | Procedure<R, O, N>): Procedure<R, O, N> {
+  if (name instanceof AST) return name;
+  return new Procedure(name);
 }
 
 /**
@@ -173,139 +182,117 @@ export function ensureProcedure<
  * 亦可理解为：转换managodb的查询条件到 ast
  * @param condition 条件表达式
  */
-export function ensureCondition<T extends RowObject> (
+export function ensureCondition<T extends RowObject>(
   condition: Condition | WhereObject<T>,
-  rowsetOrMetadata?: CompatibleRowset<T> | EntityMetadata
+  rowset?: CompatibleRowset<T>
 ): Condition {
-  if (isCondition(condition)) return condition
+  if (isCondition(condition)) return condition;
 
   let makeField: (name: string) => Field;
-  if (rowsetOrMetadata) {
-    if (typeof rowsetOrMetadata === 'string' || Array.isArray(rowsetOrMetadata)) {
-      makeField = (key: string) => new Field([
-        ...(Array.isArray(rowsetOrMetadata) ? rowsetOrMetadata : [rowsetOrMetadata]),
-        key
-      ] as Name<string>)
-    } else if (isRowset(rowsetOrMetadata)) {
-      makeField = (key: string) => (rowsetOrMetadata as any).field(key)
-    } else {
-      const rowset = makeProxied(new Table<T>(rowsetOrMetadata.schema.name), rowsetOrMetadata)
-      makeField = (key: string) => rowset.field(key as FieldsOf<T>)
+  if (rowset) {
+    if (
+      typeof rowset === "string" ||
+      Array.isArray(rowset)
+    ) {
+      makeField = (key: string) =>
+        new Field([
+          ...(Array.isArray(rowset)
+            ? rowset
+            : [rowset]),
+          key,
+        ] as Name<string>);
+    } else if (isRowset(rowset)) {
+      makeField = (key: string) => (rowset as any).field(key);
     }
   } else {
-    makeField = (key: string) => new Field(key)
+    makeField = (key: string) => new Field(key);
   }
 
   const compares = Object.entries(condition).map(([key, value]) => {
-    const field: Field<any, string> = makeField(key)
+    const field: Field<any, string> = makeField(key);
     if (value === null || value === undefined) {
-      return field.isNull()
+      return field.isNull();
     }
     if (Array.isArray(value)) {
-      return field.in(value)
+      return field.in(value);
     }
-    return field.eq(value)
-  })
+    return field.eq(value);
+  });
 
-  return compares.length >= 2
-    ? Condition.and(compares)
-    : compares[0]
+  return compares.length >= 2 ? Condition.and(compares) : compares[0];
 }
-const RowsetFixedProps: string[] = [
-  'field',
-  'clone',
-  '_',
-  'as',
-  '$alias',
-  '$',
-  'star',
-  'as',
-  '$builtin',
-  '$type',
-  '$kind',
-  '$statement',
-  '$select'
-]
 
-function makeProxied<T extends RowObject>(table: Table<T> | Rowset<T>, metadata?: EntityMetadata): ProxiedTable<T> | ProxiedRowset<T> {
+function makeProxied<T extends RowObject>(
+  table: Table<T> | Rowset<T> | NamedSelect<T>
+): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
   return new Proxy(table, {
-    get (target: any, prop: string | symbol | number): any {
+    get(target: any, key: string | symbol | number): any {
       /**
        * 标记为Proxy
        */
-      if (prop === $IsProxy) {
-        return true
+      if (key === $IsProxy) {
+        return true;
       }
-      const v = target[prop]
+
+      const v = target[key];
+
+      if (v !== undefined) return v;
+
       if (
-        typeof prop !== 'string' ||
-        v !== undefined ||
-        RowsetFixedProps.includes(prop)
+        typeof key !== "string" ||
+        v !== undefined
       ) {
-        return v
+        return v;
       }
 
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;
-      if (prop.startsWith('$')) {
-        prop = prop.substring(1)
+      if (key.startsWith("$")) {
+        key = key.substring(1);
       }
-      if (metadata) {
-        const column = metadata.getColumn(prop)?.column
-        if (!column) {
-          return target.field(column.name)
-          // throw new Error(`Property ${prop} is not a column.`)
-        }
-      }
-      return target.field(prop)
-    }
-  })
+      return target.field(key);
+    },
+  });
 }
 
 /**
  * 将制作rowset的代理，用于通过属性访问字段
  */
-export function makeProxiedRowset<T extends RowObject> (
-  rowset: Table<T>,
-): ProxiedTable<T>
-export function makeProxiedRowset<T extends RowObject> (
-  rowset: Rowset<T>,
-): ProxiedRowset<T>
-export function makeProxiedRowset<T extends RowObject> (
-  metadata?: EntityMetadata
-): ProxiedTable<T>
-export function makeProxiedRowset<T extends RowObject> (
-  rowsetOrMetadata: Table<T> | Rowset<T> | EntityMetadata
-): ProxiedTable<T> | ProxiedRowset<T> {
-  if (rowsetOrMetadata instanceof EntityMetadata) {
-    return makeProxied(new Table<T>(rowsetOrMetadata.schema.name), rowsetOrMetadata)
-  }
-  return makeProxied(rowsetOrMetadata)
+export function makeProxiedRowset<T extends RowObject>(
+  rowset: Table<T>
+): ProxiedTable<T>;
+export function makeProxiedRowset<T extends RowObject>(
+  rowset: Rowset<T>
+): ProxiedRowset<T>;
+export function makeProxiedRowset<T extends RowObject>(
+  rowsetOrMetadata: Table<T> | Rowset<T>
+): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
+  return makeProxied(rowsetOrMetadata);
 }
 
-export function isScalar (value: any): value is Scalar {
+export function isScalar(value: any): value is Scalar {
   return (
-    typeof value === 'string' ||
-    typeof value === 'boolean' ||
-    typeof value === 'bigint' ||
-    typeof value === 'number' ||
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    typeof value === "number" ||
     value === null ||
     value === undefined ||
     value instanceof Date ||
     isBinary(value)
-  )
+  );
 }
 
-export function isDbType (value: any): value is DbType {
-  if (!value) return false
-  return !!Reflect.get(type, value.name)
+export function isDbType(value: any): value is DbType {
+  if (!value) return false;
+  return !!Reflect.get(DbType, value.name);
 }
 
-export function isSortInfo (value: any): value is SortInfo {
-  return value.$type === SQL_SYMBOLE.SORT
+export function isSortInfo(value: any): value is SortInfo {
+  return value.$type === SQL_SYMBOLE.SORT;
 }
 
-export function isBinary (value: any): value is Binary {
+export function isBinary(value: any): value is Binary {
   return (
     value instanceof ArrayBuffer ||
     value instanceof Uint8Array ||
@@ -320,13 +307,13 @@ export function isBinary (value: any): value is Binary {
     value instanceof Float64Array ||
     value instanceof Uint8ClampedArray ||
     value instanceof SharedArrayBuffer
-  )
+  );
 }
 
-export function isProxiedRowset<T extends RowObject> (
+export function isProxiedRowset<T extends RowObject>(
   rowset: Rowset<T>
 ): rowset is ProxiedRowset<T> {
-  return Reflect.get(rowset, $IsProxy) === true
+  return Reflect.get(rowset, $IsProxy) === true;
 }
 
 // export type Constructor<T> = {
@@ -381,29 +368,29 @@ export function isProxiedRowset<T extends RowObject> (
 //   return cls;
 // }
 
-export function pickName (name: Name<string>): string {
-  if (typeof name === 'string') {
-    return name
+export function pickName(name: Name<string>): string {
+  if (typeof name === "string") {
+    return name;
   }
-  return name[name.length - 1]
+  return name[name.length - 1];
 }
 
-export function pathName<T extends string> (name: Name<T>): PathedName<T> {
-  if (typeof name === 'string') {
-    return [name]
+export function pathName<T extends string>(name: Name<T>): PathedName<T> {
+  if (typeof name === "string") {
+    return [name];
   }
-  return name
+  return name;
 }
 
-export function isPlainObject (obj: any): boolean {
-  return [Object.prototype, null].includes(Object.getPrototypeOf(obj))
+export function isPlainObject(obj: any): boolean {
+  return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
 }
 
-function fix (num: number, digits: number): string {
-  return num.toString().padStart(digits, '0')
+function fix(num: number, digits: number): string {
+  return num.toString().padStart(digits, "0");
 }
 
-export function dateToString (date: Date): string {
+export function dateToString(date: Date): string {
   return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(
     date.getDate(),
     2
@@ -411,43 +398,47 @@ export function dateToString (date: Date): string {
     date.getSeconds(),
     2
   )}.${fix(date.getMilliseconds(), 3)}${
-    date.getTimezoneOffset() > 0 ? '-' : '+'
-  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`
+    date.getTimezoneOffset() > 0 ? "-" : "+"
+  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
 }
 
-export function isRaw (value: any): value is Raw {
-  return value.$type === SQL_SYMBOLE.RAW
+export function isStandardExpression(value: any): value is StandardOperation {
+  return value.$type === SQL_SYMBOLE.STANDARD_EXPRESSION;
 }
 
-export function isSelect (value: any): value is Select {
-  return value.$type === SQL_SYMBOLE.SELECT
+export function isRaw(value: any): value is Raw {
+  return value.$type === SQL_SYMBOLE.RAW;
 }
 
-export function isUpdate (value: any): value is Update {
-  return value.$type === SQL_SYMBOLE.UPDATE
+export function isSelect(value: any): value is Select {
+  return value.$type === SQL_SYMBOLE.SELECT;
 }
 
-export function isDelete (value: any): value is Delete {
-  return value.$type === SQL_SYMBOLE.DELETE
+export function isUpdate(value: any): value is Update {
+  return value.$type === SQL_SYMBOLE.UPDATE;
 }
 
-export function isInsert (value: any): value is Insert {
-  return value.$type === SQL_SYMBOLE.INSERT
+export function isDelete(value: any): value is Delete {
+  return value.$type === SQL_SYMBOLE.DELETE;
 }
 
-export function isAssignment (value: any): value is Assignment {
-  return value.$type === SQL_SYMBOLE.ASSIGNMENT
+export function isInsert(value: any): value is Insert {
+  return value.$type === SQL_SYMBOLE.INSERT;
 }
 
-export function isDeclare (value: any): value is Declare {
-  return value.$type === SQL_SYMBOLE.DECLARE
+export function isAssignment(value: any): value is Assignment {
+  return value.$type === SQL_SYMBOLE.ASSIGNMENT;
 }
 
-export function isExecute (value: any): value is Execute {
-  return value.$type === SQL_SYMBOLE.EXECUTE
+export function isDeclare(value: any): value is Declare {
+  return value.$type === SQL_SYMBOLE.DECLARE;
 }
 
-export function isStatement (value: any): value is Statement {
+export function isExecute(value: any): value is Execute {
+  return value.$type === SQL_SYMBOLE.EXECUTE;
+}
+
+export function isStatement(value: any): value is Statement {
   return (
     isSelect(value) ||
     isUpdate(value) ||
@@ -457,69 +448,69 @@ export function isStatement (value: any): value is Statement {
     isAssignment(value) ||
     isWith(value) ||
     isExecute(value)
-  )
+  );
 }
 
-export function isCrudStatement (value: any): value is CrudStatement {
+export function isCrudStatement(value: any): value is CrudStatement {
   return (
     isSelect(value) || isUpdate(value) || isDelete(value) || isInsert(value)
-  )
+  );
 }
 
-export function isIdentifier (value: any): value is Identifier {
-  return value.$type === SQL_SYMBOLE.IDENTIFIER
+export function isIdentifier(value: any): value is Identifier {
+  return value.$type === SQL_SYMBOLE.IDENTIFIER;
 }
 
-export function isTable (value: any): value is Table {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE
+export function isTable(value: any): value is Table {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE;
 }
 
-export function isField (value: any): value is Field {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD
+export function isField(value: any): value is Field {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD;
 }
 
-export function isLiteral (value: any): value is Literal {
-  return value.$type === SQL_SYMBOLE.LITERAL
+export function isLiteral(value: any): value is Literal {
+  return value.$type === SQL_SYMBOLE.LITERAL;
 }
 
-export function isNamedSelect (value: any): value is NamedSelect {
-  return value.$type === SQL_SYMBOLE.NAMED_SELECT
+export function isNamedSelect(value: any): value is NamedSelect {
+  return value.$type === SQL_SYMBOLE.NAMED_SELECT;
 }
 
-export function isWithSelect (value: any): value is NamedSelect {
-  return isNamedSelect(value) && value.$inWith
+export function isWithSelect(value: any): value is NamedSelect {
+  return isNamedSelect(value) && value.$inWith;
 }
 
-export function isWith (value: any): value is With {
-  return value && value.$type === SQL_SYMBOLE.WITH
+export function isWith(value: any): value is With {
+  return value && value.$type === SQL_SYMBOLE.WITH;
 }
 
-export function isTableFuncInvoke (value: any): value is TableFuncInvoke {
-  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE
+export function isTableFuncInvoke(value: any): value is TableFuncInvoke {
+  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 }
 
-export function isScalarFuncInvoke (value: any): value is ScalarFuncInvoke {
-  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE
+export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
+  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
 }
 
-export function isTableVariant (value: any): value is TableVariant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT
+export function isTableVariant(value: any): value is TableVariant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
 }
 
-export function isVariant (value: any): value is Variant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT
+export function isVariant(value: any): value is Variant {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
 }
 
-export function isRowset (value: any): value is Rowset {
+export function isRowset(value: any): value is Rowset {
   return (
     isTable(value) ||
     isNamedSelect(value) ||
     isTableFuncInvoke(value) ||
     isTableVariant(value)
-  )
+  );
 }
 
-export function isExpression (value: any): value is Expression {
+export function isExpression(value: any): value is Expression {
   return (
     isField(value) ||
     isLiteral(value) ||
@@ -530,119 +521,285 @@ export function isExpression (value: any): value is Expression {
     isBracket(value) ||
     isValuedSelect(value) ||
     isParameter(value)
-  )
+  );
 }
 
-export function isCase (value: any): value is Case {
-  return value.$type === SQL_SYMBOLE.CASE
+export function isCase(value: any): value is Case {
+  return value.$type === SQL_SYMBOLE.CASE;
 }
 
-export function isBracket (value: any): value is ParenthesesExpression {
-  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION
+export function isBracket(value: any): value is ParenthesesExpression {
+  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
 }
 
-export function isValuedSelect (value: any): value is ValuedSelect {
-  return value.$type === SQL_SYMBOLE.VALUED_SELECT
+export function isValuedSelect(value: any): value is ValuedSelect {
+  return value.$type === SQL_SYMBOLE.VALUED_SELECT;
 }
 
-export function isOperation (value: any): value is Operation {
-  return value.$type === SQL_SYMBOLE.OPERATION
+export function isOperation(value: any): value is Operation {
+  return value.$type === SQL_SYMBOLE.OPERATION;
 }
 
-export function isUnaryOperation (value: Operation): value is UnaryOperation {
-  return value.$kind === OPERATION_KIND.UNARY
+export function isUnaryOperation(value: Operation): value is UnaryOperation {
+  return value.$kind === OPERATION_KIND.UNARY;
 }
 
-export function isBinaryOperation (value: Operation): value is BinaryOperation {
-  return value.$kind === OPERATION_KIND.BINARY
+export function isBinaryOperation(value: Operation): value is BinaryOperation {
+  return value.$kind === OPERATION_KIND.BINARY;
 }
 
-export function isConvertOperation (
-  value: Operation
-): value is ConvertOperation {
-  return value.$kind === OPERATION_KIND.CONVERT
+// export function isConvertOperation(
+//   value: Operation
+// ): value is ConvertOperation {
+//   return value.$kind === OPERATION_KIND.CONVERT;
+// }
+
+export function isParameter(value: any): value is Parameter {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER;
 }
 
-export function isParameter (value: any): value is Parameter {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER
+export function isStar(value: any): value is Star {
+  return value.$type === SQL_SYMBOLE.STAR;
 }
 
-export function isStar (value: any): value is Star {
-  return value.$type === SQL_SYMBOLE.STAR
+export function isBuiltIn(value: any): value is BuiltIn {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN;
 }
 
-export function isBuiltIn (value: any): value is BuiltIn {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN
+export function isColumn(value: any): value is SelectColumn {
+  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN;
 }
 
-export function isColumn (value: any): value is SelectColumn {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN
+export function isCondition(value: any): value is Condition {
+  return value.$type === SQL_SYMBOLE.CONDITION;
 }
 
-export function isCondition (value: any): value is Condition {
-  return value.$type === SQL_SYMBOLE.CONDITION
-}
-
-export function isUnaryCompareCondition (
+export function isUnaryCompareCondition(
   value: Condition
 ): value is UnaryCompareCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
-export function isBinaryCompareCondition (
+export function isBinaryCompareCondition(
   value: Condition
 ): value is BinaryCompareCondition {
-  return value.$kind === CONDITION_KIND.BINARY_COMPARE
+  return value.$kind === CONDITION_KIND.BINARY_COMPARE;
 }
 
-export function isUnaryLogicCondition (
+export function isUnaryLogicCondition(
   value: Condition
 ): value is UnaryLogicCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE
+  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
-export function isBinaryLogicCondition (
+export function isBinaryLogicCondition(
   value: Condition
 ): value is BinaryLogicCondition {
-  return value.$kind === CONDITION_KIND.BINARY_LOGIC
+  return value.$kind === CONDITION_KIND.BINARY_LOGIC;
 }
 
-export function isGroupCondition (
+export function isGroupCondition(
   value: Condition
 ): value is ParenthesesCondition {
-  return value.$kind === CONDITION_KIND.BRACKET_CONDITION
+  return value.$kind === CONDITION_KIND.BRACKET_CONDITION;
 }
 
-export function isExistsCondition (value: Condition): value is ExistsCondition {
-  return value.$kind === CONDITION_KIND.EXISTS
+export function isExistsCondition(value: Condition): value is ExistsCondition {
+  return value.$kind === CONDITION_KIND.EXISTS;
 }
 
-export function isDocument (value: any): value is Document {
-  return value.$type === SQL_SYMBOLE.DOCUMENT
+export function isDocument(value: any): value is Document {
+  return value.$type === SQL_SYMBOLE.DOCUMENT;
 }
 
-export function invalidAST (type: string, value: any) {
-  console.debug(`Invalid ${type} AST：`, value)
-  throw new Error(`Invalid ${type} AST.`)
+export function invalidAST(type: string, value: any) {
+  console.debug(`Invalid ${type} AST：`, value);
+  throw new Error(`Invalid ${type} AST.`);
 }
 
-export function clone<T> (value: T): T {
+export function clone<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(item =>
+    return value.map((item) =>
       item instanceof AST ? item.clone() : clone(item)
-    ) as any
+    ) as any;
   }
-  if (value && typeof value === 'object') {
-    const copied: any = {}
+  if (value && typeof value === "object") {
+    const copied: any = {};
     Object.entries(value).forEach(([k, v]) => {
-      copied[k] = v instanceof AST ? v.clone() : clone(v)
-    })
-    Object.setPrototypeOf(copied, Object.getPrototypeOf(value))
-    return copied
+      copied[k] = v instanceof AST ? v.clone() : clone(v);
+    });
+    Object.setPrototypeOf(copied, Object.getPrototypeOf(value));
+    return copied;
   }
-  return value
+  return value;
 }
 
-export function merge<D extends object, S extends object>(dest: D, src: S): D & S {
-  throw new Error(`尚未实现`)
+export function merge<D extends object, S extends object>(
+  dest: D,
+  src: S
+): D & S {
+  throw new Error(`尚未实现`);
+}
+
+/**
+ * 当一个属性未定义时，为一个属性赋值
+ * @param target
+ * @param property
+ * @param value
+ * @returns
+ */
+export function assignIfUndefined<T extends object, P extends keyof T>(
+  target: T,
+  property: P,
+  value: T[P]
+): boolean {
+  if (!Object.prototype.hasOwnProperty.call(target, property)) {
+    target[property] = value;
+    return true;
+  }
+  return false;
+}
+
+export function lowerFirst(str: string): string {
+  return str[0].toLowerCase() + str.substring(1);
+}
+
+/**
+ * 书写风格
+ */
+export enum CaseStyle {
+  upperCase = 1,
+  lowerCase = 2,
+  upperCamelCase = 3,
+  lowerCamelCase = 4,
+}
+
+export function getCaseStyle(str: string): CaseStyle {
+  throw new Error(`未实现`);
+}
+
+const esSuffix = ["s", "o", "x", "th"];
+const vesSuffix = ["f", "fe"];
+const irregular: Record<string, string> = {
+  mouse: "mice",
+  man: "men",
+  tooth: "teeth",
+};
+
+const vowels = ["a", "e", "i", "o", "u"];
+
+/**
+ * 转换为复数
+ * @param word 单词
+ * @returns
+ */
+export function complex(word: string): string {
+  if (irregular[word.toLowerCase()]) {
+    const style = getCaseStyle(word);
+    const complexWord = irregular[word];
+    switch (style) {
+      case CaseStyle.lowerCase:
+      case CaseStyle.lowerCamelCase:
+        return complexWord;
+      case CaseStyle.upperCase:
+        return complexWord.toUpperCase();
+      case CaseStyle.upperCamelCase:
+        return upperFirst(complexWord);
+    }
+  }
+
+  if (esSuffix.find((item) => word.endsWith(item))) {
+    return word + "es";
+  }
+  if (word.endsWith("y") && !vowels.includes(word[word.length - 2])) {
+    return word.substr(0, word.length - 1) + "ies";
+  }
+  const ves = vesSuffix.find((item) => word.endsWith(item));
+  if (ves) {
+    return word.substr(0, word.length - ves.length) + "ves";
+  }
+  return word + "s";
+}
+
+export function upperFirst(str: string): string {
+  return str[0].toUpperCase() + str.substring(1);
+}
+
+export function camelCase(str: string): string {
+  const nodes = str.split(/-|_| /g);
+  return nodes.map((node) => lowerFirst(node)).join("");
+}
+
+/**
+ * 为一个对象赋值
+ * @param obj 目标对象
+ * @param values 需要赋值的键值对
+ */
+export function assign<T>(obj: T, values: Partial<T>) {
+  Object.assign(obj, values);
+}
+
+/**
+ * 解释值的类型
+ */
+export function parseValueType(value: Scalar): DbType {
+  if (value === null || value === undefined)
+    throw new Error("Do not parse DbType from null or undefined");
+  switch (value.constructor) {
+    case String:
+      return DbType.string(0);
+    case Number:
+      return DbType.int32;
+    case Date:
+      return DbType.datetime;
+    case Boolean:
+      return DbType.boolean;
+    case Buffer:
+    case ArrayBuffer:
+    case SharedArrayBuffer:
+      return DbType.binary(0);
+    default:
+      throw new Error("Invalid value.");
+  }
+}
+
+/**
+ * 是否列表类型
+ */
+export function isListType(type: any): type is ListType {
+  return type?.kind === "LIST";
+}
+
+/**
+ * 判断一个函数是否为类声明
+ * 注意，此方法在编译目标为ES5及以下版本中无效！
+ */
+// HACK： 此方法为hack方法，存在不确定性，并且已知在编译目标为ES5及以下版本中无效！
+export function isClass(func: Function): boolean {
+  return func.toString().startsWith("class ");
+}
+
+/**
+ * 是否标量类型
+ */
+export function isScalarType(type: any): type is ScalarType {
+  return typeof type === "bigint";
+}
+
+export function deepthEqual(left: any, right: any): boolean {
+  const type = typeof left;
+  if (type !== 'function' && type !== 'object') {
+    return left === right
+  }
+
+  if (!right) return false;
+  let leftKeys = Object.getOwnPropertyNames(left);
+  let rightKeys = Object.getOwnPropertyNames(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (const key of leftKeys) {
+    if (!deepthEqual(left[key], right[key])) {
+      return false;
+    }
+  }
+  return true;
 }

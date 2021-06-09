@@ -11,9 +11,9 @@
  * 关联关系等因缺乏信息完美无法生成，需要手动添加
  **********************************/
 
-import { CompatibleExpression, RowObject, Select } from "./ast";
+import { CompatibleExpression, Select } from "./ast";
 import { PARAMETER_DIRECTION } from "./constants";
-import { DataType, DbType, Scalar, TsTypeToDataType } from "./types";
+import { DataType, DbType, RowObject, Scalar, DataTypeOf } from "./types";
 
 /**
  * 外键架构
@@ -81,7 +81,7 @@ export interface DatabaseSchema {
 }
 
 export interface ParameterSchema<T extends Scalar> {
-  dataType: TsTypeToDataType<T>;
+  dataType: DataTypeOf<T>;
   defaultValue: Scalar;
   direction: PARAMETER_DIRECTION;
 }

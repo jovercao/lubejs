@@ -30,4 +30,5 @@
       "HACK"
     ]
   },
+  "eslint.enable": false
 }

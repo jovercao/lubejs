@@ -1,8 +1,8 @@
 import { Executor } from './execute'
 import { Lube } from './lube'
-import { Constructor } from './types'
+import { Constructor, Entity } from './types'
 import { Queryable } from './queryable'
-import { Entity, Repository } from './repository'
+import { Repository } from './repository'
 
 export class DbInstance {
   constructor (executor: Executor) {
