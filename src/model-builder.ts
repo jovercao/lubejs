@@ -210,7 +210,7 @@ function fixManyToMany(
     const relationEntity = this.modelBuilder
       .entity(relation.relationClass)
       .asTable().metadata;
-      relation.relationEntity = relationEntity as TableEntityMetadata;
+    relation.relationEntity = relationEntity as TableEntityMetadata;
   }
 
   if (!relation.referenceProperty) {
@@ -410,10 +410,13 @@ function ensureForeignProperty(
     entity.addMember(column);
   } else {
     // 外键类型兼容检查
-    if (column.type !== relation.referenceEntity.keyColumn.type
-      || !isSameDbType(column.dbType, relation.referenceEntity.keyColumn.dbType)
-      ) {
-      throw new Error(`Entity ${entity.className} colum ${column.property} type incompatible for foreign key.`)
+    if (
+      column.type !== relation.referenceEntity.keyColumn.type ||
+      !isSameDbType(column.dbType, relation.referenceEntity.keyColumn.dbType)
+    ) {
+      throw new Error(
+        `Entity ${entity.className} colum ${column.property} type incompatible for foreign key.`
+      );
     }
   }
 
@@ -736,23 +739,23 @@ export class EntityMapBuilder<T extends Entity> {
     name: string,
     build: (builder: TableEntityBuilder<T>) => void
   ): TableEntityBuilder<T>;
-  asTable(...args: any): TableEntityBuilder<T> {
+  asTable(
+    nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
+    build?: (builder: TableEntityBuilder<T>) => void
+  ): TableEntityBuilder<T> {
     if (this.assertKind("TABLE")) {
       if (arguments.length > 0) {
-        throw new Error(`Entity is allowed declare as table once only, Pls use .asTable() to get TableEntityBuilder.`)
+        throw new Error(
+          `Entity is allowed declare as table once only, Pls use .asTable() to get TableEntityBuilder.`
+        );
       }
       return this.builder as TableEntityBuilder<T>;
     }
     let name: string;
-    let build: (builder: TableEntityBuilder<T>) => void;
-    if (typeof args[0] === "string") {
-      name = args[0];
-    }
-    if (typeof args[0] === "function") {
-      build = args[0];
-    }
-    if (typeof args[1] === "function") {
-      build = args[1];
+    if (typeof nameOrBuild === "string") {
+      name = nameOrBuild;
+    } else if (typeof nameOrBuild === "function") {
+      build = nameOrBuild;
     }
     this.metadata.kind = "TABLE";
     (this.metadata as TableEntityMetadata).tableName =
@@ -776,24 +779,25 @@ export class EntityMapBuilder<T extends Entity> {
     name: string,
     build: (builder: ViewEntityBuilder<T>) => void
   ): ViewEntityBuilder<T>;
-  asView(...args: any): ViewEntityBuilder<T> {
+  asView(
+    nameOrBuild?: string | ((builder: ViewEntityBuilder<T>) => void),
+    build?: (builder: ViewEntityBuilder<T>) => void
+  ): ViewEntityBuilder<T> {
     if (this.assertKind("VIEW")) {
       if (arguments.length > 0) {
-        throw new Error(`Entity is allowed declare as View once only, Pls use .asView() to get TableEntityBuilder.`)
+        throw new Error(
+          `Entity is allowed declare as View once only, Pls use .asView() to get TableEntityBuilder.`
+        );
       }
       return this.builder as ViewEntityBuilder<T>;
     }
     let name: string;
-    let build: (builder: ViewEntityBuilder<T>) => void;
-    if (typeof args[0] === "string") {
-      name = args[0];
+    if (typeof nameOrBuild === "string") {
+      name = nameOrBuild;
+    } else if (typeof nameOrBuild === "function") {
+      build = nameOrBuild;
     }
-    if (typeof args[0] === "function") {
-      build = args[0];
-    }
-    if (typeof args[1] === "function") {
-      build = args[1];
-    }
+
     this.metadata.kind = "VIEW";
     (this.metadata as ViewEntityMetadata).viewName =
       name || this.metadata.className;
@@ -813,10 +817,14 @@ export class EntityMapBuilder<T extends Entity> {
   asQuery(
     build: (builder: QueryEntityBuilder<T>) => void
   ): QueryEntityBuilder<T>;
-  asQuery(build?: (builder: QueryEntityBuilder<T>) => void): QueryEntityBuilder<T> {
+  asQuery(
+    build?: (builder: QueryEntityBuilder<T>) => void
+  ): QueryEntityBuilder<T> {
     if (this.assertKind("QUERY")) {
       if (arguments.length > 0) {
-        throw new Error(`Entity is allowed declare as Query once only, Pls use .asQuery() to get TableEntityBuilder.`)
+        throw new Error(
+          `Entity is allowed declare as Query once only, Pls use .asQuery() to get TableEntityBuilder.`
+        );
       }
       return this.builder as QueryEntityBuilder<T>;
     }
@@ -1405,9 +1413,25 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
    */
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    name?: string,
+    build?: (builder: TableEntityBuilder<any>) => void
+  ): TableEntityBuilder<any>;
+  hasRelationTable<T extends Entity>(
+    ctr: Constructor<T>,
+    name: string,
+    build?: (builder: TableEntityBuilder<any>) => void
+  ): TableEntityBuilder<any>;
+  hasRelationTable<T extends Entity>(
+    ctr: Constructor<T>,
+    nameOrBuild?: string | ((builder: TableEntityBuilder<any>) => void),
     build?: (builder: TableEntityBuilder<any>) => void
   ): TableEntityBuilder<any> {
+    let name: string;
+
+    if (typeof nameOrBuild === "string") {
+      name = nameOrBuild;
+    } else if (typeof nameOrBuild === "function") {
+      build = nameOrBuild;
+    }
     const builder: TableEntityBuilder<any> = this.modelBuilder
       .entity(ctr)
       .asTable(name);
