@@ -67,31 +67,30 @@ export function convert<T extends DbType>(
   return StandardOperation.create(convert.name, [expr, toType]);
 }
 
-/********************************************扩展 Expression.to方法**********************************************/
-declare module lubejs {
-  /**
-   * 扩展方法实现
-   */
-  export interface Expression<T extends Scalar> {
-    to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
-  }
-}
-
-Object.defineProperty(Expression.prototype, "to", {
-  writable: false,
-  value<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
-    return convert(this, type);
-  },
-});
-/******************************************************************************************/
-
-
 /**
  * 获取当前日期及时间
  * @returns
  */
 export function now(): Expression<Date> {
   return StandardOperation.create(now.name, []);
+}
+
+/**
+ * 获取当前UTC时间
+ * @returns
+ */
+export function utcNow(): Expression<Date> {
+  return StandardOperation.create(utcNow.name, []);
+}
+
+/**
+ * 切换时区
+ */
+export function switchTimezone(
+  date: CompatibleExpression<Date>,
+  offset: CompatibleExpression<string>
+): Expression<Date> {
+  return StandardOperation.create(switchTimezone.name, [date, offset]);
 }
 
 /**
@@ -212,6 +211,30 @@ export function secondsBetween(
   return StandardOperation.create(secondsBetween.name, [start, end]);
 }
 
+export function addDays(date: CompatibleExpression<Date>, days: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addDays.name, [date, days]);
+}
+
+export function addMonths(date: CompatibleExpression<Date>, months: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addMonths.name, [date, months]);
+}
+
+export function addYears(date: CompatibleExpression<Date>, years: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addYears.name, [date, years]);
+}
+
+export function addHours(date: CompatibleExpression<Date>, hours: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addHours.name, [date, hours]);
+}
+
+export function addMinutes(date: CompatibleExpression<Date>, minutes: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addMinutes.name, [date, minutes]);
+}
+
+export function addSeconds(date: CompatibleExpression<Date>, seconds: CompatibleExpression<number>): Expression<Date> {
+  return StandardOperation.create(addSeconds.name, [date, seconds]);
+}
+
 /**
  * 获取字符串长度
  * @param str
@@ -232,7 +255,7 @@ export function substr(
   str: CompatibleExpression<string>,
   start: CompatibleExpression<number>,
   length: CompatibleExpression<number>
-) {
+): Expression<string> {
   return StandardOperation.create(substr.name, [start, length]);
 }
 
@@ -247,8 +270,7 @@ export function substr(
 export function replace(
   str: CompatibleExpression<string>,
   search: CompatibleExpression<string>,
-  to: CompatibleExpression<string>,
-  global = false
+  to: CompatibleExpression<string>
 ): Expression<string> {
   return StandardOperation.create(replace.name, [str, search, to]);
 }
@@ -326,3 +348,22 @@ export function charFromUnicode(
 ): Expression<string> {
   return StandardOperation.create(charFromUnicode.name, [code]);
 }
+
+/********************************************扩展 Expression.to方法**********************************************/
+declare module lubejs {
+  /**
+   * 扩展方法实现
+   */
+  export interface Expression<T extends Scalar> {
+    to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
+  }
+}
+
+Object.defineProperty(Expression.prototype, "to", {
+  writable: false,
+  value<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
+    return convert(this, type);
+  },
+});
+
+/******************************************************************************************/

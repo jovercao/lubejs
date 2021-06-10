@@ -1233,7 +1233,7 @@ export class Join extends AST {
  * SQL *，查询所有字段时使用
  */
 // eslint-disable-next-line
-export class Star<T extends object = RowObject> extends AST {
+export class Star<T extends object = any> extends AST {
   readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
 
   constructor(parent?: Name<string>) {
@@ -1373,13 +1373,13 @@ export class Func<
   }
 
   invokeAsTable<T extends RowObject = DefaultRowObject>(
-    ...args: CompatibleExpression<Scalar>[]
+    ...args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ): Rowset<T> {
     return new TableFuncInvoke(this, args);
   }
 
-  invokeAsCalar<T extends Scalar>(
-    ...args: CompatibleExpression<Scalar>[]
+  invokeAsScalar<T extends Scalar>(
+    ...args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ): Expression<T> {
     return new ScalarFuncInvoke(this, args);
   }
@@ -2633,17 +2633,17 @@ export class TableFuncInvoke<
   TReturn extends RowObject = any
 > extends Rowset<TReturn> {
   readonly $func: Func<string>;
-  readonly $args: Expression<Scalar>[];
+  readonly $args: (Expression<Scalar> | Star | BuiltIn)[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
     SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 
   constructor(
     func: Name<string> | Func<string>,
-    args: CompatibleExpression<Scalar>[]
+    args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ) {
     super();
     this.$func = ensureFunction(func);
-    this.$args = args.map((expr) => ensureExpression(expr));
+    this.$args = args.map((expr) => isScalar(expr) ? ensureExpression(expr) : expr);
   }
 }
 

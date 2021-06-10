@@ -100,7 +100,7 @@ import {
 /**
  * 标准操作转换器
  */
-export type StandardTranslation = typeof std;
+export type StandardTranslator = typeof std;
 
 /**
  * 编译选项
@@ -187,7 +187,7 @@ export abstract class Compiler {
   /**
    * 必须实现标准转译器
    */
-  abstract get translator(): StandardTranslation;
+  abstract get translator(): StandardTranslator;
 
   constructor(options?: CompileOptions) {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
@@ -319,16 +319,18 @@ export abstract class Compiler {
       return "NULL";
     }
 
-    if (typeof value === "string") {
-      return this.compileString(value);
+    const type = typeof value
+
+    if (type === "string") {
+      return this.compileString(value as string);
     }
 
-    if (typeof value === "number" || typeof value === "bigint") {
+    if (type === "number" || type === "bigint") {
       return value.toString(10);
     }
 
-    if (typeof value === "boolean") {
-      return this.compileBoolean(value);
+    if (type === "boolean") {
+      return this.compileBoolean(value as boolean);
     }
 
     if (value instanceof Date) {
@@ -338,7 +340,7 @@ export abstract class Compiler {
       return "0x" + Buffer.from(value).toString("hex");
     }
     console.debug("unsupport constant value type:", value);
-    throw new Error("unsupport constant value type:" + typeof value);
+    throw new Error("unsupport constant value type:" + type);
   }
 
   /**
