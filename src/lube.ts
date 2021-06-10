@@ -2,7 +2,7 @@
 import { Executor, QueryResult } from "./execute";
 import { URL } from "url";
 import { ISOLATION_LEVEL } from "./constants";
-import * as assert from "assert";
+import assert from "assert";
 import { CompileOptions, Compiler } from "./compile";
 import { Parameter } from "./ast";
 

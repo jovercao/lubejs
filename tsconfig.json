@@ -5,6 +5,7 @@
     "declaration": true,
     "outDir": "dist",
     "noImplicitAny": true,
+    "esModuleInterop": true,
     "experimentalDecorators": true,
     "sourceMap": true
   },

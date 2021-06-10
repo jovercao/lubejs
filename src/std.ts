@@ -211,27 +211,45 @@ export function secondsBetween(
   return StandardOperation.create(secondsBetween.name, [start, end]);
 }
 
-export function addDays(date: CompatibleExpression<Date>, days: CompatibleExpression<number>): Expression<Date> {
+export function addDays(
+  date: CompatibleExpression<Date>,
+  days: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addDays.name, [date, days]);
 }
 
-export function addMonths(date: CompatibleExpression<Date>, months: CompatibleExpression<number>): Expression<Date> {
+export function addMonths(
+  date: CompatibleExpression<Date>,
+  months: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addMonths.name, [date, months]);
 }
 
-export function addYears(date: CompatibleExpression<Date>, years: CompatibleExpression<number>): Expression<Date> {
+export function addYears(
+  date: CompatibleExpression<Date>,
+  years: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addYears.name, [date, years]);
 }
 
-export function addHours(date: CompatibleExpression<Date>, hours: CompatibleExpression<number>): Expression<Date> {
+export function addHours(
+  date: CompatibleExpression<Date>,
+  hours: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addHours.name, [date, hours]);
 }
 
-export function addMinutes(date: CompatibleExpression<Date>, minutes: CompatibleExpression<number>): Expression<Date> {
+export function addMinutes(
+  date: CompatibleExpression<Date>,
+  minutes: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addMinutes.name, [date, minutes]);
 }
 
-export function addSeconds(date: CompatibleExpression<Date>, seconds: CompatibleExpression<number>): Expression<Date> {
+export function addSeconds(
+  date: CompatibleExpression<Date>,
+  seconds: CompatibleExpression<number>
+): Expression<Date> {
   return StandardOperation.create(addSeconds.name, [date, seconds]);
 }
 
@@ -347,6 +365,110 @@ export function charFromUnicode(
   code: CompatibleExpression<number>
 ): Expression<string> {
   return StandardOperation.create(charFromUnicode.name, [code]);
+}
+
+export interface Standard {
+  count(expr: Star<any> | CompatibleExpression<Scalar>): Expression<number>;
+  min<T extends string | number | bigint | boolean | Date>(
+    expr: Expression<T>
+  ): Expression<T>;
+  max<T extends string | number | bigint | boolean | Date>(
+    expr: Expression<T>
+  ): Expression<T>;
+  sum(expr: CompatibleExpression<number>): Expression<number>;
+  avg(expr: CompatibleExpression<number>): Expression<number>;
+  identityValue(
+    table: CompatibleExpression<string>,
+    column: CompatibleExpression<string>
+  ): Expression<number>;
+  convert<T extends DbType>(
+    expr: CompatibleExpression<Scalar>,
+    toType: T
+  ): Expression<TsTypeOf<T>>;
+  now(): Expression<Date>;
+  utcNow(): Expression<Date>;
+  switchTimezone(
+    date: CompatibleExpression<Date>,
+    offset: CompatibleExpression<string>
+  ): Expression<Date>;
+  formatDate(
+    date: CompatibleExpression<Date>,
+    format: string
+  ): Expression<string>;
+  yearOf(date: CompatibleExpression<Date>): Expression<number>;
+  monthOf(date: CompatibleExpression<Date>): Expression<number>;
+  dayOf(date: CompatibleExpression<Date>): Expression<number>;
+  daysBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  monthsBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  yearsBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  hoursBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  minutesBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  secondsBetween(
+    start: CompatibleExpression<Date>,
+    end: CompatibleExpression<Date>
+  ): Expression<number>;
+  addDays(
+    date: CompatibleExpression<Date>,
+    days: CompatibleExpression<number>
+  ): Expression<Date>;
+  addMonths(
+    date: CompatibleExpression<Date>,
+    months: CompatibleExpression<number>
+  ): Expression<Date>;
+  addYears(
+    date: CompatibleExpression<Date>,
+    years: CompatibleExpression<number>
+  ): Expression<Date>;
+  addHours(
+    date: CompatibleExpression<Date>,
+    hours: CompatibleExpression<number>
+  ): Expression<Date>;
+  addMinutes(
+    date: CompatibleExpression<Date>,
+    minutes: CompatibleExpression<number>
+  ): Expression<Date>;
+  addSeconds(
+    date: CompatibleExpression<Date>,
+    seconds: CompatibleExpression<number>
+  ): Expression<Date>;
+  strlen(str: CompatibleExpression<string>): Expression<number>;
+  substr(
+    str: CompatibleExpression<string>,
+    start: CompatibleExpression<number>,
+    length: CompatibleExpression<number>
+  ): Expression<string>;
+  replace(
+    str: CompatibleExpression<string>,
+    search: CompatibleExpression<string>,
+    to: CompatibleExpression<string>
+  ): Expression<string>;
+  trim(str: CompatibleExpression<string>): Expression<string>;
+  rtrim(str: CompatibleExpression<string>): Expression<string>;
+  lower(str: CompatibleExpression<string>): Expression<string>;
+  indexof(
+    str: CompatibleExpression<string>,
+    search: CompatibleExpression<string>,
+    startAt?: CompatibleExpression<number>
+  ): Expression<number>;
+  ascii(str: CompatibleExpression<string>): Expression<number>;
+  charFromAscii(code: CompatibleExpression<number>): Expression<string>;
+  unicode(str: CompatibleExpression<string>): Expression<number>;
+  charFromUnicode(code: CompatibleExpression<number>): Expression<string>;
 }
 
 /********************************************扩展 Expression.to方法**********************************************/

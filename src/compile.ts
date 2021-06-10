@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import * as assert from "assert";
+import assert from "assert";
 
 import {
   AST,
@@ -51,7 +51,7 @@ import {
 } from "./ast";
 import { PARAMETER_DIRECTION } from "./constants";
 import { Command } from "./execute";
-import * as std from "./std";
+import { Standard } from "./std";
 
 import { DbType, Scalar } from "./types";
 
@@ -100,7 +100,7 @@ import {
 /**
  * 标准操作转换器
  */
-export type StandardTranslator = typeof std;
+export type StandardTranslator = Standard;
 
 /**
  * 编译选项
