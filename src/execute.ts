@@ -162,14 +162,17 @@ export class Executor {
     return this;
   }
 
-  emit(event: string, ...args: any): this {
+  emit(event: string, ...args: any[]): this {
     this._emitter.emit(event, ...args);
     return this;
   }
 
-  // async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
-  // async _internalQuery(sql: string, params: Object): Promise<QueryResult>
-  // async _internalQuery(sql: string[], ...params: any[]): Promise<QueryResult>
+  private async _internalQuery(sql: string, params: Parameter[]): Promise<QueryResult>
+  private async _internalQuery(sql: string, params: Record<string, any>): Promise<QueryResult>
+  private async _internalQuery(sql: TemplateStringsArray, ...params: any[]): Promise<QueryResult>
+  private async _internalQuery (
+    ...args: any[]
+  ): Promise<QueryResult<any, any, any>>
   private async _internalQuery (
     ...args: any[]
   ): Promise<QueryResult<any, any, any>> {
@@ -180,7 +183,7 @@ export class Executor {
     }
     // 如果是模板字符串
     else if (Array.isArray(args[0] && args[0].raw)) {
-      command = this.compiler.makeCommand(args[0], args[1]);
+      command = this.compiler.makeCommand(args[0], ...args.slice(1));
     } else {
       assert(typeof args[0] === 'string', 'sql 必须是字符串或者模板调用')
       let params: Parameter[] = []

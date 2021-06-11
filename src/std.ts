@@ -7,7 +7,7 @@ import {
   Expression,
   CompatibleExpression,
   Star,
-  StandardOperation,
+  StandardExpression,
 } from "./ast";
 import { Binary, DbType, TsTypeOf, Scalar } from "./types";
 
@@ -18,27 +18,27 @@ import { Binary, DbType, TsTypeOf, Scalar } from "./types";
 export function count(
   expr: Star | CompatibleExpression<Scalar>
 ): Expression<number> {
-  return StandardOperation.create(count.name, [expr]);
+  return StandardExpression.create(count.name, [expr]);
 }
 
 export function avg(expr: CompatibleExpression<number>): Expression<number> {
-  return StandardOperation.create(avg.name, [expr]);
+  return StandardExpression.create(avg.name, [expr]);
 }
 
 export function sum(expr: CompatibleExpression<number>): Expression<number> {
-  return StandardOperation.create(sum.name, [expr]);
+  return StandardExpression.create(sum.name, [expr]);
 }
 
 export function max<T extends Exclude<Scalar, Binary>>(
   expr: Expression<T>
 ): Expression<T> {
-  return StandardOperation.create(max.name, [expr]);
+  return StandardExpression.create(max.name, [expr]);
 }
 
 export function min<T extends Exclude<Scalar, Binary>>(
   expr: Expression<T>
 ): Expression<T> {
-  return StandardOperation.create(min.name, [expr]);
+  return StandardExpression.create(min.name, [expr]);
 }
 
 /**
@@ -51,7 +51,7 @@ export function identityValue(
   table: CompatibleExpression<string>,
   column: CompatibleExpression<string>
 ): Expression<number> {
-  return StandardOperation.create(identityValue.name, [table, column]);
+  return StandardExpression.create(identityValue.name, [table, column]);
 }
 
 /**
@@ -64,7 +64,7 @@ export function convert<T extends DbType>(
   expr: CompatibleExpression,
   toType: T
 ): Expression<TsTypeOf<T>> {
-  return StandardOperation.create(convert.name, [expr, toType]);
+  return StandardExpression.create(convert.name, [expr, toType]);
 }
 
 /**
@@ -72,7 +72,7 @@ export function convert<T extends DbType>(
  * @returns
  */
 export function now(): Expression<Date> {
-  return StandardOperation.create(now.name, []);
+  return StandardExpression.create(now.name, []);
 }
 
 /**
@@ -80,7 +80,7 @@ export function now(): Expression<Date> {
  * @returns
  */
 export function utcNow(): Expression<Date> {
-  return StandardOperation.create(utcNow.name, []);
+  return StandardExpression.create(utcNow.name, []);
 }
 
 /**
@@ -90,7 +90,7 @@ export function switchTimezone(
   date: CompatibleExpression<Date>,
   offset: CompatibleExpression<string>
 ): Expression<Date> {
-  return StandardOperation.create(switchTimezone.name, [date, offset]);
+  return StandardExpression.create(switchTimezone.name, [date, offset]);
 }
 
 /**
@@ -103,7 +103,7 @@ export function formatDate(
   date: CompatibleExpression<Date>,
   format: string
 ): Expression<string> {
-  return StandardOperation.create(formatDate.name, [date, format]);
+  return StandardExpression.create(formatDate.name, [date, format]);
 }
 
 /**
@@ -112,7 +112,7 @@ export function formatDate(
  * @returns
  */
 export function yearOf(date: CompatibleExpression<Date>): Expression<number> {
-  return StandardOperation.create(yearOf.name, [date]);
+  return StandardExpression.create(yearOf.name, [date]);
 }
 
 /**
@@ -121,7 +121,7 @@ export function yearOf(date: CompatibleExpression<Date>): Expression<number> {
  * @returns
  */
 export function monthOf(date: CompatibleExpression<Date>): Expression<number> {
-  return StandardOperation.create(monthOf.name, [date]);
+  return StandardExpression.create(monthOf.name, [date]);
 }
 
 /**
@@ -130,7 +130,7 @@ export function monthOf(date: CompatibleExpression<Date>): Expression<number> {
  * @returns
  */
 export function dayOf(date: CompatibleExpression<Date>): Expression<number> {
-  return StandardOperation.create(dayOf.name, [date]);
+  return StandardExpression.create(dayOf.name, [date]);
 }
 
 /**
@@ -143,7 +143,7 @@ export function daysBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(daysBetween.name, [start, end]);
+  return StandardExpression.create(daysBetween.name, [start, end]);
 }
 
 /**
@@ -156,7 +156,7 @@ export function monthsBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(monthsBetween.name, [start, end]);
+  return StandardExpression.create(monthsBetween.name, [start, end]);
 }
 
 /**
@@ -169,7 +169,7 @@ export function yearsBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(yearsBetween.name, [start, end]);
+  return StandardExpression.create(yearsBetween.name, [start, end]);
 }
 
 /**
@@ -182,7 +182,7 @@ export function hoursBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(hoursBetween.name, [start, end]);
+  return StandardExpression.create(hoursBetween.name, [start, end]);
 }
 
 /**
@@ -195,7 +195,7 @@ export function minutesBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(minutesBetween.name, [start, end]);
+  return StandardExpression.create(minutesBetween.name, [start, end]);
 }
 
 /**
@@ -208,49 +208,49 @@ export function secondsBetween(
   start: CompatibleExpression<Date>,
   end: CompatibleExpression<Date>
 ): Expression<number> {
-  return StandardOperation.create(secondsBetween.name, [start, end]);
+  return StandardExpression.create(secondsBetween.name, [start, end]);
 }
 
 export function addDays(
   date: CompatibleExpression<Date>,
   days: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addDays.name, [date, days]);
+  return StandardExpression.create(addDays.name, [date, days]);
 }
 
 export function addMonths(
   date: CompatibleExpression<Date>,
   months: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addMonths.name, [date, months]);
+  return StandardExpression.create(addMonths.name, [date, months]);
 }
 
 export function addYears(
   date: CompatibleExpression<Date>,
   years: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addYears.name, [date, years]);
+  return StandardExpression.create(addYears.name, [date, years]);
 }
 
 export function addHours(
   date: CompatibleExpression<Date>,
   hours: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addHours.name, [date, hours]);
+  return StandardExpression.create(addHours.name, [date, hours]);
 }
 
 export function addMinutes(
   date: CompatibleExpression<Date>,
   minutes: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addMinutes.name, [date, minutes]);
+  return StandardExpression.create(addMinutes.name, [date, minutes]);
 }
 
 export function addSeconds(
   date: CompatibleExpression<Date>,
   seconds: CompatibleExpression<number>
 ): Expression<Date> {
-  return StandardOperation.create(addSeconds.name, [date, seconds]);
+  return StandardExpression.create(addSeconds.name, [date, seconds]);
 }
 
 /**
@@ -259,7 +259,7 @@ export function addSeconds(
  * @returns
  */
 export function strlen(str: CompatibleExpression<string>): Expression<number> {
-  return StandardOperation.create(strlen.name, [str]);
+  return StandardExpression.create(strlen.name, [str]);
 }
 
 /**
@@ -274,7 +274,7 @@ export function substr(
   start: CompatibleExpression<number>,
   length: CompatibleExpression<number>
 ): Expression<string> {
-  return StandardOperation.create(substr.name, [start, length]);
+  return StandardExpression.create(substr.name, [start, length]);
 }
 
 /**
@@ -290,7 +290,7 @@ export function replace(
   search: CompatibleExpression<string>,
   to: CompatibleExpression<string>
 ): Expression<string> {
-  return StandardOperation.create(replace.name, [str, search, to]);
+  return StandardExpression.create(replace.name, [str, search, to]);
 }
 
 /**
@@ -299,7 +299,7 @@ export function replace(
  * @returns
  */
 export function trim(str: CompatibleExpression<string>): Expression<string> {
-  return StandardOperation.create(trim.name, [str]);
+  return StandardExpression.create(trim.name, [str]);
 }
 
 /**
@@ -307,8 +307,8 @@ export function trim(str: CompatibleExpression<string>): Expression<string> {
  * @param str
  * @returns
  */
-export function rtrim(str: CompatibleExpression<string>): Expression<string> {
-  return StandardOperation.create(rtrim.name, [str]);
+export function trimEnd(str: CompatibleExpression<string>): Expression<string> {
+  return StandardExpression.create(trimEnd.name, [str]);
 }
 /**
  * 转换成大写字母
@@ -316,7 +316,7 @@ export function rtrim(str: CompatibleExpression<string>): Expression<string> {
  * @returns
  */
 export function upper(str: CompatibleExpression<string>): Expression<string> {
-  return StandardOperation.create(upper.name, [str]);
+  return StandardExpression.create(upper.name, [str]);
 }
 
 /**
@@ -325,7 +325,7 @@ export function upper(str: CompatibleExpression<string>): Expression<string> {
  * @returns
  */
 export function lower(str: CompatibleExpression<string>): Expression<string> {
-  return StandardOperation.create(lower.name, [str]);
+  return StandardExpression.create(lower.name, [str]);
 }
 
 /**
@@ -334,12 +334,12 @@ export function lower(str: CompatibleExpression<string>): Expression<string> {
  * @param search
  * @returns
  */
-export function indexof(
+export function strpos(
   str: CompatibleExpression<string>,
   search: CompatibleExpression<string>,
   startAt?: CompatibleExpression<number>
 ): Expression<number> {
-  return StandardOperation.create(indexof.name, [str, search, startAt]);
+  return StandardExpression.create(strpos.name, [str, search, startAt]);
 }
 
 /**
@@ -348,23 +348,148 @@ export function indexof(
  * @returns
  */
 export function ascii(str: CompatibleExpression<string>): Expression<number> {
-  return StandardOperation.create(ascii.name, [str]);
+  return StandardExpression.create(ascii.name, [str]);
 }
 
-export function charFromAscii(
+export function asciiChar(
   code: CompatibleExpression<number>
 ): Expression<string> {
-  return StandardOperation.create(charFromAscii.name, [code]);
+  return StandardExpression.create(asciiChar.name, [code]);
 }
 
 export function unicode(str: CompatibleExpression<string>): Expression<number> {
-  return StandardOperation.create(unicode.name, [str]);
+  return StandardExpression.create(unicode.name, [str]);
 }
 
-export function charFromUnicode(
+export function unicodeChar(
   code: CompatibleExpression<number>
 ): Expression<string> {
-  return StandardOperation.create(charFromUnicode.name, [code]);
+  return StandardExpression.create(unicodeChar.name, [code]);
+}
+
+export function isNull<T extends Scalar>(
+  value: CompatibleExpression<T>,
+  defaultValue: CompatibleExpression<T>
+): Expression<T> {
+  return StandardExpression.create(isNull.name, [value, defaultValue]);
+}
+
+export function abs(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(abs.name, [value]);
+}
+
+export function exp(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(exp.name, [value]);
+}
+
+// export function cbrt(value: CompatibleExpression<number>): Expression<number> {
+//   return StandardExpression.create(cbrt.name, [value]);
+// }
+
+export function ceil(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(ceil.name, [value]);
+}
+
+export function floor(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(floor.name, [value]);
+}
+
+export function ln(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(ln.name, [value]);
+}
+
+export function log(
+  value: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(log.name, [value]);
+}
+
+export function mod(
+  value: CompatibleExpression<number>,
+  x: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(mod.name, [value, x]);
+}
+
+export function pi(): Expression<number> {
+  return StandardExpression.create(pi.name, []);
+}
+
+export function power(
+  a: CompatibleExpression<number>,
+  b: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(power.name, [a, b]);
+}
+
+export function radians(
+  value: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(radians.name, [value]);
+}
+
+export function degrees(
+  value: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(degrees.name, [value]);
+}
+
+export function random(): Expression<number> {
+  return StandardExpression.create(random.name, []);
+}
+
+export function round(
+  value: CompatibleExpression<number>,
+  s?: CompatibleExpression<number>
+): Expression<number> {
+  return StandardExpression.create(round.name, [value, s]);
+}
+
+export function sign(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(sign.name, [value]);
+}
+
+export function sqrt(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(sqrt.name, [value]);
+}
+
+// export function trunc(
+//   value: CompatibleExpression<number>,
+//   s?: CompatibleExpression<number>
+// ): Expression<number> {
+//   return StandardExpression.create(trunc.name, [value, s]);
+// }
+
+export function cos(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(cos.name, [value]);
+}
+
+export function sin(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(sin.name, [value]);
+}
+
+export function tan(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(tan.name, [value]);
+}
+
+export function acos(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(acos.name, [value]);
+}
+
+export function asin(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(asin.name, [value]);
+}
+
+export function atan(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(atan.name, [value]);
+}
+
+export function atan2(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(atan2.name, [value]);
+}
+
+export function cot(value: CompatibleExpression<number>): Expression<number> {
+  return StandardExpression.create(cot.name, [value]);
 }
 
 export interface Standard {
@@ -458,34 +583,102 @@ export interface Standard {
     to: CompatibleExpression<string>
   ): Expression<string>;
   trim(str: CompatibleExpression<string>): Expression<string>;
-  rtrim(str: CompatibleExpression<string>): Expression<string>;
+  trimEnd(str: CompatibleExpression<string>): Expression<string>;
   lower(str: CompatibleExpression<string>): Expression<string>;
-  indexof(
+  strpos(
     str: CompatibleExpression<string>,
     search: CompatibleExpression<string>,
     startAt?: CompatibleExpression<number>
   ): Expression<number>;
   ascii(str: CompatibleExpression<string>): Expression<number>;
-  charFromAscii(code: CompatibleExpression<number>): Expression<string>;
+  asciiChar(code: CompatibleExpression<number>): Expression<string>;
   unicode(str: CompatibleExpression<string>): Expression<number>;
-  charFromUnicode(code: CompatibleExpression<number>): Expression<string>;
+  unicodeChar(code: CompatibleExpression<number>): Expression<string>;
+  isNull<T extends Scalar>(
+    value: CompatibleExpression<T>,
+    defaultValue: CompatibleExpression<T>
+  ): Expression<T>;
+
+  abs(value: CompatibleExpression<number>): Expression<number>;
+
+  exp(value: CompatibleExpression<number>): Expression<number>;
+
+  // cbrt(value: CompatibleExpression<number>): Expression<number>;
+
+  ceil(value: CompatibleExpression<number>): Expression<number>;
+
+  floor(value: CompatibleExpression<number>): Expression<number>;
+
+  ln(value: CompatibleExpression<number>): Expression<number>;
+
+  log(
+    value: CompatibleExpression<number>
+  ): Expression<number>;
+
+  mod(
+    value: CompatibleExpression<number>,
+    x: CompatibleExpression<number>
+  ): Expression<number>;
+
+  pi(): Expression<number>;
+
+  power(
+    a: CompatibleExpression<number>,
+    b: CompatibleExpression<number>
+  ): Expression<number>;
+
+  radians(value: CompatibleExpression<number>): Expression<number>;
+
+  degrees(value: CompatibleExpression<number>): Expression<number>;
+
+  random(): Expression<number>;
+
+  round(
+    value: CompatibleExpression<number>,
+    s?: CompatibleExpression<number>
+  ): Expression<number>;
+
+  sign(value: CompatibleExpression<number>): Expression<number>;
+
+  sqrt(value: CompatibleExpression<number>): Expression<number>;
+
+  // trunc(
+  //   value: CompatibleExpression<number>,
+  //   s?: CompatibleExpression<number>
+  // ): Expression<number>;
+
+  cos(value: CompatibleExpression<number>): Expression<number>;
+
+  sin(value: CompatibleExpression<number>): Expression<number>;
+
+  tan(value: CompatibleExpression<number>): Expression<number>;
+
+  acos(value: CompatibleExpression<number>): Expression<number>;
+
+  asin(value: CompatibleExpression<number>): Expression<number>;
+
+  atan(value: CompatibleExpression<number>): Expression<number>;
+
+  atan2(value: CompatibleExpression<number>): Expression<number>;
+
+  cot(value: CompatibleExpression<number>): Expression<number>;
 }
 
 /********************************************扩展 Expression.to方法**********************************************/
-declare module lubejs {
-  /**
-   * 扩展方法实现
-   */
-  export interface Expression<T extends Scalar> {
-    to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
-  }
-}
+// declare module lubejs {
+//   /**
+//    * 扩展方法实现
+//    */
+//   export interface Expression<T extends Scalar> {
+//     to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
+//   }
+// }
 
-Object.defineProperty(Expression.prototype, "to", {
-  writable: false,
-  value<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
-    return convert(this, type);
-  },
-});
+// Object.defineProperty(Expression.prototype, "to", {
+//   writable: false,
+//   value<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
+//     return convert(this, type);
+//   },
+// });
 
 /******************************************************************************************/

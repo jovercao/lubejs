@@ -47,7 +47,7 @@ import {
   ValuedSelect,
   TableVariant,
   // IdentityValue,
-  StandardOperation,
+  StandardExpression,
 } from "./ast";
 import { PARAMETER_DIRECTION } from "./constants";
 import { Command } from "./execute";
@@ -214,7 +214,7 @@ export abstract class Compiler {
    * @param operation 将标准操作编译成AST
    */
   protected translationStandardExpression<T extends Scalar>(
-    operation: StandardOperation<T>
+    operation: StandardExpression<T>
   ): Expression<T> {
     const transFn = Reflect.get(this.translator, operation.$kind);
     return transFn.call(this.translator, ...operation.$datas);
@@ -268,16 +268,16 @@ export abstract class Compiler {
   /**
    * 通过模板参数创建一个SQL命令
    */
-  makeCommand(arr: TemplateStringsArray, paramValues: any[]): Command {
+  makeCommand(arr: TemplateStringsArray, ...paramValues: any[]): Command {
     const params: Parameter[] = [];
-    const sql = arr.reduce((text, current, index) => {
-      text += current;
-      const name = "__p__" + index;
-      const param = Parameter.input(name, paramValues[index + 1]);
-      text += this.stringifyParameterName(param);
+    let sql: string = arr[0]
+    for (let i = 0; i < arr.length - 1; i++) {
+      const name = "__p__" + i;
+      const param = Parameter.input(name, paramValues[i]);
+      sql += this.stringifyParameterName(param);
+      sql += arr[i + 1];
       params.push(param);
-      return text;
-    }, "");
+    }
     return {
       sql,
       params,

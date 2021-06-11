@@ -30,6 +30,7 @@ import {
   isManyToMany,
   isPrimaryOneToOne,
   isOneToMany,
+  IndexMetadata,
 } from "./metadata";
 import {
   Constructor,
@@ -91,6 +92,16 @@ function fixColumn(
   if (column.isPrimaryKey === undefined) {
     column.isPrimaryKey = false;
   }
+}
+
+function fixIndex(entity: EntityMetadata, index: IndexMetadata) {
+  index.columns = index.properties.map((property) => {
+    const column = entity.getColumn(property);
+    if (!column) {
+      throw new Error(`Column ${property} not found.`);
+    }
+    return column;
+  });
 }
 
 /**
@@ -260,7 +271,11 @@ function fixManyToMany(
   // 如果未找到，则声明
   if (!realtionEntityToEntity) {
     realtionEntityToEntity = {
-      property: genRelationProperty(relation.relationEntity, entity.className, 'one'),
+      property: genRelationProperty(
+        relation.relationEntity,
+        entity.className,
+        "one"
+      ),
       isImplicit: true,
       kind: "MANY_TO_ONE",
       referenceClass: entity.class,
@@ -461,11 +476,10 @@ function genRelationProperty(
     property = complex(property);
   }
   while (entity.getMember(property)) {
-    property = '_' + property
+    property = "_" + property;
   }
   return property;
 }
-
 
 /**
  * 判定成员是否已经存在，并且是期望的成员，如果未存在，返回false,如果存在并是期望的类型，返回true，如果不是期望的类型，则抛出异常
@@ -492,12 +506,8 @@ function assertEntityMember(
 export class ContextBuilder<T extends DbContext = DbContext> {
   public readonly metadata: DbContextMetadata;
   constructor(ctr: Constructor<T>) {
-    this.metadata = {
-      class: ctr,
-      classname: ctr.name,
-      entities: [],
-      database: ctr.name,
-    } as Partial<DbContextMetadata> as DbContextMetadata;
+    this.metadata = new DbContextMetadata(ctr);
+    this.metadata.className = ctr.name;
   }
 
   /**
@@ -534,7 +544,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       });
       const eb = new EntityMapBuilder(this, metadata);
       this._entityMap.set(ctr, eb);
-      this.metadata.entities.push(metadata as EntityMetadata);
+      this.metadata.addEntity(metadata as EntityMetadata);
     }
     const builder = this._entityMap.get(ctr);
     if (build) {
@@ -614,6 +624,9 @@ export class ContextBuilder<T extends DbContext = DbContext> {
     if (this._ensured)
       throw new Error(`Context is ensured, not need ensure twice.`);
     const entityMap = new Map();
+    if (!this.metadata.database) {
+      this.metadata.database = this.metadata.className;
+    }
     this.metadata.entities.forEach((entity) => {
       entityMap.set(entity.class, entity);
     });
@@ -693,6 +706,9 @@ export class ContextBuilder<T extends DbContext = DbContext> {
             fixOneToOne(this.metadata, entity, member);
             break;
         }
+      }
+      for (const index of entity.indexes) {
+        fixIndex(entity, index);
       }
     }
 
@@ -921,16 +937,7 @@ export abstract class EntityBuilder<T extends Entity> {
     type: DataTypeOf<P>,
     build?: (builder: ColumnBuilder<T>) => void
   ): ColumnBuilder<T, P> | this {
-    let property: string;
-    const proxy: any = new Proxy(
-      {},
-      {
-        get: (_, key: string) => {
-          property = key;
-        },
-      }
-    );
-    selector(proxy);
+    let property: string = selectProperty(selector);
     if (!property) {
       throw new Error(`Please select a property`);
     }
@@ -985,16 +992,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
    * 声明主键
    */
   hasKey<P extends Scalar>(selector: (p: T) => P): this {
-    let property: string;
-    const proxy: any = new Proxy(
-      {},
-      {
-        get: (_, key: string) => {
-          property = key;
-        },
-      }
-    );
-    selector(proxy);
+    let property: string = selectProperty(selector);
     if (!property) {
       throw new Error("Please select a property");
     }
@@ -1002,26 +1000,27 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     return this;
   }
 
+  hasIndex(selector: (p: T) => Scalar[], isUnique: boolean = false): this {
+    const properties: string[] = selectProperty(selector);
+    this.metadata.addIndex({
+      properties,
+      columns: null,
+      isUnique,
+    });
+    return this;
+  }
+
   /**
    * 声明一个单一引用属性
-   * @param propertySelector
+   * @param selector
    * @param type 因typescript反射机制尚不完善，因此无法获取到属性类型，因而需要传递该属性类型参数
    * @returns
    */
   hasOne<D extends Entity>(
-    propertySelector: (P: T) => D,
+    selector: (P: T) => D,
     type: Constructor<D>
   ): HasOneBuilder<T, D> {
-    let property: string;
-    const proxy: any = new Proxy(
-      {},
-      {
-        get: (_, key: string) => {
-          property = key;
-        },
-      }
-    );
-    propertySelector(proxy);
+    let property: string = selectProperty(selector);
     if (!property) {
       throw new Error(
         'Property name is rquired, example property name "user", `builder.hasOne(p => p.user)`'
@@ -1044,24 +1043,15 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
 
   /**
    * 声明一个集体属性
-   * @param propertySelector
+   * @param selector
    * @param type 因typescript反射机制尚不完善，因此无法获取到属性类型，因而需要传递该属性类型参数
    * @returns
    */
   hasMany<D extends Entity>(
-    propertySelector: (p: T) => D[],
+    selector: (p: T) => D[],
     type: Constructor<D>
   ): HasManyBuilder<T, D> {
-    let property: string;
-    const proxy: any = new Proxy(
-      {},
-      {
-        get: (_, key: string) => {
-          property = key;
-        },
-      }
-    );
-    propertySelector(proxy);
+    let property: string = selectProperty(selector);
     if (!property)
       throw new Error("Please select a property as `p => p.propertyName`.");
 
@@ -1143,7 +1133,7 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
   }
 
   autogen(generator: (item: any) => CompatibleExpression<V>): this {
-    this.metadata.generator = generator
+    this.metadata.generator = generator;
     return this;
   }
   /**
@@ -1212,15 +1202,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
     this.assertWith();
     this.metadata.kind = "ONE_TO_ONE";
     if (selector) {
-      const proxy: any = new Proxy(
-        {},
-        {
-          get: (_, property: string) => {
-            this.metadata.referenceProperty = property;
-          },
-        }
-      );
-      selector(proxy);
+      this.metadata.referenceProperty = selectProperty(selector);
       if (!this.metadata.referenceProperty) {
         throw new Error("Please select a property");
       }
@@ -1237,15 +1219,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
     this.assertWith();
     this.metadata.kind = "MANY_TO_ONE";
     if (selector) {
-      const proxy: any = new Proxy(
-        {},
-        {
-          get: (_, property: string) => {
-            this.metadata.referenceProperty = property;
-          },
-        }
-      );
-      selector(proxy);
+      this.metadata.referenceProperty = selectProperty(selector);
       if (!this.metadata.referenceProperty) {
         throw new Error("Please select a property");
       }
@@ -1278,15 +1252,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
     this.assertWith();
     this.metadata.kind = "ONE_TO_MANY";
     if (selector) {
-      const proxy: any = new Proxy(
-        {},
-        {
-          get: (_, property: string) => {
-            this.metadata.referenceProperty = property;
-          },
-        }
-      );
-      selector(proxy);
+      this.metadata.referenceProperty = selectProperty(selector);
       if (!this.metadata.referenceProperty) {
         throw new Error("Please select a property");
       }
@@ -1305,15 +1271,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
     const metadata: Partial<ManyToManyMetadata> = this
       .metadata as ManyToManyMetadata;
     if (selector) {
-      const proxy: any = new Proxy(
-        {},
-        {
-          get: (_, property: string) => {
-            metadata.referenceProperty = property;
-          },
-        }
-      );
-      selector(proxy);
+      metadata.referenceProperty = selectProperty(selector);
       if (!metadata.referenceProperty) {
         throw new Error("Please select a property");
       }
@@ -1358,15 +1316,7 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
     this.metadata.isPrimary = false;
     if (selector) {
       let foreignProperty: string;
-      const proxy: any = new Proxy(
-        {},
-        {
-          get: (_, key: string) => {
-            foreignProperty = key;
-          },
-        }
-      );
-      selector(proxy);
+      foreignProperty = selectProperty(selector);
       if (!foreignProperty) {
         throw new Error(`Pls select a property`);
       }
@@ -1442,16 +1392,7 @@ export class ManyToOneBuilder<S extends Entity, D extends Entity> {
    */
   hasForeignKey<P extends Scalar>(selector: (p: S) => P): this {
     if (selector) {
-      let property: string;
-      const proxy: any = new Proxy(
-        {},
-        {
-          get(_, key: string) {
-            property = key;
-          },
-        }
-      );
-      selector(proxy);
+      let property: string = selectProperty(selector);
       if (!property) throw new Error(`Please select a property.`);
       this.metadata.foreignProperty = property;
     }
@@ -1508,4 +1449,17 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     this.metadata.relationConstraintName = name;
     return this;
   }
+}
+
+const PropertySelector: any = new Proxy(
+  {},
+  {
+    get: (_, key: string) => {
+      return key;
+    },
+  }
+);
+
+function selectProperty(selector: (...args: any) => any): any {
+  return selector(PropertySelector);
 }

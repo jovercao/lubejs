@@ -39,6 +39,7 @@ import {
 } from "./constants";
 import { DbType, TsTypeOf, DbTypeOf, RowObject } from "./types";
 import { Scalar } from "./types";
+import { convert, identityValue } from './std'
 // import { convert } from './std';
 
 // /**
@@ -548,16 +549,16 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
     return Expression.enclose(this);
   }
 
-  // /**
-  //  * 将当前表达式转换为指定的类型
-  //  */
-  // to<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
-  //   return convert(this, type);
-  // }
+  /**
+   * 将当前表达式转换为指定的类型
+   */
+  to<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
+    return convert(this, type);
+  }
 
-  // static identityValue(table: string, column: string): Expression<number> {
-  //   return new IdentityValue(table, column);
-  // }
+  static identityValue(table: string, column: string): Expression<number> {
+    return identityValue(table, column);
+  }
 
   /**
    * 括号表达式，将表达式括起来，如优先级
@@ -745,7 +746,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
  * 用于定义一套多数据库兼容的标准
  * 如，类型转换、获取日期 等操作
  */
-export class StandardOperation<
+export class StandardExpression<
   T extends Scalar = Scalar
 > extends Expression<T> {
   constructor(kind: string, datas: any[]) {
@@ -764,8 +765,8 @@ export class StandardOperation<
   static create<T extends Scalar>(
     kind: string,
     datas: any[]
-  ): StandardOperation<T> {
-    return new StandardOperation(kind, datas);
+  ): StandardExpression<T> {
+    return new StandardExpression(kind, datas);
   }
 }
 

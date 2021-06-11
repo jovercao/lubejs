@@ -55,7 +55,7 @@ import {
   CompatibleRowset,
   FieldsOf,
   ProxiedNamedSelect,
-  StandardOperation,
+  StandardExpression,
 } from "./ast";
 
 import {
@@ -402,7 +402,7 @@ export function dateToString(date: Date): string {
   }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
 }
 
-export function isStandardExpression(value: any): value is StandardOperation {
+export function isStandardExpression(value: any): value is StandardExpression {
   return value.$type === SQL_SYMBOLE.STANDARD_EXPRESSION;
 }
 

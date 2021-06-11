@@ -13,6 +13,7 @@
 
 import { CompatibleExpression, Select } from "./ast";
 import { PARAMETER_DIRECTION } from "./constants";
+import { ColumnMetadata, DbContextMetadata, ForeignOneToOneMetadata, isTableEntity, ManyToOneMetadata, TableEntityMetadata } from './metadata'
 import { DataType, DbType, RowObject, Scalar, DataTypeOf } from "./types";
 
 /**
@@ -308,4 +309,38 @@ export interface IndexSchema {
   isPrimaryKey: boolean;
   columns: ColumnSchema[];
   description?: string;
+}
+
+export function genDbSchema(context: DbContextMetadata): DatabaseSchema {
+  const db: DatabaseSchema = {
+    name: context.database,
+    tables: [],
+    views: [],
+    indexes: [],
+    foreignKeys: []
+  }
+
+  for(const entity of context.entities) {
+    if (isTableEntity(entity)) {
+      db.tables.push(genTableSchema(entity))
+    }
+  }
+
+  return db;
+}
+
+export function genTableSchema(entity: TableEntityMetadata): TableSchema {
+  throw new Error(`待实现`)
+}
+
+export function genColumnSchema(column: ColumnMetadata): ColumnSchema {
+  throw new Error(`待实现`)
+}
+
+export function genForeignKeySchema(relation: ForeignOneToOneMetadata | ManyToOneMetadata): ForeignKeySchema {
+  throw new Error(`待实现`)
+}
+
+export function genIndexSchema(table: TableEntityMetadata): IndexSchema {
+  throw new Error(`待实现`)
 }

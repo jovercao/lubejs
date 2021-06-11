@@ -18,6 +18,13 @@ import {
 } from "./types";
 import { isClass } from './util'
 
+export interface IndexMetadata {
+  properties: string[];
+  columns: ColumnMetadata[];
+  // 是否唯一
+  isUnique: boolean;
+}
+
 /**
  * 表格实体元数据
  */
@@ -82,6 +89,16 @@ export class EntityMetadataClass {
   private _columns: ColumnMetadata[] = [];
   private _relationMap: Record<string, RelationMetadata> = {};
   private _reations: RelationMetadata[] = [];
+  private _indexes: IndexMetadata[] = [];
+
+  get indexes(): ReadonlyArray<IndexMetadata> {
+    return this._indexes;
+  }
+
+  addIndex(index: IndexMetadata): this {
+    this._indexes.push(index);
+    return this;
+  }
 
   addMember(item: EntityMemberMetadata): this {
     if (this._memberMap[item.property])
@@ -218,17 +235,39 @@ export type EntityMetadata =
   | ViewEntityMetadata
   | QueryEntityMetadata;
 
-export interface DbContextMetadata {
+export class DbContextMetadata {
+  constructor(ctr: Constructor<DbContext>) {
+    this.class = ctr;
+  }
+
   class: Constructor<DbContext>;
-  entities: EntityMetadata[];
   database: string;
-  classname: string;
+  className: string;
+  private _entitiyMap: Map<Constructor<Entity>, EntityMetadata> = new Map();
+  private _entities: EntityMetadata[] = [];
+  get entities(): ReadonlyArray<EntityMetadata> {
+    return this._entities;
+  }
+  /**
+   * 摘要说明
+   */
   description?: string;
+
   /**
    * 获取实体元数据
    * @param ctr 实体构造函数
    */
-  getEntity(ctr: Constructor<Entity>): EntityMetadata;
+  getEntity(ctr: Constructor<Entity>): EntityMetadata {
+    return this._entitiyMap.get(ctr);
+  }
+
+  addEntity(entity: EntityMetadata): this {
+    if (this._entitiyMap.has(entity.class)) {
+      throw new Error(`Entity ${entity.className} is exists in DbContext.`);
+    }
+    this._entities.push(entity);
+    return this;
+  }
 }
 
 /**
