@@ -118,7 +118,19 @@ export class Repository<T extends Entity> extends Queryable<T> {
         // 不保存关联关系
         await this.saveDependents(item, withoutRelations);
       }
-      const data = this.toDataRow(item);
+      const data: any = Object.create(null);
+      for (const column of this.metadata.columns) {
+        if (column.isIdentity || column.isRowflag) continue;
+        if (column.generator) {
+          if (Reflect.get(item, column.property) !== undefined) {
+            console.warn(`Entity ${this.metadata.className} Property ${column.property} is autoGen column, but value found, will override it here.`)
+          }
+          data[column.columnName] = column.generator(item);
+          continue;
+        }
+        if (!Reflect.has(item, column.property) && (column.isImplicit || column.defaultValue)) continue;
+        data[column.columnName] = this.toDbValue(item, column);
+      }
       await this.executor.insert(this.rowset, data);
 
       const key = this.metadata.keyColumn.isIdentity
@@ -316,7 +328,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     return this._repositories[relation.property];
   }
 
-  private setColumnValue(item: T, column: ColumnMetadata, value: any): void {
+  private setProperty(item: T, column: ColumnMetadata, value: any): void {
     // 更新引用外键
     if (Reflect.has(item, column.property)) {
       Reflect.set(item, column.property, value);
@@ -341,7 +353,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
 
         if (!dependent) {
           // 切断关联关系
-          this.setColumnValue(item, relation.foreignColumn, null);
+          this.setProperty(item, relation.foreignColumn, null);
           continue;
         }
 
@@ -352,7 +364,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
           dependent,
           relation.referenceEntity.keyProperty
         );
-        this.setColumnValue(item, relation.foreignColumn, foreignKey);
+        this.setProperty(item, relation.foreignColumn, foreignKey);
       }
     }
   }
@@ -389,7 +401,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         const itemKey = Reflect.get(item, this.metadata.keyProperty);
         // 设置主键
         for (const subItem of refItems) {
-          repo.setColumnValue(
+          repo.setProperty(
             subItem,
             relation.referenceRelation.foreignColumn,
             itemKey

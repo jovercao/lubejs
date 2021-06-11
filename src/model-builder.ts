@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Expression, Select } from "./ast";
+import { CompatibleExpression, Expression, Select } from "./ast";
 import { DbContext } from "./db-context";
 import {
   ManyToManyMetadata,
@@ -42,7 +42,7 @@ import {
   DataTypeOf,
   isSameDbType,
 } from "./types";
-import { assign, assignIfUndefined, complex, lowerFirst } from "./util";
+import { assign, complex, lowerFirst } from "./util";
 
 export type HasManyKeyOf<T extends Entity> = {
   [P in keyof T]: P extends string
@@ -71,13 +71,26 @@ function fixColumn(
   entity: EntityMetadata,
   column: ColumnMetadata
 ) {
-  assignIfUndefined(column, "columnName", column.property);
-  assignIfUndefined(column, "dbType", getDefaultDbType(column.type));
-  if (column.isIdentity) {
-    assignIfUndefined(column, "identitySeed", 0);
-    assignIfUndefined(column, "identityStep", 0);
+  if (!column.columnName) {
+    column.columnName = column.property;
   }
-  assignIfUndefined(column, "isNullable", false);
+  if (!column.dbType) {
+    column.dbType = getDefaultDbType(column.type);
+  }
+  if (column.isIdentity) {
+    if (column.identitySeed === undefined) {
+      column.identitySeed = 0;
+    }
+    if (column.identityStep === undefined) {
+      column.identityStep = 1;
+    }
+  }
+  if (column.isNullable === undefined) {
+    column.isNullable = false;
+  }
+  if (column.isPrimaryKey === undefined) {
+    column.isPrimaryKey = false;
+  }
 }
 
 /**
@@ -91,18 +104,7 @@ function fixManyToOne(
   entity: TableEntityMetadata,
   relation: ManyToOneMetadata
 ) {
-  if (!relation.referenceEntity) {
-    const referenceEntity = ctx.getEntity(relation.referenceClass);
-    if (!referenceEntity) {
-      throw new Error(
-        `Class ${relation.referenceClass.name} not defined with Entity.`
-      );
-    }
-    if (!isTableEntity(referenceEntity)) {
-      throw new Error(`Relation must use with TableEntity.`);
-    }
-    relation.referenceEntity = referenceEntity;
-  }
+  ensureReferenceEntity(ctx, entity, relation);
   ensureForeignProperty(entity, relation);
 
   // 如果有声明对向属性的，将属性关联起来，未声明的无须理会
@@ -140,13 +142,7 @@ function fixOneToMany(
   entity: TableEntityMetadata,
   relation: OneToManyMetadata
 ) {
-  if (!relation.referenceEntity) {
-    const referenceEntity = ctx.getEntity(relation.referenceClass);
-    if (!isTableEntity(referenceEntity)) {
-      throw new Error(`Relation must on table.`);
-    }
-    relation.referenceEntity = referenceEntity;
-  }
+  ensureReferenceEntity(ctx, entity, relation);
   // 如果未指定该属性，则查找该属性
   // 如果未查找到该属性，则定义该属性
   if (!relation.referenceProperty) {
@@ -195,22 +191,29 @@ function fixOneToMany(
  * @param relation
  */
 function fixManyToMany(
-  ctx: DbContextMetadata,
+  ctxBuilder: ContextBuilder,
   entity: TableEntityMetadata,
   relation: ManyToManyMetadata
 ) {
-  if (!relation.referenceEntity) {
-    relation.referenceEntity = ctx.getEntity(
-      relation.referenceClass
-    ) as TableEntityMetadata;
-  }
-
+  const ctx = ctxBuilder.metadata;
+  ensureReferenceEntity(ctx, entity, relation);
   if (!relation.relationClass) {
     relation.relationClass = class extends Entity {};
-    const relationEntity = this.modelBuilder
-      .entity(relation.relationClass)
-      .asTable().metadata;
-    relation.relationEntity = relationEntity as TableEntityMetadata;
+    ctxBuilder
+      .entity<any>(relation.relationClass)
+      .asTable(
+        `${entity.className}${relation.referenceEntity.className}`,
+        (builder) => {
+          const keyColumn = builder.column((p) => p.id, Number).identity();
+          builder.hasKey((p) => p.id);
+          relation.relationEntity = builder.metadata as TableEntityMetadata;
+          fixColumn(
+            ctx,
+            relation.relationEntity,
+            keyColumn.metadata as ColumnMetadata
+          );
+        }
+      );
   }
 
   if (!relation.referenceProperty) {
@@ -238,7 +241,7 @@ function fixManyToMany(
       isNullable: true,
     } as ManyToManyMetadata;
     relation.referenceEntity.addMember(referenceRelation);
-    fixManyToMany(ctx, relation.referenceEntity, referenceRelation);
+    fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
   }
 
   if (isManyToMany(referenceRelation)) {
@@ -257,6 +260,7 @@ function fixManyToMany(
   // 如果未找到，则声明
   if (!realtionEntityToEntity) {
     realtionEntityToEntity = {
+      property: genRelationProperty(relation.relationEntity, entity.className, 'one'),
       isImplicit: true,
       kind: "MANY_TO_ONE",
       referenceClass: entity.class,
@@ -268,6 +272,7 @@ function fixManyToMany(
     ensureForeignProperty(relation.relationEntity, realtionEntityToEntity);
     relation.relationEntity.addMember(realtionEntityToEntity);
   }
+
   // 添加到关系表的导航属性
   const relationRelation = {
     property: complex(relation.relationEntity.className),
@@ -293,22 +298,11 @@ function fixManyToMany(
  */
 function fixOneToOne(
   ctx: DbContextMetadata,
-  entity: EntityMetadata,
+  entity: TableEntityMetadata,
   relation: OneToOneMetadata
 ) {
+  ensureReferenceEntity(ctx, entity, relation);
   if (relation.isPrimary === true) {
-    if (!relation.referenceEntity) {
-      const referenceEntity = ctx.getEntity(relation.referenceClass);
-      if (!referenceEntity) {
-        throw new Error(
-          `Entity ${relation.referenceClass.name} is not defined with entity.`
-        );
-      }
-      if (!isTableEntity(referenceEntity)) {
-        throw new Error(`Relation is only allowed in TableEntity.`);
-      }
-      relation.referenceEntity = referenceEntity;
-    }
     if (!relation.referenceProperty) {
       const referenceProperty = lowerFirst(entity.className);
       assertEntityMember(
@@ -384,7 +378,7 @@ function fixOneToOne(
  * @param relation
  */
 function ensureForeignProperty(
-  entity: EntityMetadata,
+  entity: TableEntityMetadata,
   relation: ManyToOneMetadata | ForeignOneToOneMetadata
 ): void {
   // 添加隐式外键列
@@ -420,18 +414,58 @@ function ensureForeignProperty(
     }
   }
 
-  if (
-    entity.kind === "TABLE" &&
-    relation.referenceEntity.kind === "TABLE" &&
-    !relation.constraintName
-  ) {
-    relation.constraintName = `${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation}`;
-  }
-
   if (!relation.foreignColumn) {
     relation.foreignColumn = column;
   }
+
+  if (!relation.constraintName) {
+    relation.constraintName = `${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation}`;
+  }
 }
+
+function ensureReferenceEntity(
+  ctx: DbContextMetadata,
+  entity: TableEntityMetadata,
+  relation: RelationMetadata
+) {
+  if (!relation.referenceEntity) {
+    const referenceEntity = ctx.getEntity(relation.referenceClass);
+    if (!referenceEntity) {
+      throw new Error(
+        `Entity ${relation.referenceClass.name} is not defined with entity.`
+      );
+    }
+    if (!isTableEntity(referenceEntity)) {
+      throw new Error(
+        `Entity ${entity.className} relation ${relation.property} reference entity ${referenceEntity.className} is not TableEntity.`
+      );
+    }
+    relation.referenceEntity = referenceEntity;
+  }
+}
+
+/**
+ * 生成一个关系属性名称
+ * @param entity
+ * @param referenceType
+ * @param type
+ * @returns
+ */
+function genRelationProperty(
+  entity: TableEntityMetadata,
+  referenceType: string,
+  type: "one" | "many"
+): string {
+  let property = lowerFirst(referenceType);
+  if (type === "many") {
+    property = complex(property);
+  }
+  while (entity.getMember(property)) {
+    property = '_' + property
+  }
+  return property;
+}
+
 
 /**
  * 判定成员是否已经存在，并且是期望的成员，如果未存在，返回false,如果存在并是期望的类型，返回true，如果不是期望的类型，则抛出异常
@@ -472,6 +506,11 @@ export class ContextBuilder<T extends DbContext = DbContext> {
   private _entityMap: Map<EntityType, EntityMapBuilder<any>> = new Map();
 
   /**
+   * 是否已经完成
+   */
+  private _ensured: boolean = false;
+
+  /**
    * 声明实体
    */
   entity<T extends Entity>(ctr: Constructor<T>): EntityMapBuilder<T>;
@@ -483,6 +522,8 @@ export class ContextBuilder<T extends DbContext = DbContext> {
     ctr: Constructor<T>,
     build?: (builder: EntityMapBuilder<T>) => void
   ): EntityMapBuilder<T> | this {
+    if (this._ensured)
+      throw new Error(`Context is ensured, pls build model before ensure.`);
     if (!this._entityMap.has(ctr)) {
       const metadata: Partial<EntityMetadata> =
         new EntityMetadataClass() as EntityMetadata;
@@ -570,6 +611,8 @@ export class ContextBuilder<T extends DbContext = DbContext> {
    * 完善数据并校验完整性
    */
   ensure() {
+    if (this._ensured)
+      throw new Error(`Context is ensured, not need ensure twice.`);
     const entityMap = new Map();
     this.metadata.entities.forEach((entity) => {
       entityMap.set(entity.class, entity);
@@ -586,40 +629,50 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       for (const member of entity.columns) {
         fixColumn(this.metadata, entity, member);
       }
-      let keyColumn: ColumnMetadata;
+
+      if (!isTableEntity(entity)) continue;
+
       if (entity.keyProperty) {
-        keyColumn = entity.getColumn(entity.keyProperty);
-      }
-
-      if (!keyColumn) {
-        // 查找默认主键
-        if (entity.kind === "TABLE" && !entity.keyProperty) {
-          keyColumn =
-            entity.getColumn("Id") ||
-            entity.getColumn("id") ||
-            entity.getColumn("ID") ||
-            entity.getColumn(`${entity.className}Id`) ||
-            entity.getColumn(`${lowerFirst(entity.className)}Id`);
-        }
-      }
-
-      if (entity.kind === "TABLE") {
+        const keyColumn = entity.getColumn(entity.keyProperty);
         if (!keyColumn) {
           throw new Error(
-            `Table ${entity.className} ${entity.tableName} has no primary key.`
+            `Entity ${entity.className} the key column ${entity.keyProperty} not found.`
           );
         }
-
         keyColumn.isPrimaryKey = true;
         entity.keyColumn = keyColumn;
-        if (!entity.keyProperty) {
-          entity.keyProperty = keyColumn.property;
+      } else {
+        let keyColumn =
+          entity.getColumn("Id") ||
+          entity.getColumn("id") ||
+          entity.getColumn("ID") ||
+          entity.getColumn(`${entity.className}Id`) ||
+          entity.getColumn(`${lowerFirst(entity.className)}Id`);
+
+        if (!keyColumn) {
+          keyColumn = {
+            kind: "COLUMN",
+            isImplicit: true,
+            property: "id",
+            type: Number,
+            columnName: "id",
+            dbType: DbType.int64,
+            isIdentity: true,
+            identitySeed: 0,
+            identityStep: 1,
+            isNullable: false,
+            isPrimaryKey: true,
+            isCalculate: false,
+            isRowflag: false,
+            description: "Auto generic key column.",
+          };
+          entity.addMember(keyColumn);
         }
-
-        entity.identityColumn = entity.columns.find((c) => c.isIdentity);
-
-        entity.rowflagColumn = entity.columns.find((c) => c.isRowflag);
+        entity.keyProperty = keyColumn.property;
+        entity.keyColumn = keyColumn;
       }
+      entity.identityColumn = entity.columns.find((c) => c.isIdentity);
+      entity.rowflagColumn = entity.columns.find((c) => c.isRowflag);
     }
 
     // 处理关联关系
@@ -634,7 +687,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
             fixOneToMany(this.metadata, entity, member);
             break;
           case "MANY_TO_MANY":
-            fixManyToMany(this.metadata, entity, member);
+            fixManyToMany(this, entity, member);
             break;
           case "ONE_TO_ONE":
             fixOneToOne(this.metadata, entity, member);
@@ -643,6 +696,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       }
     }
 
+    this._ensured = true;
     // 注册进 metadataStore中
     metadataStore.registerContext(this.metadata);
   }
@@ -715,7 +769,7 @@ export class EntityMapBuilder<T extends Entity> {
 
   private builder: EntityBuilder<T>;
 
-  assertKind(kind: EntityMetadata["kind"]): boolean {
+  private _assertKind(kind: EntityMetadata["kind"]): boolean {
     if (this.metadata.kind) {
       if (this.metadata.kind !== kind) {
         throw new Error(
@@ -732,21 +786,19 @@ export class EntityMapBuilder<T extends Entity> {
    */
   asTable(): TableEntityBuilder<T>;
   asTable(name: string): TableEntityBuilder<T>;
-  asTable(
-    build: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T>;
+  asTable(build: (builder: TableEntityBuilder<T>) => void): ContextBuilder;
   asTable(
     name: string,
     build: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T>;
+  ): ContextBuilder;
   asTable(
     nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
     build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T> {
-    if (this.assertKind("TABLE")) {
+  ): TableEntityBuilder<T> | ContextBuilder {
+    if (this._assertKind("TABLE")) {
       if (arguments.length > 0) {
         throw new Error(
-          `Entity is allowed declare as table once only, Pls use .asTable() to get TableEntityBuilder.`
+          `Entity ${this.metadata.class} is allowed declare as table once only, Pls use .asTable() to get TableEntityBuilder.`
         );
       }
       return this.builder as TableEntityBuilder<T>;
@@ -762,10 +814,11 @@ export class EntityMapBuilder<T extends Entity> {
       name || this.metadata.className;
     this.metadata.readonly = false;
     const builder = new TableEntityBuilder<T>(this.modelBuilder, this.metadata);
+    this.builder = builder;
     if (build) {
       build(builder);
+      return this.modelBuilder;
     }
-    this.builder = builder;
     return builder;
   }
 
@@ -783,7 +836,7 @@ export class EntityMapBuilder<T extends Entity> {
     nameOrBuild?: string | ((builder: ViewEntityBuilder<T>) => void),
     build?: (builder: ViewEntityBuilder<T>) => void
   ): ViewEntityBuilder<T> {
-    if (this.assertKind("VIEW")) {
+    if (this._assertKind("VIEW")) {
       if (arguments.length > 0) {
         throw new Error(
           `Entity is allowed declare as View once only, Pls use .asView() to get TableEntityBuilder.`
@@ -820,7 +873,7 @@ export class EntityMapBuilder<T extends Entity> {
   asQuery(
     build?: (builder: QueryEntityBuilder<T>) => void
   ): QueryEntityBuilder<T> {
-    if (this.assertKind("QUERY")) {
+    if (this._assertKind("QUERY")) {
       if (arguments.length > 0) {
         throw new Error(
           `Entity is allowed declare as Query once only, Pls use .asQuery() to get TableEntityBuilder.`
@@ -857,7 +910,7 @@ export abstract class EntityBuilder<T extends Entity> {
   column<P extends Scalar>(
     selector: (p: T) => P,
     type: DataTypeOf<P>
-  ): ColumnBuilder<T>;
+  ): ColumnBuilder<T, P>;
   column<P extends Scalar>(
     selector: (p: T) => P,
     type: DataTypeOf<P>,
@@ -867,7 +920,7 @@ export abstract class EntityBuilder<T extends Entity> {
     selector: (p: T) => P,
     type: DataTypeOf<P>,
     build?: (builder: ColumnBuilder<T>) => void
-  ): ColumnBuilder<T> | this {
+  ): ColumnBuilder<T, P> | this {
     let property: string;
     const proxy: any = new Proxy(
       {},
@@ -881,7 +934,7 @@ export abstract class EntityBuilder<T extends Entity> {
     if (!property) {
       throw new Error(`Please select a property`);
     }
-    let metadata: Partial<ColumnMetadata> = this.memberMaps.get(
+    let metadata: Partial<ColumnMetadata<P>> = this.memberMaps.get(
       property
     ) as any;
     if (!metadata) {
@@ -892,7 +945,7 @@ export abstract class EntityBuilder<T extends Entity> {
       };
     }
 
-    const columnBuilder = new ColumnBuilder<T>(
+    const columnBuilder = new ColumnBuilder<T, P>(
       this.modelBuilder,
       this,
       metadata
@@ -1067,11 +1120,11 @@ export class QueryEntityBuilder<T extends Entity> extends EntityBuilder<T> {
   }
 }
 
-export class ColumnBuilder<T extends Entity> {
+export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
   constructor(
     private readonly modelBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<T>,
-    public readonly metadata: Partial<ColumnMetadata>
+    public readonly metadata: Partial<ColumnMetadata<V>>
   ) {}
 
   /**
@@ -1088,6 +1141,11 @@ export class ColumnBuilder<T extends Entity> {
     this.metadata.description = comment;
     return this;
   }
+
+  autogen(generator: (item: any) => CompatibleExpression<V>): this {
+    this.metadata.generator = generator
+    return this;
+  }
   /**
    * 数据类型
    */
@@ -1098,7 +1156,7 @@ export class ColumnBuilder<T extends Entity> {
   /**
    * 是否可空
    */
-  nullable(yesOrNo: boolean): this {
+  nullable(yesOrNo: boolean = true): this {
     this.metadata.isNullable = yesOrNo;
     return this;
   }
@@ -1121,7 +1179,7 @@ export class ColumnBuilder<T extends Entity> {
   /**
    * 计算列
    */
-  calculate(expr: Expression): this {
+  calculate(expr: Expression<V>): this {
     this.metadata.isCalculate = true;
     this.metadata.calculateExpr = expr;
     return this;
@@ -1129,7 +1187,7 @@ export class ColumnBuilder<T extends Entity> {
   /**
    * 默认值
    */
-  defaultValue(expr: Expression): this {
+  defaultValue(expr: CompatibleExpression<V>): this {
     this.metadata.defaultValue = expr;
     return this;
   }
@@ -1413,18 +1471,18 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
    */
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    build?: (builder: TableEntityBuilder<any>) => void
-  ): TableEntityBuilder<any>;
+    build?: (builder: TableEntityBuilder<T>) => void
+  ): TableEntityBuilder<T>;
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
     name: string,
-    build?: (builder: TableEntityBuilder<any>) => void
-  ): TableEntityBuilder<any>;
+    build?: (builder: TableEntityBuilder<T>) => void
+  ): TableEntityBuilder<T>;
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    nameOrBuild?: string | ((builder: TableEntityBuilder<any>) => void),
-    build?: (builder: TableEntityBuilder<any>) => void
-  ): TableEntityBuilder<any> {
+    nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
+    build?: (builder: TableEntityBuilder<T>) => void
+  ): TableEntityBuilder<T> {
     let name: string;
 
     if (typeof nameOrBuild === "string") {

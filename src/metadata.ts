@@ -13,6 +13,7 @@ import {
   EntityType,
   ListType,
   RowObject,
+  Scalar,
   ScalarType,
 } from "./types";
 import { isClass } from './util'
@@ -28,7 +29,7 @@ export class EntityMetadataClass {
   /**
    * 类型
    */
-  kind: "TABLE" | "VIEW" | "QUERY" = "TABLE";
+  kind: "TABLE" | "VIEW" | "QUERY";
 
   /**
    * 构造函数
@@ -75,7 +76,7 @@ export class EntityMetadataClass {
    */
   description?: string;
 
-  private _members: EntityMemberMetadata[];
+  private _members: EntityMemberMetadata[] = [];
   private _memberMap: Record<string, EntityMemberMetadata> = {};
   private _columnMap: Record<string, ColumnMetadata> = {};
   private _columns: ColumnMetadata[] = [];
@@ -243,7 +244,7 @@ export type EntityMemberMetadata =
 /**
  * 属性元数据
  */
-export interface ColumnMetadata {
+export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 是否由ORM隐式生成
    */
@@ -272,9 +273,9 @@ export interface ColumnMetadata {
    */
   isNullable: boolean;
   /**
-   * 默认值
+   * 默认值，即自动生成值列
    */
-  defaultValue?: CompatibleExpression;
+  defaultValue?: CompatibleExpression<T>;
   /**
    * 主键
    */
@@ -302,11 +303,16 @@ export interface ColumnMetadata {
   /**
    * 计算表达式
    */
-  calculateExpr?: CompatibleExpression;
+  calculateExpr?: CompatibleExpression<T>;
   /**
    * 摘要说明
    */
   description?: string;
+
+  /**
+   * 自动生成表达式（程序）
+   */
+  generator?: (item: any) => CompatibleExpression<T>;
 }
 
 /**

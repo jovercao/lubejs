@@ -53,6 +53,7 @@
     "mssql": "^6.2.0",
     "oracledb": "^5.0.0",
     "power-assert": "^1.6.1",
+    "ts-node": "^10.0.0",
     "typedoc": "^0.17.8",
     "typedoc-plugin-markdown": "^2.3.1",
     "typeorm": "^0.2.31",
