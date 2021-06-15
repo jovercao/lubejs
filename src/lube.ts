@@ -5,6 +5,8 @@ import { ISOLATION_LEVEL } from "./constants";
 import assert from "assert";
 import { CompileOptions, Compiler } from "./compile";
 import { Parameter } from "./ast";
+import { DatabaseSchema } from './schema'
+import { MigrateScripter } from './migrate-cli'
 
 export type ConnectOptions = {
   /**
@@ -85,6 +87,16 @@ export interface IDbProvider {
   query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
+
+  /**
+   * 获取数据库架构
+   */
+  getSchema(): Promise<DatabaseSchema>;
+
+  /**
+   * 构架
+   */
+  readonly migrateExecutor: MigrateScripter;
 }
 
 /**

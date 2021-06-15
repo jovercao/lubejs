@@ -21,7 +21,6 @@ import {
   WhereObject,
   Field,
   FieldsOf,
-  Name,
   Procedure,
   Table,
   AsScalarType,
@@ -39,7 +38,7 @@ import { INSERT_MAXIMUM_ROWS } from './constants'
 import { Lube } from './lube'
 import { Queryable } from './queryable'
 import { and, doc, or } from './builder'
-import { RowObject, Scalar } from './types'
+import { Name, RowObject, Scalar } from './types'
 
 export interface Command {
   sql: string
@@ -219,6 +218,9 @@ export class Executor {
     }
   }
 
+  // async query<T extends RowObject = any> (
+  //   sql: string
+  // ): Promise<QueryResult<T>>
   async query<T extends RowObject = any> (
     sql: Select<T>
   ): Promise<QueryResult<T>>
@@ -240,7 +242,7 @@ export class Executor {
     params: Record<string, Scalar>
   ): Promise<QueryResult<T>>
   async query<T extends RowObject = any> (
-    sql: Statement | Document
+    sql: Statement | Document | string
   ): Promise<QueryResult<T>>
   async query<T extends RowObject = any> (
     sql: TemplateStringsArray,

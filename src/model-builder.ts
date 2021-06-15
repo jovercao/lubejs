@@ -43,7 +43,7 @@ import {
   DataTypeOf,
   isSameDbType,
 } from "./types";
-import { assign, complex, lowerFirst } from "./util";
+import { assign, complex, ensureExpression, lowerFirst } from "./util";
 
 export type HasManyKeyOf<T extends Entity> = {
   [P in keyof T]: P extends string
@@ -79,11 +79,11 @@ function fixColumn(
     column.dbType = getDefaultDbType(column.type);
   }
   if (column.isIdentity) {
-    if (column.identitySeed === undefined) {
-      column.identitySeed = 0;
+    if (column.identityStartValue === undefined) {
+      column.identityStartValue = 0;
     }
-    if (column.identityStep === undefined) {
-      column.identityStep = 1;
+    if (column.identityIncrement === undefined) {
+      column.identityIncrement = 1;
     }
   }
   if (column.isNullable === undefined) {
@@ -94,7 +94,12 @@ function fixColumn(
   }
 }
 
-function fixIndex(entity: EntityMetadata, index: IndexMetadata) {
+function fixIndex(entity: TableEntityMetadata, index: IndexMetadata) {
+  if (!index.name) {
+    index.name = `${index.isPrimaryKey ? "PK" : "IX"}_${
+      entity.tableName
+    }_${index.columns.map((col) => col.columnName).join("_")}`;
+  }
   index.columns = index.properties.map((property) => {
     const column = entity.getColumn(property);
     if (!column) {
@@ -671,8 +676,8 @@ export class ContextBuilder<T extends DbContext = DbContext> {
             columnName: "id",
             dbType: DbType.int64,
             isIdentity: true,
-            identitySeed: 0,
-            identityStep: 1,
+            identityStartValue: 0,
+            identityIncrement: 1,
             isNullable: false,
             isPrimaryKey: true,
             isCalculate: false,
@@ -997,15 +1002,24 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
       throw new Error("Please select a property");
     }
     this.metadata.keyProperty = property;
+    this.metadata.addIndex({
+      name: undefined,
+      properties: [property],
+      columns: null,
+      isUnique: true,
+      isPrimaryKey: true,
+    });
     return this;
   }
 
   hasIndex(selector: (p: T) => Scalar[], isUnique: boolean = false): this {
     const properties: string[] = selectProperty(selector);
     this.metadata.addIndex({
+      name: undefined,
       properties,
       columns: null,
       isUnique,
+      isPrimaryKey: false,
     });
     return this;
   }
@@ -1162,8 +1176,8 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   identity(seed?: number, step?: number): this {
     this.metadata.isIdentity = true;
-    this.metadata.identitySeed = seed ?? 0;
-    this.metadata.identityStep = step ?? 1;
+    this.metadata.identityStartValue = seed ?? 0;
+    this.metadata.identityIncrement = step ?? 1;
     return this;
   }
   /**
@@ -1171,14 +1185,14 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   calculate(expr: Expression<V>): this {
     this.metadata.isCalculate = true;
-    this.metadata.calculateExpr = expr;
+    this.metadata.calculateExpression = expr;
     return this;
   }
   /**
    * 默认值
    */
   defaultValue(expr: CompatibleExpression<V>): this {
-    this.metadata.defaultValue = expr;
+    this.metadata.defaultValue = ensureExpression(expr);
     return this;
   }
 }

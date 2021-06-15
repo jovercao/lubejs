@@ -36,7 +36,6 @@ import {
   Expression,
   BuiltIn,
   Field,
-  Name,
   Condition,
   Operation,
   Rowset,
@@ -48,12 +47,13 @@ import {
   TableVariant,
   // IdentityValue,
   StandardExpression,
+  TableVariantDeclare,
 } from "./ast";
 import { PARAMETER_DIRECTION } from "./constants";
 import { Command } from "./execute";
 import { Standard } from "./std";
 
-import { DbType, Scalar } from "./types";
+import { DbType, Name, Scalar } from "./types";
 
 import {
   dateToString,
@@ -95,6 +95,8 @@ import {
   isValuedSelect,
   isVariant,
   isStandardExpression,
+  isStatement,
+  isTableVariantDeclare,
 } from "./util";
 
 /**
@@ -270,7 +272,7 @@ export abstract class Compiler {
    */
   makeCommand(arr: TemplateStringsArray, ...paramValues: any[]): Command {
     const params: Parameter[] = [];
-    let sql: string = arr[0]
+    let sql: string = arr[0];
     for (let i = 0; i < arr.length - 1; i++) {
       const name = "__p__" + i;
       const param = Parameter.input(name, paramValues[i]);
@@ -319,7 +321,7 @@ export abstract class Compiler {
       return "NULL";
     }
 
-    const type = typeof value
+    const type = typeof value;
 
     if (type === "string") {
       return this.compileString(value as string);
@@ -346,13 +348,15 @@ export abstract class Compiler {
   /**
    * 将AST编译成一个可供执行的命令
    */
-  public compile(ast: Statement | Document): Command {
+  public compile(ast: Statement | Document | Expression): Command {
     const params = new Set<Parameter<Scalar, string>>();
     let sql: string;
     if (isDocument(ast)) {
       sql = this.compileDocument(ast, params);
-    } else {
+    } else if (isStatement(ast)) {
       sql = this.compileStatement(ast, params);
+    } else {
+      sql = this.compileExpression(ast, params);
     }
     return {
       sql,
@@ -1056,15 +1060,20 @@ export abstract class Compiler {
     );
   }
 
+  protected abstract compileTableVariantDeclare(
+    declare: TableVariantDeclare
+  ): string;
+
   protected compileDeclare(declare: Declare): string {
     return (
       "DECLARE " +
       declare.$declares
-        .map(
-          (varDec) =>
-            this.stringifyVariantName(varDec.$name) +
-            " " +
-            this.compileType(varDec.$dataType)
+        .map((varDec) =>
+          isTableVariantDeclare(varDec)
+            ? this.compileTableVariantDeclare(varDec)
+            : this.stringifyVariantName(varDec.$name) +
+              " " +
+              this.compileType(varDec.$dataType)
         )
         .join(", ") +
       ";"

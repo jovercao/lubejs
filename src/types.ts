@@ -7,25 +7,24 @@
 //    direction?: ParameterDirection
 // }
 
-import { deepthEqual } from './util'
+import { deepthEqual } from "./util";
 
-
-export const EntitySymble = Symbol('LUBEJS#Entity')
+export const EntitySymble = Symbol("LUBEJS#Entity");
 
 /**
  * 实体类基类,仅为了typescript区分类型
  * 不一定非得从此继承
  */
 export class Entity {
-  [EntitySymble]: true
+  [EntitySymble]: true;
 }
 
 // **********************************类型声明******************************************
 
-export type Binary = ArrayBuffer | SharedArrayBuffer
+export type Binary = ArrayBuffer | SharedArrayBuffer;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export type RowObject = object
+export type RowObject = object;
 
 /**
  * 标量类型
@@ -38,7 +37,7 @@ export type Scalar =
   | number
   | bigint
   | Date
-  | Binary
+  | Binary;
 // TODO: 适配 JSON 和 ARRAY数据类型
 // | RowObject
 // | Array<ScalarType>
@@ -53,96 +52,96 @@ export type ScalarType =
   | typeof Buffer
   | SharedArrayBufferConstructor
   | ObjectConstructor
-  | ArrayConstructor
+  | ArrayConstructor;
 
 export type INT64 = {
-  readonly name: 'INT64'
-}
+  readonly name: "INT64";
+};
 
 export type INT32 = {
-  readonly name: 'INT32'
-  readonly length?: 8 | 16 | 32 | 64
-}
+  readonly name: "INT32";
+  readonly length?: 8 | 16 | 32 | 64;
+};
 
 export type INT16 = {
-  readonly name: 'INT16'
-}
+  readonly name: "INT16";
+};
 
 export type INT8 = {
-  readonly name: 'INT8'
-}
+  readonly name: "INT8";
+};
 
 export type NUMERIC = {
-  readonly name: 'NUMERIC'
-  readonly precision: number
-  readonly digit?: number
-}
+  readonly name: "NUMERIC";
+  readonly precision: number;
+  readonly digit?: number;
+};
 
 export type FLOAT = {
-  readonly name: 'FLOAT'
-}
+  readonly name: "FLOAT";
+};
 
 export type DOUBLE = {
-  readonly name: 'DOUBLE'
-}
+  readonly name: "DOUBLE";
+};
 
 export type STRING = {
-  readonly name: 'STRING'
+  readonly name: "STRING";
   /**
    * 为0时表示无限大
    */
-  readonly length: number
-}
+  readonly length: number;
+};
 
 export type DATE = {
-  readonly name: 'DATE'
-}
+  readonly name: "DATE";
+};
 
 export type DATETIME = {
-  readonly name: 'DATETIME'
-}
+  readonly name: "DATETIME";
+};
 
 export type BINARY = {
-  readonly name: 'BINARY'
-  readonly length: number
-}
+  readonly name: "BINARY";
+  readonly length: number;
+};
 
 export type BOOLEAN = {
-  readonly name: 'BOOLEAN'
-}
+  readonly name: "BOOLEAN";
+};
 
 export type UUID = {
-  readonly name: 'UUID'
-}
+  readonly name: "UUID";
+};
 
 /**
  * 行标识列，如sqlserver的timestamp
  */
 export type ROWFLAG = {
-  readonly name: 'ROWFLAG'
-}
+  readonly name: "ROWFLAG";
+};
 
 /**
  * 对象类型,不使用JSON，是因为冲突
  */
 export type OBJECT<T extends object = any> = {
-  readonly name: 'OBJECT'
-}
+  readonly name: "OBJECT";
+};
 
 const DEFAULT_OBJECT: OBJECT<any> = {
-  name: 'OBJECT'
-}
+  name: "OBJECT",
+};
 
 /**
  * 列表类型，即数组，不使用ARRAY，亦是因为命名冲突
  */
 export type ARRAY<T extends DbType> = {
-  readonly name: 'ARRAY'
+  readonly name: "ARRAY";
   /**
    * 元素类型
    */
   readonly type: T;
-}
+};
 
 export function isSameDbType(type1: DbType, type2: DbType) {
   return deepthEqual(type1, type2);
@@ -164,13 +163,19 @@ export type DbType =
   | UUID
   | ROWFLAG
   | OBJECT
-  | ARRAY<any>
+  | ARRAY<any>;
 
 /**
  * 类型转换
  */
-export type TsTypeOf<T extends DbType> =
-  T extends INT8 | INT16 | INT32 | INT64 | Number | FLOAT | DOUBLE
+export type TsTypeOf<T extends DbType> = T extends
+  | INT8
+  | INT16
+  | INT32
+  | INT64
+  | Number
+  | FLOAT
+  | DOUBLE
   ? number
   : T extends STRING | UUID
   ? string
@@ -188,11 +193,19 @@ export type TsTypeOf<T extends DbType> =
   ? TsTypeOf<M>[]
   : never;
 
+export type PathedName<T extends string> =
+  | [T]
+  | [string, T]
+  | [string, string, T]
+  | [string, string, string, T]
+  | [string, string, string, string, T];
+
+export type Name<T extends string> = T | PathedName<T>;
+
 /**
  * 从TS Type 转换为DbType的类型
  */
-export type DbTypeOf<T> =
-  T extends string
+export type DbTypeOf<T> = T extends string
   ? STRING
   : T extends number
   ? NUMERIC | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
@@ -202,17 +215,16 @@ export type DbTypeOf<T> =
   ? BOOLEAN
   : T extends Binary
   ? BINARY
-  // : T extends Array<infer M>
+  : // : T extends Array<infer M>
   // ? LIST<DbTypeOf<M>>
-  : T extends RowObject
+  T extends RowObject
   ? OBJECT<T>
-  : never
+  : never;
 
 /**
  * 转换
  */
-export type DataTypeOf<T> =
-  T extends string
+export type DataTypeOf<T> = T extends string
   ? StringConstructor
   : T extends number
   ? NumberConstructor
@@ -226,26 +238,28 @@ export type DataTypeOf<T> =
   ? ObjectConstructor
   : T extends (infer M)[]
   ? M extends object
-  ? [Constructor<M>]
-  : [DataTypeOf<M>]
-  : never
+    ? [Constructor<M>]
+    : [DataTypeOf<M>]
+  : never;
 
 /**
  * 构造函数，即类本身
  */
 export type Constructor<T = object> = {
-  new(...args: any): T
-}
+  new (...args: any): T;
+};
 
-export type EntityType = Constructor<Entity>
+export type EntityType = Constructor<Entity>;
 
 /******************************* Model 相关声明 *********************************/
-export type ListType<T extends ScalarType | EntityType = ScalarType | EntityType> = [T]
+export type ListType<
+  T extends ScalarType | EntityType = ScalarType | EntityType
+> = [T];
 
 /**
  * Metadata中的数据类型
  */
-export type DataType = ScalarType | EntityType | ListType | JSON
+export type DataType = ScalarType | EntityType | ListType | JSON;
 
 // export type DataTypeToTsType<T> = T extends String
 //   ? string
@@ -270,56 +284,56 @@ export type DataType = ScalarType | EntityType | ListType | JSON
  */
 export const DbType = {
   int8: {
-    name: 'INT8'
+    name: "INT8",
   } as INT8,
-  int16: { name: 'INT16' } as INT16,
-  int32: { name: 'INT32' } as INT32,
-  int64: { name: 'INT64' } as INT64,
+  int16: { name: "INT16" } as INT16,
+  int32: { name: "INT32" } as INT32,
+  int64: { name: "INT64" } as INT64,
   numeric(precision: number, digit?: number): NUMERIC {
     return {
-      name: 'NUMERIC',
+      name: "NUMERIC",
       precision,
-      digit
-    }
+      digit,
+    };
   },
   float: {
-    name: 'FLOAT'
+    name: "FLOAT",
   } as FLOAT,
   double: {
-    name: 'DOUBLE'
+    name: "DOUBLE",
   } as DOUBLE,
   string(length: number): STRING {
     return {
-      name: 'STRING',
-      length
-    }
+      name: "STRING",
+      length,
+    };
   },
   date: {
-    name: 'DATE'
+    name: "DATE",
   } as DATE,
   datetime: {
-    name: 'DATETIME'
+    name: "DATETIME",
   } as DATETIME,
   binary(length: number): BINARY {
     return {
-      name: 'BINARY',
-      length
-    }
+      name: "BINARY",
+      length,
+    };
   },
   boolean: {
-    name: 'BOOLEAN'
+    name: "BOOLEAN",
   } as BOOLEAN,
   uuid: {
-    name: 'UUID'
+    name: "UUID",
   } as UUID,
-  object: (<T extends object = any>(): OBJECT<T> => {
+  object: <T extends object = any>(): OBJECT<T> => {
     return DEFAULT_OBJECT;
-  }),
+  },
   array<T extends DbType>(type: T): ARRAY<T> {
     return {
-      name: 'ARRAY',
-      type
-    }
+      name: "ARRAY",
+      type,
+    };
   },
-  MAX: 0
-}
+  MAX: 0,
+};

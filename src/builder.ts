@@ -8,13 +8,10 @@ import {
   Expression,
   CompatibleExpression,
   CompatibleCondition,
-  Name,
-  ProxiedTable,
   // IdentityValue
 } from "./ast";
 import { isExpression, isScalar } from "./util";
 import * as std from "./std";
-import { RowObject } from './types'
 
 /**
  * not 查询条件运算

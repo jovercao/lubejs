@@ -7,7 +7,9 @@
     "noImplicitAny": true,
     "esModuleInterop": true,
     "experimentalDecorators": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "lib": [
+    ]
   },
   "exclude": [
     "node_modules",

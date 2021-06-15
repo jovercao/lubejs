@@ -7,7 +7,6 @@ import {
   AST,
   Proxied,
   Func,
-  Name,
   Table,
   Field,
   Document,
@@ -26,7 +25,6 @@ import {
   NamedSelect,
   Operation,
   Parameter,
-  PathedName,
   Procedure,
   Raw,
   Rowset,
@@ -56,6 +54,8 @@ import {
   FieldsOf,
   ProxiedNamedSelect,
   StandardExpression,
+  VariantDeclare,
+  TableVariantDeclare,
 } from "./ast";
 
 import {
@@ -71,6 +71,8 @@ import {
   DbType,
   EntityType,
   ListType,
+  Name,
+  PathedName,
   RowObject,
   Scalar,
   ScalarType,
@@ -111,11 +113,20 @@ export function ensureField<T extends Scalar, N extends string>(
   return name;
 }
 
-export function ensureVariant<T extends string, N extends string>(
+export function ensureVariant<T extends Scalar, N extends string>(
   name: N | Variant<T, N>
 ): Variant<T, N> {
   if (typeof name === "string") {
     return new Variant(name);
+  }
+  return name;
+}
+
+export function ensureTableVariant<T extends RowObject, N extends string>(
+  name: N | TableVariant<T, N>
+): TableVariant<T, N> {
+  if (typeof name === "string") {
+    return new TableVariant(name);
   }
   return name;
 }
@@ -458,7 +469,7 @@ export function isCrudStatement(value: any): value is CrudStatement {
 }
 
 export function isIdentifier(value: any): value is Identifier {
-  return value.$type === SQL_SYMBOLE.IDENTIFIER;
+  return value?.$type === SQL_SYMBOLE.IDENTIFIER;
 }
 
 export function isTable(value: any): value is Table {
@@ -470,11 +481,11 @@ export function isField(value: any): value is Field {
 }
 
 export function isLiteral(value: any): value is Literal {
-  return value.$type === SQL_SYMBOLE.LITERAL;
+  return value?.$type === SQL_SYMBOLE.LITERAL;
 }
 
 export function isNamedSelect(value: any): value is NamedSelect {
-  return value.$type === SQL_SYMBOLE.NAMED_SELECT;
+  return value?.$type === SQL_SYMBOLE.NAMED_SELECT;
 }
 
 export function isWithSelect(value: any): value is NamedSelect {
@@ -482,19 +493,27 @@ export function isWithSelect(value: any): value is NamedSelect {
 }
 
 export function isWith(value: any): value is With {
-  return value && value.$type === SQL_SYMBOLE.WITH;
+  return value?.$type === SQL_SYMBOLE.WITH;
 }
 
 export function isTableFuncInvoke(value: any): value is TableFuncInvoke {
-  return value.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
+  return value?.$type === SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 }
 
 export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
-  return value.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
+  return value?.$type === SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE;
 }
 
 export function isTableVariant(value: any): value is TableVariant {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
+}
+
+export function isVariantDeclare(value: any): value is VariantDeclare {
+  return value?.$type === SQL_SYMBOLE.VARAINT_DECLARE;
+}
+
+export function isTableVariantDeclare(value: any): value is TableVariantDeclare {
+  return value?.$type === SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
 }
 
 export function isVariant(value: any): value is Variant {
@@ -525,27 +544,27 @@ export function isExpression(value: any): value is Expression {
 }
 
 export function isCase(value: any): value is Case {
-  return value.$type === SQL_SYMBOLE.CASE;
+  return value?.$type === SQL_SYMBOLE.CASE;
 }
 
 export function isBracket(value: any): value is ParenthesesExpression {
-  return value.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
+  return value?.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
 }
 
 export function isValuedSelect(value: any): value is ValuedSelect {
-  return value.$type === SQL_SYMBOLE.VALUED_SELECT;
+  return value?.$type === SQL_SYMBOLE.VALUED_SELECT;
 }
 
 export function isOperation(value: any): value is Operation {
-  return value.$type === SQL_SYMBOLE.OPERATION;
+  return value?.$type === SQL_SYMBOLE.OPERATION;
 }
 
 export function isUnaryOperation(value: Operation): value is UnaryOperation {
-  return value.$kind === OPERATION_KIND.UNARY;
+  return value?.$kind === OPERATION_KIND.UNARY;
 }
 
 export function isBinaryOperation(value: Operation): value is BinaryOperation {
-  return value.$kind === OPERATION_KIND.BINARY;
+  return value?.$kind === OPERATION_KIND.BINARY;
 }
 
 // export function isConvertOperation(
@@ -559,7 +578,7 @@ export function isParameter(value: any): value is Parameter {
 }
 
 export function isStar(value: any): value is Star {
-  return value.$type === SQL_SYMBOLE.STAR;
+  return value?.$type === SQL_SYMBOLE.STAR;
 }
 
 export function isBuiltIn(value: any): value is BuiltIn {
@@ -571,45 +590,45 @@ export function isColumn(value: any): value is SelectColumn {
 }
 
 export function isCondition(value: any): value is Condition {
-  return value.$type === SQL_SYMBOLE.CONDITION;
+  return value?.$type === SQL_SYMBOLE.CONDITION;
 }
 
 export function isUnaryCompareCondition(
   value: Condition
 ): value is UnaryCompareCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return value?.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryCompareCondition(
   value: Condition
 ): value is BinaryCompareCondition {
-  return value.$kind === CONDITION_KIND.BINARY_COMPARE;
+  return value?.$kind === CONDITION_KIND.BINARY_COMPARE;
 }
 
 export function isUnaryLogicCondition(
   value: Condition
 ): value is UnaryLogicCondition {
-  return value.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return value?.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryLogicCondition(
   value: Condition
 ): value is BinaryLogicCondition {
-  return value.$kind === CONDITION_KIND.BINARY_LOGIC;
+  return value?.$kind === CONDITION_KIND.BINARY_LOGIC;
 }
 
 export function isGroupCondition(
   value: Condition
 ): value is ParenthesesCondition {
-  return value.$kind === CONDITION_KIND.BRACKET_CONDITION;
+  return value?.$kind === CONDITION_KIND.BRACKET_CONDITION;
 }
 
 export function isExistsCondition(value: Condition): value is ExistsCondition {
-  return value.$kind === CONDITION_KIND.EXISTS;
+  return value?.$kind === CONDITION_KIND.EXISTS;
 }
 
 export function isDocument(value: any): value is Document {
-  return value.$type === SQL_SYMBOLE.DOCUMENT;
+  return value?.$type === SQL_SYMBOLE.DOCUMENT;
 }
 
 export function invalidAST(type: string, value: any) {
@@ -802,4 +821,10 @@ export function deepthEqual(left: any, right: any): boolean {
     }
   }
   return true;
+}
+
+export function map<T>(list: T[], keyer: (item: T) => string): Record<string, T> {
+  const map: Record<string, T> = {};
+  list.forEach((item) => (map[keyer(item)] = item));
+  return map;
 }

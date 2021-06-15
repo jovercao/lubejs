@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CompatibleExpression, Identifier, ProxiedRowset, ProxiedTable, Rowset, Select, Table } from "./ast";
+import { CompatibleExpression, Expression, Identifier, ProxiedRowset, ProxiedTable, Rowset, Select, Table } from "./ast";
 import { $IsProxy, $ROWSET_INSTANCE, SQL_SYMBOLE } from './constants'
 import { DbContext } from "./db-context";
 import { FetchRelations } from "./repository";
@@ -19,10 +19,22 @@ import {
 import { isClass } from './util'
 
 export interface IndexMetadata {
+  name: string;
   properties: string[];
   columns: ColumnMetadata[];
-  // 是否唯一
+  /**
+   * 是否唯一
+   */
   isUnique: boolean;
+  /**
+   * 是否主键
+   */
+  isPrimaryKey: boolean;
+
+  /**
+   * 摘要说明
+   */
+  description?: string;
 }
 
 /**
@@ -314,7 +326,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 默认值，即自动生成值列
    */
-  defaultValue?: CompatibleExpression<T>;
+  defaultValue?: Expression<T>;
   /**
    * 主键
    */
@@ -330,11 +342,11 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 标识列种子
    */
-  identitySeed?: number;
+  identityStartValue?: number;
   /**
    * 标识列步长
    */
-  identityStep?: number;
+  identityIncrement?: number;
   /**
    * 是否计算列
    */
@@ -342,7 +354,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 计算表达式
    */
-  calculateExpr?: CompatibleExpression<T>;
+  calculateExpression?: Expression<T>;
   /**
    * 摘要说明
    */
@@ -1475,9 +1487,11 @@ export function isManyToMany(
  * @param relation
  * @returns
  */
-export function isForeignRelation(relation: RelationMetadata) {
+export function isForeignRelation(relation: RelationMetadata): relation is ForeignRelation {
   return isManyToOne(relation) || isForeignOneToOne(relation);
 }
+
+export type ForeignRelation = ForeignOneToOneMetadata | ManyToOneMetadata
 
 /**
  * 是否实体类型

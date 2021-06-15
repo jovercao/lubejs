@@ -19,6 +19,7 @@ import {
   isExpression,
   isSortInfo,
   parseValueType,
+  ensureTableVariant,
 } from "./util";
 
 import {
@@ -37,9 +38,10 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION,
 } from "./constants";
-import { DbType, TsTypeOf, DbTypeOf, RowObject } from "./types";
+import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from "./types";
 import { Scalar } from "./types";
 import { convert, identityValue } from './std'
+import { ColumnSchema, TableSchema } from './schema'
 // import { convert } from './std';
 
 // /**
@@ -1386,14 +1388,6 @@ export class Func<
   }
 }
 
-export type PathedName<T extends string> =
-  | [T]
-  | [string, T]
-  | [string, string, T]
-  | [string, string, string, T]
-  | [string, string, string, string, T];
-
-export type Name<T extends string> = T | PathedName<T>;
 
 export abstract class Assignable<T extends Scalar = any> extends Expression<T> {
   readonly $lvalue: true = true;
@@ -1593,13 +1587,6 @@ export class Variant<T extends Scalar = any, N extends string = string>
 
 // TODO 表变量支持
 
-export interface TableColumn {
-  name: string;
-  type: DbType;
-  nullable: boolean;
-  primaryKey: boolean;
-  identity: boolean;
-}
 
 // TODO: 完成表变量功能
 export class TableVariant<T extends RowObject = any, N extends string = string>
@@ -1610,11 +1597,9 @@ export class TableVariant<T extends RowObject = any, N extends string = string>
   $builtin: boolean;
   $kind: IDENTOFIER_KIND.TABLE_VARIANT = IDENTOFIER_KIND.TABLE_VARIANT;
   $name: N;
-  $columns: TableColumn[];
-  constructor(name: N, columns: TableColumn[]) {
+  constructor(name: N) {
     super();
     this.$name = name;
-    this.$columns = columns;
   }
 }
 
@@ -3985,7 +3970,7 @@ export class Assignment<T extends Scalar = Scalar> extends Statement {
 export class VariantDeclare extends AST {
   readonly $type: SQL_SYMBOLE.VARAINT_DECLARE = SQL_SYMBOLE.VARAINT_DECLARE;
 
-  constructor(name: string | Variant, dataType: DbType) {
+  constructor(name: Variant | string, dataType: DbType) {
     super();
     this.$name = ensureVariant(name);
     this.$dataType = dataType;
@@ -3995,13 +3980,26 @@ export class VariantDeclare extends AST {
   $dataType: DbType;
 }
 
+export class TableVariantDeclare<T extends RowObject = any> extends AST {
+  readonly $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE = SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
+
+  constructor(name: TableVariant<T> | string, schema: TableSchema) {
+    super();
+    this.$name = ensureTableVariant(name);
+    this.$schema = schema;
+  }
+
+  $name: TableVariant;
+  $schema: Omit<TableSchema, 'name'>;
+}
+
 /**
  * 声明语句，暂时只支持变量声明
  */
 export class Declare extends Statement {
-  $declares: VariantDeclare[];
+  $declares: (VariantDeclare | TableVariantDeclare)[];
   readonly $type: SQL_SYMBOLE.DECLARE = SQL_SYMBOLE.DECLARE;
-  constructor(...declares: VariantDeclare[]) {
+  constructor(...declares: (VariantDeclare | TableVariantDeclare)[]) {
     super();
     this.$declares = declares;
   }
