@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Executor, QueryResult } from "./execute";
-import { URL } from "url";
-import { ISOLATION_LEVEL } from "./constants";
-import assert from "assert";
-import { CompileOptions, Compiler } from "./compile";
-import { Parameter } from "./ast";
-import { DatabaseSchema } from './schema'
-import { MigrateScripter } from './migrate-cli'
+import { Executor, QueryResult } from './execute';
+import { URL } from 'url';
+import { ISOLATION_LEVEL } from './constants';
+import assert from 'assert';
+import { CompileOptions, Compiler } from './compile';
+import { Parameter } from './ast';
+import { DatabaseSchema } from './schema';
+import { MigrateScripter } from './migrate-cli';
+import { DbType } from './types';
 
 export type ConnectOptions = {
   /**
@@ -78,7 +79,7 @@ export type TransactionHandler<T> = (
 /**
  * 数据库提供驱动程序
  */
-export interface IDbProvider {
+export interface DbProvider {
   /**
    * 必须实现编译器
    */
@@ -88,6 +89,29 @@ export interface IDbProvider {
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
 
+  // getTables(options?: {
+  //   name?: string;
+  //   schema?: string;
+  //   kind: 'view' | 'table';
+  // }): Promise<{
+  //   name: string;
+  //   schema: string;
+  //   type: 'view' | 'table';
+  //   description: string;
+  // }>;
+
+  // /**
+  //  * 获取表列
+  //  * @param table
+  //  */
+  // getColumns(table: string): Promise<{ table: string; type: string; nullable: boolean; identity: boolean;  }[]>;
+
+  // /**
+  //  * 获取源代码
+  //  * @param objName
+  //  */
+  // getSource(objName: string): Promise<string>;
+
   /**
    * 获取数据库架构
    */
@@ -96,7 +120,7 @@ export interface IDbProvider {
   /**
    * 构架
    */
-  readonly migrateExecutor: MigrateScripter;
+  readonly scripter: MigrateScripter;
 }
 
 /**
@@ -104,7 +128,7 @@ export interface IDbProvider {
  * 实际上为一个工厂函数，通过实现该方法来扩展驱动支持
  */
 export interface Driver {
-  (config: ConnectOptions): Promise<IDbProvider>;
+  (config: ConnectOptions): Promise<DbProvider>;
 }
 
 /**
@@ -117,9 +141,9 @@ export interface Transaction {
 }
 
 export class Lube extends Executor {
-  private provider: IDbProvider;
+  public readonly provider: DbProvider;
 
-  constructor(provider: IDbProvider) {
+  constructor(provider: DbProvider) {
     const compiler = provider.compiler;
     // if (!compiler) {
     //   let compileOptions: CompileOptions = {};
@@ -144,7 +168,7 @@ export class Lube extends Executor {
     isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<T> {
     if (this.isTrans) {
-      throw new Error("is in transaction now");
+      throw new Error('is in transaction now');
     }
     let canceled = false;
     const { query, commit, rollback } = await this.provider.beginTrans(
@@ -154,14 +178,14 @@ export class Lube extends Executor {
     const abort = async () => {
       canceled = true;
       await rollback();
-      executor.emit("rollback", executor);
+      executor.emit('rollback', executor);
     };
     const complete = async () => {
       await commit();
-      executor.emit("commit", executor);
+      executor.emit('commit', executor);
     };
-    executor.on("command", (cmd) => this._emitter.emit("command", cmd));
-    executor.on("error", (cmd) => this._emitter.emit("error", cmd));
+    executor.on('command', cmd => this._emitter.emit('command', cmd));
+    executor.on('error', cmd => this._emitter.emit('error', cmd));
     try {
       const res = await handler(executor, abort);
       if (!canceled) {
@@ -189,7 +213,7 @@ export async function connect(url: string): Promise<Lube>;
 export async function connect(options: ConnectOptions): Promise<Lube>;
 export async function connect(arg: ConnectOptions | string): Promise<Lube> {
   let config: ConnectOptions;
-  if (typeof arg === "string") {
+  if (typeof arg === 'string') {
     const url = new URL(arg);
     const params = url.searchParams;
     const options: any = {
@@ -214,11 +238,11 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
         port: url.port && parseInt(url.port),
         user: url.username,
         password: url.password,
-        database: url.pathname.split("|")[0],
+        database: url.pathname.split('|')[0],
         ...options,
       };
     } catch (error) {
-      throw new Error("Unregister or uninstalled dialect: " + dialect);
+      throw new Error('Unregister or uninstalled dialect: ' + dialect);
     }
   } else {
     config = Object.assign({}, defaultConnectOptions, arg);
@@ -226,23 +250,23 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
 
   assert(
     config.driver || config.dialect,
-    "One of the dialect and driver must be specified."
+    'One of the dialect and driver must be specified.'
   );
 
   if (!config.driver) {
     try {
       const driver = dialects[config.dialect];
-      if (typeof driver === "string") {
+      if (typeof driver === 'string') {
         config.driver = require(driver);
       } else {
         config.driver = driver;
       }
     } catch (err) {
-      throw new Error("Unsupported dialect or driver not installed." + err);
+      throw new Error('Unsupported dialect or driver not installed.' + err);
     }
   }
 
-  const provider: IDbProvider = await config.driver(config);
+  const provider: DbProvider = await config.driver(config);
   return new Lube(provider);
 }
 
@@ -261,5 +285,5 @@ export async function register(
 }
 
 export const dialects: Record<string, Driver | string> = {
-  mssql: "lubejs-mssql",
+  mssql: 'lubejs-mssql',
 };

@@ -20,7 +20,7 @@ import {
   isSortInfo,
   parseValueType,
   ensureTableVariant,
-} from "./util";
+} from './util';
 
 import {
   OPERATION_OPERATOR,
@@ -37,11 +37,11 @@ import {
   CONDITION_KIND,
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION,
-} from "./constants";
-import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from "./types";
-import { Scalar } from "./types";
-import { convert, identityValue } from './std'
-import { ColumnSchema, TableSchema } from './schema'
+} from './constants';
+import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from './types';
+import { Scalar } from './types';
+import { convert, identityValue } from './std';
+import { ColumnSchema, TableSchema } from './schema';
 // import { convert } from './std';
 
 // /**
@@ -280,10 +280,7 @@ export abstract class AST {
   }
 }
 
-export type ModelClass<T extends RowObject = any> = new (
-  ...args: any
-) => T;
-
+export type ModelClass<T extends RowObject = any> = new (...args: any) => T;
 
 /**
  * 表达式基类，抽象类，
@@ -1035,9 +1032,7 @@ export abstract class Condition extends AST {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.IN,
       left,
-      isSelect(values)
-        ? values.asValue()
-        : values.map((v) => ensureExpression(v))
+      isSelect(values) ? values.asValue() : values.map(v => ensureExpression(v))
     );
   }
 
@@ -1054,7 +1049,7 @@ export abstract class Condition extends AST {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.NOT_IN,
       left,
-      values.map((v) => ensureExpression(v))
+      values.map(v => ensureExpression(v))
     );
   }
 
@@ -1160,7 +1155,7 @@ export class BinaryCompareCondition extends Condition {
     this.$operator = operator;
     this.$left = ensureExpression(left);
     if (Array.isArray(right)) {
-      this.$right = right.map((expr) => ensureExpression(expr));
+      this.$right = right.map(expr => ensureExpression(expr));
     } else {
       this.$right = ensureExpression(right);
     }
@@ -1186,7 +1181,7 @@ export class UnaryCompareCondition extends Condition {
   ) {
     super();
     this.$operator = operator;
-    assert(expr, "next must not null");
+    assert(expr, 'next must not null');
     this.$expr = ensureExpression(expr);
   }
 }
@@ -1286,7 +1281,7 @@ export abstract class Identifier<N extends string = string> extends AST {
   static table<T extends RowObject = DefaultRowObject>(
     nameOrModel: Name<string> | ModelClass<T>
   ): ProxiedTable<T, string> {
-    if (typeof nameOrModel === "function") {
+    if (typeof nameOrModel === 'function') {
       return makeProxiedRowset(new Table<T, string>(nameOrModel.name));
     }
     return makeProxiedRowset(new Table<T, string>(nameOrModel));
@@ -1388,7 +1383,6 @@ export class Func<
   }
 }
 
-
 export abstract class Assignable<T extends Scalar = any> extends Expression<T> {
   readonly $lvalue: true = true;
   /**
@@ -1417,7 +1411,6 @@ export class Field<T extends Scalar = any, N extends string = string>
 }
 
 // applyMixins(Field, [Identifier]);
-
 
 /**
  * 数据库行集，混入类型
@@ -1456,9 +1449,9 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
    */
   field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
     if (!this.$alias) {
-      throw new Error("You must named rowset befor use field.");
+      throw new Error('You must named rowset befor use field.');
     }
-    return new Field<T[P], P>([this.$alias.$name, name]);
+    return new Field<T[P], P>([name, this.$alias.$name]);
   }
 
   /**
@@ -1480,7 +1473,7 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
    */
   get star(): Star<T> {
     if (!this.$alias) {
-      throw new Error("You must named rowset befor use field.");
+      throw new Error('You must named rowset befor use field.');
     }
     return new Star<T>(this.$alias.$name);
   }
@@ -1548,7 +1541,7 @@ export class Table<
     if (this.$alias) {
       return super.field(name);
     }
-    return new Field<T[P], P>([...pathName(this.$name), name] as Name<P>);
+    return new Field<T[P], P>([name, ...pathName(this.$name)] as Name<P>);
   }
 
   /**
@@ -1586,7 +1579,6 @@ export class Variant<T extends Scalar = any, N extends string = string>
 // applyMixins(Variant, [Identifier]);
 
 // TODO 表变量支持
-
 
 // TODO: 完成表变量功能
 export class TableVariant<T extends RowObject = any, N extends string = string>
@@ -1648,7 +1640,7 @@ export type SelectAction = {
   <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>;
   <T extends RowObject>(results: InputObject<T>): Select<T>;
   <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
-    "*no name": T;
+    '*no name': T;
   }>;
   <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
     RowTypeByColumns<A, B>
@@ -2608,7 +2600,7 @@ export class ScalarFuncInvoke<
   ) {
     super();
     this.$func = ensureFunction(func);
-    this.$args = args.map((expr) => {
+    this.$args = args.map(expr => {
       if (isScalar(expr)) return ensureExpression(expr);
       return expr;
     });
@@ -2629,7 +2621,9 @@ export class TableFuncInvoke<
   ) {
     super();
     this.$func = ensureFunction(func);
-    this.$args = args.map((expr) => isScalar(expr) ? ensureExpression(expr) : expr);
+    this.$args = args.map(expr =>
+      isScalar(expr) ? ensureExpression(expr) : expr
+    );
   }
 }
 
@@ -2656,6 +2650,18 @@ export abstract class Statement extends AST {
     fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields);
+  }
+
+  /**
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
+   */
+  static identityInsert<T extends RowObject = any>(
+    table: CompatibleTable<T, string>,
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+  ): Insert<T> {
+    return new Insert(table, fields).withIdentity();
   }
 
   /**
@@ -2722,12 +2728,12 @@ export abstract class Statement extends AST {
   }
 
   static makeFunc<T extends RowObject>(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): () => ProxiedRowset<T>;
   static makeFunc<T extends RowObject, A1 extends CompatibleExpression>(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => ProxiedRowset<T>;
@@ -2736,7 +2742,7 @@ export abstract class Statement extends AST {
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
@@ -2746,7 +2752,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
@@ -2757,7 +2763,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
@@ -2769,24 +2775,24 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression,
     A5 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
 
   static makeFunc(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
 
   static makeFunc<T extends Scalar>(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): () => Expression<T>;
   static makeFunc<T extends Scalar, A1 extends CompatibleExpression>(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>;
@@ -2795,7 +2801,7 @@ export abstract class Statement extends AST {
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>;
@@ -2805,7 +2811,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
@@ -2816,7 +2822,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
@@ -2828,25 +2834,25 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression,
     A5 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
 
   static makeFunc(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
   static makeFunc(
-    type: "table" | "scalar",
+    type: 'table' | 'scalar',
     name: Name<string>,
     builtIn = false
   ): (
     ...args: CompatibleExpression[]
   ) => Expression | ProxiedRowset<RowObject> {
-    if (type === "table") {
+    if (type === 'table') {
       return function (
         ...args: CompatibleExpression[]
       ): ProxiedRowset<RowObject> {
@@ -2856,7 +2862,7 @@ export abstract class Statement extends AST {
         );
       };
     }
-    if (type === "scalar") {
+    if (type === 'scalar') {
       return function (...args: CompatibleExpression<Scalar>[]): Expression {
         return Statement.invokeScalarFunction<Scalar>(
           Identifier.func(name, builtIn),
@@ -2864,7 +2870,7 @@ export abstract class Statement extends AST {
         );
       };
     }
-    throw new Error("invalid arg value of `type`");
+    throw new Error('invalid arg value of `type`');
   }
 
   /**
@@ -3006,12 +3012,12 @@ export abstract class Statement extends AST {
   }
 
   static invoke<T extends RowObject>(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): () => ProxiedRowset<T>;
   static invoke<T extends RowObject, A1 extends CompatibleExpression>(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => ProxiedRowset<T>;
@@ -3020,7 +3026,7 @@ export abstract class Statement extends AST {
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
@@ -3030,7 +3036,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
@@ -3041,7 +3047,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
@@ -3053,24 +3059,24 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression,
     A5 extends CompatibleExpression
   >(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
 
   static invoke(
-    type: "table",
+    type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
 
   static invoke<T extends Scalar>(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): () => Expression<T>;
   static invoke<T extends Scalar, A1 extends CompatibleExpression>(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>;
@@ -3079,7 +3085,7 @@ export abstract class Statement extends AST {
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>;
@@ -3089,7 +3095,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
@@ -3100,7 +3106,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression,
     A4 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
@@ -3112,25 +3118,25 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression,
     A5 extends CompatibleExpression
   >(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
 
   static invoke(
-    type: "scalar",
+    type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
   static invoke(
-    type: "table" | "scalar",
+    type: 'table' | 'scalar',
     name: Name<string>,
     builtIn = false
   ): (
     ...args: CompatibleExpression[]
   ) => Expression | ProxiedRowset<RowObject> {
-    if (type === "table") {
+    if (type === 'table') {
       return function (
         ...args: CompatibleExpression[]
       ): ProxiedRowset<RowObject> {
@@ -3140,7 +3146,7 @@ export abstract class Statement extends AST {
         );
       };
     }
-    if (type === "scalar") {
+    if (type === 'scalar') {
       return function (...args: CompatibleExpression<Scalar>[]): Expression {
         return Statement.invokeScalarFunction<Scalar>(
           Identifier.func(name, builtIn),
@@ -3148,7 +3154,7 @@ export abstract class Statement extends AST {
         );
       };
     }
-    throw new Error("invalid arg value of `type`");
+    throw new Error('invalid arg value of `type`');
   }
 }
 
@@ -3372,11 +3378,11 @@ abstract class Fromable<T extends RowObject = any> extends CrudStatement {
    * @param tables
    */
   from(...tables: (Name<string> | CompatibleRowset<any, string>)[]): this {
-    this.$froms = tables.map((table) => ensureRowset(table));
-    this.$froms.forEach((table) => {
+    this.$froms = tables.map(table => ensureRowset(table));
+    this.$froms.forEach(table => {
       if (!table.$alias) {
         if (!(table as any).$name) {
-          throw new Error("行集必须指定别名才可以进行FROM查询");
+          throw new Error('行集必须指定别名才可以进行FROM查询');
         }
       }
     });
@@ -3395,7 +3401,7 @@ abstract class Fromable<T extends RowObject = any> extends CrudStatement {
     on: Condition,
     left?: boolean
   ): this {
-    assert(this.$froms, "join must after from clause");
+    assert(this.$froms, 'join must after from clause');
     if (!this.$joins) {
       this.$joins = [];
     }
@@ -3420,7 +3426,7 @@ abstract class Fromable<T extends RowObject = any> extends CrudStatement {
    * @param condition
    */
   where(condition: CompatibleCondition<T>) {
-    assert(!this.$where, "where is declared");
+    assert(!this.$where, 'where is declared');
     if (isPlainObject(condition)) {
       condition = ensureCondition(condition);
     }
@@ -3468,7 +3474,7 @@ export class Select<T extends RowObject = any> extends Fromable {
     super();
     assert(
       columns.length > 0,
-      "Must select one or more columns by Select statement."
+      'Must select one or more columns by Select statement.'
     );
     if (columns.length === 1 && isPlainObject(columns[0])) {
       const results = columns[0];
@@ -3482,7 +3488,7 @@ export class Select<T extends RowObject = any> extends Fromable {
     // 实例化
     this.$columns = (
       columns as (CompatibleExpression<Scalar> | SelectColumn<Scalar, string>)[]
-    ).map((item) => {
+    ).map(item => {
       if (item instanceof AST) return item;
       return ensureExpression(item);
     });
@@ -3529,7 +3535,7 @@ export class Select<T extends RowObject = any> extends Fromable {
   orderBy(sorts: CompatibleSortInfo): this;
   orderBy(...args: any[]): this {
     // assert(!this.$orders, 'order by clause is declared')
-    assert(args.length > 0, "must have one or more order basis");
+    assert(args.length > 0, 'must have one or more order basis');
     // 如果传入的是对象类型
     if (args.length === 1) {
       if (isPlainObject(args[0])) {
@@ -3548,7 +3554,7 @@ export class Select<T extends RowObject = any> extends Fromable {
       | CompatibleExpression<Scalar>
       | [CompatibleExpression, SORT_DIRECTION]
     )[];
-    this.$sorts = sorts.map((item) =>
+    this.$sorts = sorts.map(item =>
       isSortInfo(item)
         ? item
         : isScalar(item) || isExpression(item)
@@ -3563,7 +3569,7 @@ export class Select<T extends RowObject = any> extends Fromable {
    * @param groups
    */
   groupBy(...groups: CompatibleExpression<Scalar>[]) {
-    this.$groups = groups.map((expr) => ensureExpression(expr));
+    this.$groups = groups.map(expr => ensureExpression(expr));
     return this;
   }
 
@@ -3572,8 +3578,8 @@ export class Select<T extends RowObject = any> extends Fromable {
    * @param condition
    */
   having(condition: CompatibleCondition<T>) {
-    assert(!this.$having, "having is declared");
-    assert(this.$groups, "Syntax error, group by is not declared.");
+    assert(!this.$having, 'having is declared');
+    assert(this.$groups, 'Syntax error, group by is not declared.');
     if (!(condition instanceof Condition)) {
       condition = ensureCondition(condition);
     }
@@ -3657,8 +3663,18 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
   $table: Table<T, string>;
   $fields?: Field[];
   $values: Expression<Scalar>[][] | Select<T>;
+  $identityInsert: boolean = false;
 
   readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT;
+
+  /**
+   * 在插入数据时开启标识列插入，即IdentityInsert On
+   * @returns
+   */
+  withIdentity() {
+    this.$identityInsert = true;
+    return this;
+  }
 
   /**
    * 构造函数
@@ -3668,19 +3684,41 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
     fields?: Field<Scalar, FieldsOf<T>>[] | FieldsOf<T>[]
   ) {
     super();
+    this.$identityInsert = false;
     this.$table = ensureRowset(table) as Table<T, string>;
     if (this.$table.$alias) {
-      throw new Error("Insert statements do not allow aliases on table.");
+      throw new Error('Insert statements do not allow aliases on table.');
     }
     if (fields) {
-      if (typeof fields[0] === "string") {
-        this.$fields = (fields as FieldsOf<T>[]).map((field) =>
+      if (typeof fields[0] === 'string') {
+        this.$fields = (fields as FieldsOf<T>[]).map(field =>
           this.$table.field(field)
         );
       } else {
         this.$fields = fields as Field<Scalar, FieldsOf<T>>[];
       }
     }
+  }
+
+  private _values(items: InputObject<T>[]): Expression[][] {
+    if (!this.$fields) {
+      const existsFields: { [key: string]: true } = {};
+      items.forEach(item =>
+        Object.keys(item).forEach(field => {
+          if (!existsFields[field]) existsFields[field] = true;
+        })
+      );
+      this.$fields = (Object.keys(existsFields) as FieldsOf<T>[]).map(
+        fieldName => {
+          return this.$table.field(fieldName);
+        }
+      );
+    }
+    const fields = this.$fields.map(field => pickName(field.$name));
+
+    return items.map((item: any) => {
+      return fields.map(fieldName => ensureExpression(item[fieldName]));
+    });
   }
 
   values(
@@ -3693,92 +3731,51 @@ export class Insert<T extends RowObject = any> extends CrudStatement {
   ): this;
   values(...rows: CompatibleExpression<Scalar>[][] | InputObject<T>[]): this;
   values(...args: any[]): this {
-    assert(!this.$values, "values is declared");
-    assert(args.length > 0, "rows must more than one elements.");
-    let items: InputObject<T>[], rows: CompatibleExpression<Scalar>[][];
-    // 单个参数
-    if (args.length === 1) {
-      const values = args[0];
-      // values(Select)
-      if (values instanceof Select) {
-        this.$values = args[0];
-        return this;
-      }
-      // values(UnsureExpression[] | ValuesObject[] | UnsureExpression[])
-      if (Array.isArray(values)) {
-        // values(UnsureExpression[][])
-        if (Array.isArray(values[0])) {
-          rows = args[0];
-        }
-        // values(UnsureExpression[])
-        else if (
-          isScalar(values[0]) ||
-          values[0] === undefined ||
-          values[0] instanceof Expression
-        ) {
-          rows = [values];
-        }
-        // values(InputObject[])
-        else if (typeof values[0] === "object") {
-          items = values;
-        } else {
-          throw new Error("invalid arguments！");
-        }
-      }
-      // values(InputObject)
-      else if (typeof values === "object") {
-        items = args;
-      } else {
-        throw new Error("invalid arguments！");
-      }
-    } else {
-      if (Array.isArray(args[0])) {
-        // values(...UsureExpression[][])
-        rows = args;
-      }
-      // values(...InputObject[])
-      else if (typeof args[0] === "object") {
-        items = args;
-      }
-      // invalid
-      else {
-        throw new Error("invalid arguments！");
-      }
+    assert(!this.$values, 'values is declared');
+    assert(args.length > 0, 'rows must more than one elements.');
+    const values:
+      | Select<T>
+      | InputObject<T>
+      | InputObject<T>[]
+      | CompatibleExpression<Scalar>[]
+      | CompatibleExpression<Scalar>[][] = args.length > 1 ? args : args[0];
+
+    // Select<T>
+    if (isSelect(values)) {
+      this.$values = values;
+      return this;
     }
 
-    if ((rows || items).length > INSERT_MAXIMUM_ROWS) {
-      throw new Error("Insert statement values exceed the maximum rows.");
+    // InputObject<T>
+    if (!Array.isArray(values)) {
+      this.$values = this._values([values]);
+      return this;
     }
 
-    // values(rows: UnsureExpressions[][])
-    if (rows) {
-      this.$values = rows.map((row) =>
-        row.map((expr) => ensureExpression(expr))
+    assert(values.length > 0, 'rows must more than one elements.');
+
+    // CompatibleExpression[][]
+    if (Array.isArray(values[0])) {
+      this.$values = (values as CompatibleExpression[][]).map(row =>
+        row.map(exp => ensureExpression(exp))
       );
       return this;
     }
 
+    // CompatibleExpression[]
+    if (isScalar(values[0]) || isExpression(values[0])) {
+      this.$values = [
+        (values as CompatibleExpression[]).map(exp => ensureExpression(exp)),
+      ];
+      return this;
+    }
+
+    // InputObject<T>[]
+    this.$values = this._values(values as InputObject<T>[]);
+    return this;
+
     // values(items: InputObject[])
     // 字段从值中提取
-    if (!this.$fields) {
-      const existsFields: { [key: string]: true } = {};
-      items.forEach((item) =>
-        Object.keys(item).forEach((field) => {
-          if (!existsFields[field]) existsFields[field] = true;
-        })
-      );
-      this.$fields = (Object.keys(existsFields) as FieldsOf<T>[]).map(
-        (fieldName) => {
-          return this.$table.field(fieldName);
-        }
-      );
-    }
-    const fields = this.$fields.map((field) => pickName(field.$name));
-
-    this.$values = items.map((item: any) => {
-      return fields.map((fieldName) => ensureExpression(item[fieldName]));
-    });
-    return this;
   }
 }
 
@@ -3815,8 +3812,8 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
   set(
     ...sets: [InputObject<T> | Assignment<Scalar>[]] | Assignment<Scalar>[]
   ): this {
-    assert(!this.$sets, "set statement is declared");
-    assert(sets.length > 0, "sets must have more than 0 items");
+    assert(!this.$sets, 'set statement is declared');
+    assert(sets.length > 0, 'sets must have more than 0 items');
     if (sets.length === 1) {
       if (Array.isArray(sets[0])) {
         this.$sets = sets[0] as Assignment<Scalar>[];
@@ -3945,7 +3942,7 @@ export class Execute<
     // if (params[0] instanceof Parameter) {
     //   this.$args = params as Parameter<ScalarType, string>[]
     // } else {
-    this.$args = (params as CompatibleExpression<Scalar>[]).map((expr) =>
+    this.$args = (params as CompatibleExpression<Scalar>[]).map(expr =>
       ensureExpression(expr)
     );
     // }
@@ -3981,7 +3978,8 @@ export class VariantDeclare extends AST {
 }
 
 export class TableVariantDeclare<T extends RowObject = any> extends AST {
-  readonly $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE = SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
+  readonly $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE =
+    SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
 
   constructor(name: TableVariant<T> | string, schema: TableSchema) {
     super();
@@ -4038,7 +4036,7 @@ export class Parameter<T extends Scalar = any, N extends string = string>
   ) {
     super();
     if (!type && (value === null || value === undefined)) {
-      throw new Error("Parameter must assign one of `value` or `type`.");
+      throw new Error('Parameter must assign one of `value` or `type`.');
     }
 
     this.type = type ? type : parseValueType(value);
@@ -4172,7 +4170,7 @@ export class With extends AST {
         ([alias, sel]) => new NamedSelect(sel, alias)
       );
     }
-    this.$rowsets.forEach((item) => {
+    this.$rowsets.forEach(item => {
       item.$inWith = true;
     });
   }

@@ -122,6 +122,9 @@ export const $doc = doc;
 export const insert = Statement.insert;
 export const $insert = Statement.insert;
 
+export const identityInsert = Statement.identityInsert;
+export const $identityInsert = Statement.identityInsert;
+
 export const $case = Statement.case;
 export const $with = Statement.with;
 
@@ -452,6 +455,8 @@ export const SQL = {
    * insert statement
    */
   insert,
+
+  identityInsert,
   /**
    * update statement
    */

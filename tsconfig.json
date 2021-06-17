@@ -9,6 +9,7 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "lib": [
+      "ES2017"
     ]
   },
   "exclude": [

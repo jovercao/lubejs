@@ -1,5 +1,5 @@
 import { Executor } from './execute'
-import { Lube } from './lube'
+import { DbProvider, Lube } from './lube'
 import { Constructor, Entity } from './types'
 import { Queryable } from './queryable'
 import { Repository } from './repository'

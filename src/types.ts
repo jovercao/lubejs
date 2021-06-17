@@ -195,10 +195,10 @@ export type TsTypeOf<T extends DbType> = T extends
 
 export type PathedName<T extends string> =
   | [T]
-  | [string, T]
-  | [string, string, T]
-  | [string, string, string, T]
-  | [string, string, string, string, T];
+  | [T, string]
+  | [T, string, string]
+  | [T, string, string, string]
+  | [T, string, string, string, string];
 
 export type Name<T extends string> = T | PathedName<T>;
 

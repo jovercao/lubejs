@@ -1,4 +1,4 @@
-import { Condition, Document } from "./ast";
+import { Condition, Document, Select, Statement } from './ast';
 import {
   CheckConstraintSchema,
   ColumnSchema,
@@ -6,25 +6,31 @@ import {
   IndexSchema,
   SequenceSchema,
   TableSchema,
-} from "./schema";
-import { Name } from "./types";
+} from './schema';
+import { DbType, Name } from './types';
 
 export interface CreateTableCommand {
-  operation: "CREATE_TABLE";
+  operation: 'CREATE_TABLE';
+  data: TableInfo;
+}
+
+export interface AlterTableCommand {
+  operation: 'ALTER_TABLE';
   data: {
-    table: TableSchema;
+    name: Name<string>;
+    comment: string;
   };
 }
 
 export interface DropTableCommand {
-  operation: "DROP_TABLE";
+  operation: 'DROP_TABLE';
   data: {
     name: Name<string>;
   };
 }
 
 export interface CreateIndexCommand {
-  operation: "CREATE_INDEX";
+  operation: 'CREATE_INDEX';
   data: {
     table: Name<string>;
     index: IndexSchema;
@@ -32,7 +38,7 @@ export interface CreateIndexCommand {
 }
 
 export interface DropIndexCommand {
-  operation: "DROP_INDEX";
+  operation: 'DROP_INDEX';
   data: {
     table: Name<string>;
     name: string;
@@ -40,7 +46,7 @@ export interface DropIndexCommand {
 }
 
 export interface DropColumnCommand {
-  operation: "DROP_COLUMN";
+  operation: 'DROP_COLUMN';
   data: {
     table: Name<string>;
     name: string;
@@ -48,7 +54,7 @@ export interface DropColumnCommand {
 }
 
 export interface RenameColumnCommand {
-  operation: "RENAME_COLUMN";
+  operation: 'RENAME_COLUMN';
   data: {
     table: Name<string>;
     name: string;
@@ -57,7 +63,7 @@ export interface RenameColumnCommand {
 }
 
 export interface RenameIndexCommand {
-  operation: "RENAME_INDEX";
+  operation: 'RENAME_INDEX';
   data: {
     table: Name<string>;
     name: string;
@@ -66,23 +72,31 @@ export interface RenameIndexCommand {
 }
 
 export interface RenameTableCommand {
-  operation: "RENAME_TABLE";
+  operation: 'RENAME_TABLE';
   data: {
     name: Name<string>;
-    newName: Name<string>;
+    newName: string;
+  };
+}
+
+export interface RenameViewCommand {
+  operation: 'RENAME_VIEW';
+  data: {
+    name: Name<string>;
+    newName: string;
   };
 }
 
 export interface AddColumnCommand {
-  operation: "ADD_COLUMN";
+  operation: 'ADD_COLUMN';
   data: {
     table: Name<string>;
-    column: ColumnSchema;
+    column: ColumnInfo;
   };
 }
 
 export interface AddForeignKeyCommand {
-  operation: "ADD_FOREIGN_KEY";
+  operation: 'ADD_FOREIGN_KEY';
   data: {
     table: Name<string>;
     foreignKey: ForeignKeySchema;
@@ -90,7 +104,7 @@ export interface AddForeignKeyCommand {
 }
 
 export interface DropForeignKeyCommand {
-  operation: "DROP_FOREIGN_KEY";
+  operation: 'DROP_FOREIGN_KEY';
   data: {
     table: Name<string>;
     name: string;
@@ -98,15 +112,15 @@ export interface DropForeignKeyCommand {
 }
 
 export interface AlterColumnCommand {
-  operation: "ALTER_COLUMN";
+  operation: 'ALTER_COLUMN';
   data: {
     table: Name<string>;
-    column: Partial<ColumnSchema>;
+    column: ColumnInfo;
   };
 }
 
 export interface InsertDataCommand {
-  operation: "INSERT_DATA";
+  operation: 'INSERT_DATA';
   data: {
     identityInsertOff: boolean;
     table: Name<string>;
@@ -115,7 +129,7 @@ export interface InsertDataCommand {
 }
 
 export interface UpdateDataCommand {
-  operation: "UPDATE_DATA";
+  operation: 'UPDATE_DATA';
   data: {
     table: Name<string>;
     keyColumns: string[];
@@ -124,7 +138,7 @@ export interface UpdateDataCommand {
 }
 
 export interface DeleteDataCommand {
-  operation: "DELETE_DATA";
+  operation: 'DELETE_DATA';
   data: {
     table: Name<string>;
     where: Condition;
@@ -132,28 +146,31 @@ export interface DeleteDataCommand {
 }
 
 export interface SqlCommand {
-  operation: "SQL";
+  operation: 'SQL';
   data: {
-    sql: string | Document;
+    sql: string | Document | Statement;
   };
 }
 
 export interface CreateSequenceCommand {
-  operation: "CREATE_SEQUENCE";
+  operation: 'CREATE_SEQUENCE';
   data: {
-    sequence: SequenceSchema;
+    name: Name<string>;
+    type: DbType | string;
+    startValue: number;
+    increment: number;
   };
 }
 
 export interface DropSequenceCommand {
-  operation: "DROP_SEQUENCE";
+  operation: 'DROP_SEQUENCE';
   data: {
     name: Name<string>;
   };
 }
 
 export interface AddCheckConstraintCommand {
-  operation: "ADD_CHECK_CONSTRAINT";
+  operation: 'ADD_CHECK_CONSTRAINT';
   data: {
     table: Name<string>;
     checkConstraint: CheckConstraintSchema;
@@ -161,7 +178,7 @@ export interface AddCheckConstraintCommand {
 }
 
 export interface DropCehckConstraintCommand {
-  operation: "DROP_CHECK_CONSTRAINT";
+  operation: 'DROP_CHECK_CONSTRAINT';
   data: {
     table: Name<string>;
     name: string;
@@ -169,14 +186,98 @@ export interface DropCehckConstraintCommand {
 }
 
 export interface RestartSequenceCommand {
-  operation: "RESTART_SEQUENCE";
+  operation: 'RESTART_SEQUENCE';
+  data: {
+    name: Name<string>;
+    value: number;
+  };
+}
+
+export interface CreateViewCommand {
+  operation: 'CREATE_VIEW';
+  data: {
+    name: Name<string>;
+    body: string | Select;
+    comment?: string;
+  };
+}
+export interface AlterViewCommand {
+  operation: 'ALTER_VIEW';
+  data: {
+    name: Name<string>;
+    body?: string | Select;
+    comment?: string;
+  };
+}
+
+export interface DropViewCommand {
+  operation: 'DROP_VIEW';
   data: {
     name: Name<string>;
   };
 }
 
+export interface AnnotationCommand {
+  operation: 'ANNOTATION';
+  data: {
+    message: string;
+  };
+}
+
+export interface ColumnInfo {
+  /**
+   * 列名
+   */
+  name: string;
+  /**
+   * 类型
+   */
+  type: DbType | string;
+  /**
+   * 是否可空
+   */
+  isNullable?: boolean;
+  /**
+   * 摘要描述
+   */
+  comment?: string;
+  /**
+   * 默认值
+   */
+  defaultValue?: string;
+  /**
+   * 是否标识列
+   */
+  isIdentity: boolean;
+
+  /**
+   * 标识列种子
+   */
+  identityStartValue?: number;
+  /**
+   * 标识列步长
+   */
+  identityIncrement?: number;
+  /**
+   * 是否计算列
+   */
+  isCalculate: boolean;
+  /**
+   * 计算表达式
+   */
+  calculateExpression?: string;
+}
+
+export interface TableInfo {
+  name: Name<string>;
+  columns: ColumnInfo[];
+  primaryKey: string[];
+  comment?: string;
+}
+
 export type MigrationCommand =
   | CreateTableCommand
+  | AlterTableCommand
   | DropTableCommand
   | CreateIndexCommand
   | DropIndexCommand
@@ -196,22 +297,41 @@ export type MigrationCommand =
   | DropSequenceCommand
   | RestartSequenceCommand
   | AddCheckConstraintCommand
-  | DropCehckConstraintCommand;
+  | DropCehckConstraintCommand
+  | CreateViewCommand
+  | AlterViewCommand
+  | DropViewCommand
+  | AnnotationCommand
+  | RenameViewCommand;
 
 export class MigrationBuilder {
   private _commands: MigrationCommand[] = [];
 
-  createTable(table: TableSchema): this {
+  getCommands(): ReadonlyArray<MigrationCommand> {
+    return this._commands;
+  }
+
+  annotation(message: string): this {
     this._commands.push({
-      operation: "CREATE_TABLE",
-      data: { table },
+      operation: 'ANNOTATION',
+      data: {
+        message,
+      },
     });
     return this;
   }
 
-  addIndex(table: Name<string>, index: IndexSchema): this {
+  createTable(table: TableInfo): this {
     this._commands.push({
-      operation: "CREATE_INDEX",
+      operation: 'CREATE_TABLE',
+      data: table,
+    });
+    return this;
+  }
+
+  createIndex(table: Name<string>, index: IndexSchema): this {
+    this._commands.push({
+      operation: 'CREATE_INDEX',
       data: {
         table,
         index,
@@ -222,7 +342,7 @@ export class MigrationBuilder {
 
   dropIndex(table: Name<string>, name: string): this {
     this._commands.push({
-      operation: "DROP_INDEX",
+      operation: 'DROP_INDEX',
       data: {
         table,
         name,
@@ -231,9 +351,9 @@ export class MigrationBuilder {
     return this;
   }
 
-  addColumn(table: Name<string>, column: ColumnSchema): this {
+  addColumn(table: Name<string>, column: ColumnInfo): this {
     this._commands.push({
-      operation: "ADD_COLUMN",
+      operation: 'ADD_COLUMN',
       data: {
         table,
         column,
@@ -244,7 +364,7 @@ export class MigrationBuilder {
 
   dropColumn(table: Name<string>, name: string): this {
     this._commands.push({
-      operation: "DROP_COLUMN",
+      operation: 'DROP_COLUMN',
       data: {
         table,
         name,
@@ -253,9 +373,9 @@ export class MigrationBuilder {
     return this;
   }
 
-  alterColumn(table: Name<string>, column: Partial<ColumnSchema>): this {
+  alterColumn(table: Name<string>, column: ColumnInfo): this {
     this._commands.push({
-      operation: "ALTER_COLUMN",
+      operation: 'ALTER_COLUMN',
       data: {
         table,
         column,
@@ -266,7 +386,7 @@ export class MigrationBuilder {
 
   dropTable(name: Name<string>): this {
     this._commands.push({
-      operation: "DROP_TABLE",
+      operation: 'DROP_TABLE',
       data: {
         name,
       },
@@ -274,9 +394,20 @@ export class MigrationBuilder {
     return this;
   }
 
-  renameTable(name: Name<string>, newName: Name<string>): this {
+  renameTable(name: Name<string>, newName: string): this {
     this._commands.push({
-      operation: "RENAME_TABLE",
+      operation: 'RENAME_TABLE',
+      data: {
+        name,
+        newName,
+      },
+    });
+    return this;
+  }
+
+  renameView(name: Name<string>, newName: string): this {
+    this._commands.push({
+      operation: 'RENAME_VIEW',
       data: {
         name,
         newName,
@@ -287,7 +418,7 @@ export class MigrationBuilder {
 
   renameColumn(table: Name<string>, name: string, newName: string): this {
     this._commands.push({
-      operation: "RENAME_COLUMN",
+      operation: 'RENAME_COLUMN',
       data: {
         table,
         name,
@@ -299,7 +430,7 @@ export class MigrationBuilder {
 
   renameIndex(table: Name<string>, name: string, newName: string): this {
     this._commands.push({
-      operation: "RENAME_INDEX",
+      operation: 'RENAME_INDEX',
       data: {
         table,
         name,
@@ -311,7 +442,7 @@ export class MigrationBuilder {
 
   addForeignKey(table: Name<string>, foreignKey: ForeignKeySchema): this {
     this._commands.push({
-      operation: "ADD_FOREIGN_KEY",
+      operation: 'ADD_FOREIGN_KEY',
       data: {
         table,
         foreignKey,
@@ -322,7 +453,7 @@ export class MigrationBuilder {
 
   dropForeignKey(table: Name<string>, name: string): this {
     this._commands.push({
-      operation: "DROP_FOREIGN_KEY",
+      operation: 'DROP_FOREIGN_KEY',
       data: {
         table,
         name,
@@ -337,7 +468,7 @@ export class MigrationBuilder {
     identityInsertOff = false
   ): this {
     this._commands.push({
-      operation: "INSERT_DATA",
+      operation: 'INSERT_DATA',
       data: {
         table,
         rows,
@@ -353,7 +484,7 @@ export class MigrationBuilder {
     keyColumns: (keyof T)[]
   ): this {
     this._commands.push({
-      operation: "UPDATE_DATA",
+      operation: 'UPDATE_DATA',
       data: {
         table,
         rows,
@@ -363,12 +494,9 @@ export class MigrationBuilder {
     return this;
   }
 
-  deleteData<T extends object>(
-    table: Name<string>,
-    where: Condition
-  ): this {
+  deleteData<T extends object>(table: Name<string>, where: Condition): this {
     this._commands.push({
-      operation: "DELETE_DATA",
+      operation: 'DELETE_DATA',
       data: {
         table,
         where,
@@ -377,9 +505,9 @@ export class MigrationBuilder {
     return this;
   }
 
-  sql(sql: Document | string): this {
+  sql(sql: Document | Statement | string): this {
     this._commands.push({
-      operation: "SQL",
+      operation: 'SQL',
       data: {
         sql,
       },
@@ -387,11 +515,19 @@ export class MigrationBuilder {
     return this;
   }
 
-  createSequence(sequence: SequenceSchema) {
+  createSequence(
+    name: Name<string>,
+    type: DbType | string,
+    startValue: number,
+    increment: number
+  ) {
     this._commands.push({
-      operation: "CREATE_SEQUENCE",
+      operation: 'CREATE_SEQUENCE',
       data: {
-        sequence,
+        name,
+        type,
+        startValue,
+        increment,
       },
     });
     return this;
@@ -399,7 +535,7 @@ export class MigrationBuilder {
 
   dropSequence(name: Name<string>): this {
     this._commands.push({
-      operation: "DROP_SEQUENCE",
+      operation: 'DROP_SEQUENCE',
       data: {
         name,
       },
@@ -412,7 +548,7 @@ export class MigrationBuilder {
     checkConstraint: CheckConstraintSchema
   ): this {
     this._commands.push({
-      operation: "ADD_CHECK_CONSTRAINT",
+      operation: 'ADD_CHECK_CONSTRAINT',
       data: {
         table,
         checkConstraint,
@@ -423,9 +559,69 @@ export class MigrationBuilder {
 
   dropCheckConstraint(table: Name<string>, name: string): this {
     this._commands.push({
-      operation: "DROP_CHECK_CONSTRAINT",
+      operation: 'DROP_CHECK_CONSTRAINT',
       data: {
         table,
+        name,
+      },
+    });
+    return this;
+  }
+
+  createView(
+    name: Name<string>,
+    options: { body: Select; comment?: string }
+  ): this {
+    this._commands.push({
+      operation: 'CREATE_VIEW',
+      data: {
+        name,
+        ...options,
+      },
+    });
+    return this;
+  }
+
+  alterView(
+    name: Name<string>,
+    options: { body?: Select; comment?: string }
+  ): this {
+    this._commands.push({
+      operation: 'ALTER_VIEW',
+      data: {
+        name,
+        ...options,
+      },
+    });
+    return this;
+  }
+
+  restartSequence(name: Name<string>, value: number): this {
+    this._commands.push({
+      operation: 'RESTART_SEQUENCE',
+      data: {
+        name,
+        value,
+      },
+    });
+    return this;
+  }
+
+  alterTable(name: Name<string>, comment: string): this {
+    this._commands.push({
+      operation: 'ALTER_TABLE',
+      data: {
+        name,
+        comment,
+      },
+    });
+    return this;
+  }
+
+  dropView(name: Name<string>): this {
+    this._commands.push({
+      operation: 'DROP_VIEW',
+      data: {
         name,
       },
     });

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import assert from "assert";
+import assert from 'assert';
 
 import {
   AST,
@@ -48,12 +48,12 @@ import {
   // IdentityValue,
   StandardExpression,
   TableVariantDeclare,
-} from "./ast";
-import { PARAMETER_DIRECTION } from "./constants";
-import { Command } from "./execute";
-import { Standard } from "./std";
+} from './ast';
+import { PARAMETER_DIRECTION } from './constants';
+import { Command } from './execute';
+import { Standard } from './std';
 
-import { DbType, Name, Scalar } from "./types";
+import { DbType, Name, Scalar } from './types';
 
 import {
   dateToString,
@@ -97,7 +97,7 @@ import {
   isStandardExpression,
   isStatement,
   isTableVariantDeclare,
-} from "./util";
+} from './util';
 
 /**
  * 标准操作转换器
@@ -168,16 +168,16 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
   /**
    * 参数前缀
    */
-  parameterPrefix: "@",
+  parameterPrefix: '@',
 
   /**
    * 变量前缀
    */
-  variantPrefix: "@",
+  variantPrefix: '@',
   /**
    * 返回参数名称
    */
-  returnParameterName: "__RETURN_VALUE__",
+  returnParameterName: '__RETURN_VALUE__',
 };
 
 /**
@@ -195,21 +195,22 @@ export abstract class Compiler {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  protected compileName(name: Name<string>, buildIn = false): string {
+  stringifyName(name: Name<string>, buildIn = false): string {
     if (Array.isArray(name)) {
       return name
+        .reverse()
         .map((n, index) => {
           if (index < name.length - 1) {
             return this.quoted(n);
           }
           return buildIn ? n : this.quoted(n);
         })
-        .join(".");
+        .join('.');
     }
     return buildIn ? name : this.quoted(name);
   }
 
-  protected abstract compileType(type: DbType): string;
+  abstract compileType(type: DbType): string;
 
   /**
    *
@@ -227,15 +228,15 @@ export abstract class Compiler {
    * @param field 字段
    */
   protected compileInsertField(field: Field<Scalar, string>): string {
-    if (typeof field.$name === "string") return this.quoted(field.$name);
-    return this.quoted(field.$name[field.$name.length - 1]);
+    if (typeof field.$name === 'string') return this.quoted(field.$name);
+    return this.quoted(field.$name[0]);
   }
 
   /**
    * 标识符转换，避免关键字被冲突问题
    * @param {string} name 标识符
    */
-  protected quoted(name: string): string {
+  quoted(name: string): string {
     if (this.options.strict) {
       return this.options.quotedLeft + name + this.options.quotedRight;
     }
@@ -256,7 +257,7 @@ export abstract class Compiler {
   }
 
   protected stringifyParameterName(p: Parameter<Scalar, string>): string {
-    return this.options.parameterPrefix + (p.$name || "");
+    return this.options.parameterPrefix + (p.$name || '');
   }
 
   protected stringifyVariantName(variant: Variant | TableVariant): string {
@@ -264,27 +265,27 @@ export abstract class Compiler {
   }
 
   protected stringifyIdentifier(identifier: Identifier<string>): string {
-    return this.compileName(identifier.$name, identifier.$builtin);
+    return this.stringifyName(identifier.$name, identifier.$builtin);
   }
 
-  /**
-   * 通过模板参数创建一个SQL命令
-   */
-  makeCommand(arr: TemplateStringsArray, ...paramValues: any[]): Command {
-    const params: Parameter[] = [];
-    let sql: string = arr[0];
-    for (let i = 0; i < arr.length - 1; i++) {
-      const name = "__p__" + i;
-      const param = Parameter.input(name, paramValues[i]);
-      sql += this.stringifyParameterName(param);
-      sql += arr[i + 1];
-      params.push(param);
-    }
-    return {
-      sql,
-      params,
-    };
-  }
+  // /**
+  //  * 通过模板参数创建一个SQL命令
+  //  */
+  // makeCommand(arr: TemplateStringsArray, ...paramValues: any[]): Command {
+  //   const params: Parameter[] = [];
+  //   let sql: string = arr[0];
+  //   for (let i = 0; i < arr.length - 1; i++) {
+  //     const name = "__p__" + i;
+  //     const param = Parameter.input(name, paramValues[i]);
+  //     sql += this.stringifyParameterName(param);
+  //     sql += arr[i + 1];
+  //     params.push(param);
+  //   }
+  //   return {
+  //     sql,
+  //     params,
+  //   };
+  // }
 
   protected compileVariant(variant: Variant): string {
     return this.stringifyVariantName(variant);
@@ -301,7 +302,7 @@ export abstract class Compiler {
    * 编译Boolean常量
    */
   protected compileBoolean(value: boolean): string {
-    return value ? "1" : "0";
+    return value ? '1' : '0';
   }
 
   /**
@@ -312,26 +313,26 @@ export abstract class Compiler {
   }
 
   /**
-   * 编译常量
+   * 编译字面量
    */
-  protected compileLiteral(constant: Literal<Scalar>): string {
-    const value = constant.$value;
+  public compileLiteral(literal: Scalar): string {
+    const value = literal;
     // 为方便JS，允许undefined进入，留给TS语法检查
     if (value === null || value === undefined) {
-      return "NULL";
+      return 'NULL';
     }
 
     const type = typeof value;
 
-    if (type === "string") {
+    if (type === 'string') {
       return this.compileString(value as string);
     }
 
-    if (type === "number" || type === "bigint") {
+    if (type === 'number' || type === 'bigint') {
       return value.toString(10);
     }
 
-    if (type === "boolean") {
+    if (type === 'boolean') {
       return this.compileBoolean(value as boolean);
     }
 
@@ -339,24 +340,22 @@ export abstract class Compiler {
       return this.compileDate(value);
     }
     if (isBinary(value)) {
-      return "0x" + Buffer.from(value).toString("hex");
+      return '0x' + Buffer.from(value).toString('hex');
     }
-    console.debug("unsupport constant value type:", value);
-    throw new Error("unsupport constant value type:" + type);
+    console.debug('unsupport constant value type:', value);
+    throw new Error('unsupport constant value type:' + type);
   }
 
   /**
    * 将AST编译成一个可供执行的命令
    */
-  public compile(ast: Statement | Document | Expression): Command {
+  public compile(ast: Statement | Document): Command {
     const params = new Set<Parameter<Scalar, string>>();
     let sql: string;
     if (isDocument(ast)) {
       sql = this.compileDocument(ast, params);
-    } else if (isStatement(ast)) {
-      sql = this.compileStatement(ast, params);
     } else {
-      sql = this.compileExpression(ast, params);
+      sql = this.compileStatement(ast, params);
     }
     return {
       sql,
@@ -410,7 +409,7 @@ export abstract class Compiler {
       return statement.$sql;
     }
 
-    invalidAST("statement", statement);
+    invalidAST('statement', statement);
   }
 
   protected compileParenthesesExpression(
@@ -433,9 +432,9 @@ export abstract class Compiler {
 
   protected compileStar(star: Star): string {
     if (star.$parent) {
-      return this.compileName(star.$parent) + ".*";
+      return this.stringifyName(star.$parent) + '.*';
     }
-    return "*";
+    return '*';
   }
 
   protected compileOperation(
@@ -458,7 +457,7 @@ export abstract class Compiler {
     //     parent
     //   )
     // }
-    invalidAST("operation", operation);
+    invalidAST('operation', operation);
   }
 
   // abstract compileConvert (
@@ -483,7 +482,7 @@ export abstract class Compiler {
     if (isIdentifier(rowset)) {
       return this.stringifyIdentifier(rowset);
     }
-    throw new Error("Rowset must have alias or name.");
+    throw new Error('Rowset must have alias or name.');
   }
 
   protected compileNamedSelect(
@@ -491,15 +490,15 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      "(" +
+      '(' +
       this.compileSelect(rowset.$select, params, rowset) +
-      ") AS " +
+      ') AS ' +
       this.compileRowsetName(rowset)
     );
   }
 
   protected compileTableInvoke(): string {
-    throw new Error("Method not implemented.");
+    throw new Error('Method not implemented.');
   }
   // compileNamedArgument(arg0: NamedArgument<JsConstant, string>, params: Set<Parameter<JsConstant, string>>, parent: AST): string {
   //   throw new Error("Method not implemented.");
@@ -545,10 +544,10 @@ export abstract class Compiler {
   ): string {
     if (isRaw(withs)) return withs.$sql;
     return (
-      "WITH " +
+      'WITH ' +
       withs.$rowsets
-        .map((item) => this.compileWithSelect(item, params, withs))
-        .join(", ")
+        .map(item => this.compileWithSelect(item, params, withs))
+        .join(', ')
     );
   }
 
@@ -559,8 +558,8 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>
   ): string {
     return doc.statements
-      .map((statement) => this.compileStatement(statement, params, doc))
-      .join("\n");
+      .map(statement => this.compileStatement(statement, params, doc))
+      .join('\n');
   }
 
   protected compileExecute(
@@ -574,11 +573,11 @@ export abstract class Compiler {
       DbType.int32
     );
     return (
-      "EXECUTE " +
+      'EXECUTE ' +
       this.compileParameter(returnParam, params) +
-      " = " +
+      ' = ' +
       this.stringifyIdentifier(exec.$proc) +
-      " " +
+      ' ' +
       this.compileExecuteArgumentList(exec.$args, params, exec)
     );
   }
@@ -589,8 +588,8 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     return args
-      .map((expr) => this.compileExpression(expr, params, parent))
-      .join(", ");
+      .map(expr => this.compileExpression(expr, params, parent))
+      .join(', ');
   }
 
   protected compileExecuteArgumentList(
@@ -599,18 +598,18 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     return args
-      .map((ast) => {
+      .map(ast => {
         let sql = this.compileExpression(ast, params, parent);
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
             PARAMETER_DIRECTION.OUTPUT
         ) {
-          sql += " OUTPUT";
+          sql += ' OUTPUT';
         }
         return sql;
       })
-      .join(", ");
+      .join(', ');
   }
 
   protected compileUnion(
@@ -618,8 +617,8 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      "UNION " +
-      (union.$all ? "ALL " : "") +
+      'UNION ' +
+      (union.$all ? 'ALL ' : '') +
       (isSelect(union.$select)
         ? this.compileSelect(union.$select, params, union)
         : this.compileRowsetName(union.$select))
@@ -631,16 +630,16 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    let fragment = "CASE";
+    let fragment = 'CASE';
     if (caseExpr.$expr)
-      fragment += " " + this.compileExpression(caseExpr.$expr, params, parent);
+      fragment += ' ' + this.compileExpression(caseExpr.$expr, params, parent);
     fragment +=
-      " " +
-      caseExpr.$whens.map((when) => this.compileWhen(when, params)).join(" ");
+      ' ' +
+      caseExpr.$whens.map(when => this.compileWhen(when, params)).join(' ');
     if (caseExpr.$default)
       fragment +=
-        " ELSE " + this.compileExpression(caseExpr.$default, params, caseExpr);
-    fragment += " END";
+        ' ELSE ' + this.compileExpression(caseExpr.$default, params, caseExpr);
+    fragment += ' END';
     return fragment;
   }
 
@@ -650,11 +649,11 @@ export abstract class Compiler {
   ): string {
     if (isRaw(when)) return when.$sql;
     return (
-      "WHEN " +
+      'WHEN ' +
       (isCondition(when.$expr)
         ? this.compileCondition(when.$expr, params, when)
         : this.compileExpression(when.$expr, params, when)) +
-      " THEN " +
+      ' THEN ' +
       this.compileExpression(when.$value, params, when)
     );
   }
@@ -663,7 +662,7 @@ export abstract class Compiler {
     expr: ParenthesesCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    return "(" + this.compileCondition(expr.$inner, params, expr) + ")";
+    return '(' + this.compileCondition(expr.$inner, params, expr) + ')';
   }
 
   protected compileBinaryLogicCondition(
@@ -672,9 +671,9 @@ export abstract class Compiler {
   ): string {
     return (
       this.compileCondition(expr.$left, params, expr) +
-      " " +
+      ' ' +
       expr.$operator +
-      " " +
+      ' ' +
       this.compileCondition(expr.$right, params, expr)
     );
   }
@@ -685,13 +684,13 @@ export abstract class Compiler {
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
-      " " +
+      ' ' +
       expr.$operator +
-      " " +
+      ' ' +
       (Array.isArray(expr.$right)
-        ? "(" +
-          expr.$right.map((p) => this.compileExpression(p, params, expr)) +
-          ")"
+        ? '(' +
+          expr.$right.map(p => this.compileExpression(p, params, expr)) +
+          ')'
         : this.compileExpression(expr.$right, params, expr))
     );
   }
@@ -702,9 +701,9 @@ export abstract class Compiler {
   ): string {
     return (
       this.compileExpression(expr.$left, params, expr) +
-      " " +
+      ' ' +
       expr.$operator +
-      " " +
+      ' ' +
       this.compileExpression(expr.$right, params, expr)
     );
   }
@@ -714,7 +713,7 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileExpression(expr.$expr, params, expr) + " " + expr.$operator
+      this.compileExpression(expr.$expr, params, expr) + ' ' + expr.$operator
     );
   }
 
@@ -722,7 +721,7 @@ export abstract class Compiler {
     expr: ExistsCondition,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    return "EXISTS(" + this.compileSelect(expr.$statement, params, expr) + ")";
+    return 'EXISTS(' + this.compileSelect(expr.$statement, params, expr) + ')';
   }
 
   protected compileUnaryLogicCondition(
@@ -731,12 +730,12 @@ export abstract class Compiler {
   ): string {
     return (
       expr.$operator +
-      " " +
+      ' ' +
       this.compileCondition(expr.$condition, params, expr)
     );
   }
 
-  protected compileExpression(
+  public compileExpression(
     expr: Expression<Scalar> | Raw,
     params: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -753,7 +752,7 @@ export abstract class Compiler {
       );
     }
     if (isLiteral(expr)) {
-      return this.compileLiteral(expr);
+      return this.compileLiteral(expr.$value);
     }
 
     if (isOperation(expr)) {
@@ -787,7 +786,7 @@ export abstract class Compiler {
     if (isCase(expr)) {
       return this.compileCase(expr, params, parent);
     }
-    invalidAST("expression", expr);
+    invalidAST('expression', expr);
   }
 
   protected compileScalarInvokeArgs(
@@ -811,8 +810,8 @@ export abstract class Compiler {
     params: Set<Parameter<Scalar, string>>
   ): string {
     return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
-      .map((v) => this.compileScalarInvokeArgs(v, params, invoke))
-      .join(", ")})`;
+      .map(v => this.compileScalarInvokeArgs(v, params, invoke))
+      .join(', ')})`;
   }
 
   protected compileJoin(
@@ -821,10 +820,10 @@ export abstract class Compiler {
   ): string {
     if (isRaw(join)) return join.$sql;
     return (
-      (join.$left ? "LEFT " : "") +
-      "JOIN " +
+      (join.$left ? 'LEFT ' : '') +
+      'JOIN ' +
       this.compileFrom(join.$table, params, join) +
-      " ON " +
+      ' ON ' +
       this.compileCondition(join.$on, params, join)
     );
   }
@@ -835,7 +834,7 @@ export abstract class Compiler {
   ): string {
     if (isRaw(sort)) return sort.$sql;
     let sql = this.compileExpression(sort.$expr, params, sort);
-    if (sort.$direction) sql += " " + sort.$direction;
+    if (sort.$direction) sql += ' ' + sort.$direction;
     return sql;
   }
 
@@ -859,52 +858,47 @@ export abstract class Compiler {
       $limit,
       $distinct,
     } = select;
-    let sql = "";
+    let sql = '';
     if ($with) {
       sql += this.compileWith($with, params);
     }
-    sql += "SELECT ";
+    sql += 'SELECT ';
     if ($distinct) {
-      sql += "DISTINCT ";
+      sql += 'DISTINCT ';
     }
-    if (typeof $top === "number") {
+    if (typeof $top === 'number') {
       sql += `TOP ${$top} `;
     }
     sql += $columns
-      .map((col) => this.compileColumn(col, params, select))
-      .join(", ");
+      .map(col => this.compileColumn(col, params, select))
+      .join(', ');
     if ($froms) {
       sql +=
-        " FROM " +
-        $froms
-          .map((table) => this.compileFrom(table, params, select))
-          .join(", ");
+        ' FROM ' +
+        $froms.map(table => this.compileFrom(table, params, select)).join(', ');
     }
     if ($joins && $joins.length > 0) {
-      sql +=
-        " " + $joins.map((join) => this.compileJoin(join, params)).join(" ");
+      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += " WHERE " + this.compileCondition($where, params, parent);
+      sql += ' WHERE ' + this.compileCondition($where, params, parent);
     }
     if ($groups && $groups.length) {
       sql +=
-        " GROUP BY " +
-        $groups
-          .map((p) => this.compileExpression(p, params, parent))
-          .join(", ");
+        ' GROUP BY ' +
+        $groups.map(p => this.compileExpression(p, params, parent)).join(', ');
     }
     if ($having) {
-      sql += " HAVING " + this.compileCondition($having, params, parent);
+      sql += ' HAVING ' + this.compileCondition($having, params, parent);
     }
     if ($sorts && $sorts.length > 0) {
       sql +=
-        " ORDER BY " +
-        $sorts.map((sort) => this.compileSort(sort, params)).join(", ");
+        ' ORDER BY ' +
+        $sorts.map(sort => this.compileSort(sort, params)).join(', ');
     }
     sql += this.compileOffsetLimit(select, params);
     if ($union) {
-      sql += " " + this.compileUnion($union, params);
+      sql += ' ' + this.compileUnion($union, params);
     }
     return sql;
   }
@@ -913,11 +907,11 @@ export abstract class Compiler {
     select: Select<any>,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    let sql = "";
-    if (typeof select.$offset === "number") {
+    let sql = '';
+    if (typeof select.$offset === 'number') {
       sql += ` OFFSET ${select.$offset || 0}`;
     }
-    if (typeof select.$limit === "number") {
+    if (typeof select.$limit === 'number') {
       sql += ` LIMIT ${select.$limit}`;
     }
     return sql;
@@ -933,15 +927,15 @@ export abstract class Compiler {
       return table.$sql;
     }
     if (isTable(table)) {
-      let sql = "";
+      let sql = '';
       sql += this.stringifyIdentifier(table);
-      if (table.$alias) sql += " AS " + this.stringifyIdentifier(table.$alias);
+      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias);
       return sql;
     }
     if (isTableVariant(table)) {
-      let sql = "";
+      let sql = '';
       sql += this.stringifyVariantName(table);
-      if (table.$alias) sql += " AS " + this.stringifyIdentifier(table.$alias);
+      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias);
       return sql;
     }
     // 如果是命名行集
@@ -955,7 +949,7 @@ export abstract class Compiler {
     if (isTableFuncInvoke(table)) {
       return (
         this.compileTableInvoke() +
-        " AS " +
+        ' AS ' +
         this.stringifyIdentifier(table.$alias)
       );
     }
@@ -1002,7 +996,7 @@ export abstract class Compiler {
         params
       );
     }
-    invalidAST("condition", condition);
+    invalidAST('condition', condition);
   }
 
   protected compileInsert(
@@ -1011,37 +1005,37 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     const { $table, $values, $fields, $with } = insert;
-    let sql = "";
+    let sql = '';
     if ($with) {
       sql += this.compileWith($with, params);
     }
-    sql += "INSERT INTO ";
+    sql += 'INSERT INTO ';
     if ($table.$alias) {
-      throw new Error("Insert statements do not allow aliases on table.");
+      throw new Error('Insert statements do not allow aliases on table.');
     }
     sql += this.compileRowsetName($table);
 
     if ($fields) {
       sql +=
-        "(" +
-        $fields.map((field) => this.compileInsertField(field)).join(", ") +
-        ")";
+        '(' +
+        $fields.map(field => this.compileInsertField(field)).join(', ') +
+        ')';
     }
 
     if (Array.isArray($values)) {
-      sql += " VALUES";
+      sql += ' VALUES';
       sql += $values
         .map(
-          (row) =>
-            "(" +
+          row =>
+            '(' +
             row
-              .map((expr) => this.compileExpression(expr, params, parent))
-              .join(", ") +
-            ")"
+              .map(expr => this.compileExpression(expr, params, parent))
+              .join(', ') +
+            ')'
         )
-        .join(", ");
+        .join(', ');
     } else {
-      sql += " " + this.compileSelect($values, params, parent);
+      sql += ' ' + this.compileSelect($values, params, parent);
     }
 
     return sql;
@@ -1055,7 +1049,7 @@ export abstract class Compiler {
     const { left, right } = assign;
     return (
       this.compileExpression(left, params, parent) +
-      " = " +
+      ' = ' +
       this.compileExpression(right, params, parent)
     );
   }
@@ -1066,17 +1060,17 @@ export abstract class Compiler {
 
   protected compileDeclare(declare: Declare): string {
     return (
-      "DECLARE " +
+      'DECLARE ' +
       declare.$declares
-        .map((varDec) =>
+        .map(varDec =>
           isTableVariantDeclare(varDec)
             ? this.compileTableVariantDeclare(varDec)
             : this.stringifyVariantName(varDec.$name) +
-              " " +
+              ' ' +
               this.compileType(varDec.$dataType)
         )
-        .join(", ") +
-      ";"
+        .join(', ') +
+      ';'
     );
   }
 
@@ -1087,36 +1081,33 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     const { $table, $sets, $with, $where, $froms, $joins } = update;
-    assert($table, "table is required by update statement");
-    assert($sets, "set statement un declared");
+    assert($table, 'table is required by update statement');
+    assert($sets, 'set statement un declared');
 
-    let sql = "";
+    let sql = '';
     if ($with) {
       sql += this.compileWith($with, params);
     }
-    sql += "UPDATE ";
+    sql += 'UPDATE ';
     sql += this.compileRowsetName($table);
 
     sql +=
-      " SET " +
+      ' SET ' +
       $sets
-        .map((assign) => this.compileAssignment(assign, params, update))
-        .join(", ");
+        .map(assign => this.compileAssignment(assign, params, update))
+        .join(', ');
 
     if ($froms && $froms.length > 0) {
       sql +=
-        " FROM " +
-        $froms
-          .map((table) => this.compileFrom(table, params, update))
-          .join(", ");
+        ' FROM ' +
+        $froms.map(table => this.compileFrom(table, params, update)).join(', ');
     }
 
     if ($joins && $joins.length > 0) {
-      sql +=
-        " " + $joins.map((join) => this.compileJoin(join, params)).join(" ");
+      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += " WHERE " + this.compileCondition($where, params, update);
+      sql += ' WHERE ' + this.compileCondition($where, params, update);
     }
     return sql;
   }
@@ -1127,25 +1118,23 @@ export abstract class Compiler {
     parent?: AST
   ): string {
     const { $table, $froms, $joins, $where, $with } = del;
-    let sql = "";
+    let sql = '';
     if ($with) {
       sql += this.compileWith($with, params);
     }
-    sql += "DELETE ";
+    sql += 'DELETE ';
     if ($table) sql += this.compileRowsetName($table);
     if ($froms && $froms.length > 0) {
       sql +=
-        " FROM " +
-        $froms
-          .map((table) => this.compileFrom(table, params, parent))
-          .join(", ");
+        ' FROM ' +
+        $froms.map(table => this.compileFrom(table, params, parent)).join(', ');
     }
 
     if ($joins) {
-      sql += $joins.map((join) => this.compileJoin(join, params)).join(" ");
+      sql += $joins.map(join => this.compileJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += " WHERE " + this.compileCondition($where, params, parent);
+      sql += ' WHERE ' + this.compileCondition($where, params, parent);
     }
     return sql;
   }

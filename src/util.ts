@@ -383,7 +383,7 @@ export function pickName(name: Name<string>): string {
   if (typeof name === "string") {
     return name;
   }
-  return name[name.length - 1];
+  return name[0];
 }
 
 export function pathName<T extends string>(name: Name<T>): PathedName<T> {

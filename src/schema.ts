@@ -11,7 +11,7 @@
  * 关联关系等因缺乏信息完美无法生成，需要手动添加
  **********************************/
 
-import { Document } from './ast'
+import { Document } from "./ast";
 import { Compiler } from "./compile";
 import { PARAMETER_DIRECTION } from "./constants";
 import {
@@ -39,22 +39,20 @@ export interface ForeignKeySchema {
    * 外键名称
    */
   name: string;
-  /**
-   * 主键表
-   */
-  primaryTable: string;
-  /**
-   * 外键表
-   */
-  foreignTable: string;
 
   /**
    * 列对应
    */
-  columns: {
-    rcolumn: string;
-    fcolumn: string;
-  }[];
+  foreignColumns: string[];
+
+  /**
+   * 主键表
+   */
+  referenceTable: Name<string>;
+  /**
+   * 引用列（主键列）
+   */
+  referenceColumns: string[];
 
   /**
    * 级联删除
@@ -102,7 +100,7 @@ export interface DatabaseSchema {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 }
 
 export interface FunctionSchema {
@@ -113,7 +111,7 @@ export interface FunctionSchema {
 }
 
 export interface ParameterSchema {
-  dataType: DbType;
+  type: string;
   defaultValue: Scalar;
   direction: PARAMETER_DIRECTION;
 }
@@ -195,7 +193,8 @@ export interface TableSchema {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
+
   /**
    * 列
    */
@@ -215,6 +214,7 @@ export interface TableSchema {
 }
 
 export interface SequenceSchema {
+  type: string;
   name: Name<string>;
   startValue: number;
   increment: number;
@@ -244,7 +244,7 @@ export interface ViewSchema {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 }
 
 /**
@@ -258,7 +258,7 @@ export interface ColumnSchema {
   /**
    * 数据类型
    */
-  type: DbType;
+  type: string;
   /**
    * 是否可空
    */
@@ -291,7 +291,7 @@ export interface ColumnSchema {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 }
 
 /**
@@ -301,8 +301,11 @@ export interface IndexSchema {
   name: string;
   isUnique: boolean;
   isPrimaryKey: boolean;
-  columns: string[];
-  description?: string;
+  columns: {
+    columnName: string;
+    isAscending: boolean;
+  }[];
+  comment?: string;
 }
 
 /**
@@ -324,7 +327,7 @@ export function generate(
       procedures: [],
       functions: [],
       sequences: [],
-      description: context.description,
+      comment: context.description,
     };
 
     for (const entity of context.entities) {
@@ -367,23 +370,23 @@ export function generate(
       indexes,
       foreignKeys,
       constraints: [], // TODO 实体添加约束代码
-      description: entity.description,
+      comment: entity.description,
     };
     return table;
   }
 
   function genColumnSchema(column: ColumnMetadata): ColumnSchema {
     const col: ColumnSchema = {
-      type: column.dbType,
+      type: compiler.compileType(column.dbType),
       name: column.columnName,
       isNullable: column.isNullable,
       isIdentity: column.isIdentity,
       identityStartValue: column.identityStartValue,
       identityIncrement: column.identityIncrement,
       isCalculate: column.isCalculate,
-      calculateExpression: compiler.compile(column.calculateExpression).sql,
-      description: column.description,
-      defaultValue: compiler.compile(column.defaultValue).sql,
+      calculateExpression: compiler.compileExpression(column.calculateExpression, null),
+      comment: column.description,
+      defaultValue: compiler.compileExpression(column.defaultValue, null),
     };
     return col;
   }
@@ -394,14 +397,9 @@ export function generate(
   ): ForeignKeySchema {
     const fk: ForeignKeySchema = {
       name: relation.constraintName,
-      primaryTable: relation.referenceEntity.tableName,
-      foreignTable: entity.tableName,
-      columns: [
-        {
-          fcolumn: relation.foreignColumn.columnName,
-          rcolumn: relation.referenceEntity.keyColumn.columnName,
-        },
-      ],
+      referenceTable: relation.referenceEntity.tableName,
+      foreignColumns: [relation.foreignColumn.columnName],
+      referenceColumns: [relation.referenceEntity.keyColumn.columnName],
       isCascade: relation.isCascade,
     };
     return fk;
@@ -415,8 +413,8 @@ export function generate(
       name: index.name,
       isPrimaryKey: index.isPrimaryKey,
       isUnique: index.isUnique,
-      columns: index.columns.map((cm) => cm.columnName),
-      description: index.description,
+      columns: index.columns.map((cm) => ({ columnName: cm.columnName, isAscending: true})),
+      comment: index.description,
     };
     return idx;
   }
@@ -425,7 +423,7 @@ export function generate(
     const v: ViewSchema = {
       name: view.viewName,
       body: compiler.compile(view.body).sql,
-      description: view.description,
+      comment: view.description,
     };
     return v;
   }
