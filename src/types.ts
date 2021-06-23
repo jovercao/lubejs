@@ -7,6 +7,7 @@
 //    direction?: ParameterDirection
 // }
 
+import { Raw } from './ast'
 import { deepthEqual } from "./util";
 
 export const EntitySymble = Symbol("LUBEJS#Entity");
@@ -147,6 +148,10 @@ export function isSameDbType(type1: DbType, type2: DbType) {
   return deepthEqual(type1, type2);
 }
 
+export function isStringType(type: any): type is STRING {
+  return type?.name === 'STRING'
+}
+
 export type DbType =
   | INT8
   | INT16
@@ -163,7 +168,8 @@ export type DbType =
   | UUID
   | ROWFLAG
   | OBJECT
-  | ARRAY<any>;
+  | ARRAY<any>
+  | Raw;
 
 /**
  * 类型转换
@@ -189,18 +195,20 @@ export type TsTypeOf<T extends DbType> = T extends
   ? any
   : T extends OBJECT<infer M>
   ? M
+  : T extends Raw
+  ? Scalar
   : T extends ARRAY<infer M>
   ? TsTypeOf<M>[]
   : never;
 
-export type PathedName<T extends string> =
+export type PathedName<T extends string = string> =
   | [T]
   | [T, string]
   | [T, string, string]
   | [T, string, string, string]
   | [T, string, string, string, string];
 
-export type Name<T extends string> = T | PathedName<T>;
+export type Name<T extends string = string> = T | PathedName<T>;
 
 /**
  * 从TS Type 转换为DbType的类型
@@ -334,6 +342,9 @@ export const DbType = {
       name: "ARRAY",
       type,
     };
+  },
+  raw(name: string): Raw {
+    return new Raw(name);
   },
   MAX: 0,
 };

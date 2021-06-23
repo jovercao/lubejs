@@ -39,13 +39,13 @@ export type ConnectOptions = {
    */
   database: string;
   /**
-   * 连接池最大连接数，单位为秒
+   * 连接池最大连接数，单位为秒，默认为5
    */
-  maxConnections: number;
+  maxConnections?: number;
   /**
    * 连接池最小连接数，默认为1
    */
-  minConnections: number;
+  minConnections?: number;
   /**
    * 连接超时时长，单位: ms，默认为15000ms
    */
@@ -57,7 +57,7 @@ export type ConnectOptions = {
   /**
    * 回收未使用的连接等待时长，单位: ms，默认为30000ms
    */
-  recoveryConnection: number;
+  recoveryConnection?: number;
   /**
    * 编译选项
    */
@@ -85,7 +85,7 @@ export interface DbProvider {
    */
   // getCompiler(options: CompileOptions): Compiler;
   readonly compiler: Compiler;
-  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
+  query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
 

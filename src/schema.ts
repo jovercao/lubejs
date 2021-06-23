@@ -11,9 +11,9 @@
  * 关联关系等因缺乏信息完美无法生成，需要手动添加
  **********************************/
 
-import { Document } from "./ast";
-import { Compiler } from "./compile";
-import { PARAMETER_DIRECTION } from "./constants";
+import { Document } from './ast';
+import { Compiler } from './compile';
+import { PARAMETER_DIRECTION } from './constants';
 import {
   ColumnMetadata,
   DbContextMetadata,
@@ -27,9 +27,9 @@ import {
   ManyToOneMetadata,
   TableEntityMetadata,
   ViewEntityMetadata,
-} from "./metadata";
-import { DataType, DbType, RowObject, Scalar, DataTypeOf, Name } from "./types";
-import { map } from "./util";
+} from './metadata';
+import { DataType, DbType, RowObject, Scalar, DataTypeOf, Name } from './types';
+import { map } from './util';
 
 /**
  * 外键架构
@@ -58,7 +58,7 @@ export interface ForeignKeySchema {
    * 级联删除
    * // WARN 慎用
    */
-  isCascade: boolean;
+  isCascade?: boolean;
 }
 
 export interface DatabaseSchema {
@@ -200,17 +200,27 @@ export interface TableSchema {
    */
   columns: ColumnSchema[];
 
+  // /**
+  //  * 主键
+  //  */
+  // primaryKey: string[];
+
   /**
-   * 索引
+   * 索引，不包含主键约束及uniq约束等
    */
   indexes: IndexSchema[];
 
+  primaryKey: PrimaryKeySchema;
+
+  /**
+   * 外键
+   */
   foreignKeys: ForeignKeySchema[];
 
   /**
-   * 检查约束
+   * 约束：包含检查约束及唯一约束，不含主键、外键、及索引
    */
-  constraints: CheckConstraintSchema[];
+  constraints: ConstraintSchema[];
 }
 
 export interface SequenceSchema {
@@ -221,9 +231,31 @@ export interface SequenceSchema {
 }
 
 export interface CheckConstraintSchema {
+  kind: 'CHECK';
   name: string;
   sql: string;
 }
+
+export interface UniqueConstraintSchema {
+  kind: 'UNIQUE';
+  name: string;
+  columns: string[];
+}
+
+export interface PrimaryKeySchema {
+  name: string;
+  /**
+   * 是否是聚焦索引
+   */
+  isClustered: boolean;
+  columns: {
+    name: string;
+    isAscending: boolean;
+  }[]
+}
+
+
+export type ConstraintSchema = CheckConstraintSchema | UniqueConstraintSchema;
 
 /**
  * 视图架构
@@ -300,9 +332,15 @@ export interface ColumnSchema {
 export interface IndexSchema {
   name: string;
   isUnique: boolean;
-  isPrimaryKey: boolean;
+  /**
+   * 是否是聚焦索引
+   */
+  isClustered: boolean;
+  /**
+   * 索引列
+   */
   columns: {
-    columnName: string;
+    name: string;
     isAscending: boolean;
   }[];
   comment?: string;
@@ -356,16 +394,23 @@ export function generate(
   }
 
   function genTableSchema(entity: TableEntityMetadata): TableSchema {
-    const columns = entity.columns.map((col) => genColumnSchema(col));
-    const indexes = entity.indexes.map((index) =>
-      genIndexSchema(index, columns)
-    );
+    const columns = entity.columns.map(col => genColumnSchema(col));
+    console.log(entity.className, entity.indexes);
+    const indexes = entity.indexes.map(index => genIndexSchema(index));
     const foreignKeys = entity.relations
-      .filter((p) => isForeignRelation(p))
-      .map((p) => genForeignKeySchema(entity, p as ForeignRelation));
+      .filter(p => isForeignRelation(p))
+      .map(p => genForeignKeySchema(entity, p as ForeignRelation));
 
     const table: TableSchema = {
       name: entity.tableName,
+      primaryKey: {
+        name: `PK_${entity.tableName}_${entity.keyColumn.columnName}`,
+        isClustered: true,
+        columns: [{
+          name: entity.keyColumn.columnName,
+          isAscending: true
+        }]
+      },
       columns,
       indexes,
       foreignKeys,
@@ -384,9 +429,13 @@ export function generate(
       identityStartValue: column.identityStartValue,
       identityIncrement: column.identityIncrement,
       isCalculate: column.isCalculate,
-      calculateExpression: compiler.compileExpression(column.calculateExpression, null),
+      calculateExpression:
+        column.calculateExpression &&
+        compiler.compileExpression(column.calculateExpression, null),
       comment: column.description,
-      defaultValue: compiler.compileExpression(column.defaultValue, null),
+      defaultValue:
+        column.defaultValue &&
+        compiler.compileExpression(column.defaultValue, null),
     };
     return col;
   }
@@ -406,14 +455,16 @@ export function generate(
   }
 
   function genIndexSchema(
-    index: IndexMetadata,
-    columns: ColumnSchema[]
+    index: IndexMetadata
   ): IndexSchema {
     const idx: IndexSchema = {
       name: index.name,
-      isPrimaryKey: index.isPrimaryKey,
       isUnique: index.isUnique,
-      columns: index.columns.map((cm) => ({ columnName: cm.columnName, isAscending: true})),
+      isClustered: index.isClustered,
+      columns: index.columns.map(cm => ({
+        name: cm.column.columnName,
+        isAscending: cm.isAscending,
+      })),
       comment: index.description,
     };
     return idx;

@@ -96,16 +96,19 @@ function fixColumn(
 
 function fixIndex(entity: TableEntityMetadata, index: IndexMetadata) {
   if (!index.name) {
-    index.name = `${index.isPrimaryKey ? "PK" : "IX"}_${
+    index.name = `IX_${
       entity.tableName
-    }_${index.columns.map((col) => col.columnName).join("_")}`;
+    }_${index.columns.map((col) => col.column.columnName).join("_")}`;
   }
   index.columns = index.properties.map((property) => {
     const column = entity.getColumn(property);
     if (!column) {
       throw new Error(`Column ${property} not found.`);
     }
-    return column;
+    return {
+      column,
+      isAscending: true
+    };
   });
 }
 
@@ -996,30 +999,30 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
   /**
    * 声明主键
    */
-  hasKey<P extends Scalar>(selector: (p: T) => P): this {
+  hasKey<P extends Scalar>(selector: (p: T) => P, constraintName?: string, isClustered: boolean = true): this {
     let property: string = selectProperty(selector);
     if (!property) {
       throw new Error("Please select a property");
     }
     this.metadata.keyProperty = property;
-    this.metadata.addIndex({
-      name: undefined,
-      properties: [property],
-      columns: null,
-      isUnique: true,
-      isPrimaryKey: true,
-    });
+    // this.metadata.addIndex({
+    //   name: undefined,
+    //   properties: [property],
+    //   columns: null,
+    //   isUnique: true,
+    //   isClustered
+    // });
     return this;
   }
 
-  hasIndex(selector: (p: T) => Scalar[], isUnique: boolean = false): this {
+  hasIndex(selector: (p: T) => Scalar[], isUnique: boolean = false, isClustered: boolean = false): this {
     const properties: string[] = selectProperty(selector);
     this.metadata.addIndex({
       name: undefined,
       properties,
       columns: null,
       isUnique,
-      isPrimaryKey: false,
+      isClustered
     });
     return this;
   }

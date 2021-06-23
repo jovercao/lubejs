@@ -1,15 +1,10 @@
-import { promises } from 'fs';
-import { join } from 'path';
+import { existsSync, promises } from 'fs';
+import { join, resolve } from 'path';
 import { Condition, Statement, Document, Select } from './ast';
-import {
-  $delete,
-  $insert,
-  $table,
-  $update,
-  and,
-} from './builder';
+import { $delete, $insert, $table, $update, and } from './builder';
 import { Compiler } from './compile';
 import { DbContext } from './db-context';
+import { ConnectOptions } from './lube';
 import { DbContextMetadata, metadataStore } from './metadata';
 import {
   ColumnInfo,
@@ -17,19 +12,23 @@ import {
   MigrationCommand,
   TableInfo,
 } from './migrate-builder';
+import { generateMigrate } from './migrate-gen';
 // import { MigrationCommand } from "./migrate-builder";
 import {
   CheckConstraintSchema,
   DatabaseSchema,
   ForeignKeySchema,
+  generate,
   IndexSchema,
+  UniqueConstraintSchema,
 } from './schema';
+import { compare } from './schema-compare';
 import { Constructor, DbType, Name } from './types';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
-  up(executor: MigrateScripter): Promise<void>;
-  down(executor: MigrateScripter): Promise<void>;
+  up(executor: MigrationBuilder): Promise<void> | void;
+  down(executor: MigrationBuilder): Promise<void> | void;
 }
 
 export abstract class MigrateScripter {
@@ -38,7 +37,7 @@ export abstract class MigrateScripter {
     public compiler: Compiler
   ) {}
 
-  script(commands: ReadonlyArray<MigrationCommand>): string {
+  script(commands: ReadonlyArray<MigrationCommand>): string[] {
     const sql: string[] = [];
     for (const command of commands) {
       switch (command.operation) {
@@ -83,6 +82,14 @@ export abstract class MigrateScripter {
             )
           );
           break;
+        case 'ADD_UNIEQUE_CONSTRAINT':
+          sql.push(
+            this.addUniqueConstraint(command.data.table, command.data.uniqueConstraint)
+          );
+          break;
+        case 'ADD_PRIMARY_KEY':
+          sql.push(this.addPrimaryKey(command.data.table, command.data.columns, command.data.name))
+          break;
         case 'ALTER_COLUMN':
           sql.push(this.alterColumn(command.data.table, command.data.column));
           break;
@@ -92,9 +99,9 @@ export abstract class MigrateScripter {
         case 'DROP_FOREIGN_KEY':
           sql.push(this.dropForeignKey(command.data.table, command.data.name));
           break;
-        case 'DROP_CHECK_CONSTRAINT':
+        case 'DROP_CONSTRAINT':
           sql.push(
-            this.dropCheckConstraint(command.data.table, command.data.name)
+            this.dropConstraint(command.data.table, command.data.name)
           );
           break;
         case 'RENAME_TABLE':
@@ -167,8 +174,13 @@ export abstract class MigrateScripter {
           throw new Error(`Unknow command operation.`);
       }
     }
-    return sql.join('\n GO \n');
+    return sql;
   }
+  addPrimaryKey(table: Name<string>, columns: string[], name: string): string {
+    throw new Error('Method not implemented.')
+  }
+
+  abstract addUniqueConstraint(table: Name<string>, uniqueConstraint: UniqueConstraintSchema): string;
 
   abstract alterTable(name: Name<string>, comment: string): string;
 
@@ -225,7 +237,7 @@ export abstract class MigrateScripter {
     newName: string
   ): string;
   abstract renameTable(name: Name<string>, newName: string): string;
-  abstract dropCheckConstraint(table: Name<string>, name: string): string;
+  abstract dropConstraint(table: Name<string>, name: string): string;
   abstract dropForeignKey(table: Name<string>, name: string): string;
   abstract dropColumn(table: Name<string>, name: string): string;
 
@@ -268,23 +280,23 @@ export abstract class MigrateScripter {
   abstract dropView(name: Name<string>): string;
 }
 
-export interface MigrateOptions {
-  /**
-   * DbContext工厂类
-   */
-  factory: () => Promise<DbContext>;
+export interface LubeConfig {
+  default: string;
+  contexts: {
+    [key: string]: () => Promise<DbContext>;
+  };
   migrateDir: string;
 }
 
 interface MigrateInfo {
-  index: number;
+  id: string;
   name: string;
   timestamp: string;
   path: string;
 }
 
 const LUBE_MIGRATE_TABLE_NAME = '__LubeMigrate';
-const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w\d]*).ts$/i;
+const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)(\.ts|\.js)$/i;
 
 /**
  * 迁移命令行
@@ -294,14 +306,19 @@ export class MigrateCli {
 
   private readonly scripter: MigrateScripter;
   private dbSchema: DatabaseSchema;
-  private dbContext: DbContext;
 
-  constructor(public options: MigrateOptions) {
+  constructor(
+    private readonly dbContext: DbContext,
+    private migrateDir: string
+  ) {
     this.scripter = this.dbContext.lube.provider.scripter;
   }
 
+  async dispose(): Promise<void> {
+    await this.dbContext.lube.close();
+  }
+
   private async init() {
-    this.dbContext = await this.options.factory();
     this.metadata = metadataStore.getContext(
       this.dbContext.constructor as Constructor<DbContext>
     );
@@ -309,21 +326,30 @@ export class MigrateCli {
     await this.ensureMigrateTable();
   }
 
-  private async getCurrentMigrate(): Promise<string> {
-    const items = await this.dbContext.executor.select(
-      LUBE_MIGRATE_TABLE_NAME,
-      { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
-    );
-    return items?.[0]?.migrate_id;
+  private async loadSchema() {
+    return await this.dbContext.lube.provider.getSchema();
   }
 
-  // private async ensureDatabase(): Promise<void> {
+  private async getCurrentMigrate(): Promise<string> {
+    try {
+      const items = await this.dbContext.executor.select(
+        LUBE_MIGRATE_TABLE_NAME,
+        { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
+      );
+      return items?.[0]?.migrate_id;
+    } catch {
+      return null;
+    }
+  }
 
-  // }
+  private async getLastMigrate(): Promise<MigrateInfo> {
+    const items = await this.list();
+    return items[items.length - 1];
+  }
 
-  // private async ensureSchema(): Promise<void> {
+  private async ensureDatabase(): Promise<void> {}
 
-  // }
+  private async ensureSchema(): Promise<void> {}
 
   private async ensureMigrateTable(): Promise<void> {
     if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
@@ -345,38 +371,81 @@ export class MigrateCli {
     }
   }
 
+  getTimestamp(): string {
+    const now = new Date();
+    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1)
+      .toString()
+      .padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now
+      .getHours()
+      .toString()
+      .padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now
+      .getSeconds()
+      .toString()
+      .padStart(2, '0')}`;
+    return timestamp;
+  }
+
   /**
    * 创建一个空的迁移文件
    * @param name
    */
   async create(name: string): Promise<void> {
-    const now = new Date();
-    const timestamp = `${now.getFullYear()}${
-      now.getMonth() + 1
-    }${now.getDate()}${now.getHours()}${now.getMinutes()}${now.getSeconds()}`;
+    if (!existsSync(this.migrateDir)) {
+      await promises.mkdir(this.migrateDir);
+    }
+    const timestamp = this.getTimestamp();
+
     const id = `${timestamp}_${name}`;
-    await writeFile(
-      join(this.options.migrateDir, `${id}.ts`),
-      `import { MigrationBuilder } from 'lubejs';
-
-export class ${id} {
-  up(migrateBuilder: MigrationBuilder) {
-
+    const codes = this.genMigrateData(name, [], []);
+    await writeFile(join(this.migrateDir, `${id}.ts`), codes);
   }
 
-  down(migrateBuilder: MigrationBuilder) {
+  private genMigrateData(
+    name: string,
+    upcodes: string[],
+    downcodes: string[]
+  ): string {
+    return `import { MigrationBuilder, Migrate } from '../../src';
 
-  }
-}
-`
-    );
+  export class ${name} implements Migrate {
+    up(migrate: MigrationBuilder) {
+      ${upcodes.join(';\n      ')}
+    }
+
+    down(migrate: MigrationBuilder) {
+      ${downcodes.join(';\n      ')}
+    }
   }
 
+  export default ${name};
+    `;
+  }
   /**
    * 将数据库架构与当前架构进行对比，并生成新的迁移文件
    * @param name
    */
-  async gen(name: string): Promise<void> {}
+  async gen(name: string): Promise<void> {
+    console.log(1);
+    const metadata = metadataStore.getContext(
+      this.dbContext.constructor as Constructor<DbContext>
+    );
+    console.log(2);
+    const dbSchema = await this.loadSchema();
+    console.log(3);
+    const entityScheam = generate(this.dbContext.executor.compiler, metadata);
+
+    const upDiff = await compare(entityScheam, dbSchema);
+    const upCodes = generateMigrate(upDiff);
+
+    const downDiff = await compare(dbSchema, entityScheam);
+    const downCodes = generateMigrate(downDiff);
+
+    const codes = this.genMigrateData(name, upCodes, downCodes);
+
+    const timestamp = this.getTimestamp();
+    const id = `${timestamp}_${name}`;
+    await writeFile(join(this.migrateDir, `${id}.ts`), codes);
+  }
 
   /**
    * 更新到指定迁移
@@ -387,42 +456,81 @@ export class ${id} {
     await this.init();
 
     const currentId = await this.getCurrentMigrate();
-    const sql = await this.script(name, currentId);
-    await this.dbContext.executor.query(sql);
+    const scripts = await this.script({
+      target: name,
+      source: currentId,
+    });
+    await this.dbContext.trans(async instance => {
+      for (const sql of scripts) {
+        await instance.executor.query(sql);
+      }
+    });
   }
 
-  async script(targetName: string, frontName?: string): Promise<string> {
+  async script(options: {
+    target?: string;
+    source?: string;
+    outputPath?: string;
+  }): Promise<string[]> {
+    let target = options?.target;
+    if (!target) {
+      target = (await this.getLastMigrate()).name;
+    }
     const migrates = await this.list();
-    const targetIndex = migrates.findIndex(item => item.name === targetName);
-    const frontIndex = frontName
-      ? migrates.findIndex(item => item.name === frontName)
-      : migrates.length - 1;
-    const isUpgrade = targetIndex > frontIndex;
-    const isDemotion = targetIndex < frontIndex;
+    const targetIndex = migrates.findIndex(
+      item =>
+        item.id === target || item.name === target || item.timestamp === target
+    );
+    if (targetIndex === -1) {
+      throw new Error(`未找到目标${target}的迁移信息。`);
+    }
+    let source = options?.source;
+    if (!source) {
+      source = await this.getCurrentMigrate();
+    }
+    let sourceIndex: number;
+    if (source) {
+      sourceIndex = migrates.findIndex(
+        item =>
+          item.id === source ||
+          item.name === source ||
+          item.timestamp === source
+      );
+      if (sourceIndex === -1) {
+        throw new Error(`未找到源${source}的迁移信息。`);
+      }
+    } else {
+      sourceIndex = -1;
+    }
+    if (sourceIndex === targetIndex) {
+      throw new Error(`源和目标一致，无法生成脚本。`);
+    }
+    const isUpgrade = targetIndex > sourceIndex;
+    const isDemotion = targetIndex < sourceIndex;
 
     const builder = new MigrationBuilder();
     if (isUpgrade) {
-      for (let i = frontIndex; i < targetIndex; i++) {
+      for (let i = sourceIndex + 1; i <= targetIndex; i++) {
         const info = migrates[i];
         builder.annotation(`Migrate up script from "${info.path}"`);
-        const { [`${info.timestamp}_${info.name}`]: migrate } = await import(
-          info.path
-        );
-        migrate.up(builder);
+        const Migrate = await importMigrate(info);
+        await new Migrate().up(builder);
       }
     }
     if (isDemotion) {
-      for (let i = frontIndex; i < targetIndex; i++) {
+      for (let i = sourceIndex; i > targetIndex; i--) {
         const info = migrates[i];
         builder.annotation(`Migrate down script from "${info.path}"`);
-        const { [`${info.timestamp}_${info.name}`]: migrate } = await import(
-          info.path
-        );
-        migrate.down(builder);
+        const Migrate = await importMigrate(info);
+        await new Migrate().down(builder);
       }
     }
     const commands = builder.getCommands();
-    return this.scripter.script(commands);
+    const scripts = this.scripter.script(commands);
+    if (options?.outputPath) {
+      await writeFile(options.outputPath, scripts.join('\n'), 'utf-8');
+    }
+    return scripts;
   }
 
   /**
@@ -430,19 +538,30 @@ export class ${id} {
    */
   async list(): Promise<MigrateInfo[]> {
     const results: MigrateInfo[] = [];
-    const items = await readdir(this.options.migrateDir);
+    if (!existsSync(this.migrateDir)) {
+      return [];
+    }
+    const items = await readdir(this.migrateDir);
     for (const item of items.sort()) {
-      const path = join(this.options.migrateDir, item);
+      const path = join(this.migrateDir, item);
       const match = MIGRATE_FILE_REGX.exec(item);
       if (match && (await stat(path)).isFile()) {
         results.push({
+          id: `${match[1]}_${match[2]}`,
           timestamp: match[1],
           name: match[2],
-          path,
-          index: results.length - 1,
+          path: resolve(process.cwd(), path),
         });
       }
     }
-    return results;
+    return results.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
   }
+}
+
+async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
+  const imported = await import(info.path);
+  const migrate = imported?.default || imported?.[info.name] || imported;
+  if (!migrate)
+    throw new Error(`Migrate 文件 ${info.path} ，无法找到迁移实例类。`);
+  return migrate;
 }

@@ -43,7 +43,7 @@ import { Name, RowObject, Scalar } from './types';
 
 export interface Command {
   sql: string;
-  params: Parameter[];
+  params?: Parameter[];
 }
 
 /**
@@ -181,8 +181,7 @@ export class Executor {
       sql += arr[i + 1];
     }
     return {
-      sql,
-      params: [],
+      sql
     };
   }
 

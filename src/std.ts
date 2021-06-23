@@ -8,8 +8,10 @@ import {
   CompatibleExpression,
   Star,
   StandardExpression,
+  Statement,
+  StandardStatement,
 } from "./ast";
-import { Binary, DbType, TsTypeOf, Scalar } from "./types";
+import { Binary, DbType, TsTypeOf, Scalar, Name } from "./types";
 
 // export function convert<T extends DbType>(value: CompatibleExpression, toType: T): Expression<TsTypeOf<T>> {
 //   return StandardOperation.create('CONVERT', [value, toType]);
@@ -492,6 +494,30 @@ export function cot(value: CompatibleExpression<number>): Expression<number> {
   return StandardExpression.create(cot.name, [value]);
 }
 
+export function renameTable(name: Name, newName: string): Statement {
+  return StandardStatement.create(renameTable.name, [name, newName]);
+}
+
+export function renameColumn(table: Name, name: string, newName: string): Statement {
+  return StandardStatement.create(renameColumn.name, [table, name, newName]);
+}
+
+export function renameView(name: Name, newName: string): Statement {
+  return StandardStatement.create(renameView.name, [name, newName]);
+}
+
+export function renameIndex(name: Name, newName: string): Statement {
+  return StandardStatement.create(renameIndex.name, [name, newName]);
+}
+
+export function renameProcedure(name: Name, newName: string): Statement {
+  return StandardStatement.create(renameProcedure.name, [name, newName]);
+}
+
+export function renameFunction(name: Name, newName: string): Statement {
+  return StandardStatement.create(renameFunction.name, [name, newName]);
+}
+
 export interface Standard {
   count(expr: Star<any> | CompatibleExpression<Scalar>): Expression<number>;
   min<T extends string | number | bigint | boolean | Date>(
@@ -662,6 +688,34 @@ export interface Standard {
   atan2(value: CompatibleExpression<number>): Expression<number>;
 
   cot(value: CompatibleExpression<number>): Expression<number>;
+
+  renameTable(name: Name, newName: string): Statement;
+
+  renameColumn(table: Name, name: string, newName: string): Statement;
+
+  renameView(name: Name, newName: string): Statement;
+
+  renameIndex(table: Name, name: string, newName: string): Statement;
+
+  renameProcedure(name: Name, newName: string): Statement;
+
+  renameFunction(name: Name, newName: string): Statement;
+
+  commentTable(name: Name, comment: string): Statement;
+
+  commentColumn(table: Name, column: string, comment: string): Statement;
+
+  commentIndex(table: Name, name: string, comment: string): Statement;
+
+  commentConstraint(table: Name, name: string, comment: string): Statement;
+
+  commentSchema(name: string, comment: string): Statement;
+
+  commentSequence(name: Name, comment: string): Statement;
+
+  commentProcedure(name: Name, comment: string): Statement;
+
+  commentFunction(name: Name, comment: string): Statement;
 }
 
 /********************************************扩展 Expression.to方法**********************************************/

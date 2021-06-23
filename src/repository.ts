@@ -18,7 +18,7 @@ import {
 } from "./metadata";
 import { identityValue } from "./std";
 import { and } from "./builder";
-import { Constructor, Entity, EntitySymble, RowObject, Scalar } from "./types";
+import { Constructor, Entity, EntitySymble, isStringType, RowObject, Scalar } from "./types";
 import { deepthEqual, ensureCondition } from "./util";
 import { Condition } from "./ast";
 import { DataAction } from "./data-monitor";
@@ -172,7 +172,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
   private toDbValue(item: T, column: ColumnMetadata): any {
     if (
       (column.type === Object || column.type === Array) &&
-      column.dbType.name === "STRING"
+      isStringType(column.dbType)
     ) {
       return JSON.stringify(Reflect.get(item, column.property));
     } else {

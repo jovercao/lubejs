@@ -9,7 +9,7 @@
       "request": "launch",
       "name": "启动程序",
       "skipFiles": [
-          "<node_internals>/**"
+        "<node_internals>/**"
       ],
       "runtimeExecutable": "npm",
       "restart": true,
@@ -21,6 +21,12 @@
         "--inspect-brk",
         "--inspect=9229"
       ]
+    },
+    {
+      "name": "Launch Microsoft Edge and open the Edge DevTools",
+      "request": "launch",
+      "type": "vscode-edge-devtools.debug",
+      "url": "" // Provide your project's url to finish configuring
     }
   ]
 }

@@ -12,10 +12,10 @@ import {
   Condition,
   Select,
   CompatibleSortInfo,
-} from "./ast";
-import { and, select } from "./builder";
-import { ROWSET_ALIAS } from "./constants";
-import { Executor } from "./execute";
+} from './ast';
+import { and, select } from './builder';
+import { ROWSET_ALIAS } from './constants';
+import { Executor } from './execute';
 import {
   EntityMetadata,
   metadataStore,
@@ -26,10 +26,10 @@ import {
   isForeignOneToOne,
   isPrimaryOneToOne,
   ColumnMetadata,
-} from "./metadata";
-import { FetchRelations, RelationKeyOf } from "./repository";
-import { Constructor, Entity, RowObject } from "./types";
-import { ensureCondition } from "./util";
+} from './metadata';
+import { FetchRelations, RelationKeyOf } from './repository';
+import { Constructor, Entity, isStringType, RowObject } from './types';
+import { ensureCondition } from './util';
 // import { getMetadata } from 'typeorm'
 
 /**
@@ -59,8 +59,10 @@ export class Queryable<T extends Entity | RowObject>
   private _nocache: boolean = false;
   private _withDetail: boolean = false;
 
-  constructor(executor: Executor, ctr: Constructor<T>) // constructor(
-  //   executor: Executor,
+  constructor(
+    executor: Executor,
+    ctr: Constructor<T> // constructor(
+  ) //   executor: Executor,
   //   rowsetOrCtr: Constructor<T & Entity>
   // )
   {
@@ -196,7 +198,7 @@ export class Queryable<T extends Entity | RowObject>
 
   union(...sets: Queryable<T>[]): Queryable<T> {
     const sql = this._buildSelectSql();
-    sets.forEach((query) => {
+    sets.forEach(query => {
       sql.unionAll(query._buildSelectSql());
     });
     return this.create(sql.as(ROWSET_ALIAS));
@@ -216,7 +218,7 @@ export class Queryable<T extends Entity | RowObject>
 
   private assertMetdata() {
     if (!this.metadata) {
-      throw new Error("Not allow this operation when has no netadata.");
+      throw new Error('Not allow this operation when has no netadata.');
     }
   }
   /**
@@ -308,7 +310,7 @@ export class Queryable<T extends Entity | RowObject>
       if (isPrimaryOneToOne(relation)) {
         const idValue = Reflect.get(item, this.metadata.keyColumn.property);
         const relationItem = await relationQueryable
-          .filter((rowset) =>
+          .filter(rowset =>
             rowset[relation.referenceRelation.foreignColumn.property].eq(
               idValue
             )
@@ -319,7 +321,7 @@ export class Queryable<T extends Entity | RowObject>
       } else if (isForeignOneToOne(relation)) {
         const refValue = Reflect.get(item, relation.foreignColumn.property);
         const relationItem = await relationQueryable
-          .find((rowset) =>
+          .find(rowset =>
             rowset
               .field(relation.referenceEntity.keyColumn.property)
               .eq(refValue)
@@ -329,7 +331,7 @@ export class Queryable<T extends Entity | RowObject>
       } else if (isOneToMany(relation)) {
         const idValue = Reflect.get(item, this.metadata.keyColumn.property);
         const relationItems = await relationQueryable
-          .filter((rowset) =>
+          .filter(rowset =>
             rowset
               .field(relation.referenceRelation.foreignColumn.property)
               .eq(idValue)
@@ -339,7 +341,7 @@ export class Queryable<T extends Entity | RowObject>
       } else if (isManyToOne(relation)) {
         const refValue = Reflect.get(item, relation.foreignColumn.property);
         const relationItem = await relationQueryable
-          .find((rowset) =>
+          .find(rowset =>
             rowset
               .field(relation.referenceEntity.keyColumn.property)
               .eq(refValue)
@@ -363,7 +365,7 @@ export class Queryable<T extends Entity | RowObject>
           .from(rt)
           .where(rt.field(thisForeignColumn.property).eq(idValue));
         const subItems = relationQueryable
-          .filter((rowset) =>
+          .filter(rowset =>
             rowset
               .field(relation.referenceEntity.keyColumn.property)
               .in(relationIdsSelect)
@@ -374,12 +376,18 @@ export class Queryable<T extends Entity | RowObject>
     }
   }
 
-  async fetchRelation<R extends RelationKeyOf<T>>(item: T, relation: R): Promise<T[R]> {
+  async fetchRelation<R extends RelationKeyOf<T>>(
+    item: T,
+    relation: R
+  ): Promise<T[R]> {
     throw new Error(`尚未实现！`);
   }
 
   protected toEntityValue(datarow: any, column: ColumnMetadata): any {
-    if ((column.type === Object || column.type === Array) && column.dbType.name === 'STRING') {
+    if (
+      (column.type === Object || column.type === Array) &&
+      isStringType(column.dbType)
+    ) {
       return JSON.parse(Reflect.get(datarow, column.columnName));
     } else {
       return Reflect.get(datarow, column.columnName);

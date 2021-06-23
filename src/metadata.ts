@@ -1,10 +1,19 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CompatibleExpression, Expression, Identifier, ProxiedRowset, ProxiedTable, Rowset, Select, Table } from "./ast";
-import { $IsProxy, $ROWSET_INSTANCE, SQL_SYMBOLE } from './constants'
-import { DbContext } from "./db-context";
-import { FetchRelations } from "./repository";
+import {
+  CompatibleExpression,
+  Expression,
+  Identifier,
+  ProxiedRowset,
+  ProxiedTable,
+  Rowset,
+  Select,
+  Table,
+} from './ast';
+import { $IsProxy, $ROWSET_INSTANCE, SQL_SYMBOLE } from './constants';
+import { DbContext } from './db-context';
+import { FetchRelations } from './repository';
 import {
   Constructor,
   DataType,
@@ -15,21 +24,23 @@ import {
   RowObject,
   Scalar,
   ScalarType,
-} from "./types";
-import { isClass } from './util'
+} from './types';
+import { isClass } from './util';
 
 export interface IndexMetadata {
   name: string;
   properties: string[];
-  columns: ColumnMetadata[];
+  columns: { column: ColumnMetadata, isAscending: boolean }[];
+
   /**
    * 是否唯一
    */
   isUnique: boolean;
+
   /**
-   * 是否主键
+   * 是否聚焦索引
    */
-  isPrimaryKey: boolean;
+  isClustered: boolean;
 
   /**
    * 摘要说明
@@ -48,7 +59,7 @@ export class EntityMetadataClass {
   /**
    * 类型
    */
-  kind: "TABLE" | "VIEW" | "QUERY";
+  kind: 'TABLE' | 'VIEW' | 'QUERY';
 
   /**
    * 构造函数
@@ -118,7 +129,7 @@ export class EntityMetadataClass {
 
     this._members.push(item);
     this._memberMap[item.property] = item;
-    if (item.kind === "COLUMN") {
+    if (item.kind === 'COLUMN') {
       this._columnMap[item.property] = item;
       this._columns.push(item);
     } else {
@@ -155,12 +166,12 @@ export class EntityMetadataClass {
   private _detailIncludes: FetchRelations<any>;
   getDetailIncludes() {
     if (this._detailIncludes === undefined) {
-      const detailRelations = this.relations.filter((r) => r.isDetail);
+      const detailRelations = this.relations.filter(r => r.isDetail);
       if (detailRelations.length === 0) {
         this._detailIncludes = null;
       } else {
         const detailIncludes: FetchRelations<any> = {};
-        detailRelations.forEach((relation) => {
+        detailRelations.forEach(relation => {
           detailIncludes[relation.property] =
             relation.referenceEntity.getDetailIncludes() || true;
         });
@@ -176,7 +187,7 @@ export class EntityMetadataClass {
 }
 
 export interface TableEntityMetadata extends EntityMetadataClass {
-  kind: "TABLE";
+  kind: 'TABLE';
   /**
    * 表名
    */
@@ -190,7 +201,7 @@ export interface ViewEntityMetadata extends EntityMetadataClass {
   /**
    * 类型
    */
-  kind: "VIEW";
+  kind: 'VIEW';
   /**
    * 表名
    */
@@ -223,7 +234,7 @@ export interface QueryEntityMetadata extends EntityMetadataClass {
   /**
    * 类型
    */
-  kind: "QUERY"; //| 'function'
+  kind: 'QUERY'; //| 'function'
 
   /**
    * 查询,视图或者查询的SELECT语句
@@ -300,7 +311,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
    * 是否由ORM隐式生成
    */
   isImplicit: boolean;
-  kind: "COLUMN";
+  kind: 'COLUMN';
   /**
    * 属性名称
    */
@@ -496,7 +507,7 @@ export interface PrimaryOneToOneMetadata {
   /**
    * 类型声明
    */
-  kind: "ONE_TO_ONE";
+  kind: 'ONE_TO_ONE';
   /**
    * 属性名称
    */
@@ -557,7 +568,7 @@ export interface ForeignOneToOneMetadata {
    * 是否隐式生成的
    */
   isImplicit: boolean;
-  kind: "ONE_TO_ONE";
+  kind: 'ONE_TO_ONE';
   /**
    * 属性名称，如果是隐式的，则自动填充
    */
@@ -630,7 +641,7 @@ export interface OneToManyMetadata {
    * 是否隐式生成的
    */
   isImplicit: boolean;
-  kind: "ONE_TO_MANY";
+  kind: 'ONE_TO_MANY';
   /**
    * 属性名称
    */
@@ -684,7 +695,7 @@ export interface ManyToOneMetadata {
    * 是否隐式生成的
    */
   isImplicit: boolean;
-  kind: "MANY_TO_ONE";
+  kind: 'MANY_TO_ONE';
   /**
    * 属性名称
    */
@@ -757,7 +768,7 @@ export interface ManyToManyMetadata {
   /**
    * 属性名称
    */
-  kind: "MANY_TO_MANY";
+  kind: 'MANY_TO_MANY';
   /**
    * 属性名称
    */
@@ -1373,10 +1384,12 @@ export const metadataStore = new MetadataStore();
  * @param entity
  * @returns
  */
-export function makeRowset<T extends Entity = any>(entity: Constructor<T>): ProxiedRowset<T> {
+export function makeRowset<T extends Entity = any>(
+  entity: Constructor<T>
+): ProxiedRowset<T> {
   const metadata = metadataStore.getEntity(entity);
   if (!metadata) throw new Error(`No metadata found ${entity}`);
-  let rowset: Rowset<T>
+  let rowset: Rowset<T>;
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_');
   } else if (isTableEntity(metadata)) {
@@ -1398,7 +1411,7 @@ export function makeRowset<T extends Entity = any>(entity: Constructor<T>): Prox
       }
 
       // metadata 通过field函数访问
-      if (metadata && key === "field") {
+      if (metadata && key === 'field') {
         if (!target._field) {
           target._field = function (name: string) {
             const column = metadata.getColumn(name);
@@ -1410,7 +1423,7 @@ export function makeRowset<T extends Entity = any>(entity: Constructor<T>): Prox
 
       const v = target[key];
       if (
-        typeof key !== "string" ||
+        typeof key !== 'string' ||
         // === null 也返回，例如 $alias
         v !== undefined
       ) {
@@ -1419,7 +1432,7 @@ export function makeRowset<T extends Entity = any>(entity: Constructor<T>): Prox
 
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;
-      if (key.startsWith("$")) {
+      if (key.startsWith('$')) {
         key = key.substring(1);
       }
 
@@ -1431,10 +1444,10 @@ export function makeRowset<T extends Entity = any>(entity: Constructor<T>): Prox
 /**
  * 是否一对一关系
  */
- export function isOneToOne(
+export function isOneToOne(
   relation: RelationMetadata
 ): relation is OneToOneMetadata {
-  return relation.kind === "ONE_TO_ONE";
+  return relation.kind === 'ONE_TO_ONE';
 }
 
 /**
@@ -1461,16 +1474,14 @@ export function isForeignOneToOne(
 export function isOneToMany(
   relation: RelationMetadata
 ): relation is OneToManyMetadata {
-  return relation.kind === "ONE_TO_MANY";
+  return relation.kind === 'ONE_TO_MANY';
 }
 
 /**
  * 是否多对一关系
  */
-export function isManyToOne(
-  relation: any
-): relation is ManyToOneMetadata {
-  return relation.kind === "MANY_TO_ONE";
+export function isManyToOne(relation: any): relation is ManyToOneMetadata {
+  return relation.kind === 'MANY_TO_ONE';
 }
 
 /**
@@ -1479,7 +1490,7 @@ export function isManyToOne(
 export function isManyToMany(
   relation: RelationMetadata
 ): relation is ManyToManyMetadata {
-  return relation.kind === "MANY_TO_MANY";
+  return relation.kind === 'MANY_TO_MANY';
 }
 
 /**
@@ -1487,34 +1498,36 @@ export function isManyToMany(
  * @param relation
  * @returns
  */
-export function isForeignRelation(relation: RelationMetadata): relation is ForeignRelation {
+export function isForeignRelation(
+  relation: RelationMetadata
+): relation is ForeignRelation {
   return isManyToOne(relation) || isForeignOneToOne(relation);
 }
 
-export type ForeignRelation = ForeignOneToOneMetadata | ManyToOneMetadata
+export type ForeignRelation = ForeignOneToOneMetadata | ManyToOneMetadata;
 
 /**
  * 是否实体类型
  */
- export function isEntityType(type: any): type is EntityType {
-  return typeof type === "function" && isClass(type);
+export function isEntityType(type: any): type is EntityType {
+  return typeof type === 'function' && isClass(type);
 }
 
 export function isEntityMetadata(value: any): value is EntityMetadata {
   return (
     value?.kind &&
-    (value.kind === "TABLE" || value.kind === "VIEW" || value.kind === "QUERY")
+    (value.kind === 'TABLE' || value.kind === 'VIEW' || value.kind === 'QUERY')
   );
 }
 
 export function isTableEntity(value: any): value is TableEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === "TABLE";
+  return value instanceof EntityMetadataClass && value.kind === 'TABLE';
 }
 
 export function isViewEntity(value: any): value is ViewEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === "VIEW";
+  return value instanceof EntityMetadataClass && value.kind === 'VIEW';
 }
 
 export function isQueryEntity(value: any): value is QueryEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === "QUERY";
+  return value instanceof EntityMetadataClass && value.kind === 'QUERY';
 }

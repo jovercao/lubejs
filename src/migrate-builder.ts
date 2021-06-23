@@ -2,10 +2,12 @@ import { Condition, Document, Select, Statement } from './ast';
 import {
   CheckConstraintSchema,
   ColumnSchema,
+  ConstraintSchema,
   ForeignKeySchema,
   IndexSchema,
   SequenceSchema,
   TableSchema,
+  UniqueConstraintSchema,
 } from './schema';
 import { DbType, Name } from './types';
 
@@ -177,8 +179,42 @@ export interface AddCheckConstraintCommand {
   };
 }
 
+export interface AddPrimaryKeyCommand {
+  operation: 'ADD_PRIMARY_KEY';
+  data: {
+    table: Name<string>;
+    name?: string;
+    columns: string[];
+    isCalculate?: boolean;
+  };
+}
+
+export interface DropPrimaryKeyCommand {
+  operation: 'DROP_PRIMARY_KEY';
+  data: {
+    table: Name<string>;
+    name: string;
+  };
+}
+
+export interface AddUniqueConstraintCommand {
+  operation: 'ADD_UNIEQUE_CONSTRAINT';
+  data: {
+    table: Name<string>;
+    uniqueConstraint: UniqueConstraintSchema;
+  };
+}
+
 export interface DropCehckConstraintCommand {
   operation: 'DROP_CHECK_CONSTRAINT';
+  data: {
+    table: Name<string>;
+    name: string;
+  };
+}
+
+export interface DropUniqueConstraintCommand {
+  operation: 'DROP_UNIQUE_CONSTRAINT';
   data: {
     table: Name<string>;
     name: string;
@@ -224,6 +260,21 @@ export interface AnnotationCommand {
   };
 }
 
+export interface DropConstraintCommand {
+  operation: 'DROP_CONSTRAINT',
+  data: {
+    table: Name<string>,
+    name: string,
+  }
+}
+
+export interface IndexInfo {
+  name: string;
+  table: Name<string>;
+  columns: string[];
+  isUnique: boolean;
+}
+
 export interface ColumnInfo {
   /**
    * 列名
@@ -248,7 +299,7 @@ export interface ColumnInfo {
   /**
    * 是否标识列
    */
-  isIdentity: boolean;
+  isIdentity?: boolean;
 
   /**
    * 标识列种子
@@ -261,7 +312,7 @@ export interface ColumnInfo {
   /**
    * 是否计算列
    */
-  isCalculate: boolean;
+  isCalculate?: boolean;
   /**
    * 计算表达式
    */
@@ -271,8 +322,10 @@ export interface ColumnInfo {
 export interface TableInfo {
   name: Name<string>;
   columns: ColumnInfo[];
-  primaryKey: string[];
+  primaryKey?: string[];
   comment?: string;
+  foreignKeys?: ForeignKeySchema[];
+  constraints?: ConstraintSchema[];
 }
 
 export type MigrationCommand =
@@ -297,12 +350,17 @@ export type MigrationCommand =
   | DropSequenceCommand
   | RestartSequenceCommand
   | AddCheckConstraintCommand
-  | DropCehckConstraintCommand
   | CreateViewCommand
   | AlterViewCommand
   | DropViewCommand
   | AnnotationCommand
-  | RenameViewCommand;
+  | RenameViewCommand
+  | AddUniqueConstraintCommand
+  | AddPrimaryKeyCommand
+  // | DropPrimaryKeyCommand
+  // | DropUniqueConstraintCommand
+  // | DropCehckConstraintCommand
+  | DropConstraintCommand;
 
 export class MigrationBuilder {
   private _commands: MigrationCommand[] = [];
@@ -543,6 +601,18 @@ export class MigrationBuilder {
     return this;
   }
 
+  addPrimaryKey(table: Name<string>, columns: string[], name?: string): this {
+    this._commands.push({
+      operation: 'ADD_PRIMARY_KEY',
+      data: {
+        table,
+        columns,
+        name,
+      },
+    });
+    return this;
+  }
+
   addCheckConstraint(
     table: Name<string>,
     checkConstraint: CheckConstraintSchema
@@ -557,9 +627,45 @@ export class MigrationBuilder {
     return this;
   }
 
-  dropCheckConstraint(table: Name<string>, name: string): this {
+  addUniqueConstraint(
+    table: Name<string>,
+    uniqueConstraint: UniqueConstraintSchema
+  ): this {
     this._commands.push({
-      operation: 'DROP_CHECK_CONSTRAINT',
+      operation: 'ADD_UNIEQUE_CONSTRAINT',
+      data: {
+        table,
+        uniqueConstraint,
+      },
+    });
+    return this;
+  }
+
+  // dropCheckConstraint(table: Name<string>, name: string): this {
+  //   this._commands.push({
+  //     operation: 'DROP_CHECK_CONSTRAINT',
+  //     data: {
+  //       table,
+  //       name,
+  //     },
+  //   });
+  //   return this;
+  // }
+
+  // dropUniqueConstraint(table: Name<string>, name: string): this {
+  //   this._commands.push({
+  //     operation: 'DROP_UNIQUE_CONSTRAINT',
+  //     data: {
+  //       table,
+  //       name,
+  //     },
+  //   });
+  //   return this;
+  // }
+
+  dropConstraint(table: Name<string>, name: string): this {
+    this._commands.push({
+      operation: 'DROP_CONSTRAINT',
       data: {
         table,
         name,

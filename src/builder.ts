@@ -352,7 +352,7 @@ export const $table = Identifier.table;
 //   };
 // }
 
-export const makeFunc = Statement.makeFunc;
+export const makeInvoke = Statement.makeInvoke;
 
 export const proc = Identifier.proc;
 export const $proc = Identifier.proc;
@@ -360,7 +360,7 @@ export const $proc = Identifier.proc;
 export const procedure = Identifier.proc;
 export const $procedure = Identifier.proc;
 
-export const makeProce = Statement.makeProc;
+export const makeExec = Statement.makeExec;
 
 export const literal = Expression.literal;
 export const $literal = Expression.literal;
@@ -384,12 +384,12 @@ export const add = Expression.add;
 export const div = Expression.div;
 export const mul = Expression.mul;
 export const sub = Expression.sub;
-export const bitAnd = Expression.and;
-export const bitOr = Expression.or;
-export const bitXor = Expression.xor;
+export const band = Expression.and;
+export const bor = Expression.or;
+export const bxor = Expression.xor;
 export const shl = Expression.shl;
 export const shr = Expression.shr;
-export const bitNot = Expression.not;
+export const bnot = Expression.not;
 export const neg = Expression.neg;
 export const mod = Expression.mod;
 /**
@@ -474,7 +474,8 @@ export const SQL = {
    */
   case: $case,
   with: $with,
-  makeFunc,
+  makeInvoke,
+  makeExec,
   execute,
   exec,
   proc,
@@ -498,12 +499,12 @@ export const SQL = {
   div,
   mul,
   sub,
-  bitAnd,
-  bitOr,
-  bitXor,
+  band,
+  bor,
+  bxor,
   shl,
   shr,
-  bitNot,
+  bnot,
   neg,
   mod,
   concat,

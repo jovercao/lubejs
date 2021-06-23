@@ -1,5 +1,5 @@
 import { Executor } from './execute'
-import { DbProvider, Lube } from './lube'
+import { connect, ConnectOptions, DbProvider, Lube } from './lube'
 import { Constructor, Entity } from './types'
 import { Queryable } from './queryable'
 import { Repository } from './repository'
@@ -47,5 +47,10 @@ export class DbContext extends DbInstance {
       const instance = new DbInstance(executor)
       return handler(instance, abort)
     })
+  }
+
+  static async create<T extends DbContext>(Context: Constructor<T>, options: ConnectOptions): Promise<T> {
+    const lube = await connect(options);
+    return new Context(lube);
   }
 }

@@ -56,7 +56,31 @@ import {
   StandardExpression,
   VariantDeclare,
   TableVariantDeclare,
-} from "./ast";
+  CreateTable,
+  AlterTable,
+  DropTable,
+  PrimaryKey,
+  AlterView,
+  CreateView,
+  DropView,
+  AlterFunction,
+  CreateFunction,
+  CreateIndex,
+  DropFunction,
+  DropIndex,
+  DropProcedure,
+  AlterProcedure,
+  CreateProcedure,
+  Block,
+  ForeignKey,
+  UniqueKey,
+  CheckConstraint,
+  CreateTableColumn,
+  AlterTableColumn,
+  StandardStatement,
+  CreateSequence,
+  DropSequence,
+} from './ast';
 
 import {
   CONDITION_KIND,
@@ -64,7 +88,7 @@ import {
   OPERATION_KIND,
   $IsProxy,
   SQL_SYMBOLE,
-} from "./constants";
+} from './constants';
 
 import {
   Binary,
@@ -76,7 +100,7 @@ import {
   RowObject,
   Scalar,
   ScalarType,
-} from "./types";
+} from './types';
 
 /**
  * 断言
@@ -87,6 +111,13 @@ export function assert(except: any, message: string): asserts except {
   if (!except) {
     throw new Error(message);
   }
+}
+
+export function ensureLiteral<T extends Scalar>(
+  value: T | Literal<T>
+): Literal<T> {
+  if (isLiteral(value)) return value;
+  return Expression.literal(value);
 }
 
 /**
@@ -116,7 +147,7 @@ export function ensureField<T extends Scalar, N extends string>(
 export function ensureVariant<T extends Scalar, N extends string>(
   name: N | Variant<T, N>
 ): Variant<T, N> {
-  if (typeof name === "string") {
+  if (typeof name === 'string') {
     return new Variant(name);
   }
   return name;
@@ -125,7 +156,7 @@ export function ensureVariant<T extends Scalar, N extends string>(
 export function ensureTableVariant<T extends RowObject, N extends string>(
   name: N | TableVariant<T, N>
 ): TableVariant<T, N> {
-  if (typeof name === "string") {
+  if (typeof name === 'string') {
     return new TableVariant(name);
   }
   return name;
@@ -201,15 +232,10 @@ export function ensureCondition<T extends RowObject>(
 
   let makeField: (name: string) => Field;
   if (rowset) {
-    if (
-      typeof rowset === "string" ||
-      Array.isArray(rowset)
-    ) {
+    if (typeof rowset === 'string' || Array.isArray(rowset)) {
       makeField = (key: string) =>
         new Field([
-          ...(Array.isArray(rowset)
-            ? rowset
-            : [rowset]),
+          ...(Array.isArray(rowset) ? rowset : [rowset]),
           key,
         ] as Name<string>);
     } else if (isRowset(rowset)) {
@@ -249,16 +275,13 @@ function makeProxied<T extends RowObject>(
 
       if (v !== undefined) return v;
 
-      if (
-        typeof key !== "string" ||
-        v !== undefined
-      ) {
+      if (typeof key !== 'string' || v !== undefined) {
         return v;
       }
 
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;
-      if (key.startsWith("$")) {
+      if (key.startsWith('$')) {
         key = key.substring(1);
       }
       return target.field(key);
@@ -283,10 +306,10 @@ export function makeProxiedRowset<T extends RowObject>(
 
 export function isScalar(value: any): value is Scalar {
   return (
-    typeof value === "string" ||
-    typeof value === "boolean" ||
-    typeof value === "bigint" ||
-    typeof value === "number" ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint' ||
+    typeof value === 'number' ||
     value === null ||
     value === undefined ||
     value instanceof Date ||
@@ -380,14 +403,14 @@ export function isProxiedRowset<T extends RowObject>(
 // }
 
 export function pickName(name: Name<string>): string {
-  if (typeof name === "string") {
+  if (typeof name === 'string') {
     return name;
   }
   return name[0];
 }
 
 export function pathName<T extends string>(name: Name<T>): PathedName<T> {
-  if (typeof name === "string") {
+  if (typeof name === 'string') {
     return [name];
   }
   return name;
@@ -398,7 +421,7 @@ export function isPlainObject(obj: any): boolean {
 }
 
 function fix(num: number, digits: number): string {
-  return num.toString().padStart(digits, "0");
+  return num.toString().padStart(digits, '0');
 }
 
 export function dateToString(date: Date): string {
@@ -409,44 +432,140 @@ export function dateToString(date: Date): string {
     date.getSeconds(),
     2
   )}.${fix(date.getMilliseconds(), 3)}${
-    date.getTimezoneOffset() > 0 ? "-" : "+"
+    date.getTimezoneOffset() > 0 ? '-' : '+'
   }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
 }
 
 export function isStandardExpression(value: any): value is StandardExpression {
-  return value.$type === SQL_SYMBOLE.STANDARD_EXPRESSION;
+  return value?.$type === SQL_SYMBOLE.STANDARD_EXPRESSION;
+}
+
+export function isStandardStatement(value: any): value is StandardStatement {
+  return value?.$type === SQL_SYMBOLE.STANDARD_STATEMENT;
 }
 
 export function isRaw(value: any): value is Raw {
-  return value.$type === SQL_SYMBOLE.RAW;
+  return value?.$type === SQL_SYMBOLE.RAW;
+}
+
+export function isCreateTable(value: any): value is CreateTable {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+}
+
+export function isAlterTable(value: any): value is AlterTable {
+  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+}
+
+export function isDropTable(value: any): value is DropTable {
+  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+}
+
+export function isCreateView(value: any): value is CreateView {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+}
+
+export function isAlterView(value: any): value is AlterView {
+  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+}
+
+export function isDropView(value: any): value is DropView {
+  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+}
+
+export function isBlock(value: any): value is Block {
+  return value?.$type === SQL_SYMBOLE.BLOCK;
+}
+
+export function isCreateProcedure(value: any): value is CreateProcedure {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+}
+
+export function isAlterProcedure(value: any): value is AlterProcedure {
+  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+}
+
+export function isDropProcedure(value: any): value is DropProcedure {
+  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+}
+
+export function isCreateFunction(value: any): value is CreateFunction {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+}
+
+export function isAlterFunction(value: any): value is AlterFunction {
+  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+}
+
+export function isDropFunction(value: any): value is DropFunction {
+  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+}
+
+export function isCreateIndex(value: any): value is CreateIndex {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+}
+
+export function isDropIndex(value: any): value is DropIndex {
+  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+}
+
+export function isCreateSequence(value: any): value is CreateSequence {
+  return value?.$type === SQL_SYMBOLE.CREATE_SEQUENCE;
+}
+
+export function isDropSequence(value: any): value is DropSequence {
+  return value?.$type === SQL_SYMBOLE.DROP_SEQUENCE;
+}
+
+export function isPrimaryKey(value: any): value is PrimaryKey {
+  return value?.$type === SQL_SYMBOLE.PRIMARY_KEY;
+}
+
+export function isUniqueKey(value: any): value is UniqueKey {
+  return value?.$type === SQL_SYMBOLE.UNIQUE_KEY;
+}
+
+export function isForeignKey(value: any): value is ForeignKey {
+  return value?.$type === SQL_SYMBOLE.FOREIGN_KEY;
+}
+
+export function isCheckConstraint(value: any): value is CheckConstraint {
+  return value?.$type === SQL_SYMBOLE.CHECK_CONSTRAINT;
+}
+
+export function isCreateTableColumn(value: any): value is CreateTableColumn {
+  return value?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+}
+
+export function isAlterTableColumn(value: any): value is AlterTableColumn {
+  return value?.$type === SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
 export function isSelect(value: any): value is Select {
-  return value.$type === SQL_SYMBOLE.SELECT;
+  return value?.$type === SQL_SYMBOLE.SELECT;
 }
 
 export function isUpdate(value: any): value is Update {
-  return value.$type === SQL_SYMBOLE.UPDATE;
+  return value?.$type === SQL_SYMBOLE.UPDATE;
 }
 
 export function isDelete(value: any): value is Delete {
-  return value.$type === SQL_SYMBOLE.DELETE;
+  return value?.$type === SQL_SYMBOLE.DELETE;
 }
 
 export function isInsert(value: any): value is Insert {
-  return value.$type === SQL_SYMBOLE.INSERT;
+  return value?.$type === SQL_SYMBOLE.INSERT;
 }
 
 export function isAssignment(value: any): value is Assignment {
-  return value.$type === SQL_SYMBOLE.ASSIGNMENT;
+  return value?.$type === SQL_SYMBOLE.ASSIGNMENT;
 }
 
 export function isDeclare(value: any): value is Declare {
-  return value.$type === SQL_SYMBOLE.DECLARE;
+  return value?.$type === SQL_SYMBOLE.DECLARE;
 }
 
 export function isExecute(value: any): value is Execute {
-  return value.$type === SQL_SYMBOLE.EXECUTE;
+  return value?.$type === SQL_SYMBOLE.EXECUTE;
 }
 
 export function isStatement(value: any): value is Statement {
@@ -512,7 +631,9 @@ export function isVariantDeclare(value: any): value is VariantDeclare {
   return value?.$type === SQL_SYMBOLE.VARAINT_DECLARE;
 }
 
-export function isTableVariantDeclare(value: any): value is TableVariantDeclare {
+export function isTableVariantDeclare(
+  value: any
+): value is TableVariantDeclare {
   return value?.$type === SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
 }
 
@@ -638,11 +759,11 @@ export function invalidAST(type: string, value: any) {
 
 export function clone<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map((item) =>
+    return value.map(item =>
       item instanceof AST ? item.clone() : clone(item)
     ) as any;
   }
-  if (value && typeof value === "object") {
+  if (value && typeof value === 'object') {
     const copied: any = {};
     Object.entries(value).forEach(([k, v]) => {
       copied[k] = v instanceof AST ? v.clone() : clone(v);
@@ -697,15 +818,15 @@ export function getCaseStyle(str: string): CaseStyle {
   throw new Error(`未实现`);
 }
 
-const esSuffix = ["s", "o", "x", "th"];
-const vesSuffix = ["f", "fe"];
+const esSuffix = ['s', 'o', 'x', 'th'];
+const vesSuffix = ['f', 'fe'];
 const irregular: Record<string, string> = {
-  mouse: "mice",
-  man: "men",
-  tooth: "teeth",
+  mouse: 'mice',
+  man: 'men',
+  tooth: 'teeth',
 };
 
-const vowels = ["a", "e", "i", "o", "u"];
+const vowels = ['a', 'e', 'i', 'o', 'u'];
 
 /**
  * 转换为复数
@@ -727,17 +848,17 @@ export function complex(word: string): string {
     }
   }
 
-  if (esSuffix.find((item) => word.endsWith(item))) {
-    return word + "es";
+  if (esSuffix.find(item => word.endsWith(item))) {
+    return word + 'es';
   }
-  if (word.endsWith("y") && !vowels.includes(word[word.length - 2])) {
-    return word.substr(0, word.length - 1) + "ies";
+  if (word.endsWith('y') && !vowels.includes(word[word.length - 2])) {
+    return word.substr(0, word.length - 1) + 'ies';
   }
-  const ves = vesSuffix.find((item) => word.endsWith(item));
+  const ves = vesSuffix.find(item => word.endsWith(item));
   if (ves) {
-    return word.substr(0, word.length - ves.length) + "ves";
+    return word.substr(0, word.length - ves.length) + 'ves';
   }
-  return word + "s";
+  return word + 's';
 }
 
 export function upperFirst(str: string): string {
@@ -746,7 +867,7 @@ export function upperFirst(str: string): string {
 
 export function camelCase(str: string): string {
   const nodes = str.split(/-|_| /g);
-  return nodes.map((node) => lowerFirst(node)).join("");
+  return nodes.map(node => lowerFirst(node)).join('');
 }
 
 /**
@@ -763,7 +884,7 @@ export function assign<T>(obj: T, values: Partial<T>) {
  */
 export function parseValueType(value: Scalar): DbType {
   if (value === null || value === undefined)
-    throw new Error("Do not parse DbType from null or undefined");
+    throw new Error('Do not parse DbType from null or undefined');
   switch (value.constructor) {
     case String:
       return DbType.string(0);
@@ -778,7 +899,7 @@ export function parseValueType(value: Scalar): DbType {
     case SharedArrayBuffer:
       return DbType.binary(0);
     default:
-      throw new Error("Invalid value.");
+      throw new Error('Invalid value.');
   }
 }
 
@@ -786,7 +907,7 @@ export function parseValueType(value: Scalar): DbType {
  * 是否列表类型
  */
 export function isListType(type: any): type is ListType {
-  return type?.kind === "LIST";
+  return type?.kind === 'LIST';
 }
 
 /**
@@ -795,20 +916,20 @@ export function isListType(type: any): type is ListType {
  */
 // HACK： 此方法为hack方法，存在不确定性，并且已知在编译目标为ES5及以下版本中无效！
 export function isClass(func: Function): boolean {
-  return func.toString().startsWith("class ");
+  return func.toString().startsWith('class ');
 }
 
 /**
  * 是否标量类型
  */
 export function isScalarType(type: any): type is ScalarType {
-  return typeof type === "bigint";
+  return typeof type === 'bigint';
 }
 
 export function deepthEqual(left: any, right: any): boolean {
   const type = typeof left;
   if (type !== 'function' && type !== 'object') {
-    return left === right
+    return left === right;
   }
 
   if (!right) return false;
@@ -823,8 +944,11 @@ export function deepthEqual(left: any, right: any): boolean {
   return true;
 }
 
-export function map<T>(list: T[], keyer: (item: T) => string): Record<string, T> {
+export function map<T>(
+  list: T[],
+  keyer: (item: T) => string
+): Record<string, T> {
   const map: Record<string, T> = {};
-  list.forEach((item) => (map[keyer(item)] = item));
+  list.forEach(item => (map[keyer(item)] = item));
   return map;
 }

@@ -20,6 +20,7 @@ import {
   isSortInfo,
   parseValueType,
   ensureTableVariant,
+  ensureLiteral,
 } from './util';
 
 import {
@@ -37,11 +38,13 @@ import {
   CONDITION_KIND,
   OPERATION_KIND,
   SQL_SYMBOLE_EXPRESSION,
+  SQL_SYMBOLE_TABLE_MEMBER,
 } from './constants';
 import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from './types';
 import { Scalar } from './types';
 import { convert, identityValue } from './std';
 import { ColumnSchema, TableSchema } from './schema';
+import { name } from 'commander';
 // import { convert } from './std';
 
 // /**
@@ -737,35 +740,6 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
 
   static literal<T extends Scalar>(value: T): Literal<T> {
     return new Literal(value);
-  }
-}
-
-/**
- * 标准操作，用于存放标准操作未转换前的标准操作
- * 用于定义一套多数据库兼容的标准
- * 如，类型转换、获取日期 等操作
- */
-export class StandardExpression<
-  T extends Scalar = Scalar
-> extends Expression<T> {
-  constructor(kind: string, datas: any[]) {
-    super();
-    this.$kind = kind;
-    this.$datas = datas;
-  }
-
-  readonly $type: SQL_SYMBOLE.STANDARD_EXPRESSION =
-    SQL_SYMBOLE.STANDARD_EXPRESSION;
-
-  readonly $kind: string;
-
-  readonly $datas: any[];
-
-  static create<T extends Scalar>(
-    kind: string,
-    datas: any[]
-  ): StandardExpression<T> {
-    return new StandardExpression(kind, datas);
   }
 }
 
@@ -2632,14 +2606,32 @@ export class TableFuncInvoke<
  */
 export abstract class Statement extends AST {
   $type:
+    | SQL_SYMBOLE.RAW
     | SQL_SYMBOLE.SELECT
     | SQL_SYMBOLE.UPDATE
     | SQL_SYMBOLE.INSERT
     | SQL_SYMBOLE.EXECUTE
     | SQL_SYMBOLE.DELETE
     | SQL_SYMBOLE.DECLARE
-    | SQL_SYMBOLE.RAW
-    | SQL_SYMBOLE.ASSIGNMENT;
+    | SQL_SYMBOLE.ASSIGNMENT
+    | SQL_SYMBOLE.CREATE_TABLE
+    | SQL_SYMBOLE.CREATE_PROCEDURE
+    | SQL_SYMBOLE.CREATE_FUNCTION
+    | SQL_SYMBOLE.CREATE_INDEX
+    | SQL_SYMBOLE.CREATE_VIEW
+    | SQL_SYMBOLE.ALTER_PROCEDURE
+    | SQL_SYMBOLE.ALTER_VIEW
+    | SQL_SYMBOLE.ALTER_FUNCTION
+    | SQL_SYMBOLE.ALTER_TABLE
+    | SQL_SYMBOLE.DROP_VIEW
+    | SQL_SYMBOLE.DROP_FUNCETION
+    | SQL_SYMBOLE.DROP_PROCEDURE
+    | SQL_SYMBOLE.DROP_TABLE
+    | SQL_SYMBOLE.DROP_INDEX
+    | SQL_SYMBOLE.BLOCK
+    | SQL_SYMBOLE.STANDARD_STATEMENT
+    | SQL_SYMBOLE.CREATE_SEQUENCE
+    | SQL_SYMBOLE.DROP_SEQUENCE;
   /**
    * 插入至表,into的别名
    * @param table
@@ -2692,6 +2684,10 @@ export abstract class Statement extends AST {
     return new Raw(sql);
   }
 
+  static block(statements: Statement[]): Block {
+    return new Block(statements);
+  }
+
   /**
    * 执行一个存储过程
    * @param proc
@@ -2727,17 +2723,17 @@ export abstract class Statement extends AST {
     return new ScalarFuncInvoke<T>(func, args);
   }
 
-  static makeFunc<T extends RowObject>(
+  static makeInvoke<T extends RowObject>(
     type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): () => ProxiedRowset<T>;
-  static makeFunc<T extends RowObject, A1 extends CompatibleExpression>(
+  static makeInvoke<T extends RowObject, A1 extends CompatibleExpression>(
     type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => ProxiedRowset<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends RowObject,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
@@ -2746,7 +2742,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends RowObject,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2756,7 +2752,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends RowObject,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2767,7 +2763,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends RowObject,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2780,23 +2776,23 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
 
-  static makeFunc(
+  static makeInvoke(
     type: 'table',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
 
-  static makeFunc<T extends Scalar>(
+  static makeInvoke<T extends Scalar>(
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): () => Expression<T>;
-  static makeFunc<T extends Scalar, A1 extends CompatibleExpression>(
+  static makeInvoke<T extends Scalar, A1 extends CompatibleExpression>(
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression
@@ -2805,7 +2801,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2815,7 +2811,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2826,7 +2822,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
-  static makeFunc<
+  static makeInvoke<
     T extends Scalar,
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2839,13 +2835,13 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
 
-  static makeFunc(
+  static makeInvoke(
     type: 'scalar',
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
-  static makeFunc(
+  static makeInvoke(
     type: 'table' | 'scalar',
     name: Name<string>,
     builtIn = false
@@ -2876,16 +2872,16 @@ export abstract class Statement extends AST {
   /**
    * 创建一个可供JS调用的存储过程
    */
-  static makeProc<R extends Scalar = number, O extends RowObject[] = []>(
+  static makeExec<R extends Scalar = number, O extends RowObject[] = []>(
     name: Name<string>,
     builtIn?: boolean
   ): () => Execute<R, O>;
-  static makeProc<
+  static makeExec<
     A1 extends CompatibleExpression,
     R extends Scalar = number,
     O extends RowObject[] = []
   >(name: Name<string>, builtIn?: boolean): (arg1: A1) => Execute<R, O>;
-  static makeProc<
+  static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     R extends Scalar = number,
@@ -2894,7 +2890,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Execute<R, O>;
-  static makeProc<
+  static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -2904,7 +2900,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Execute<R, O>;
-  static makeProc<
+  static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -2915,7 +2911,7 @@ export abstract class Statement extends AST {
     name: Name<string>,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Execute<R, O>;
-  static makeProc<
+  static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     A3 extends CompatibleExpression,
@@ -2928,12 +2924,12 @@ export abstract class Statement extends AST {
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Execute<R, O>;
 
-  static makeProc(
+  static makeExec(
     name: Name<string>,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
-  static makeProc(
+  static makeExec(
     name: Name<string>,
     builtIn = false
   ): (...args: CompatibleExpression[]) => void {
@@ -2963,8 +2959,10 @@ export abstract class Statement extends AST {
    * 变量声明
    * @param declares 变量列表
    */
-  static declare(...declares: VariantDeclare[]): Declare {
-    return new Declare(...declares);
+  static declare(
+    build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
+  ): Declare {
+    return new Declare(build);
   }
 
   /**
@@ -3156,14 +3154,89 @@ export abstract class Statement extends AST {
     }
     throw new Error('invalid arg value of `type`');
   }
+
+  /**
+   * 创建表格
+   * @param name
+   * @param members
+   * @returns
+   */
+  static createTable<N extends string>(
+    name: Name<N>,
+    members: CreateTableMember[]
+  ): CreateTable<N> {
+    return new CreateTable(name, members);
+  }
+
+  static alterTable<N extends string>(name: Name<N>): AlterTable<N> {
+    return new AlterTable(name);
+  }
+
+  static createView<T extends RowObject = any, N extends string = string>(
+    name: Name<N>
+  ): CreateView<T, N> {
+    return new CreateView(name);
+  }
+
+  static alterView<T extends RowObject = any, N extends string = string>(
+    name: Name<N>
+  ): AlterView<T, N> {
+    return new AlterView(name);
+  }
+
+  static createIndex(name: string): CreateIndex {
+    return new CreateIndex(name);
+  }
+
+  static createProcedure(name: string): CreateProcedure {
+    return new CreateProcedure(name);
+  }
+
+  static alterProcedure(name: string): AlterProcedure {
+    return new AlterProcedure(name);
+  }
+
+  static createScalarFunction(name: Name<string>): CreateFunction {
+    return new CreateFunction(name, 'SCALAR');
+  }
+
+  static createTableFunction(name: Name<string>): CreateFunction {
+    return new CreateFunction(name, 'TABLE');
+  }
+
+  static alterScalarFunction(name: Name<string>): AlterFunction {
+    return new AlterFunction(name, 'SCALAR');
+  }
+
+  static alterTableFunction(name: Name<string>): AlterFunction {
+    return new AlterFunction(name, 'TABLE');
+  }
+
+  static dropTable<N extends string>(name: Name<N>): DropTable<N> {
+    return new DropTable(name);
+  }
+
+  static dropView<N extends string>(name: Name<N>): DropView<N> {
+    return new DropView(name);
+  }
+
+  static dropProcedure<N extends string>(name: Name<N>): DropProcedure<N> {
+    return new DropProcedure(name);
+  }
+
+  static dropFunction<N extends string>(name: Name<N>): DropFunction<N> {
+    return new DropFunction(name);
+  }
+
+  static dropIndex<N extends string>(name: Name<N>): DropIndex<N> {
+    return new DropIndex(name);
+  }
 }
 
 /**
  * CRUD语句，允许 接WITH语句
  */
-export abstract class CrudStatement extends Statement {
-  $with: With;
-}
+export type CrudStatement = Insert | Update | Select | Delete;
 
 /**
  * When语句
@@ -3368,10 +3441,11 @@ export type SortObject<T extends RowObject = any> = {
   [K in FieldsOf<T>]?: SORT_DIRECTION;
 };
 
-abstract class Fromable<T extends RowObject = any> extends CrudStatement {
+abstract class Fromable<T extends RowObject = any> extends Statement {
   $froms?: Rowset<any>[];
   $joins?: Join[];
   $where?: Condition;
+  $with: With;
 
   /**
    * 从表中查询，可以查询多表
@@ -3659,11 +3733,12 @@ export class ValuedSelect<T extends Scalar = Scalar> extends Expression<T> {
 /**
  * Insert 语句
  */
-export class Insert<T extends RowObject = any> extends CrudStatement {
+export class Insert<T extends RowObject = any> extends Statement {
   $table: Table<T, string>;
   $fields?: Field[];
   $values: Expression<Scalar>[][] | Select<T>;
   $identityInsert: boolean = false;
+  $with: With;
 
   readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT;
 
@@ -3967,14 +4042,30 @@ export class Assignment<T extends Scalar = Scalar> extends Statement {
 export class VariantDeclare extends AST {
   readonly $type: SQL_SYMBOLE.VARAINT_DECLARE = SQL_SYMBOLE.VARAINT_DECLARE;
 
-  constructor(name: Variant | string, dataType: DbType) {
+  constructor(name: string, dataType: DbType) {
     super();
-    this.$name = ensureVariant(name);
-    this.$dataType = dataType;
+    this.$name = name;
+    this.$dbType = dataType;
   }
 
-  $name: Variant;
-  $dataType: DbType;
+  $name: string;
+  $dbType: DbType;
+}
+
+export class ProcedureParameter extends AST {
+  readonly $type: SQL_SYMBOLE.PROCEDURE_PARAMETER =
+    SQL_SYMBOLE.PROCEDURE_PARAMETER;
+
+  constructor(name: string, dataType: DbType) {
+    super();
+    this.$name = name;
+    this.$dbType = dataType;
+  }
+
+  $name: string;
+  $dbType: DbType;
+  $direct: PARAMETER_DIRECTION;
+  $default?: Literal;
 }
 
 export class TableVariantDeclare<T extends RowObject = any> extends AST {
@@ -3991,15 +4082,30 @@ export class TableVariantDeclare<T extends RowObject = any> extends AST {
   $schema: Omit<TableSchema, 'name'>;
 }
 
+interface DeclareBuilder {
+  variant(name: string, type: DbType): VariantDeclare;
+  table(name: string, schema: TableSchema): TableVariantDeclare;
+}
+
 /**
  * 声明语句，暂时只支持变量声明
  */
 export class Declare extends Statement {
-  $declares: (VariantDeclare | TableVariantDeclare)[];
+  $declares: (VariantDeclare | TableVariantDeclare)[] = [];
   readonly $type: SQL_SYMBOLE.DECLARE = SQL_SYMBOLE.DECLARE;
-  constructor(...declares: (VariantDeclare | TableVariantDeclare)[]) {
+  constructor(
+    build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
+  ) {
     super();
-    this.$declares = declares;
+    this.$declares.push(...build(Declare));
+  }
+
+  static variant(name: string, type: DbType): VariantDeclare {
+    return new VariantDeclare(name, type);
+  }
+
+  static table(name: string, schema: TableSchema): TableVariantDeclare {
+    return new TableVariantDeclare(name, schema);
   }
 }
 
@@ -4264,3 +4370,798 @@ export class With extends AST {
 // export type ScalarTypeNames = keyof ScalarTypeNamesMap;
 
 // export type ScalarTypeByName<N extends ScalarTypeNames> = ScalarTypeNamesMap[N];
+
+export interface KeyColumn {
+  name: string;
+  sort: SORT_DIRECTION;
+}
+
+export type KeyColumns = KeyColumn[];
+
+export class PrimaryKey extends AST {
+  $type: SQL_SYMBOLE.PRIMARY_KEY = SQL_SYMBOLE.PRIMARY_KEY;
+  $name?: string;
+  /**
+   * 声明为非聚焦主键
+   */
+  $nonclustered: boolean;
+  $columns: KeyColumns;
+
+  constructor(
+    name?: string,
+    columns?: KeyColumns | string[] | Record<string, SORT_DIRECTION>
+  ) {
+    super();
+    this.$name = name;
+    if (columns) {
+      this.on(columns);
+    }
+  }
+
+  on(columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>): this {
+    if (this.$columns) {
+      throw new Error(`Columns is defined.`);
+    }
+    if (Array.isArray(columns)) {
+      if (columns.length === 0) {
+        throw new Error(`Primary key must have a column.`);
+      }
+      return this;
+    }
+
+    this.$columns = Object.entries(columns).map(([name, sort]) => ({
+      name,
+      sort,
+    }));
+    return this;
+  }
+
+  withNoclustered(): this {
+    this.$nonclustered = true;
+    return this;
+  }
+}
+
+/**
+ * 检查约束
+ */
+export class CheckConstraint extends AST {
+  $type: SQL_SYMBOLE.CHECK_CONSTRAINT = SQL_SYMBOLE.CHECK_CONSTRAINT;
+  $name?: string;
+  $sql: Condition;
+
+  constructor(sql: Condition, name?: string) {
+    super();
+    this.$name = name;
+    this.$sql = sql;
+  }
+}
+
+/**
+ * 唯一约束
+ */
+export class UniqueKey {
+  $type: SQL_SYMBOLE.UNIQUE_KEY = SQL_SYMBOLE.UNIQUE_KEY;
+  $name?: string;
+  $columns: KeyColumns;
+
+  constructor(
+    name?: string,
+    columns?: KeyColumns | string[] | Record<string, SORT_DIRECTION>
+  ) {
+    this.$name = name;
+    if (columns) {
+      this.on(columns);
+    }
+  }
+
+  on(columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>): this {
+    if (this.$columns) {
+      throw new Error(`Columns is defined.`);
+    }
+    if (Array.isArray(columns)) {
+      if (columns.length === 0) {
+        throw new Error(`Primary key must have a column.`);
+      }
+      return this;
+    }
+
+    this.$columns = Object.entries(columns).map(([name, sort]) => ({
+      name,
+      sort,
+    }));
+    return this;
+  }
+}
+
+export class ForeignKey extends AST {
+  constructor(name?: string, columns?: string[]) {
+    super();
+    this.$name = name;
+    if (columns) {
+      this.on(columns);
+    }
+  }
+
+  $type: SQL_SYMBOLE.FOREIGN_KEY = SQL_SYMBOLE.FOREIGN_KEY;
+  $name?: string;
+  $columns: string[];
+  $referenceColumns: string[];
+  $referenceTable: Name<string>;
+
+  on(columns: string[]): this {
+    this.$columns = columns;
+    return this;
+  }
+
+  reference(table: Name<string>, columns: string[]) {
+    this.$referenceTable = table;
+    this.$referenceColumns = columns;
+  }
+}
+
+interface CreateTableMemberBuilder {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): CreateTableColumn<N>;
+
+  primaryKey(name?: string): PrimaryKey;
+
+  foreignKey(name?: string): ForeignKey;
+
+  checkConstaint(sql: Condition): CheckConstraint;
+  checkConstaint(name: string, sql: Condition): CheckConstraint;
+
+  uniqueKey(name?: string): UniqueKey;
+}
+
+export class CreateTable<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.CREATE_TABLE = SQL_SYMBOLE.CREATE_TABLE;
+  $members: CreateTableMember[];
+  $name: Name<N>;
+
+  constructor(name: Name<N>, members: CreateTableMember[]) {
+    super();
+    this.$name = name;
+  }
+
+  // has(build: (builder: CreateTableBuilder) => CreateTableMember[]): this {
+  //   this.$members = build(CreateTable);
+  //   return this;
+  // }
+
+  has(build: (builder: CreateTableMemberBuilder) => CreateTableMember[]): this;
+  has(...members: CreateTableMember[]): this;
+  has(
+    ...members:
+      | [(builder: CreateTableMemberBuilder) => CreateTableMember[]]
+      | CreateTableMember[]
+  ): this {
+    if (typeof members[0] === 'function') {
+      this.has(...members[0](CreateTable));
+      return this;
+    }
+    if (!this.$members) {
+      this.$members = [];
+    }
+    this.$members.push(...(members as CreateTableMember[]));
+    return this;
+  }
+
+  static column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): CreateTableColumn<N> {
+    return new CreateTableColumn(name, type);
+  }
+
+  static primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  }
+
+  static foreignKey(name?: string): ForeignKey {
+    return new ForeignKey(name);
+  }
+
+  static checkConstaint(sql: Condition): CheckConstraint;
+  static checkConstaint(name: string, sql: Condition): CheckConstraint;
+  static checkConstaint(
+    nameOrSql: string | Condition,
+    sql?: Condition
+  ): CheckConstraint {
+    let name: string;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  }
+
+  static uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  }
+
+  // add(...members: CreateTableMember[]): this {
+  //   this.$members.push(...members);
+  //   return this;
+  // }
+
+  // addColumn(): this {
+
+  // }
+
+  // addCheck(): this {
+
+  // }
+
+  // primaryKey(): this {
+
+  // }
+
+  // addUniqueKey(): this {
+
+  // }
+
+  // addForeignKey(): this {
+
+  // }
+}
+
+export class CreateIndex extends Statement {
+  $type: SQL_SYMBOLE.CREATE_INDEX = SQL_SYMBOLE.CREATE_INDEX;
+  $name?: string;
+  $table: Name<string>;
+  $columns: KeyColumns;
+  $clustered: boolean = false;
+  $unique: boolean = false;
+
+  constructor(name: string) {
+    super();
+    this.$name = name;
+  }
+
+  clustered(): this {
+    this.$clustered = true;
+    return this;
+  }
+
+  unique(): this {
+    this.$unique = true;
+    return this;
+  }
+
+  on(
+    table: Name<string>,
+    columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>
+  ): this {
+    if (this.$table) {
+      throw new Error(`Table & Columns is defined.`);
+    }
+    this.$table = table;
+    if (Array.isArray(columns)) {
+      if (columns.length === 0) {
+        throw new Error(`Primary key must have a column.`);
+      }
+      return this;
+    }
+
+    this.$columns = Object.entries(columns).map(([name, sort]) => ({
+      name,
+      sort,
+    }));
+    return this;
+  }
+}
+
+export type AlterTableMember =
+  | AlterTableColumn
+  | PrimaryKey
+  | ForeignKey
+  | CheckConstraint
+  | UniqueKey;
+
+export class AlterTableDropMember extends AST {
+  $type: SQL_SYMBOLE.ALTER_TABLE_DROP_MEMBER =
+    SQL_SYMBOLE.ALTER_TABLE_DROP_MEMBER;
+  $kind: SQL_SYMBOLE_TABLE_MEMBER;
+  $name: string;
+  constructor(kind: SQL_SYMBOLE_TABLE_MEMBER, name: string) {
+    super();
+    this.$kind = kind;
+    this.$name = name;
+  }
+}
+
+export interface AlterTableAddBuilder {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): AlterTableColumn<N>;
+
+  primaryKey(name?: string): PrimaryKey;
+
+  foreignKey(name?: string): ForeignKey;
+
+  checkConstaint(sql: Condition): CheckConstraint;
+  checkConstaint(name: string, sql: Condition): CheckConstraint;
+
+  uniqueKey(name?: string): UniqueKey;
+}
+
+export interface AlterTableDropBuilder {
+  column(name: string): AlterTableDropMember;
+
+  primaryKey(name: string): AlterTableDropMember;
+
+  foreignKey(name: string): AlterTableDropMember;
+
+  checkConstraint(name: string): AlterTableDropMember;
+
+  uniqueKey(name: string): AlterTableDropMember;
+}
+
+export class AlterTable<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.ALTER_TABLE = SQL_SYMBOLE.ALTER_TABLE;
+  $name: Name<N>;
+
+  $adds?: AlterTableMember[];
+
+  $drops?: AlterTableDropMember[];
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+
+  add(build: (builder: AlterTableAddBuilder) => AlterTableMember[]): this;
+  add(...members: AlterTableMember[]): this;
+  add(
+    ...members:
+      | [(builder: AlterTableAddBuilder) => AlterTableMember[]]
+      | AlterTableMember[]
+  ): this {
+    if (this.$drops) {
+      throw new Error(`A alter statement is only used by add or drop.`);
+    }
+    if (typeof members[0] === 'function') {
+      this.add(...members[0](AlterTable));
+      return this;
+    }
+    if (!this.$adds) {
+      this.$adds = [];
+    }
+    this.$adds.push(...(members as AlterTableMember[]));
+    return this;
+  }
+
+  drop(...members: AlterTableDropMember[]): this;
+  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember[]): this;
+  drop(
+    ...members:
+      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
+      | AlterTableDropMember[]
+  ): this {
+    if (this.$adds) {
+      throw new Error(`A alter statement is only used by add or drop.`);
+    }
+    if (!this.$drops) {
+      this.$drops = [];
+    }
+    if (typeof members[0] === 'function') {
+      this.drop(...members[0](AlterTable.dropBuilder));
+      return this;
+    }
+    this.$drops.push(...(members as AlterTableDropMember[]));
+    return this;
+  }
+
+  static readonly dropBuilder: AlterTableDropBuilder = {
+    column(name: string): AlterTableDropMember {
+      return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.COLUMN, name);
+    },
+
+    primaryKey(name: string): AlterTableDropMember {
+      return new AlterTableDropMember(
+        SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY,
+        name
+      );
+    },
+
+    foreignKey(name: string): AlterTableDropMember {
+      return new AlterTableDropMember(
+        SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY,
+        name
+      );
+    },
+
+    checkConstraint(name: string): AlterTableDropMember {
+      return new AlterTableDropMember(
+        SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT,
+        name
+      );
+    },
+
+    uniqueKey(name: string): AlterTableDropMember {
+      return new AlterTableDropMember(
+        SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY,
+        name
+      );
+    },
+  };
+
+  static column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): AlterTableColumn<N> {
+    return new AlterTableColumn(name, type);
+  }
+
+  static primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  }
+
+  static foreignKey(name?: string): ForeignKey {
+    return new ForeignKey(name);
+  }
+
+  static checkConstaint(sql: Condition): CheckConstraint;
+  static checkConstaint(name: string, sql: Condition): CheckConstraint;
+  static checkConstaint(
+    nameOrSql: string | Condition,
+    sql?: Condition
+  ): CheckConstraint {
+    let name: string;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  }
+
+  static uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  }
+}
+
+abstract class TableColumn<N extends string = string> extends AST {
+  $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  $name: N;
+  $nullable: boolean;
+  $dbType: DbType;
+  $identity?: {
+    startValue: number;
+    increment: number;
+  };
+  // 检查约束
+  $check?: Condition;
+  $default?: Expression;
+
+  constructor(name: N, type: DbType) {
+    super();
+    this.$name = name;
+    this.$dbType = type;
+  }
+
+  null(): this {
+    this.$nullable = true;
+    return this;
+  }
+
+  notNull(): this {
+    this.$nullable = false;
+    return this;
+  }
+
+  identity(startValue: number = 0, increment: number = 1): this {
+    this.$identity = {
+      startValue,
+      increment,
+    };
+    return this;
+  }
+
+  check(sql: Condition): this {
+    this.$check = sql;
+    return this;
+  }
+
+  default(value: CompatibleExpression): this {
+    this.$default = ensureExpression(value);
+    return this;
+  }
+}
+
+export class AlterTableColumn<N extends string = string> extends TableColumn {
+  $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN = SQL_SYMBOLE.ALTER_TABLE_COLUMN;
+}
+
+export class CreateView<
+  T extends RowObject = any,
+  N extends string = string
+> extends Statement {
+  $type: SQL_SYMBOLE.CREATE_VIEW = SQL_SYMBOLE.CREATE_VIEW;
+  $name: Name<N>;
+  $body: Select<T>;
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+
+  as(select: Select<T>) {
+    this.$body = select;
+  }
+}
+
+export class AlterView<
+  T extends RowObject = any,
+  N extends string = string
+> extends Statement {
+  $type: SQL_SYMBOLE.ALTER_VIEW = SQL_SYMBOLE.ALTER_VIEW;
+  $name: Name<N>;
+  $body: Select<T>;
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+
+  as(select: Select<T>) {
+    this.$body = select;
+  }
+}
+
+export type CreateTableMember =
+  | CreateTableColumn
+  | PrimaryKey
+  | ForeignKey
+  | CheckConstraint
+  | UniqueKey;
+
+export class CreateTableColumn<
+  N extends string = string
+> extends TableColumn<N> {
+  $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  $primaryKey?: {
+    nonclustered: boolean;
+  };
+
+  primaryKey(nonclustered: boolean = false): this {
+    this.$primaryKey = {
+      nonclustered,
+    };
+    return this;
+  }
+}
+
+export class Block extends Statement {
+  $type: SQL_SYMBOLE.BLOCK = SQL_SYMBOLE.BLOCK;
+  $statements: Statement[];
+
+  constructor(statements: Statement[]) {
+    super();
+    this.$statements = statements;
+  }
+}
+
+export class CreateProcedure extends Statement {
+  $type: SQL_SYMBOLE.CREATE_PROCEDURE = SQL_SYMBOLE.CREATE_PROCEDURE;
+  $name: Name<string>;
+  $params: ProcedureParameter[];
+  $body: Statement[];
+
+  constructor(name: Name<string>) {
+    super();
+    this.$name = name;
+  }
+
+  params(params: ProcedureParameter[]) {
+    this.$params = params;
+    return this;
+  }
+
+  as(sql: Statement[]): this {
+    this.$body = sql;
+    return this;
+  }
+}
+
+export class AlterProcedure extends Statement {
+  $type: SQL_SYMBOLE.ALTER_PROCEDURE = SQL_SYMBOLE.ALTER_PROCEDURE;
+  $name: Name<string>;
+  $params: ProcedureParameter[]; // TODO: 声明不正确
+  $body: Statement[];
+
+  constructor(name: Name<string>) {
+    super();
+    this.$name = name;
+  }
+
+  params(params: ProcedureParameter[]) {
+    this.$params = params;
+    return this;
+  }
+
+  as(sql: Statement[]): this {
+    this.$body = sql;
+    return this;
+  }
+}
+
+export type FunctinKind = 'SCALAR' | 'TABLE';
+export class CreateFunction extends Statement {
+  $type: SQL_SYMBOLE.CREATE_FUNCTION = SQL_SYMBOLE.CREATE_FUNCTION;
+  $name: Name<string>;
+  $params: VariantDeclare[];
+  $body: Statement[];
+  $kind: FunctinKind;
+
+  constructor(name: Name<string>, kind: FunctinKind) {
+    super();
+    this.$name = name;
+    this.$kind = kind;
+  }
+
+  params(params: VariantDeclare[]) {
+    this.$params = params;
+    return this;
+  }
+
+  as(sql: Statement[]): this {
+    this.$body = sql;
+    return this;
+  }
+}
+
+export class AlterFunction extends Statement {
+  $type: SQL_SYMBOLE.ALTER_FUNCTION = SQL_SYMBOLE.ALTER_FUNCTION;
+  $name: Name<string>;
+  $params: VariantDeclare[];
+  $body: Statement[];
+  $kind: FunctinKind;
+
+  constructor(name: Name<string>, kind: FunctinKind) {
+    super();
+    this.$name = name;
+    this.$kind = kind;
+  }
+
+  params(params: VariantDeclare[]) {
+    this.$params = params;
+    return this;
+  }
+
+  as(sql: Statement[]): this {
+    this.$body = sql;
+    return this;
+  }
+}
+
+export class DropTable<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_TABLE = SQL_SYMBOLE.DROP_TABLE;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class DropView<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_VIEW = SQL_SYMBOLE.DROP_VIEW;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class DropProcedure<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_PROCEDURE = SQL_SYMBOLE.DROP_PROCEDURE;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class DropFunction<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_FUNCETION = SQL_SYMBOLE.DROP_FUNCETION;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class DropIndex<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_INDEX = SQL_SYMBOLE.DROP_INDEX;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class CreateSequence<
+  T extends Scalar = any,
+  N extends string = string
+> extends Statement {
+  $type: SQL_SYMBOLE.CREATE_SEQUENCE = SQL_SYMBOLE.CREATE_SEQUENCE;
+  $name: Name<N>;
+  $startValue: Literal<number>;
+  $increment: Literal<number>;
+  $dbType: DbType;
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+
+  as<T extends DbType>(type: T): CreateSequence<TsTypeOf<T>, N> {
+    this.$dbType = type;
+    return this;
+  }
+
+  start(value: number | Literal<number>) {
+    this.$startValue = ensureLiteral(value);
+  }
+
+  increment(value: number | Literal<number>) {
+    this.$increment = ensureLiteral(value);
+  }
+}
+
+export class DropSequence<N extends string = string> extends Statement {
+  $type: SQL_SYMBOLE.DROP_SEQUENCE = SQL_SYMBOLE.DROP_SEQUENCE;
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class StandardStatement extends Statement {
+  $type: SQL_SYMBOLE.STANDARD_STATEMENT = SQL_SYMBOLE.STANDARD_STATEMENT;
+  $kind: string;
+  $datas: any[];
+  constructor(kind: string, datas: any[]) {
+    super();
+    this.$kind = kind;
+    this.$datas = datas;
+  }
+
+  static create(kind: string, datas: any[]): StandardStatement {
+    return new StandardStatement(kind, datas);
+  }
+}
+
+/**
+ * 标准操作，用于存放标准操作未转换前的标准操作
+ * 用于定义一套多数据库兼容的标准
+ * 如，类型转换、获取日期 等操作
+ */
+export class StandardExpression<
+  T extends Scalar = Scalar
+> extends Expression<T> {
+  constructor(kind: string, datas: any[]) {
+    super();
+    this.$kind = kind;
+    this.$datas = datas;
+  }
+
+  readonly $type: SQL_SYMBOLE.STANDARD_EXPRESSION =
+    SQL_SYMBOLE.STANDARD_EXPRESSION;
+
+  readonly $kind: string;
+
+  readonly $datas: any[];
+
+  static create<T extends Scalar>(
+    kind: string,
+    datas: any[]
+  ): StandardExpression<T> {
+    return new StandardExpression(kind, datas);
+  }
+}
