@@ -3,6 +3,7 @@ import {
   CheckConstraintSchema,
   ColumnSchema,
   ConstraintSchema,
+  DatabaseSchema,
   ForeignKeySchema,
   IndexSchema,
   KeyColumnSchema,
@@ -11,8 +12,11 @@ import {
   TableSchema,
   UniqueConstraintSchema,
 } from './schema';
-import { SchemaDifference } from './schema-compare';
+import { compare, SchemaDifference } from './schema-compare';
 import { Name } from './types';
+
+// TODO: 可空约束名称处理
+// TODO: 文本缩进美化处理
 
 const INDENT = '  ';
 
@@ -66,7 +70,7 @@ function genForeignKey(fk: ForeignKeySchema): string {
   )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
 
   if (fk.isCascade) {
-    code += 'deleteCascade()'
+    code += 'deleteCascade()';
   }
   return code;
 }
@@ -278,12 +282,18 @@ export function generateMigrate(diff: SchemaDifference): string[] {
           codes.push(genDropColumn(tableName, col.name));
         }
 
-        for (const { target, changes } of tableChanges.changes.columns.changes || []) {
+        for (const { target, changes } of tableChanges.changes.columns
+          .changes || []) {
           codes.push(genAlterColumn(tableName, target));
 
           if (changes.comment) {
             codes.push(
-              genComment('Column', tableName, changes.comment.target, target.name)
+              genComment(
+                'Column',
+                tableName,
+                changes.comment.target,
+                target.name
+              )
             );
           }
         }
@@ -294,7 +304,9 @@ export function generateMigrate(diff: SchemaDifference): string[] {
         for (const fk of tableChanges.changes?.foreignKeys?.addeds || []) {
           codes.push(genAddForeignKey(tableName, fk));
           if (fk.comment) {
-            codes.push(genComment('Constraint', tableName, fk.comment, fk.name))
+            codes.push(
+              genComment('Constraint', tableName, fk.comment, fk.name)
+            );
           }
         }
 
@@ -303,12 +315,19 @@ export function generateMigrate(diff: SchemaDifference): string[] {
           codes.push(genDropForeignKey(tableName, name));
         }
 
-        for (const { source, target, changes } of tableChanges.changes?.foreignKeys
-          ?.changes || []) {
+        for (const { source, target, changes } of tableChanges.changes
+          ?.foreignKeys?.changes || []) {
           codes.push(genDropForeignKey(tableName, source.name));
           codes.push(genAddForeignKey(tableName, target));
           if (changes.comment) {
-            codes.push(genComment('Constraint', tableName, changes.comment.target, target.name))
+            codes.push(
+              genComment(
+                'Constraint',
+                tableName,
+                changes.comment.target,
+                target.name
+              )
+            );
           }
         }
       }
@@ -320,7 +339,14 @@ export function generateMigrate(diff: SchemaDifference): string[] {
           codes.push(genAddConstraint(tableName, constraint));
 
           if (constraint.comment) {
-            codes.push(genComment('Constraint', tableName, constraint.comment, constraint.name))
+            codes.push(
+              genComment(
+                'Constraint',
+                tableName,
+                constraint.comment,
+                constraint.name
+              )
+            );
           }
         }
 
@@ -331,12 +357,19 @@ export function generateMigrate(diff: SchemaDifference): string[] {
           );
         }
 
-        for (const { source, target, changes } of tableChanges.changes.constraints
-          .changes || []) {
+        for (const { source, target, changes } of tableChanges.changes
+          .constraints.changes || []) {
           codes.push(genDropConstraint(tableName, source.kind, source.name));
           codes.push(genAddConstraint(tableName, target));
           if (changes.comment) {
-            codes.push(genComment('Constraint', tableName, changes.comment.target, target.name))
+            codes.push(
+              genComment(
+                'Constraint',
+                tableName,
+                changes.comment.target,
+                target.name
+              )
+            );
           }
         }
       }
@@ -346,7 +379,9 @@ export function generateMigrate(diff: SchemaDifference): string[] {
         for (const index of tableChanges.changes.indexes.addeds || []) {
           codes.push(genAddIndex(tableName, index));
           if (index.comment) {
-            codes.push(genComment('Index', tableName, index.comment, index.name))
+            codes.push(
+              genComment('Index', tableName, index.comment, index.name)
+            );
           }
         }
 
@@ -354,12 +389,19 @@ export function generateMigrate(diff: SchemaDifference): string[] {
           codes.push(genDropIndex(tableName, index.name));
         }
 
-        for (const { source, target, changes } of tableChanges.changes.indexes.changes ||
-          []) {
+        for (const { source, target, changes } of tableChanges.changes.indexes
+          .changes || []) {
           codes.push(genDropIndex(tableName, source.name));
           codes.push(genAddIndex(tableName, target));
           if (changes.comment) {
-            codes.push(genComment('Index', tableName, changes.comment.target, target.name))
+            codes.push(
+              genComment(
+                'Index',
+                tableName,
+                changes.comment.target,
+                target.name
+              )
+            );
           }
         }
       }
@@ -396,4 +438,49 @@ export function generateMigrate(diff: SchemaDifference): string[] {
     }
   }
   return codes;
+}
+
+export function genMigrate(
+  name: string,
+  source: DatabaseSchema,
+  target: DatabaseSchema
+): string {
+  const upDiff = compare(source, target);
+  const upCodes = generateMigrate(upDiff);
+
+  const downDiff = compare(target, source);
+  const downCodes = generateMigrate(downDiff);
+
+  return genMigrateClass(name, upCodes, downCodes);
+}
+
+export function genMigrateClass(
+  name: string,
+  upcodes?: string[],
+  downcodes?: string[]
+): string {
+  return `import { Migrate, Statement, SqlBuilder } from '../../src';
+
+export class ${name} implements Migrate {
+
+  up(
+    run: (statement: Statement | string) => void,
+    scripter: SqlBuilder,
+    dialect: string | symbol
+  ): void {
+    ${upcodes && upcodes.join(';\n      ') || ''}
+  }
+
+  down(
+    run: (statement: Statement | string) => void,
+    scripter: SqlBuilder,
+    dialect: string | symbol
+  ): void {
+    ${downcodes && downcodes.join(';\n      ') || ''}
+  }
+
+}
+
+export default ${name};
+  `;
 }

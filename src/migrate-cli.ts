@@ -11,7 +11,7 @@ import { Compiler } from './compile';
 import { DbContext } from './db-context';
 import { ConnectOptions } from './lube';
 import { DbContextMetadata, metadataStore } from './metadata';
-import { generateMigrate } from './migrate-gen';
+import { generateMigrate, genMigrate, genMigrateClass } from './migrate-gen';
 // import { MigrationCommand } from "./migrate-builder";
 import {
   CheckConstraintSchema,
@@ -69,8 +69,12 @@ export class MigrateCli {
   private up(Ctr: Constructor<Migrate>): Statement[] {
     const instance = new Ctr();
     const statements: Statement[] = [];
-    const run = (statement: Statement): void => {
-      statements.push(statement);
+    const run = (statement: Statement | string): void => {
+      if (typeof statement === 'string') {
+        statements.push(sqlBuilder.raw(statement));
+      } else {
+        statements.push(statement);
+      }
     };
 
     instance.up(run, sqlBuilder, this.dbContext.lube.provider.dialect);
@@ -80,8 +84,12 @@ export class MigrateCli {
   private down(Ctr: Constructor<Migrate>): Statement[] {
     const instance = new Ctr();
     const statements: Statement[] = [];
-    const run = (statement: Statement): void => {
-      statements.push(statement);
+    const run = (statement: Statement | string): void => {
+      if (typeof statement === 'string') {
+        statements.push(sqlBuilder.raw(statement));
+      } else {
+        statements.push(statement);
+      }
     };
 
     instance.down(run, sqlBuilder, this.dbContext.lube.provider.dialect);
@@ -166,30 +174,10 @@ export class MigrateCli {
     const timestamp = this.getTimestamp();
 
     const id = `${timestamp}_${name}`;
-    const codes = this.genMigrateData(name, [], []);
+    const codes = genMigrateClass(name);
     await writeFile(join(this.migrateDir, `${id}.ts`), codes);
   }
 
-  private genMigrateData(
-    name: string,
-    upcodes: string[],
-    downcodes: string[]
-  ): string {
-    return `import { MigrationBuilder, Migrate } from '../../src';
-
-  export class ${name} implements Migrate {
-    up(migrate: MigrationBuilder) {
-      ${upcodes.join(';\n      ')}
-    }
-
-    down(migrate: MigrationBuilder) {
-      ${downcodes.join(';\n      ')}
-    }
-  }
-
-  export default ${name};
-    `;
-  }
   /**
    * 将数据库架构与当前架构进行对比，并生成新的迁移文件
    * @param name
@@ -204,17 +192,11 @@ export class MigrateCli {
     console.log(3);
     const entityScheam = generate(this.dbContext.executor.compiler, metadata);
 
-    const upDiff = await compare(entityScheam, dbSchema);
-    const upCodes = generateMigrate(upDiff);
-
-    const downDiff = await compare(dbSchema, entityScheam);
-    const downCodes = generateMigrate(downDiff);
-
-    const codes = this.genMigrateData(name, upCodes, downCodes);
+    const code = genMigrate(name, dbSchema, entityScheam);
 
     const timestamp = this.getTimestamp();
     const id = `${timestamp}_${name}`;
-    await writeFile(join(this.migrateDir, `${id}.ts`), codes);
+    await writeFile(join(this.migrateDir, `${id}.ts`), code);
   }
 
   /**
