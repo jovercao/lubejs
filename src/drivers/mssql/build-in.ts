@@ -14,7 +14,7 @@ import {
   variant,
 } from '../../index';
 import { Statement } from '../../ast';
-import { makeExec } from '../../builder';
+import { makeExec } from '../../sql-builder';
 
 type InvokeHandler0<TResult extends Scalar> = () => Expression<TResult>;
 type InvokeHandler1<TResult extends Scalar, TArg1 extends Scalar> = (
@@ -814,7 +814,7 @@ export const format: (
  * 系统重命名函数
  */
 export const sp_rename: (
-  name: Name<string>,
+  name: Name,
   newName: string,
   kind?: 'USERDATATYPE' | 'OBJECT' | 'COLUMN' | 'INDEX' | 'DATABASE'
 ) => Statement = makeExec('sp_rename', true);

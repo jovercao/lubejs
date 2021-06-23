@@ -17,7 +17,7 @@ import {
   TableEntityMetadata,
 } from "./metadata";
 import { identityValue } from "./std";
-import { and } from "./builder";
+import { and } from "./sql-builder";
 import { Constructor, Entity, EntitySymble, isStringType, RowObject, Scalar } from "./types";
 import { deepthEqual, ensureCondition } from "./util";
 import { Condition } from "./ast";

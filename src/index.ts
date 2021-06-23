@@ -2,7 +2,7 @@ export * from './lube'
 
 // export * from './std'
 
-export * from './builder'
+export * from './sql-builder'
 
 export * from './constants'
 

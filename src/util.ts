@@ -80,6 +80,7 @@ import {
   StandardStatement,
   CreateSequence,
   DropSequence,
+  Annotation,
 } from './ast';
 
 import {
@@ -166,26 +167,26 @@ export function ensureTableVariant<T extends RowObject, N extends string>(
  * 确保表格类型
  */
 export function ensureRowset<TModel extends RowObject>(
-  name: Name<string> | Table<TModel>
+  name: Name | Table<TModel>
 ): Table<TModel>;
 export function ensureRowset<TModel extends RowObject>(
-  name: Name<string> | Rowset<TModel>
+  name: Name | Rowset<TModel>
 ): Rowset<TModel>;
 export function ensureRowset<TModel extends RowObject>(
-  name: Name<string> | Rowset<TModel> | Table<TModel>
+  name: Name | Rowset<TModel> | Table<TModel>
 ): Rowset<TModel> | Table<TModel> {
   if (name instanceof AST) return name;
   return new Table(name);
 }
 
 export function ensureProxiedRowset<T extends RowObject>(
-  name: Name<string> | Table<T>
+  name: Name | Table<T>
 ): ProxiedTable<T>;
 export function ensureProxiedRowset<T extends RowObject>(
-  name: Name<string> | Rowset<T>
+  name: Name | Rowset<T>
 ): ProxiedRowset<T>;
 export function ensureProxiedRowset<T extends RowObject>(
-  name: Name<string> | Rowset<T> | Table<T>
+  name: Name | Rowset<T> | Table<T>
 ): ProxiedRowset<T> | ProxiedTable<T> {
   if (isRowset(name)) {
     if (isProxiedRowset(name)) {
@@ -237,7 +238,7 @@ export function ensureCondition<T extends RowObject>(
         new Field([
           ...(Array.isArray(rowset) ? rowset : [rowset]),
           key,
-        ] as Name<string>);
+        ] as Name);
     } else if (isRowset(rowset)) {
       makeField = (key: string) => (rowset as any).field(key);
     }
@@ -402,7 +403,7 @@ export function isProxiedRowset<T extends RowObject>(
 //   return cls;
 // }
 
-export function pickName(name: Name<string>): string {
+export function pickName(name: Name): string {
   if (typeof name === 'string') {
     return name;
   }
@@ -442,6 +443,10 @@ export function isStandardExpression(value: any): value is StandardExpression {
 
 export function isStandardStatement(value: any): value is StandardStatement {
   return value?.$type === SQL_SYMBOLE.STANDARD_STATEMENT;
+}
+
+export function isAnnotation(value: any): value is Annotation {
+  return value?.$type === SQL_SYMBOLE.ANNOTATION;
 }
 
 export function isRaw(value: any): value is Raw {

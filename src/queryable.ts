@@ -13,7 +13,7 @@ import {
   Select,
   CompatibleSortInfo,
 } from './ast';
-import { and, select } from './builder';
+import { and, select } from './sql-builder';
 import { ROWSET_ALIAS } from './constants';
 import { Executor } from './execute';
 import {

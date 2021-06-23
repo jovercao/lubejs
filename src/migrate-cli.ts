@@ -1,17 +1,16 @@
 import { existsSync, promises } from 'fs';
 import { join, resolve } from 'path';
-import { Condition, Statement, Document, Select } from './ast';
-import { $delete, $insert, $table, $update, and } from './builder';
+import {
+  Condition,
+  Statement,
+  Document,
+  Select,
+} from './ast';
+import { sqlBuilder, $delete, $insert, $table, $update, and, doc, SqlBuilder } from './sql-builder';
 import { Compiler } from './compile';
 import { DbContext } from './db-context';
 import { ConnectOptions } from './lube';
 import { DbContextMetadata, metadataStore } from './metadata';
-import {
-  ColumnInfo,
-  MigrationBuilder,
-  MigrationCommand,
-  TableInfo,
-} from './migrate-builder';
 import { generateMigrate } from './migrate-gen';
 // import { MigrationCommand } from "./migrate-builder";
 import {
@@ -24,260 +23,20 @@ import {
 } from './schema';
 import { compare } from './schema-compare';
 import { Constructor, DbType, Name } from './types';
+import { Executor } from './execute';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
-  up(executor: MigrationBuilder): Promise<void> | void;
-  down(executor: MigrationBuilder): Promise<void> | void;
-}
-
-export abstract class MigrateScripter {
-  constructor(
-    // public lube: Lube // public readonly commands: ReadonlyArray<MigrationCommand>
-    public compiler: Compiler
-  ) {}
-
-  script(commands: ReadonlyArray<MigrationCommand>): string[] {
-    const sql: string[] = [];
-    for (const command of commands) {
-      switch (command.operation) {
-        case 'CREATE_TABLE':
-          sql.push(this.createTable(command.data));
-          break;
-        case 'CREATE_INDEX':
-          sql.push(this.createIndex(command.data.table, command.data.index));
-          break;
-        case 'CREATE_SEQUENCE':
-          sql.push(
-            this.createSequence(
-              command.data.name,
-              command.data.type,
-              command.data.startValue,
-              command.data.increment
-            )
-          );
-          break;
-        case 'DROP_TABLE':
-          sql.push(this.dropTable(command.data.name));
-          break;
-        case 'DROP_INDEX':
-          sql.push(this.dropIndex(command.data.table, command.data.name));
-          break;
-        case 'DROP_SEQUENCE':
-          sql.push(this.dropSequence(command.data.name));
-          break;
-        case 'ADD_COLUMN':
-          sql.push(this.addColumn(command.data.table, command.data.column));
-          break;
-        case 'ADD_FOREIGN_KEY':
-          sql.push(
-            this.addForeignKey(command.data.table, command.data.foreignKey)
-          );
-          break;
-        case 'ADD_CHECK_CONSTRAINT':
-          sql.push(
-            this.addCheckConstraint(
-              command.data.table,
-              command.data.checkConstraint
-            )
-          );
-          break;
-        case 'ADD_UNIEQUE_CONSTRAINT':
-          sql.push(
-            this.addUniqueConstraint(command.data.table, command.data.uniqueConstraint)
-          );
-          break;
-        case 'ADD_PRIMARY_KEY':
-          sql.push(this.addPrimaryKey(command.data.table, command.data.columns, command.data.name))
-          break;
-        case 'ALTER_COLUMN':
-          sql.push(this.alterColumn(command.data.table, command.data.column));
-          break;
-        case 'DROP_COLUMN':
-          sql.push(this.dropColumn(command.data.table, command.data.name));
-          break;
-        case 'DROP_FOREIGN_KEY':
-          sql.push(this.dropForeignKey(command.data.table, command.data.name));
-          break;
-        case 'DROP_CONSTRAINT':
-          sql.push(
-            this.dropConstraint(command.data.table, command.data.name)
-          );
-          break;
-        case 'RENAME_TABLE':
-          sql.push(this.renameTable(command.data.name, command.data.newName));
-          break;
-        case 'RENAME_INDEX':
-          sql.push(
-            this.renameIndex(
-              command.data.table,
-              command.data.name,
-              command.data.newName
-            )
-          );
-          break;
-        case 'RENAME_COLUMN':
-          sql.push(
-            this.renameColumn(
-              command.data.table,
-              command.data.name,
-              command.data.newName
-            )
-          );
-          break;
-        case 'INSERT_DATA':
-          sql.push(
-            this.insertData(
-              command.data.table,
-              command.data.rows,
-              command.data.identityInsertOff
-            )
-          );
-          break;
-        case 'UPDATE_DATA':
-          sql.push(
-            this.updateData(
-              command.data.table,
-              command.data.rows,
-              command.data.keyColumns
-            )
-          );
-          break;
-        case 'DELETE_DATA':
-          sql.push(this.delelteData(command.data.table, command.data.where));
-          break;
-        case 'SQL':
-          sql.push(this.sql(command.data.sql));
-          break;
-        case 'ANNOTATION':
-          sql.push(this.annotation(command.data.message));
-          break;
-        case 'CREATE_VIEW':
-          sql.push(this.createView(command.data.name, command.data.body));
-          break;
-        case 'DROP_VIEW':
-          sql.push(this.dropView(command.data.name));
-          break;
-        case 'ALTER_VIEW':
-          sql.push(this.alterView(command.data.name, command.data.body));
-          break;
-        case 'RESTART_SEQUENCE':
-          sql.push(this.restartSequence(command.data.name));
-          break;
-        case 'RENAME_VIEW':
-          sql.push(this.renameView(command.data.name, command.data.newName));
-          break;
-        case 'ALTER_TABLE':
-          sql.push(this.alterTable(command.data.name, command.data.comment));
-          break;
-        default:
-          throw new Error(`Unknow command operation.`);
-      }
-    }
-    return sql;
-  }
-  addPrimaryKey(table: Name<string>, columns: string[], name: string): string {
-    throw new Error('Method not implemented.')
-  }
-
-  abstract addUniqueConstraint(table: Name<string>, uniqueConstraint: UniqueConstraintSchema): string;
-
-  abstract alterTable(name: Name<string>, comment: string): string;
-
-  abstract renameView(name: Name<string>, newName: string): string;
-
-  abstract restartSequence(name: Name<string>): string;
-
-  sql(sql: Statement | Document | string): string {
-    if (typeof sql !== 'string') {
-      return this.compiler.compile(sql).sql;
-    }
-  }
-
-  delelteData(table: Name<string>, where: Condition): string {
-    return this.compiler.compile($delete(table).where(where)).sql;
-  }
-
-  updateData(
-    table: Name<string>,
-    rows: Record<string, any>[],
-    keyColumns: string[]
-  ): string {
-    const t = $table(table);
-    const position = (row: Record<string, any>): Condition => {
-      return and(keyColumns.map(key => t[key].eq(row[key])));
-    };
-    return rows
-      .map(row =>
-        this.compiler.compile($update(table).set(row).where(position(row)))
-      )
-      .join('\n');
-  }
-
-  insertData(
-    table: Name<string>,
-    rows: Record<string, any>[],
-    identityInsertOff: boolean
-  ): string {
-    const sql = $insert(table).values(rows);
-    if (identityInsertOff) {
-      sql.withIdentity();
-    }
-    return this.compiler.compile(sql).sql;
-  }
-
-  abstract renameColumn(
-    table: Name<string>,
-    name: string,
-    newName: string
-  ): string;
-  abstract renameIndex(
-    table: Name<string>,
-    name: string,
-    newName: string
-  ): string;
-  abstract renameTable(name: Name<string>, newName: string): string;
-  abstract dropConstraint(table: Name<string>, name: string): string;
-  abstract dropForeignKey(table: Name<string>, name: string): string;
-  abstract dropColumn(table: Name<string>, name: string): string;
-
-  abstract annotation(message: string): string;
-
-  abstract alterColumn(table: Name<string>, column: ColumnInfo): string;
-
-  abstract addCheckConstraint(
-    table: Name<string>,
-    checkConstraint: CheckConstraintSchema
-  ): string;
-
-  abstract addForeignKey(
-    table: Name<string>,
-    foreignKey: ForeignKeySchema
-  ): string;
-  abstract addColumn(table: Name<string>, column: ColumnInfo): string;
-  abstract dropSequence(name: Name<string>): string;
-  abstract dropIndex(table: Name<string>, name: string): string;
-  abstract dropTable(name: Name<string>): string;
-  abstract createSequence(
-    name: Name<string>,
-    type: DbType | string,
-    startValue: number,
-    increment: number
-  ): string;
-  abstract createTable(table: TableInfo): string;
-  abstract createIndex(table: Name<string>, index: IndexSchema): string;
-  abstract createView(
-    name: Name<string>,
-    body: string | Select,
-    comment?: string
-  ): string;
-  abstract alterView(
-    name: Name<string>,
-    body?: string | Select,
-    comment?: string
-  ): string;
-
-  abstract dropView(name: Name<string>): string;
+  up(
+    run: (statement: Statement | string) => void,
+    scripter: SqlBuilder,
+    dialect: string | symbol
+  ): Promise<void> | void;
+  down(
+    run: (statement: Statement | string) => void,
+    scripter: SqlBuilder,
+    dialect: string | symbol
+  ): Promise<void> | void;
 }
 
 export interface LubeConfig {
@@ -304,15 +63,35 @@ const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)(\.ts|\.js)$/i;
 export class MigrateCli {
   metadata: DbContextMetadata;
 
-  private readonly scripter: MigrateScripter;
+  // private readonly scripter: MigrateScripter;
   private dbSchema: DatabaseSchema;
+
+  private up(Ctr: Constructor<Migrate>): Statement[] {
+    const instance = new Ctr();
+    const statements: Statement[] = [];
+    const run = (statement: Statement): void => {
+      statements.push(statement);
+    };
+
+    instance.up(run, sqlBuilder, this.dbContext.lube.provider.dialect);
+    return statements;
+  }
+
+  private down(Ctr: Constructor<Migrate>): Statement[] {
+    const instance = new Ctr();
+    const statements: Statement[] = [];
+    const run = (statement: Statement): void => {
+      statements.push(statement);
+    };
+
+    instance.down(run, sqlBuilder, this.dbContext.lube.provider.dialect);
+    return statements;
+  }
 
   constructor(
     private readonly dbContext: DbContext,
     private migrateDir: string
-  ) {
-    this.scripter = this.dbContext.lube.provider.scripter;
-  }
+  ) {}
 
   async dispose(): Promise<void> {
     await this.dbContext.lube.close();
@@ -353,20 +132,11 @@ export class MigrateCli {
 
   private async ensureMigrateTable(): Promise<void> {
     if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
-      const sql = this.scripter.createTable({
-        name: LUBE_MIGRATE_TABLE_NAME,
-        columns: [
-          {
-            name: 'migrate_id',
-            type: '', //DbType.string(128),
-            isNullable: false,
-            isCalculate: false,
-            isIdentity: false,
-          },
-        ],
-        primaryKey: ['migrate_id'],
-        comment: 'Lubejs migrate history records.',
-      });
+      const sql = sqlBuilder
+        .createTable(LUBE_MIGRATE_TABLE_NAME)
+        .as(builder => [
+          builder.column('migrate_id', DbType.string(100)).primaryKey(),
+        ]);
       await this.dbContext.executor.query(sql);
     }
   }
@@ -471,7 +241,7 @@ export class MigrateCli {
     target?: string;
     source?: string;
     outputPath?: string;
-  }): Promise<string[]> {
+  }): Promise<string> {
     let target = options?.target;
     if (!target) {
       target = (await this.getLastMigrate()).name;
@@ -508,27 +278,32 @@ export class MigrateCli {
     const isUpgrade = targetIndex > sourceIndex;
     const isDemotion = targetIndex < sourceIndex;
 
-    const builder = new MigrationBuilder();
+    const statements: Statement[] = [];
     if (isUpgrade) {
       for (let i = sourceIndex + 1; i <= targetIndex; i++) {
         const info = migrates[i];
-        builder.annotation(`Migrate up script from "${info.path}"`);
+        statements.push(
+          sqlBuilder.annotation(`Migrate up script from "${info.path}"`)
+        );
         const Migrate = await importMigrate(info);
-        await new Migrate().up(builder);
+        statements.push(...this.up(Migrate));
       }
     }
     if (isDemotion) {
       for (let i = sourceIndex; i > targetIndex; i--) {
         const info = migrates[i];
-        builder.annotation(`Migrate down script from "${info.path}"`);
+        statements.push(
+          sqlBuilder.annotation(`Migrate down script from "${info.path}"`)
+        );
         const Migrate = await importMigrate(info);
-        await new Migrate().down(builder);
+        statements.push(...this.down(Migrate));
       }
     }
-    const commands = builder.getCommands();
-    const scripts = this.scripter.script(commands);
+    const { sql: scripts } = this.dbContext.lube.compiler.compile(
+      doc(statements)
+    );
     if (options?.outputPath) {
-      await writeFile(options.outputPath, scripts.join('\n'), 'utf-8');
+      await writeFile(options.outputPath, scripts, 'utf-8');
     }
     return scripts;
   }

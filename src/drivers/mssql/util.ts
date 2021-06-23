@@ -5,7 +5,7 @@ import { isBinary } from '../../util';
 //   return `[${name.replace(/\]/g, "]]")}]`;
 // }
 
-// export function namify(name: Name<string>): string {
+// export function namify(name: Name): string {
 //   if (typeof name === "string") return quoted(name);
 //   return name
 //     .reverse()

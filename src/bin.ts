@@ -114,7 +114,7 @@ const migrateScript = migrate
         source: opts.source,
         outputPath: opts.outputPath,
       });
-      console.log(scripts.join('\n'));
+      console.log(scripts);
     } catch (error) {
       console.error(error.message.red);
       console.log(error.stack);

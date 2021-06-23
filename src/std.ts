@@ -611,6 +611,7 @@ export interface Standard {
   trim(str: CompatibleExpression<string>): Expression<string>;
   trimEnd(str: CompatibleExpression<string>): Expression<string>;
   lower(str: CompatibleExpression<string>): Expression<string>;
+  upper(str: CompatibleExpression<string>): Expression<string>;
   strpos(
     str: CompatibleExpression<string>,
     search: CompatibleExpression<string>,
@@ -718,6 +719,45 @@ export interface Standard {
   commentFunction(name: Name, comment: string): Statement;
 }
 
+
+
+export function commentTable(name: Name, comment: string): Statement {
+  return StandardStatement.create(commentTable.name, [name, comment]);
+}
+
+export function commentColumn(table: Name, name: string, comment: string): Statement {
+  return StandardStatement.create(commentColumn.name, [table, name, comment]);
+}
+
+export function commentIndex(table: Name, name: string, comment: string): Statement {
+  return StandardStatement.create(commentIndex.name, [table, name, comment]);
+}
+
+export function commentConstraint(table: Name, name: string, comment: string): Statement {
+
+  return StandardStatement.create(commentConstraint.name, [table, name, comment]);
+}
+
+export function commentSchema(name: string, comment: string): Statement {
+
+  return StandardStatement.create(commentSchema.name, [name, comment]);
+}
+
+export function commentSequence(name: Name, comment: string): Statement {
+
+  return StandardStatement.create(commentSequence.name, [name, comment]);
+}
+
+export function commentProcedure(name: Name, comment: string): Statement {
+
+  return StandardStatement.create(commentProcedure.name, [name, comment]);
+}
+
+export function commentFunction(name: Name, comment: string): Statement {
+
+  return StandardStatement.create(commentFunction.name, [name, comment]);
+}
+
 /********************************************扩展 Expression.to方法**********************************************/
 // declare module lubejs {
 //   /**
@@ -736,3 +776,81 @@ export interface Standard {
 // });
 
 /******************************************************************************************/
+export const std: Standard = {
+  count,
+  avg,
+  sum,
+  max,
+  min,
+  identityValue,
+  convert,
+  now,
+  utcNow,
+  switchTimezone,
+  formatDate,
+  yearOf,
+  monthOf,
+  dayOf,
+  daysBetween,
+  monthsBetween,
+  yearsBetween,
+  hoursBetween,
+  minutesBetween,
+  secondsBetween,
+  addDays,
+  addMonths,
+  addYears,
+  addHours,
+  addMinutes,
+  addSeconds,
+  strlen,
+  substr,
+  replace,
+  trim,
+  trimEnd,
+  upper,
+  lower,
+  strpos,
+  ascii,
+  asciiChar,
+  unicode,
+  unicodeChar,
+  isNull,
+  abs,
+  exp,
+  ceil,
+  floor,
+  ln,
+  log,
+  mod,
+  pi,
+  power,
+  radians,
+  degrees,
+  random,
+  round,
+  sign,
+  sqrt,
+  cos,
+  sin,
+  tan,
+  acos,
+  asin,
+  atan,
+  atan2,
+  cot,
+  renameTable,
+  renameColumn,
+  renameView,
+  renameIndex,
+  renameProcedure,
+  renameFunction,
+  commentTable,
+  commentColumn,
+  commentConstraint,
+  commentFunction,
+  commentIndex,
+  commentProcedure,
+  commentSchema,
+  commentSequence,
+}

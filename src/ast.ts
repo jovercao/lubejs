@@ -1192,7 +1192,7 @@ export class Join extends AST {
    * @param on 关联条件
    * @param left 是否左联接
    */
-  constructor(table: Name<string> | Rowset, on: Condition, left = false) {
+  constructor(table: Name | Rowset, on: Condition, left = false) {
     super();
 
     this.$table = ensureRowset(table);
@@ -1208,12 +1208,12 @@ export class Join extends AST {
 export class Star<T extends object = any> extends AST {
   readonly $type: SQL_SYMBOLE.STAR = SQL_SYMBOLE.STAR;
 
-  constructor(parent?: Name<string>) {
+  constructor(parent?: Name) {
     super();
     this.$parent = parent;
   }
 
-  $parent?: Name<string>;
+  $parent?: Name;
 }
 
 /**
@@ -1253,7 +1253,7 @@ export abstract class Identifier<N extends string = string> extends AST {
     N extends string = string
   >(name: Name<N>): ProxiedTable<T, N>;
   static table<T extends RowObject = DefaultRowObject>(
-    nameOrModel: Name<string> | ModelClass<T>
+    nameOrModel: Name | ModelClass<T>
   ): ProxiedTable<T, string> {
     if (typeof nameOrModel === 'function') {
       return makeProxiedRowset(new Table<T, string>(nameOrModel.name));
@@ -1465,7 +1465,7 @@ export type CompatibleTable<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-> = Name<string> | Table<T, N> | ProxiedTable<T>;
+> = Name | Table<T, N> | ProxiedTable<T>;
 
 export type CompatibleNamedSelect<
   // eslint-disable-next-line
@@ -2569,7 +2569,7 @@ export class ScalarFuncInvoke<
 
   // TODO: 是否需参数的类型判断，拦截ValuedSelect之类的表达式进入？
   constructor(
-    func: Name<string> | Func<string>,
+    func: Name | Func<string>,
     args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ) {
     super();
@@ -2590,7 +2590,7 @@ export class TableFuncInvoke<
     SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 
   constructor(
-    func: Name<string> | Func<string>,
+    func: Name | Func<string>,
     args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ) {
     super();
@@ -2631,7 +2631,8 @@ export abstract class Statement extends AST {
     | SQL_SYMBOLE.BLOCK
     | SQL_SYMBOLE.STANDARD_STATEMENT
     | SQL_SYMBOLE.CREATE_SEQUENCE
-    | SQL_SYMBOLE.DROP_SEQUENCE;
+    | SQL_SYMBOLE.DROP_SEQUENCE
+    | SQL_SYMBOLE.ANNOTATION;
   /**
    * 插入至表,into的别名
    * @param table
@@ -2694,15 +2695,15 @@ export abstract class Statement extends AST {
    * @param params
    */
   // static execute<T extends Model> (
-  //   proc: Name<string> | Procedure<T, string>,
+  //   proc: Name | Procedure<T, string>,
   //   params?: Expressions<JsConstant>[]
   // ): Execute<T>
   // static execute<T extends Model> (
-  //   proc: Name<string> | Procedure<T, string>,
+  //   proc: Name | Procedure<T, string>,
   //   params?: InputObject
   // ): Execute<T>
   static execute<R extends Scalar = any, O extends RowObject[] = []>(
-    proc: Name<string> | Procedure<R, O, string>,
+    proc: Name | Procedure<R, O, string>,
     params?: CompatibleExpression<Scalar>[]
     // | Parameter<JsConstant, string>[] | InputObject
   ): Execute<R, O> {
@@ -2710,14 +2711,14 @@ export abstract class Statement extends AST {
   }
 
   static invokeTableFunction<T extends RowObject = any>(
-    func: Name<string> | Func<string>,
+    func: Name | Func<string>,
     args: CompatibleExpression<Scalar>[]
   ): ProxiedRowset<T> {
     return makeProxiedRowset(new TableFuncInvoke<T>(func, args));
   }
 
   static invokeScalarFunction<T extends Scalar = any>(
-    func: Name<string> | Func<string>,
+    func: Name | Func<string>,
     args: CompatibleExpression<Scalar>[]
   ): ScalarFuncInvoke<T> {
     return new ScalarFuncInvoke<T>(func, args);
@@ -2725,12 +2726,12 @@ export abstract class Statement extends AST {
 
   static makeInvoke<T extends RowObject>(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): () => ProxiedRowset<T>;
   static makeInvoke<T extends RowObject, A1 extends CompatibleExpression>(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1) => ProxiedRowset<T>;
   static makeInvoke<
@@ -2739,7 +2740,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
   static makeInvoke<
@@ -2749,7 +2750,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
   static makeInvoke<
@@ -2760,7 +2761,7 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
   static makeInvoke<
@@ -2772,24 +2773,24 @@ export abstract class Statement extends AST {
     A5 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
 
   static makeInvoke(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
 
   static makeInvoke<T extends Scalar>(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): () => Expression<T>;
   static makeInvoke<T extends Scalar, A1 extends CompatibleExpression>(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>;
   static makeInvoke<
@@ -2798,7 +2799,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>;
   static makeInvoke<
@@ -2808,7 +2809,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
   static makeInvoke<
@@ -2819,7 +2820,7 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
   static makeInvoke<
@@ -2831,19 +2832,19 @@ export abstract class Statement extends AST {
     A5 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
 
   static makeInvoke(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
   static makeInvoke(
     type: 'table' | 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn = false
   ): (
     ...args: CompatibleExpression[]
@@ -2873,23 +2874,20 @@ export abstract class Statement extends AST {
    * 创建一个可供JS调用的存储过程
    */
   static makeExec<R extends Scalar = number, O extends RowObject[] = []>(
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): () => Execute<R, O>;
   static makeExec<
     A1 extends CompatibleExpression,
     R extends Scalar = number,
     O extends RowObject[] = []
-  >(name: Name<string>, builtIn?: boolean): (arg1: A1) => Execute<R, O>;
+  >(name: Name, builtIn?: boolean): (arg1: A1) => Execute<R, O>;
   static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
     R extends Scalar = number,
     O extends RowObject[] = []
-  >(
-    name: Name<string>,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => Execute<R, O>;
+  >(name: Name, builtIn?: boolean): (arg1: A1, arg2: A2) => Execute<R, O>;
   static makeExec<
     A1 extends CompatibleExpression,
     A2 extends CompatibleExpression,
@@ -2897,7 +2895,7 @@ export abstract class Statement extends AST {
     R extends Scalar = number,
     O extends RowObject[] = []
   >(
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Execute<R, O>;
   static makeExec<
@@ -2908,7 +2906,7 @@ export abstract class Statement extends AST {
     R extends Scalar = number,
     O extends RowObject[] = []
   >(
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Execute<R, O>;
   static makeExec<
@@ -2920,17 +2918,17 @@ export abstract class Statement extends AST {
     R extends Scalar = number,
     O extends RowObject[] = []
   >(
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Execute<R, O>;
 
   static makeExec(
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
   static makeExec(
-    name: Name<string>,
+    name: Name,
     builtIn = false
   ): (...args: CompatibleExpression[]) => void {
     return function (
@@ -3011,12 +3009,12 @@ export abstract class Statement extends AST {
 
   static invoke<T extends RowObject>(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): () => ProxiedRowset<T>;
   static invoke<T extends RowObject, A1 extends CompatibleExpression>(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1) => ProxiedRowset<T>;
   static invoke<
@@ -3025,7 +3023,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
   static invoke<
@@ -3035,7 +3033,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
   static invoke<
@@ -3046,7 +3044,7 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
   static invoke<
@@ -3058,24 +3056,24 @@ export abstract class Statement extends AST {
     A5 extends CompatibleExpression
   >(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
 
   static invoke(
     type: 'table',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
 
   static invoke<T extends Scalar>(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): () => Expression<T>;
   static invoke<T extends Scalar, A1 extends CompatibleExpression>(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1) => Expression<T>;
   static invoke<
@@ -3084,7 +3082,7 @@ export abstract class Statement extends AST {
     A2 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2) => Expression<T>;
   static invoke<
@@ -3094,7 +3092,7 @@ export abstract class Statement extends AST {
     A3 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
   static invoke<
@@ -3105,7 +3103,7 @@ export abstract class Statement extends AST {
     A4 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
   static invoke<
@@ -3117,19 +3115,19 @@ export abstract class Statement extends AST {
     A5 extends CompatibleExpression
   >(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
 
   static invoke(
     type: 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn?: boolean
   ): (...args: CompatibleExpression[]) => Expression<any>;
 
   static invoke(
     type: 'table' | 'scalar',
-    name: Name<string>,
+    name: Name,
     builtIn = false
   ): (
     ...args: CompatibleExpression[]
@@ -3162,10 +3160,9 @@ export abstract class Statement extends AST {
    * @returns
    */
   static createTable<N extends string>(
-    name: Name<N>,
-    members: CreateTableMember[]
+    name: Name<N>
   ): CreateTable<N> {
-    return new CreateTable(name, members);
+    return new CreateTable(name);
   }
 
   static alterTable<N extends string>(name: Name<N>): AlterTable<N> {
@@ -3196,19 +3193,19 @@ export abstract class Statement extends AST {
     return new AlterProcedure(name);
   }
 
-  static createScalarFunction(name: Name<string>): CreateFunction {
+  static createScalarFunction(name: Name): CreateFunction {
     return new CreateFunction(name, 'SCALAR');
   }
 
-  static createTableFunction(name: Name<string>): CreateFunction {
+  static createTableFunction(name: Name): CreateFunction {
     return new CreateFunction(name, 'TABLE');
   }
 
-  static alterScalarFunction(name: Name<string>): AlterFunction {
+  static alterScalarFunction(name: Name): AlterFunction {
     return new AlterFunction(name, 'SCALAR');
   }
 
-  static alterTableFunction(name: Name<string>): AlterFunction {
+  static alterTableFunction(name: Name): AlterFunction {
     return new AlterFunction(name, 'TABLE');
   }
 
@@ -3228,8 +3225,12 @@ export abstract class Statement extends AST {
     return new DropFunction(name);
   }
 
-  static dropIndex<N extends string>(name: Name<N>): DropIndex<N> {
-    return new DropIndex(name);
+  static dropIndex<N extends string>(table: Name, name: N): DropIndex<N> {
+    return new DropIndex(table, name);
+  }
+
+  static annotation(text: string, kind: AnnotationKind = 'LINE'): Annotation {
+    return new Annotation(kind, text);
   }
 }
 
@@ -3451,7 +3452,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: (Name<string> | CompatibleRowset<any, string>)[]): this {
+  from(...tables: (Name | CompatibleRowset<any, string>)[]): this {
     this.$froms = tables.map(table => ensureRowset(table));
     this.$froms.forEach(table => {
       if (!table.$alias) {
@@ -3471,7 +3472,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * @memberof Select
    */
   join<T extends RowObject = any>(
-    table: Name<string> | CompatibleRowset<T>,
+    table: Name | CompatibleRowset<T>,
     on: Condition,
     left?: boolean
   ): this {
@@ -3489,7 +3490,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * @param on
    */
   leftJoin<T extends RowObject = any>(
-    table: Name<string> | CompatibleRowset<T>,
+    table: Name | CompatibleRowset<T>,
     on: Condition
   ): this {
     return this.join(table, on, true);
@@ -3927,7 +3928,7 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   //  * 从表中查询，可以查询多表
   //  * @param tables
   //  */
-  // from(...tables: (Name<string> | Rowset<any> | Table<any, string>)[]): this {
+  // from(...tables: (Name | Rowset<any> | Table<any, string>)[]): this {
   //   super.from(...tables);
   //   // 如果未指定要删除的表，则必须指定
   //   if (!this.$table) {
@@ -4002,9 +4003,9 @@ export class Execute<
   // | NamedArgument<JsConstant, string>[];
   readonly $type: SQL_SYMBOLE.EXECUTE = SQL_SYMBOLE.EXECUTE;
 
-  // constructor(proc: Name<string> | Procedure<T, string>, params?: InputObject);
+  // constructor(proc: Name | Procedure<T, string>, params?: InputObject);
   constructor(
-    proc: Name<string> | Procedure<R, O, string>,
+    proc: Name | Procedure<R, O, string>,
     params?: CompatibleExpression<Scalar>[] // | InputObject
   ) {
     super();
@@ -4082,7 +4083,7 @@ export class TableVariantDeclare<T extends RowObject = any> extends AST {
   $schema: Omit<TableSchema, 'name'>;
 }
 
-interface DeclareBuilder {
+export interface DeclareBuilder {
   variant(name: string, type: DbType): VariantDeclare;
   table(name: string, schema: TableSchema): TableVariantDeclare;
 }
@@ -4296,7 +4297,7 @@ export class With extends AST {
    * @param fields
    */
   insert<T extends RowObject = any>(
-    table: Name<string> | CompatibleTable<T, string>,
+    table: Name | CompatibleTable<T, string>,
     fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Insert<T> {
     const sql = Statement.insert(table, fields);
@@ -4309,7 +4310,7 @@ export class With extends AST {
    * @param table
    */
   update<T extends RowObject = any>(
-    table: Name<string> | CompatibleTable<T, string>
+    table: Name | CompatibleTable<T, string>
   ): Update<T> {
     const sql = Statement.update(table);
     sql.$with = this;
@@ -4321,7 +4322,7 @@ export class With extends AST {
    * @param table 表格
    */
   delete<T extends RowObject = any>(
-    table: Name<string> | CompatibleTable<T, string>
+    table: Name | CompatibleTable<T, string>
   ): Delete<T> {
     const sql = Statement.delete(table);
     sql.$with = this;
@@ -4487,20 +4488,30 @@ export class ForeignKey extends AST {
   $name?: string;
   $columns: string[];
   $referenceColumns: string[];
-  $referenceTable: Name<string>;
+  $referenceTable: Name;
+  $deleteCascade: boolean;
 
-  on(columns: string[]): this {
-    this.$columns = columns;
+  on(...columns: string[] | [string[]]): this {
+    if (columns.length === 1 && Array.isArray(columns[0])) {
+      columns = columns[0];
+    }
+    this.$columns = columns as string[];
     return this;
   }
 
-  reference(table: Name<string>, columns: string[]) {
+  reference(table: Name, columns: string[]): this {
     this.$referenceTable = table;
     this.$referenceColumns = columns;
+    return this;
+  }
+
+  deleteCascade(): this {
+    this.$deleteCascade = true;
+    return this;
   }
 }
 
-interface CreateTableMemberBuilder {
+export interface CreateTableMemberBuilder {
   column<N extends string, T extends DbType>(
     name: N,
     type: T
@@ -4510,8 +4521,8 @@ interface CreateTableMemberBuilder {
 
   foreignKey(name?: string): ForeignKey;
 
-  checkConstaint(sql: Condition): CheckConstraint;
-  checkConstaint(name: string, sql: Condition): CheckConstraint;
+  check(sql: Condition): CheckConstraint;
+  check(name: string, sql: Condition): CheckConstraint;
 
   uniqueKey(name?: string): UniqueKey;
 }
@@ -4521,7 +4532,7 @@ export class CreateTable<N extends string = string> extends Statement {
   $members: CreateTableMember[];
   $name: Name<N>;
 
-  constructor(name: Name<N>, members: CreateTableMember[]) {
+  constructor(name: Name<N>) {
     super();
     this.$name = name;
   }
@@ -4531,15 +4542,15 @@ export class CreateTable<N extends string = string> extends Statement {
   //   return this;
   // }
 
-  has(build: (builder: CreateTableMemberBuilder) => CreateTableMember[]): this;
-  has(...members: CreateTableMember[]): this;
-  has(
+  as(build: (builder: CreateTableMemberBuilder) => CreateTableMember[]): this;
+  as(...members: CreateTableMember[]): this;
+  as(
     ...members:
       | [(builder: CreateTableMemberBuilder) => CreateTableMember[]]
       | CreateTableMember[]
   ): this {
     if (typeof members[0] === 'function') {
-      this.has(...members[0](CreateTable));
+      this.as(...members[0](CreateTable.memberBuilder));
       return this;
     }
     if (!this.$members) {
@@ -4549,68 +4560,36 @@ export class CreateTable<N extends string = string> extends Statement {
     return this;
   }
 
-  static column<N extends string, T extends DbType>(
-    name: N,
-    type: T
-  ): CreateTableColumn<N> {
-    return new CreateTableColumn(name, type);
-  }
-
-  static primaryKey(name?: string): PrimaryKey {
-    return new PrimaryKey(name);
-  }
-
-  static foreignKey(name?: string): ForeignKey {
-    return new ForeignKey(name);
-  }
-
-  static checkConstaint(sql: Condition): CheckConstraint;
-  static checkConstaint(name: string, sql: Condition): CheckConstraint;
-  static checkConstaint(
-    nameOrSql: string | Condition,
-    sql?: Condition
-  ): CheckConstraint {
-    let name: string;
-    if (typeof nameOrSql === 'string') {
-      name = nameOrSql;
-    }
-    return new CheckConstraint(sql, name);
-  }
-
-  static uniqueKey(name?: string): UniqueKey {
-    return new UniqueKey(name);
-  }
-
-  // add(...members: CreateTableMember[]): this {
-  //   this.$members.push(...members);
-  //   return this;
-  // }
-
-  // addColumn(): this {
-
-  // }
-
-  // addCheck(): this {
-
-  // }
-
-  // primaryKey(): this {
-
-  // }
-
-  // addUniqueKey(): this {
-
-  // }
-
-  // addForeignKey(): this {
-
-  // }
+  static readonly memberBuilder: CreateTableMemberBuilder = {
+    column<N extends string, T extends DbType>(
+      name: N,
+      type: T
+    ): CreateTableColumn<N> {
+      return new CreateTableColumn(name, type);
+    },
+    primaryKey(name?: string): PrimaryKey {
+      return new PrimaryKey(name);
+    },
+    foreignKey(name?: string): ForeignKey {
+      return new ForeignKey(name);
+    },
+    check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
+      let name: string;
+      if (typeof nameOrSql === 'string') {
+        name = nameOrSql;
+      }
+      return new CheckConstraint(sql, name);
+    },
+    uniqueKey(name?: string): UniqueKey {
+      return new UniqueKey(name);
+    },
+  };
 }
 
 export class CreateIndex extends Statement {
   $type: SQL_SYMBOLE.CREATE_INDEX = SQL_SYMBOLE.CREATE_INDEX;
   $name?: string;
-  $table: Name<string>;
+  $table: Name;
   $columns: KeyColumns;
   $clustered: boolean = false;
   $unique: boolean = false;
@@ -4631,7 +4610,7 @@ export class CreateIndex extends Statement {
   }
 
   on(
-    table: Name<string>,
+    table: Name,
     columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>
   ): this {
     if (this.$table) {
@@ -4682,8 +4661,8 @@ export interface AlterTableAddBuilder {
 
   foreignKey(name?: string): ForeignKey;
 
-  checkConstaint(sql: Condition): CheckConstraint;
-  checkConstaint(name: string, sql: Condition): CheckConstraint;
+  check(sql: Condition): CheckConstraint;
+  check(name: string, sql: Condition): CheckConstraint;
 
   uniqueKey(name?: string): UniqueKey;
 }
@@ -4695,7 +4674,7 @@ export interface AlterTableDropBuilder {
 
   foreignKey(name: string): AlterTableDropMember;
 
-  checkConstraint(name: string): AlterTableDropMember;
+  check(name: string): AlterTableDropMember;
 
   uniqueKey(name: string): AlterTableDropMember;
 }
@@ -4707,6 +4686,8 @@ export class AlterTable<N extends string = string> extends Statement {
   $adds?: AlterTableMember[];
 
   $drops?: AlterTableDropMember[];
+
+  $alterColumn?: AlterTableColumn;
 
   constructor(name: Name<N>) {
     super();
@@ -4720,11 +4701,11 @@ export class AlterTable<N extends string = string> extends Statement {
       | [(builder: AlterTableAddBuilder) => AlterTableMember[]]
       | AlterTableMember[]
   ): this {
-    if (this.$drops) {
+    if (this.$drops || this.$alterColumn) {
       throw new Error(`A alter statement is only used by add or drop.`);
     }
     if (typeof members[0] === 'function') {
-      this.add(...members[0](AlterTable));
+      this.add(...members[0](AlterTable.addBuilder));
       return this;
     }
     if (!this.$adds) {
@@ -4740,8 +4721,13 @@ export class AlterTable<N extends string = string> extends Statement {
     ...members:
       | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
       | AlterTableDropMember[]
+  ): this
+  drop(
+    ...members:
+      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
+      | AlterTableDropMember[]
   ): this {
-    if (this.$adds) {
+    if (this.$adds || this.$alterColumn) {
       throw new Error(`A alter statement is only used by add or drop.`);
     }
     if (!this.$drops) {
@@ -4752,6 +4738,18 @@ export class AlterTable<N extends string = string> extends Statement {
       return this;
     }
     this.$drops.push(...(members as AlterTableDropMember[]));
+    return this;
+  }
+
+  alterColumn(buildColumn: AlterTableColumn | ((builder: (name: string, type: DbType) => AlterTableColumn) => AlterTableColumn)): this {
+    if (this.$adds || this.$drops || this.$alterColumn) {
+      throw new Error(`A alter statement is only used by add or drop or alterColumn.`);
+    }
+    if (typeof buildColumn === 'function') {
+      this.$alterColumn = buildColumn(AlterTable.addBuilder.column);
+    } else {
+      this.$alterColumn = buildColumn;
+    }
     return this;
   }
 
@@ -4774,7 +4772,7 @@ export class AlterTable<N extends string = string> extends Statement {
       );
     },
 
-    checkConstraint(name: string): AlterTableDropMember {
+    check(name: string): AlterTableDropMember {
       return new AlterTableDropMember(
         SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT,
         name
@@ -4789,37 +4787,34 @@ export class AlterTable<N extends string = string> extends Statement {
     },
   };
 
-  static column<N extends string, T extends DbType>(
-    name: N,
-    type: T
-  ): AlterTableColumn<N> {
-    return new AlterTableColumn(name, type);
-  }
+  static readonly addBuilder: AlterTableAddBuilder = {
+    column<N extends string, T extends DbType>(
+      name: N,
+      type: T
+    ): AlterTableColumn<N> {
+      return new AlterTableColumn(name, type);
+    },
 
-  static primaryKey(name?: string): PrimaryKey {
-    return new PrimaryKey(name);
-  }
+    primaryKey(name?: string): PrimaryKey {
+      return new PrimaryKey(name);
+    },
 
-  static foreignKey(name?: string): ForeignKey {
-    return new ForeignKey(name);
-  }
+    foreignKey(name?: string): ForeignKey {
+      return new ForeignKey(name);
+    },
 
-  static checkConstaint(sql: Condition): CheckConstraint;
-  static checkConstaint(name: string, sql: Condition): CheckConstraint;
-  static checkConstaint(
-    nameOrSql: string | Condition,
-    sql?: Condition
-  ): CheckConstraint {
-    let name: string;
-    if (typeof nameOrSql === 'string') {
-      name = nameOrSql;
-    }
-    return new CheckConstraint(sql, name);
-  }
+    check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
+      let name: string;
+      if (typeof nameOrSql === 'string') {
+        name = nameOrSql;
+      }
+      return new CheckConstraint(sql, name);
+    },
 
-  static uniqueKey(name?: string): UniqueKey {
-    return new UniqueKey(name);
-  }
+    uniqueKey(name?: string): UniqueKey {
+      return new UniqueKey(name);
+    },
+  };
 }
 
 abstract class TableColumn<N extends string = string> extends AST {
@@ -4943,11 +4938,11 @@ export class Block extends Statement {
 
 export class CreateProcedure extends Statement {
   $type: SQL_SYMBOLE.CREATE_PROCEDURE = SQL_SYMBOLE.CREATE_PROCEDURE;
-  $name: Name<string>;
+  $name: Name;
   $params: ProcedureParameter[];
   $body: Statement[];
 
-  constructor(name: Name<string>) {
+  constructor(name: Name) {
     super();
     this.$name = name;
   }
@@ -4965,11 +4960,11 @@ export class CreateProcedure extends Statement {
 
 export class AlterProcedure extends Statement {
   $type: SQL_SYMBOLE.ALTER_PROCEDURE = SQL_SYMBOLE.ALTER_PROCEDURE;
-  $name: Name<string>;
+  $name: Name;
   $params: ProcedureParameter[]; // TODO: 声明不正确
   $body: Statement[];
 
-  constructor(name: Name<string>) {
+  constructor(name: Name) {
     super();
     this.$name = name;
   }
@@ -4988,12 +4983,12 @@ export class AlterProcedure extends Statement {
 export type FunctinKind = 'SCALAR' | 'TABLE';
 export class CreateFunction extends Statement {
   $type: SQL_SYMBOLE.CREATE_FUNCTION = SQL_SYMBOLE.CREATE_FUNCTION;
-  $name: Name<string>;
+  $name: Name;
   $params: VariantDeclare[];
   $body: Statement[];
   $kind: FunctinKind;
 
-  constructor(name: Name<string>, kind: FunctinKind) {
+  constructor(name: Name, kind: FunctinKind) {
     super();
     this.$name = name;
     this.$kind = kind;
@@ -5012,12 +5007,12 @@ export class CreateFunction extends Statement {
 
 export class AlterFunction extends Statement {
   $type: SQL_SYMBOLE.ALTER_FUNCTION = SQL_SYMBOLE.ALTER_FUNCTION;
-  $name: Name<string>;
+  $name: Name;
   $params: VariantDeclare[];
   $body: Statement[];
   $kind: FunctinKind;
 
-  constructor(name: Name<string>, kind: FunctinKind) {
+  constructor(name: Name, kind: FunctinKind) {
     super();
     this.$name = name;
     this.$kind = kind;
@@ -5076,10 +5071,12 @@ export class DropFunction<N extends string = string> extends Statement {
 
 export class DropIndex<N extends string = string> extends Statement {
   $type: SQL_SYMBOLE.DROP_INDEX = SQL_SYMBOLE.DROP_INDEX;
-  $name: Name<N>;
+  $table: Name;
+  $name: N;
 
-  constructor(name: Name<N>) {
+  constructor(table: Name, name: N) {
     super();
+    this.$table = table;
     this.$name = name;
   }
 }
@@ -5103,11 +5100,11 @@ export class CreateSequence<
     return this;
   }
 
-  start(value: number | Literal<number>) {
+  startWith(value: number | Literal<number>) {
     this.$startValue = ensureLiteral(value);
   }
 
-  increment(value: number | Literal<number>) {
+  incrementBy(value: number | Literal<number>) {
     this.$increment = ensureLiteral(value);
   }
 }
@@ -5134,6 +5131,20 @@ export class StandardStatement extends Statement {
 
   static create(kind: string, datas: any[]): StandardStatement {
     return new StandardStatement(kind, datas);
+  }
+}
+
+export type AnnotationKind = 'LINE' | 'BLOCK';
+export class Annotation extends Statement {
+  $type: SQL_SYMBOLE.ANNOTATION = SQL_SYMBOLE.ANNOTATION;
+  $kind: AnnotationKind;
+  $text: string;
+
+  constructor(kind: AnnotationKind, text: string) {
+    super();
+
+    this.$kind = kind;
+    this.$text = text;
   }
 }
 

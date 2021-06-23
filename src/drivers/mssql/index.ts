@@ -100,3 +100,5 @@ export const connect: Driver = async function (
 export default connect;
 
 export * from "./build-in";
+
+export { DIALECT } from './provider';

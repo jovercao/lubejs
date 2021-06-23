@@ -8,23 +8,21 @@ import {
   ISOLATION_LEVEL,
   Parameter,
   Transaction,
-  MigrateScripter,
   DatabaseSchema,
 } from '../..';
-import { MssqlMigrateScripter } from './migrate-scripter';
 import { load } from './schema-loader'
+
+export const DIALECT = Symbol('mssql');
 
 export class MssqlProvider implements DbProvider {
   constructor(private _pool: mssql.ConnectionPool, options: CompileOptions) {
     this.compiler = new MssqlCompiler(options);
-    this.scripter = new MssqlMigrateScripter(this.compiler);
   }
+  dialect: string | symbol = DIALECT
 
   getSchema(): Promise<DatabaseSchema> {
     return load(this);
   }
-
-  readonly scripter: MigrateScripter;
 
   readonly compiler: MssqlCompiler;
 

@@ -8,10 +8,51 @@ import {
   Expression,
   CompatibleExpression,
   CompatibleCondition,
+  CreateTable,
+  AlterTable,
+  CreateFunction,
+  AlterFunction,
+  AlterProcedure,
+  AlterView,
+  Annotation,
+  AnnotationKind,
+  Assignable,
+  Assignment,
+  Block,
+  Case,
+  CompatibleNamedSelect,
+  CompatibleTable,
+  CreateIndex,
+  CreateProcedure,
+  CreateView,
+  Declare,
+  Delete,
+  DropFunction,
+  DropIndex,
+  DropProcedure,
+  DropTable,
+  DropView,
+  Execute,
+  Field,
+  FieldsOf,
+  Func,
+  Insert,
+  Procedure,
+  ProxiedRowset,
+  ScalarFuncInvoke,
+  Select,
+  SelectAction,
+  TableVariantDeclare,
+  Update,
+  VariantDeclare,
+  When,
+  With,
+  DeclareBuilder,
   // IdentityValue
-} from "./ast";
-import { isExpression, isScalar } from "./util";
-import * as std from "./std";
+} from './ast';
+import { isExpression, isScalar } from './util';
+import * as std from './std';
+import { RowObject, Scalar, Name } from '.';
 
 /**
  * not 查询条件运算
@@ -179,7 +220,7 @@ export const $table = Identifier.table;
 // export function makeTableFunc<T extends RowObject,
 //   A1 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1
@@ -188,7 +229,7 @@ export const $table = Identifier.table;
 //   A1 extends CompatibleExpression,
 //   A2 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -199,7 +240,7 @@ export const $table = Identifier.table;
 //   A2 extends CompatibleExpression,
 //   A3 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -212,7 +253,7 @@ export const $table = Identifier.table;
 //   A3 extends CompatibleExpression,
 //   A4 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -227,7 +268,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -237,14 +278,14 @@ export const $table = Identifier.table;
 //     arg5: A5
 //   ) => ProxiedRowset<T>
 // export function makeTableFunc<T extends RowObject>(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     ...args: CompatibleExpression[]
 //   ) => ProxiedRowset<T>
 
 // export function makeTableFunc<T extends RowObject>(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn = false
 // ): (
 //     ...args: CompatibleExpression[]
@@ -267,7 +308,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -283,7 +324,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -299,7 +340,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -315,7 +356,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -331,7 +372,7 @@ export const $table = Identifier.table;
 //   A4 extends CompatibleExpression,
 //   A5 extends CompatibleExpression
 // >(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn?: boolean
 // ): (
 //     arg1: A1,
@@ -341,7 +382,7 @@ export const $table = Identifier.table;
 //     arg5: A5
 //   ) => Expression<T>
 // export function sfunc<T extends ScalarType>(
-//   name: Name<string>,
+//   name: Name,
 //   builtIn = false
 // ): (...args: CompatibleExpression<ScalarType>[]) => Expression<T> {
 //   return function (...args: CompatibleExpression<ScalarType>[]): Expression<T> {
@@ -424,94 +465,331 @@ export function enclose<T extends CompatibleExpression | CompatibleCondition>(
 }
 export const $enclose = enclose;
 
-// /**
-//  * 类型转换运算
-//  */
-// export const convert = Expression.convert
+export const createTableMemberBuilder = CreateTable.memberBuilder;
+export const alterTableAddBuilder = AlterTable.addBuilder;
+export const alterTableDropBuilder = AlterTable.dropBuilder;
 
-// export const identityValue = Expression.identityValue
+export interface SqlBuilder extends std.Standard {
+  /**
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
+   */
+  insert<T extends RowObject = any>(
+    table: CompatibleTable<T, string>,
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+  ): Insert<T>;
 
-/**
- * 语句
- */
-export const SQL = {
   /**
-   * alias of `literal`
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
    */
-  val,
-  /**
-   * alias of `literal`
-   */
-  value,
-  /**
-   * literal value.
-   */
-  literal,
-  /**
-   * select statement
-   */
-  select,
-  /**
-   * insert statement
-   */
-  insert,
+  identityInsert<T extends RowObject = any>(
+    table: CompatibleTable<T, string>,
+    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+  ): Insert<T>;
 
-  identityInsert,
   /**
-   * update statement
+   * 更新一个表格
+   * @param table
    */
-  update,
+  update<T extends RowObject = any>(
+    table: CompatibleTable<T, string>
+  ): Update<T>;
+
   /**
-   * delete statement
+   * 删除一个表格
+   * @param table 表格
    */
+  delete<T extends RowObject = any>(
+    table: CompatibleTable<T, string>
+  ): Delete<T>;
+
+  select: SelectAction;
+
+  raw(sql: string): any;
+
+  block(statements: Statement[]): Block;
+
+  /**
+   * 执行一个存储过程
+   * @param proc
+   * @param params
+   */
+  // execute<T extends Model> (
+  //   proc: Name | Procedure<T, string>,
+  //   params?: Expressions<JsConstant>[]
+  // ): Execute<T>
+  // execute<T extends Model> (
+  //   proc: Name | Procedure<T, string>,
+  //   params?: InputObject
+  // ): Execute<T>
+  execute<R extends Scalar = any, O extends RowObject[] = []>(
+    proc: Name | Procedure<R, O, string>,
+    params?: CompatibleExpression<Scalar>[]
+    // | Parameter<JsConstant, string>[] | InputObject
+  ): Execute<R, O>;
+
+  invokeTableFunction<T extends RowObject = any>(
+    func: Name | Func<string>,
+    args: CompatibleExpression<Scalar>[]
+  ): ProxiedRowset<T>;
+
+  invokeScalarFunction<T extends Scalar = any>(
+    func: Name | Func<string>,
+    args: CompatibleExpression<Scalar>[]
+  ): ScalarFuncInvoke<T>;
+
+  /**
+   * 赋值语句
+   * @param left 左值
+   * @param right 右值
+   */
+  assign<T extends Scalar = any>(
+    left: Assignable<T>,
+    right: CompatibleExpression<T>
+  ): Assignment<T>;
+
+  /**
+   * 变量声明
+   * @param declares 变量列表
+   */
+  declare(
+    build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
+  ): Declare;
+
+  /**
+   * WHEN 语句块
+   * @param expr
+   * @param value
+   */
+  when<T extends Scalar>(
+    expr: CompatibleExpression<Scalar>,
+    value?: CompatibleExpression<T>
+  ): When<T>;
+
+  case<T extends Scalar>(expr?: CompatibleExpression): Case<T>;
+
+  /**
+   * With语句
+   */
+  with(...rowsets: CompatibleNamedSelect[]): With;
+  with(rowsets: Record<string, Select>): With;
+  with(...rowsets: any): With;
+
+  union<T extends RowObject = any>(...selects: Select<T>[]): Select<T>;
+
+  unionAll<T extends RowObject = any>(...selects: Select<T>[]): Select<T>;
+
+  invoke<T extends RowObject>(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): () => ProxiedRowset<T>;
+  invoke<T extends RowObject, A1 extends CompatibleExpression>(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1) => ProxiedRowset<T>;
+  invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
+  invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
+  invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
+  invoke<
+    T extends RowObject,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression,
+    A5 extends CompatibleExpression
+  >(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
+
+  invoke(
+    type: 'table',
+    name: Name,
+    builtIn?: boolean
+  ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
+
+  invoke<T extends Scalar>(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): () => Expression<T>;
+  invoke<T extends Scalar, A1 extends CompatibleExpression>(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1) => Expression<T>;
+  invoke<
+    T extends Scalar,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2) => Expression<T>;
+  invoke<
+    T extends Scalar,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
+  invoke<
+    T extends Scalar,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
+  invoke<
+    T extends Scalar,
+    A1 extends CompatibleExpression,
+    A2 extends CompatibleExpression,
+    A3 extends CompatibleExpression,
+    A4 extends CompatibleExpression,
+    A5 extends CompatibleExpression
+  >(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
+
+  invoke(
+    type: 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (...args: CompatibleExpression[]) => Expression<any>;
+
+  invoke(
+    type: 'table' | 'scalar',
+    name: Name,
+    builtIn?: boolean
+  ): (...args: CompatibleExpression[]) => Expression | ProxiedRowset<RowObject>;
+
+  /**
+   * 创建表格
+   * @param name
+   * @param members
+   * @returns
+   */
+  createTable<N extends string>(name: Name<N>): CreateTable<N>;
+
+  alterTable<N extends string>(name: Name<N>): AlterTable<N>;
+
+  createView<T extends RowObject = any, N extends string = string>(
+    name: Name<N>
+  ): CreateView<T, N>;
+
+  alterView<T extends RowObject = any, N extends string = string>(
+    name: Name<N>
+  ): AlterView<T, N>;
+
+  createIndex(name: string): CreateIndex;
+
+  createProcedure(name: string): CreateProcedure;
+
+  alterProcedure(name: string): AlterProcedure;
+
+  createScalarFunction(name: Name): CreateFunction;
+
+  createTableFunction(name: Name): CreateFunction;
+
+  alterScalarFunction(name: Name): AlterFunction;
+
+  alterTableFunction(name: Name): AlterFunction;
+
+  dropTable<N extends string>(name: Name<N>): DropTable<N>;
+
+  dropView<N extends string>(name: Name<N>): DropView<N>;
+
+  dropProcedure<N extends string>(name: Name<N>): DropProcedure<N>;
+
+  dropFunction<N extends string>(name: Name<N>): DropFunction<N>;
+
+  dropIndex<N extends string>(table: Name, name: N): DropIndex<N>;
+
+  annotation(text: string, kind?: AnnotationKind): Annotation;
+}
+
+export const sqlBuilder: SqlBuilder = {
+  insert: Statement.insert,
+  identityInsert: Statement.identityInsert,
+  update: Statement.update,
   delete: Statement.delete,
-  /**
-   * alias of del
-   */
-  del,
-  /**
-   * case expression
-   */
-  case: $case,
-  with: $with,
-  makeInvoke,
-  makeExec,
-  execute,
-  exec,
-  proc,
-  procedure,
-  when,
-  exists,
-  union,
-  unionAll,
-  builtIn,
-  table,
-  field,
-  input,
-  output,
-  and,
-  or,
-  variant,
-  var: variant,
-  // group,
-  raw,
-  add,
-  div,
-  mul,
-  sub,
-  band,
-  bor,
-  bxor,
-  shl,
-  shr,
-  bnot,
-  neg,
-  mod,
-  concat,
-  enclose,
-  ...std,
+  select: Statement.select,
+  raw: Statement.raw,
+  block: Statement.block,
+  execute: Statement.execute,
+  invokeTableFunction: Statement.invokeTableFunction,
+  invokeScalarFunction: Statement.invokeScalarFunction,
+  assign: Statement.assign,
+  declare: Statement.declare,
+  when: Statement.when,
+  case: Statement.case,
+  with: Statement.with,
+  union: Statement.union,
+  unionAll: Statement.unionAll,
+  invoke: Statement.invoke,
+  createTable: Statement.createTable,
+  alterTable: Statement.alterTable,
+  createView: Statement.createView,
+  alterView: Statement.alterView,
+  createIndex: Statement.createIndex,
+  createProcedure: Statement.createProcedure,
+  alterProcedure: Statement.alterProcedure,
+  createScalarFunction: Statement.createScalarFunction,
+  createTableFunction: Statement.createTableFunction,
+  alterScalarFunction: Statement.alterScalarFunction,
+  alterTableFunction: Statement.alterTableFunction,
+  dropTable: Statement.dropTable,
+  dropView: Statement.dropView,
+  dropProcedure: Statement.dropProcedure,
+  dropFunction: Statement.dropFunction,
+  dropIndex: Statement.dropIndex,
+  annotation: Statement.annotation,
+  ...std.std,
 };
 
-export * from "./std";
+export * from './std';
 
-export default SQL;
+export default sqlBuilder;

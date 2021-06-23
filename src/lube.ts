@@ -6,8 +6,6 @@ import assert from 'assert';
 import { CompileOptions, Compiler } from './compile';
 import { Parameter } from './ast';
 import { DatabaseSchema } from './schema';
-import { MigrateScripter } from './migrate-cli';
-import { DbType } from './types';
 
 export type ConnectOptions = {
   /**
@@ -89,6 +87,11 @@ export interface DbProvider {
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
 
+  /**
+   * 方言名称，如'mssql', 'mysql', 'oracle'
+   */
+  readonly dialect: string | symbol;
+
   // getTables(options?: {
   //   name?: string;
   //   schema?: string;
@@ -116,11 +119,6 @@ export interface DbProvider {
    * 获取数据库架构
    */
   getSchema(): Promise<DatabaseSchema>;
-
-  /**
-   * 构架
-   */
-  readonly scripter: MigrateScripter;
 }
 
 /**

@@ -38,7 +38,7 @@ import { Compiler } from './compile';
 import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
 import { Queryable } from './queryable';
-import { and, doc, or } from './builder';
+import { and, doc, or } from './sql-builder';
 import { Name, RowObject, Scalar } from './types';
 
 export interface Command {
@@ -306,18 +306,18 @@ export class Executor {
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     values?: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
   ): Promise<number>;
   /**
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     values?: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
     value?:
       | InputObject<T>
@@ -326,12 +326,12 @@ export class Executor {
       | CompatibleExpression[][]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
     value?: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     arg2:
       | FieldsOf<T>[]
       | Field<Scalar, FieldsOf<T>>[]
@@ -397,7 +397,7 @@ export class Executor {
   }
 
   async find<T extends RowObject = any>(
-    table: Table<T, string> | Name<string>,
+    table: Table<T, string> | Name,
     where:
       | Condition
       | WhereObject<T>
@@ -429,17 +429,17 @@ export class Executor {
    * @param options
    */
   async select<T extends RowObject = any, G extends InputObject = InputObject>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     results: (rowset: Readonly<Rowset<T>>) => G,
     options?: SelectOptions<T>
   ): Promise<RowTypeFrom<G>[]>;
   async select<T extends RowObject = any>(
-    table: Name<string> | Table<T, string>,
+    table: Name | Table<T, string>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
 
   async select(
-    table: Name<string> | Table,
+    table: Name | Table,
     arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
@@ -573,7 +573,7 @@ export class Executor {
   }
 
   async delete<T extends RowObject = any>(
-    table: Table<T, string> | Name<string>,
+    table: Table<T, string> | Name,
     where?:
       | WhereObject<T>
       | Condition
@@ -589,7 +589,7 @@ export class Executor {
   }
 
   async execute<R extends Scalar = number, O extends RowObject[] = []>(
-    spName: Name<string> | Procedure<R, O>,
+    spName: Name | Procedure<R, O>,
     params?: CompatibleExpression[]
     // eslint-disable-next-line
     // @ts-ignore
@@ -605,7 +605,7 @@ export class Executor {
    * 遵守不存在的则插入、已存在的则更新的原则；
    */
   async save<T extends RowObject = any>(
-    table: Table<T, string> | Name<string>,
+    table: Table<T, string> | Name,
     keyFields: FieldsOf<T>[],
     items: T[] | T
   ): Promise<number> {

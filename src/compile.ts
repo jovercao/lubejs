@@ -61,6 +61,7 @@ import {
   StandardStatement,
   CreateSequence,
   DropSequence,
+  Annotation,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
@@ -127,6 +128,7 @@ import {
   isStandardStatement,
   isCreateSequence,
   isDropSequence,
+  isAnnotation,
 } from './util';
 
 /**
@@ -232,7 +234,7 @@ export abstract class Compiler {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  stringifyName(name: Name<string>, buildIn = false): string {
+  stringifyName(name: Name, buildIn = false): string {
     if (Array.isArray(name)) {
       return name
         .map((n, index) => {
@@ -313,7 +315,7 @@ export abstract class Compiler {
     return this.options.parameterPrefix + (p.$name || '');
   }
 
-  protected stringifyVariantName(name: Name<string>): string {
+  protected stringifyVariantName(name: Name): string {
     return this.options.variantPrefix + name;
   }
 
@@ -486,7 +488,7 @@ export abstract class Compiler {
     }
 
     if (isDropIndex(statement)) {
-      return this.compileDropIndex(statement.$name);
+      return this.compileDropIndex(statement.$table, statement.$name);
     }
 
     if (isCreateSequence(statement)) {
@@ -506,25 +508,32 @@ export abstract class Compiler {
         this.translationStandardOperation(statement)
       );
     }
+
+    if (isAnnotation(statement)) {
+      return this.compileAnnotation(statement);
+    }
     invalidAST('statement', statement);
   }
+
+  protected abstract compileAnnotation(statement: Annotation): string;
+
   protected abstract compileDropSequence(statement: DropSequence): string;
 
   protected abstract compileCreateSequence(statement: CreateSequence): string;
 
   protected abstract compileBlock(statement: Block): string;
 
-  protected abstract compileDropIndex($name: Name<string>): string;
+  protected abstract compileDropIndex(table: Name, name: string): string;
 
   protected abstract compileCreateIndex(statement: CreateIndex): string;
 
-  protected abstract compileDropFunction($name: Name<string>): string;
+  protected abstract compileDropFunction($name: Name): string;
 
   protected abstract compileAlterFunction(statement: AlterFunction): string;
 
   protected abstract compileCreateFunction(statement: CreateFunction): string;
 
-  protected abstract compileDropProcedure($name: Name<string>): string;
+  protected abstract compileDropProcedure($name: Name): string;
 
   protected abstract compileAlterProcedure(statement: AlterProcedure): string;
 
@@ -536,7 +545,7 @@ export abstract class Compiler {
     )} AS ${this.compileSelect(statement.$body)}`;
   }
 
-  protected compileDropView(name: Name<string>): string {
+  protected compileDropView(name: Name): string {
     return `DROP VIEW ${this.stringifyName(name)}`;
   }
 
@@ -546,7 +555,7 @@ export abstract class Compiler {
     )} AS ${this.compileSelect(statement.$body)}`;
   }
 
-  protected compileDropTable(name: Name<string>): string {
+  protected compileDropTable(name: Name): string {
     return `DROP TABLE ${this.stringifyName(name)}`;
   }
 

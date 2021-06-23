@@ -43,12 +43,12 @@ export interface ForeignKeySchema {
   /**
    * 列对应
    */
-  foreignColumns: string[];
+  columns: string[];
 
   /**
    * 主键表
    */
-  referenceTable: Name<string>;
+  referenceTable: Name;
   /**
    * 引用列（主键列）
    */
@@ -59,6 +59,8 @@ export interface ForeignKeySchema {
    * // WARN 慎用
    */
   isCascade?: boolean;
+
+  comment?: string;
 }
 
 export interface DatabaseSchema {
@@ -188,7 +190,7 @@ export interface TableSchema {
   /**
    * 数据库对象名称
    */
-  name: Name<string>;
+  name: Name;
 
   /**
    * 摘要说明
@@ -225,33 +227,37 @@ export interface TableSchema {
 
 export interface SequenceSchema {
   type: string;
-  name: Name<string>;
+  name: Name;
   startValue: number;
   increment: number;
 }
 
 export interface CheckConstraintSchema {
   kind: 'CHECK';
-  name: string;
+  name?: string;
   sql: string;
+  comment?: string;
 }
 
 export interface UniqueConstraintSchema {
   kind: 'UNIQUE';
+  name?: string;
+  columns: KeyColumnSchema[];
+  comment?: string;
+}
+
+export interface KeyColumnSchema {
   name: string;
-  columns: string[];
+  isAscending: boolean;
 }
 
 export interface PrimaryKeySchema {
-  name: string;
+  name?: string;
   /**
-   * 是否是聚焦索引
+   * 是否是非聚焦索引
    */
-  isClustered: boolean;
-  columns: {
-    name: string;
-    isAscending: boolean;
-  }[]
+  isNonclustered: boolean;
+  columns: KeyColumnSchema[]
 }
 
 
@@ -339,10 +345,7 @@ export interface IndexSchema {
   /**
    * 索引列
    */
-  columns: {
-    name: string;
-    isAscending: boolean;
-  }[];
+  columns: KeyColumnSchema[];
   comment?: string;
 }
 
@@ -405,7 +408,7 @@ export function generate(
       name: entity.tableName,
       primaryKey: {
         name: `PK_${entity.tableName}_${entity.keyColumn.columnName}`,
-        isClustered: true,
+        isNonclustered: true,
         columns: [{
           name: entity.keyColumn.columnName,
           isAscending: true
@@ -447,7 +450,7 @@ export function generate(
     const fk: ForeignKeySchema = {
       name: relation.constraintName,
       referenceTable: relation.referenceEntity.tableName,
-      foreignColumns: [relation.foreignColumn.columnName],
+      columns: [relation.foreignColumn.columnName],
       referenceColumns: [relation.referenceEntity.keyColumn.columnName],
       isCascade: relation.isCascade,
     };
