@@ -99,9 +99,8 @@ function genName(name: Name): string {
   );
 }
 
-function genCreateTable(table: TableSchema, indent: string = ''): string {
+function genCreateTable(table: TableSchema): string {
   const members: string[] = table.columns.map(col => genColumn(col));
-  const subIndent = nestIndent(indent);
   if (table.primaryKey) {
     members.push(genPrimaryKey(table.primaryKey));
   }
@@ -111,9 +110,7 @@ function genCreateTable(table: TableSchema, indent: string = ''): string {
   if (table.constraints?.length > 0) {
     members.push(...table.constraints.map(cst => genConstraint(cst)));
   }
-  let sql = `${indent}run(scripter.createTable(${genName(table.name)})
-${subIndent}.has(builder => [\n${subIndent}${members.join(`,\n${subIndent}`)}
-${indent}]))`;
+  let sql = `scripter.createTable(${genName(table.name)}).as(builder => [\n${members.join(`,\n`)}\n])`;
   return sql;
 }
 
@@ -464,19 +461,17 @@ export function genMigrateClass(
 export class ${name} implements Migrate {
 
   up(
-    run: (statement: Statement | string) => void,
     scripter: SqlBuilder,
     dialect: string | symbol
   ): void {
-    ${upcodes && upcodes.join(';\n      ') || ''}
+    ${(upcodes && upcodes.join(';\n      ')) || ''}
   }
 
   down(
-    run: (statement: Statement | string) => void,
     scripter: SqlBuilder,
     dialect: string | symbol
   ): void {
-    ${downcodes && downcodes.join(';\n      ') || ''}
+    ${(downcodes && downcodes.join(';\n      ')) || ''}
   }
 
 }

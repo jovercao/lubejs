@@ -1,21 +1,12 @@
-import {
-  $case,
-  convert,
-  DbType,
-  Executor,
-  select,
-  table,
-  unionAll,
-} from '../..';
-import { QueryHandler } from '../../execute'
-import { DbProvider } from '../../lube'
-import { DatabaseSchema } from '../../schema'
+import { SqlBuilder, DbType } from '../..';
+import { DbProvider } from '../../lube';
+import { DatabaseSchema } from '../../schema';
 
 import { groupBy } from './util';
 
-const excludeTables: string[] = [
-  '__Migrate'
-]
+const { case: $case, convert, select, table, unionAll } = SqlBuilder;
+
+const excludeTables: string[] = ['__Migrate'];
 
 export async function load(provider: DbProvider): Promise<DatabaseSchema> {
   async function getAllForeignKeys() {
@@ -63,7 +54,7 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
           .and(d.minor_id.eq(0))
       );
     const sqlTxt = provider.compiler.compile(sql).sql;
-    console.log(sqlTxt)
+    console.log(sqlTxt);
     const keys = (await provider.query(sqlTxt)).rows;
     const result = groupBy<any, any>(
       keys,
@@ -134,7 +125,7 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
         .where(v.name.notIn(...excludeTables))
     );
     const sqlTxt = provider.compiler.compile(sql).sql;
-    console.log(sqlTxt)
+    console.log(sqlTxt);
     const rows = (await provider.query(sqlTxt)).rows;
     // const rows = (await provider.query(provider.compiler.compile(sql).sql)).rows;
     return rows;
@@ -172,7 +163,8 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
       )
       .leftJoin(m, m.id.eq(c.default_object_id))
       .where(c.object_id.eq(tableId));
-    const rows = (await provider.query(provider.compiler.compile(sql).sql)).rows;
+    const rows = (await provider.query(provider.compiler.compile(sql).sql))
+      .rows;
     return rows;
   }
 
@@ -229,9 +221,7 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
       });
     });
     // table.primaryKey = table.indexes.find(p => p.isPrimaryKey)
-    table.foreignKeys = allForeignKeys.filter(
-      (key) => key.ftableId === table.id
-    );
+    table.foreignKeys = allForeignKeys.filter(key => key.ftableId === table.id);
 
     // table.referencedKeys = allForeignKeys.filter(p => p.rtableId === table.id)
   }
@@ -241,6 +231,6 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
     procedures: [],
     functions: [],
     sequences: [],
-    tables
+    tables,
   };
 }

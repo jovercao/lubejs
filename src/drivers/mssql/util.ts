@@ -56,11 +56,26 @@ export function formatSql(
   return sql;
 }
 
+// function fixNum(num: number, digits: number): string {
+//   return num.toString().padStart(digits, '0');
+// }
+
+// export function dateToString(date: Date): string {
+//   return `${date.getFullYear()}-${fixNum(date.getMonth() + 1, 2)}-${fixNum(
+//     date.getDate(),
+//     2
+//   )}T${fixNum(date.getHours(), 2)}:${fixNum(date.getMinutes(), 2)}:${fixNum(
+//     date.getSeconds(),
+//     2
+//   )}.${fixNum(date.getMilliseconds(), 3)}${
+//     date.getTimezoneOffset() > 0 ? '-' : '+'
+//   }${fixNum(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
+// }
+
 /**
  * 编译字面量
  */
-export function sqlifyLiteral(literal: Scalar): string {
-  const value = literal;
+export function sqlifyLiteral(value: Scalar): string {
   // 为方便JS，允许undefined进入，留给TS语法检查
   if (value === null || value === undefined) {
     return 'NULL';
@@ -69,7 +84,7 @@ export function sqlifyLiteral(literal: Scalar): string {
   const type = typeof value;
 
   if (type === 'string') {
-    return this.compileString(value as string);
+    return "'" + (value as string).replace(/'/g, "''") + "'";
   }
 
   if (type === 'number' || type === 'bigint') {
@@ -77,15 +92,15 @@ export function sqlifyLiteral(literal: Scalar): string {
   }
 
   if (type === 'boolean') {
-    return this.compileBoolean(value as boolean);
+    return value ? '1' : '0';
   }
 
   if (value instanceof Date) {
-    return this.compileDate(value);
+    return `CONVERT(DATETIMEOFFSET(7), '${value.toISOString()}')`;
   }
+
   if (isBinary(value)) {
     return '0x' + Buffer.from(value).toString('hex');
   }
-  console.debug('unsupport constant value type:', value);
-  throw new Error('unsupport constant value type:' + type);
+  throw new Error(`unsupport constant value type: ${type}, value: ${value}`);
 }

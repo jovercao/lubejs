@@ -1,27 +1,21 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { CompatibleCondition, FieldsOf, ProxiedTable, Table } from "./ast";
+import { FieldsOf, ProxiedTable } from "./ast";
 import { Executor } from "./execute";
 import { Queryable } from "./queryable";
 import {
   ColumnMetadata,
   isForeignOneToOne,
-  isForeignRelation,
   isManyToMany,
   isManyToOne,
   isOneToMany,
-  isPrimaryOneToOne,
-  metadataStore,
   RelationMetadata,
   TableEntityMetadata,
 } from "./metadata";
-import { identityValue } from "./std";
-import { and } from "./sql-builder";
-import { Constructor, Entity, EntitySymble, isStringType, RowObject, Scalar } from "./types";
-import { deepthEqual, ensureCondition } from "./util";
+import { Constructor, Entity, isStringType, Scalar } from "./types";
 import { Condition } from "./ast";
-import { DataAction } from "./data-monitor";
+import { SqlBuilder } from './sql-builder'
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 
@@ -134,7 +128,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       await this.executor.insert(this.rowset, data);
 
       const key = this.metadata.keyColumn.isIdentity
-        ? identityValue(
+        ? SqlBuilder.identityValue(
             this.metadata.tableName,
             this.metadata.keyColumn.columnName
           )

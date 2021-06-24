@@ -21,6 +21,9 @@ import {
   parseValueType,
   ensureTableVariant,
   ensureLiteral,
+  isCondition,
+  isBinaryLogicCondition,
+  joinConditions,
 } from './util';
 
 import {
@@ -42,10 +45,8 @@ import {
 } from './constants';
 import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from './types';
 import { Scalar } from './types';
-import { convert, identityValue } from './std';
-import { ColumnSchema, TableSchema } from './schema';
-import { name } from 'commander';
-// import { convert } from './std';
+import { TableSchema } from './schema';
+import SQL from './sql-builder'
 
 // /**
 //  * 混入函数，必须放最前面，避免循环引用导致无法获取
@@ -296,21 +297,21 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * 字符串连接运算
    */
   concat(expr: CompatibleExpression<string>): Expression<string> {
-    return Expression.concat(this as CompatibleExpression<string>, expr);
+    return SQL.concat(this as CompatibleExpression<string>, expr);
   }
 
   /**
    * 加法运算，返回数值，如果是字符串相加，请使用join函数连接
    */
   add(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.add(this as CompatibleExpression<number>, expr);
+    return SQL.add(this as CompatibleExpression<number>, expr);
   }
 
   /**
    * 减法运算
    */
   sub(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.sub(this as CompatibleExpression<number>, expr);
+    return SQL.sub(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -318,7 +319,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相乘的表达式
    */
   mul(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.mul(this as CompatibleExpression<number>, expr);
+    return SQL.mul(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -327,7 +328,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   div(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.div(this as CompatibleExpression<number>, expr);
+    return SQL.div(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -336,7 +337,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   mod(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.mod(this as CompatibleExpression<number>, expr);
+    return SQL.mod(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -345,7 +346,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   and(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.and(this as CompatibleExpression<number>, expr);
+    return SQL.and(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -354,7 +355,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   or(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.or(this as CompatibleExpression<number>, expr);
+    return SQL.or(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -363,7 +364,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   not(): Expression<number> {
-    return Expression.not(this as CompatibleExpression<number>);
+    return SQL.not(this as CompatibleExpression<number>);
   }
 
   /**
@@ -372,7 +373,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   xor(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.xor(this as CompatibleExpression<number>, expr);
+    return SQL.xor(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -381,7 +382,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   shl(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.shl(this as CompatibleExpression<number>, expr);
+    return SQL.shl(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -390,7 +391,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回运算后的表达式
    */
   shr(expr: CompatibleExpression<number>): Expression<number> {
-    return Expression.shr(this as CompatibleExpression<number>, expr);
+    return SQL.shr(this as CompatibleExpression<number>, expr);
   }
 
   /**
@@ -399,7 +400,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   eq(expr: CompatibleExpression<T>): Condition {
-    return Condition.eq(this, expr);
+    return SQL.eq(this, expr);
   }
 
   /**
@@ -408,7 +409,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   neq(expr: CompatibleExpression<T>): Condition {
-    return Condition.neq(this, expr);
+    return SQL.neq(this, expr);
   }
 
   /**
@@ -417,7 +418,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   lt(expr: CompatibleExpression<T>): Condition {
-    return Condition.lt(this, expr);
+    return SQL.lt(this, expr);
   }
 
   /**
@@ -426,7 +427,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   lte(expr: CompatibleExpression<T>): Condition {
-    return Condition.lte(this, expr);
+    return SQL.lte(this, expr);
   }
 
   /**
@@ -435,7 +436,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   gt(expr: CompatibleExpression<T>): Condition {
-    return Condition.gt(this, expr);
+    return SQL.gt(this, expr);
   }
 
   /**
@@ -444,7 +445,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   gte(expr: CompatibleExpression<T>): Condition {
-    return Condition.gte(this, expr);
+    return SQL.gte(this, expr);
   }
 
   /**
@@ -453,7 +454,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   like(expr: CompatibleExpression<string>): Condition {
-    return Condition.like(this as CompatibleExpression<string>, expr);
+    return SQL.like(this as CompatibleExpression<string>, expr);
   }
 
   /**
@@ -462,7 +463,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   notLike(expr: CompatibleExpression<string>): Condition {
-    return Condition.notLike(this as CompatibleExpression<string>, expr);
+    return SQL.notLike(this as CompatibleExpression<string>, expr);
   }
 
   /**
@@ -483,9 +484,9 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
       values.length === 1 &&
       (isSelect(values[0]) || Array.isArray(values[0]))
     ) {
-      return Condition.in(this, values[0] as any);
+      return SQL.in(this, values[0] as any);
     }
-    return Condition.in(this, values as any);
+    return SQL.in(this, values as any);
   }
 
   /**
@@ -494,7 +495,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   notIn(...values: CompatibleExpression<T>[]): Condition {
-    return Condition.notIn(this, values);
+    return SQL.notIn(this, values);
   }
 
   /**
@@ -502,7 +503,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   isNull(): Condition {
-    return Condition.isNull(this);
+    return SQL.isNull(this);
   }
 
   /**
@@ -510,7 +511,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   isNotNull(): Condition {
-    return Condition.isNotNull(this);
+    return SQL.isNotNull(this);
   }
 
   /**
@@ -548,198 +549,14 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * 将本表达式括起来
    */
   enclose(): Expression<T> {
-    return Expression.enclose(this);
+    return SQL.enclose(this);
   }
 
   /**
    * 将当前表达式转换为指定的类型
    */
   to<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
-    return convert(this, type);
-  }
-
-  static identityValue(table: string, column: string): Expression<number> {
-    return identityValue(table, column);
-  }
-
-  /**
-   * 括号表达式，将表达式括起来，如优先级
-   */
-  static enclose<T extends Scalar>(
-    value: CompatibleExpression<T>
-  ): Expression<T> {
-    return new ParenthesesExpression(value);
-  }
-
-  /**
-   * 算术运算 +
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static neg(expr: CompatibleExpression<number>): Expression<number> {
-    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
-  }
-
-  /**
-   * 字符串连接运算
-   */
-  static concat(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
-  ): Expression<string> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, left, right);
-  }
-
-  /**
-   * 算术运算 +
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static add(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
-  }
-
-  /**
-   * 算术运算 -
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static sub(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
-  }
-
-  /**
-   * 算术运算 *
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static mul(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
-  }
-
-  /**
-   * 算术运算 /
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static div(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
-  }
-
-  /**
-   * 算术运算 %
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static mod(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
-  }
-
-  /**
-   * 位算术运算 &
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static and(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.AND, left, right);
-  }
-
-  /**
-   * 位算术运算 |
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static or(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.OR, left, right);
-  }
-
-  /**
-   * 位算术运算 ^
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static xor(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
-  }
-
-  /**
-   * 位算术运算 ~
-   * @param value 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static not(value: CompatibleExpression<number>): Expression<number> {
-    return new UnaryOperation(UNARY_OPERATION_OPERATOR.NOT, value);
-  }
-
-  /**
-   * 位算术运算 <<
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static shl(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
-  }
-
-  /**
-   * 位算术运算 >>
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回算术运算表达式
-   */
-  static shr(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
-  }
-
-  // static convert<T extends DbType>(
-  //   expr: CompatibleExpression<Scalar>,
-  //   toType: T
-  // ): Expression<TsTypeOf<T>> {
-  //   return convert(expr, toType);
-  // }
-
-  static literal<T extends Scalar>(value: T): Literal<T> {
-    return new Literal(value);
+    return SQL.convert(this, type);
   }
 }
 
@@ -777,280 +594,6 @@ export abstract class Condition extends AST {
   or(condition: Condition): Condition {
     condition = ensureCondition(condition);
     return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, condition);
-  }
-
-  /**
-   * 使用逻辑表达式联接多个条件
-   */
-  private static join(
-    logic: LOGIC_OPERATOR.AND | LOGIC_OPERATOR.OR,
-    conditions: CompatibleCondition[]
-  ): Condition {
-    if (conditions.length < 2) {
-      throw new Error(`conditions must more than or equals 2 element.`);
-    }
-    return Condition.enclose(
-      conditions.reduce((previous, current) => {
-        let condition = ensureCondition(current);
-        // 如果是二元逻辑条件运算，则将其用括号括起来，避免逻辑运算出现优先级的问题
-        if (condition.$kind === CONDITION_KIND.BINARY_LOGIC) {
-          condition = Condition.enclose(condition);
-        }
-        if (!previous) return condition;
-        return new BinaryLogicCondition(logic, previous, condition);
-      })
-    );
-  }
-
-  /**
-   * 将多个查询条件通过 AND 合并成一个大查询条件
-   * @static
-   * @param conditions 查询条件列表
-   * @returns 返回逻辑表达式
-   */
-  static and(conditions: CompatibleCondition[]): Condition;
-  static and(
-    ...conditions: [
-      CompatibleCondition,
-      CompatibleCondition,
-      ...CompatibleCondition[]
-    ]
-  ): Condition;
-
-  static and(
-    ...conditions: CompatibleCondition[] | [CompatibleCondition[]]
-  ): Condition {
-    if (Array.isArray(conditions[0])) {
-      conditions = conditions[0];
-    }
-    return Condition.join(
-      LOGIC_OPERATOR.AND,
-      conditions as CompatibleCondition[]
-    );
-  }
-
-  /**
-   * 将多个查询条件通过 OR 合并成一个
-   * @static
-   * @param conditions 查询条件列表
-   * @returns 返回逻辑表达式
-   */
-  static or(conditions: CompatibleCondition[]): Condition;
-  static or(
-    ...conditions: [
-      CompatibleCondition,
-      CompatibleCondition,
-      ...CompatibleCondition[]
-    ]
-  ): Condition;
-
-  static or(
-    ...conditions: CompatibleCondition[] | [CompatibleCondition[]]
-  ): Condition {
-    if (Array.isArray(conditions[0])) {
-      conditions = conditions[0] as CompatibleCondition[];
-    }
-    return Condition.join(
-      LOGIC_OPERATOR.OR,
-      conditions as CompatibleCondition[]
-    );
-  }
-
-  /**
-   * Not 逻辑运算
-   * @param condition
-   */
-  static not(condition: Condition): Condition {
-    condition = ensureCondition(condition);
-    return new UnaryLogicCondition(LOGIC_OPERATOR.NOT, condition);
-  }
-
-  /**
-   * 判断是否存在
-   * @param select 查询语句
-   */
-  static exists(select: Select<any>): Condition {
-    return new ExistsCondition(select);
-  }
-
-  /**
-   * 比较运算 =
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static eq<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.EQ, left, right);
-  }
-
-  /**
-   * 比较运算 <>
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static neq<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.NEQ, left, right);
-  }
-
-  /**
-   * 比较运算 <
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static lt<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.LT, left, right);
-  }
-
-  /**
-   * 比较运算 <=
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static lte<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.LTE, left, right);
-  }
-
-  /**
-   * 比较运算 >
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static gt<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.GT, left, right);
-  }
-
-  /**
-   * 比较运算 >=
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static gte<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
-  ): Condition {
-    return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.GTE, left, right);
-  }
-
-  /**
-   * 比较运算 LIKE
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static like(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
-  ): Condition {
-    return new BinaryCompareCondition(
-      BINARY_COMPARE_OPERATOR.LIKE,
-      left,
-      right
-    );
-  }
-
-  /**
-   * 比较运算 NOT LIKE
-   * @param left 左值
-   * @param right 右值
-   * @returns 返回比较运算对比条件
-   */
-  static notLike(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
-  ): Condition {
-    return new BinaryCompareCondition(
-      BINARY_COMPARE_OPERATOR.NOT_LIKE,
-      left,
-      right
-    );
-  }
-
-  /**
-   * 比较运算 IN
-   * @param left 左值
-   * @param values 要比较的值列表
-   * @returns 返回比较运算对比条件
-   */
-  static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    select: Select<any>
-  ): Condition;
-  static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[]
-  ): Condition;
-  static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[] | Select<any>
-  ): Condition {
-    return new BinaryCompareCondition(
-      BINARY_COMPARE_OPERATOR.IN,
-      left,
-      isSelect(values) ? values.asValue() : values.map(v => ensureExpression(v))
-    );
-  }
-
-  /**
-   * 比较运算 NOT IN
-   * @param left 左值
-   * @param values 要比较的值列表
-   * @returns 返回比较运算对比条件
-   */
-  static notIn<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[]
-  ): Condition {
-    return new BinaryCompareCondition(
-      BINARY_COMPARE_OPERATOR.NOT_IN,
-      left,
-      values.map(v => ensureExpression(v))
-    );
-  }
-
-  /**
-   * 比较运算 IS NULL
-   * @returns 返回比较运算符
-   * @param expr 表达式
-   */
-  static isNull(expr: CompatibleExpression<Scalar>): Condition {
-    return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NULL, expr);
-  }
-
-  /**
-   * 比较运算 IS NOT NULL
-   * @param expr 表达式
-   * @returns 返回比较运算符
-   */
-  static isNotNull(expr: CompatibleExpression<Scalar>): Condition {
-    return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NOT_NULL, expr);
-  }
-
-  /**
-   * 将查询条件用括号包括
-   * @param condition 查询条件
-   */
-  static enclose(condition: CompatibleCondition<any>): Condition {
-    return new ParenthesesCondition(condition);
   }
 }
 
@@ -1240,65 +783,6 @@ export abstract class Identifier<N extends string = string> extends AST {
    * 标识符类别
    */
   readonly $kind: IDENTOFIER_KIND;
-
-  /**
-   * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
-   * @param name
-   */
-  static table<T extends RowObject = any>(
-    modelCtr: ModelClass<T>
-  ): ProxiedTable<T, string>;
-  static table<
-    T extends RowObject = DefaultRowObject,
-    N extends string = string
-  >(name: Name<N>): ProxiedTable<T, N>;
-  static table<T extends RowObject = DefaultRowObject>(
-    nameOrModel: Name | ModelClass<T>
-  ): ProxiedTable<T, string> {
-    if (typeof nameOrModel === 'function') {
-      return makeProxiedRowset(new Table<T, string>(nameOrModel.name));
-    }
-    return makeProxiedRowset(new Table<T, string>(nameOrModel));
-  }
-
-  /**
-   * 声明一个函数
-   */
-  static func<N extends string>(name: Name<N>, builtIn = false): Func<N> {
-    return new Func(name, builtIn);
-  }
-
-  /**
-   * 创建一个可供调用的存储过程函数
-   */
-  static proc<
-    R extends Scalar = number,
-    O extends RowObject[] = never,
-    N extends string = string
-  >(name: Name<N>, buildIn = false): Procedure<R, O, N> {
-    return new Procedure<R, O, N>(name, buildIn);
-  }
-
-  /**
-   * 创建一个字段
-   */
-  static field<T extends Scalar, N extends string>(name: Name<N>): Field<T, N> {
-    return new Field(name);
-  }
-
-  static builtIn<T extends string>(name: T): BuiltIn<T> {
-    return new BuiltIn(name);
-  }
-
-  static var<T extends Scalar, N extends string = string>(
-    name: N
-  ): Variant<T, N> {
-    return new Variant(name);
-  }
-
-  static get star(): Star<any> {
-    return new Star<any>();
-  }
 }
 
 /**
@@ -2633,605 +2117,6 @@ export abstract class Statement extends AST {
     | SQL_SYMBOLE.CREATE_SEQUENCE
     | SQL_SYMBOLE.DROP_SEQUENCE
     | SQL_SYMBOLE.ANNOTATION;
-  /**
-   * 插入至表,into的别名
-   * @param table
-   * @param fields
-   */
-  static insert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
-  ): Insert<T> {
-    return new Insert(table, fields);
-  }
-
-  /**
-   * 插入至表,into的别名
-   * @param table
-   * @param fields
-   */
-  static identityInsert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
-  ): Insert<T> {
-    return new Insert(table, fields).withIdentity();
-  }
-
-  /**
-   * 更新一个表格
-   * @param table
-   */
-  static update<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
-  ): Update<T> {
-    return new Update(table);
-  }
-
-  /**
-   * 删除一个表格
-   * @param table 表格
-   */
-  static delete<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
-  ): Delete<T> {
-    return new Delete(table);
-  }
-
-  static select: SelectAction = (...args: any[]): any => {
-    return new Select(...args);
-  };
-
-  static raw(sql: string): any {
-    return new Raw(sql);
-  }
-
-  static block(statements: Statement[]): Block {
-    return new Block(statements);
-  }
-
-  /**
-   * 执行一个存储过程
-   * @param proc
-   * @param params
-   */
-  // static execute<T extends Model> (
-  //   proc: Name | Procedure<T, string>,
-  //   params?: Expressions<JsConstant>[]
-  // ): Execute<T>
-  // static execute<T extends Model> (
-  //   proc: Name | Procedure<T, string>,
-  //   params?: InputObject
-  // ): Execute<T>
-  static execute<R extends Scalar = any, O extends RowObject[] = []>(
-    proc: Name | Procedure<R, O, string>,
-    params?: CompatibleExpression<Scalar>[]
-    // | Parameter<JsConstant, string>[] | InputObject
-  ): Execute<R, O> {
-    return new Execute(proc, params);
-  }
-
-  static invokeTableFunction<T extends RowObject = any>(
-    func: Name | Func<string>,
-    args: CompatibleExpression<Scalar>[]
-  ): ProxiedRowset<T> {
-    return makeProxiedRowset(new TableFuncInvoke<T>(func, args));
-  }
-
-  static invokeScalarFunction<T extends Scalar = any>(
-    func: Name | Func<string>,
-    args: CompatibleExpression<Scalar>[]
-  ): ScalarFuncInvoke<T> {
-    return new ScalarFuncInvoke<T>(func, args);
-  }
-
-  static makeInvoke<T extends RowObject>(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): () => ProxiedRowset<T>;
-  static makeInvoke<T extends RowObject, A1 extends CompatibleExpression>(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
-
-  static makeInvoke(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
-
-  static makeInvoke<T extends Scalar>(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): () => Expression<T>;
-  static makeInvoke<T extends Scalar, A1 extends CompatibleExpression>(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
-
-  static makeInvoke(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => Expression<any>;
-
-  static makeInvoke(
-    type: 'table' | 'scalar',
-    name: Name,
-    builtIn = false
-  ): (
-    ...args: CompatibleExpression[]
-  ) => Expression | ProxiedRowset<RowObject> {
-    if (type === 'table') {
-      return function (
-        ...args: CompatibleExpression[]
-      ): ProxiedRowset<RowObject> {
-        return Statement.invokeTableFunction(
-          Identifier.func(name, builtIn),
-          args
-        );
-      };
-    }
-    if (type === 'scalar') {
-      return function (...args: CompatibleExpression<Scalar>[]): Expression {
-        return Statement.invokeScalarFunction<Scalar>(
-          Identifier.func(name, builtIn),
-          args
-        );
-      };
-    }
-    throw new Error('invalid arg value of `type`');
-  }
-
-  /**
-   * 创建一个可供JS调用的存储过程
-   */
-  static makeExec<R extends Scalar = number, O extends RowObject[] = []>(
-    name: Name,
-    builtIn?: boolean
-  ): () => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(name: Name, builtIn?: boolean): (arg1: A1) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(name: Name, builtIn?: boolean): (arg1: A1, arg2: A2) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Execute<R, O>;
-
-  static makeExec(
-    name: Name,
-    builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => Expression<any>;
-
-  static makeExec(
-    name: Name,
-    builtIn = false
-  ): (...args: CompatibleExpression[]) => void {
-    return function (
-      ...args: CompatibleExpression<Scalar>[]
-    ): Execute<any, any> {
-      return Statement.execute(
-        Identifier.proc<Scalar, any, string>(name, builtIn),
-        args
-      );
-    };
-  }
-
-  /**
-   * 赋值语句
-   * @param left 左值
-   * @param right 右值
-   */
-  static assign<T extends Scalar = any>(
-    left: Assignable<T>,
-    right: CompatibleExpression<T>
-  ): Assignment<T> {
-    return new Assignment(left, right);
-  }
-
-  /**
-   * 变量声明
-   * @param declares 变量列表
-   */
-  static declare(
-    build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
-  ): Declare {
-    return new Declare(build);
-  }
-
-  /**
-   * WHEN 语句块
-   * @param expr
-   * @param value
-   */
-  static when<T extends Scalar>(
-    expr: CompatibleExpression<Scalar>,
-    value?: CompatibleExpression<T>
-  ): When<T> {
-    return new When(expr, value);
-  }
-
-  static case<T extends Scalar>(expr?: CompatibleExpression): Case<T> {
-    return new Case<T>(expr);
-  }
-
-  /**
-   * With语句
-   */
-  static with(...rowsets: CompatibleNamedSelect[]): With;
-  static with(rowsets: Record<string, Select>): With;
-  static with(...rowsets: any): With {
-    if (rowsets.length === 1 && isPlainObject(rowsets)) {
-      return new With(rowsets[0]);
-    }
-    return new With(rowsets);
-  }
-
-  static union<T extends RowObject = any>(...selects: Select<T>[]): Select<T> {
-    selects.forEach((sel, index) => {
-      if (index < selects.length - 1) sel.union(selects[index + 1]);
-    });
-    return selects[0];
-  }
-
-  static unionAll<T extends RowObject = any>(
-    ...selects: Select<T>[]
-  ): Select<T> {
-    selects.forEach((sel, index) => {
-      if (index < selects.length - 1) sel.unionAll(selects[index + 1]);
-    });
-    return selects[0];
-  }
-
-  static invoke<T extends RowObject>(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): () => ProxiedRowset<T>;
-  static invoke<T extends RowObject, A1 extends CompatibleExpression>(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1) => ProxiedRowset<T>;
-  static invoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
-  static invoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
-  static invoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
-  static invoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
-
-  static invoke(
-    type: 'table',
-    name: Name,
-    builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
-
-  static invoke<T extends Scalar>(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): () => Expression<T>;
-  static invoke<T extends Scalar, A1 extends CompatibleExpression>(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1) => Expression<T>;
-  static invoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => Expression<T>;
-  static invoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
-  static invoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
-  static invoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
-
-  static invoke(
-    type: 'scalar',
-    name: Name,
-    builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => Expression<any>;
-
-  static invoke(
-    type: 'table' | 'scalar',
-    name: Name,
-    builtIn = false
-  ): (
-    ...args: CompatibleExpression[]
-  ) => Expression | ProxiedRowset<RowObject> {
-    if (type === 'table') {
-      return function (
-        ...args: CompatibleExpression[]
-      ): ProxiedRowset<RowObject> {
-        return Statement.invokeTableFunction(
-          Identifier.func(name, builtIn),
-          args
-        );
-      };
-    }
-    if (type === 'scalar') {
-      return function (...args: CompatibleExpression<Scalar>[]): Expression {
-        return Statement.invokeScalarFunction<Scalar>(
-          Identifier.func(name, builtIn),
-          args
-        );
-      };
-    }
-    throw new Error('invalid arg value of `type`');
-  }
-
-  /**
-   * 创建表格
-   * @param name
-   * @param members
-   * @returns
-   */
-  static createTable<N extends string>(
-    name: Name<N>
-  ): CreateTable<N> {
-    return new CreateTable(name);
-  }
-
-  static alterTable<N extends string>(name: Name<N>): AlterTable<N> {
-    return new AlterTable(name);
-  }
-
-  static createView<T extends RowObject = any, N extends string = string>(
-    name: Name<N>
-  ): CreateView<T, N> {
-    return new CreateView(name);
-  }
-
-  static alterView<T extends RowObject = any, N extends string = string>(
-    name: Name<N>
-  ): AlterView<T, N> {
-    return new AlterView(name);
-  }
-
-  static createIndex(name: string): CreateIndex {
-    return new CreateIndex(name);
-  }
-
-  static createProcedure(name: string): CreateProcedure {
-    return new CreateProcedure(name);
-  }
-
-  static alterProcedure(name: string): AlterProcedure {
-    return new AlterProcedure(name);
-  }
-
-  static createScalarFunction(name: Name): CreateFunction {
-    return new CreateFunction(name, 'SCALAR');
-  }
-
-  static createTableFunction(name: Name): CreateFunction {
-    return new CreateFunction(name, 'TABLE');
-  }
-
-  static alterScalarFunction(name: Name): AlterFunction {
-    return new AlterFunction(name, 'SCALAR');
-  }
-
-  static alterTableFunction(name: Name): AlterFunction {
-    return new AlterFunction(name, 'TABLE');
-  }
-
-  static dropTable<N extends string>(name: Name<N>): DropTable<N> {
-    return new DropTable(name);
-  }
-
-  static dropView<N extends string>(name: Name<N>): DropView<N> {
-    return new DropView(name);
-  }
-
-  static dropProcedure<N extends string>(name: Name<N>): DropProcedure<N> {
-    return new DropProcedure(name);
-  }
-
-  static dropFunction<N extends string>(name: Name<N>): DropFunction<N> {
-    return new DropFunction(name);
-  }
-
-  static dropIndex<N extends string>(table: Name, name: N): DropIndex<N> {
-    return new DropIndex(table, name);
-  }
-
-  static annotation(text: string, kind: AnnotationKind = 'LINE'): Annotation {
-    return new Annotation(kind, text);
-  }
 }
 
 /**
@@ -4088,6 +2973,15 @@ export interface DeclareBuilder {
   table(name: string, schema: TableSchema): TableVariantDeclare;
 }
 
+export const DeclareBuilder: DeclareBuilder = {
+  variant(name: string, type: DbType): VariantDeclare {
+    return new VariantDeclare(name, type);
+  },
+  table(name: string, schema: TableSchema): TableVariantDeclare {
+    return new TableVariantDeclare(name, schema);
+  },
+};
+
 /**
  * 声明语句，暂时只支持变量声明
  */
@@ -4098,15 +2992,7 @@ export class Declare extends Statement {
     build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
   ) {
     super();
-    this.$declares.push(...build(Declare));
-  }
-
-  static variant(name: string, type: DbType): VariantDeclare {
-    return new VariantDeclare(name, type);
-  }
-
-  static table(name: string, schema: TableSchema): TableVariantDeclare {
-    return new TableVariantDeclare(name, schema);
+    this.$declares.push(...build(DeclareBuilder));
   }
 }
 
@@ -4150,28 +3036,6 @@ export class Parameter<T extends Scalar = any, N extends string = string>
     this.$name = name;
     this.value = value; // ensureConstant(value)
     this.direction = direction;
-  }
-
-  /**
-   * input 参数
-   */
-  static input<T extends Scalar, N extends string>(
-    name: N,
-    value: T,
-    type?: DbTypeOf<T>
-  ): Parameter<T, N> {
-    return new Parameter(name, type, value, PARAMETER_DIRECTION.INPUT);
-  }
-
-  /**
-   * output参数
-   */
-  static output<T extends DbType, N extends string>(
-    name: N,
-    type: T,
-    value?: TsTypeOf<T>
-  ): Parameter<TsTypeOf<T>, N> {
-    return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
   }
 }
 
@@ -4286,7 +3150,7 @@ export class With extends AST {
    * select查询
    */
   select: SelectAction = (...args: any[]) => {
-    const sql = Statement.select.call(Statement, ...args);
+    const sql = SQL.select.call(Statement, ...args);
     sql.$with = this;
     return sql;
   };
@@ -4300,7 +3164,7 @@ export class With extends AST {
     table: Name | CompatibleTable<T, string>,
     fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Insert<T> {
-    const sql = Statement.insert(table, fields);
+    const sql = SQL.insert(table, fields);
     sql.$with = this;
     return sql;
   }
@@ -4312,7 +3176,7 @@ export class With extends AST {
   update<T extends RowObject = any>(
     table: Name | CompatibleTable<T, string>
   ): Update<T> {
-    const sql = Statement.update(table);
+    const sql = SQL.update(table);
     sql.$with = this;
     return sql;
   }
@@ -4324,7 +3188,7 @@ export class With extends AST {
   delete<T extends RowObject = any>(
     table: Name | CompatibleTable<T, string>
   ): Delete<T> {
-    const sql = Statement.delete(table);
+    const sql = SQL.delete(table);
     sql.$with = this;
     return sql;
   }
@@ -4374,10 +3238,12 @@ export class With extends AST {
 
 export interface KeyColumn {
   name: string;
-  sort: SORT_DIRECTION;
+  sort: 'ASC' | 'DESC';
 }
 
 export type KeyColumns = KeyColumn[];
+
+export type KeyColumnsObject = Record<string, 'ASC' | 'DESC'>;
 
 export class PrimaryKey extends AST {
   $type: SQL_SYMBOLE.PRIMARY_KEY = SQL_SYMBOLE.PRIMARY_KEY;
@@ -4390,7 +3256,7 @@ export class PrimaryKey extends AST {
 
   constructor(
     name?: string,
-    columns?: KeyColumns | string[] | Record<string, SORT_DIRECTION>
+    columns?: KeyColumns | string[] | KeyColumnsObject
   ) {
     super();
     this.$name = name;
@@ -4399,7 +3265,7 @@ export class PrimaryKey extends AST {
     }
   }
 
-  on(columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>): this {
+  on(columns: KeyColumns | string[] | KeyColumnsObject): this {
     if (this.$columns) {
       throw new Error(`Columns is defined.`);
     }
@@ -4448,7 +3314,7 @@ export class UniqueKey {
 
   constructor(
     name?: string,
-    columns?: KeyColumns | string[] | Record<string, SORT_DIRECTION>
+    columns?: KeyColumns | string[] | KeyColumnsObject
   ) {
     this.$name = name;
     if (columns) {
@@ -4456,7 +3322,7 @@ export class UniqueKey {
     }
   }
 
-  on(columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>): this {
+  on(columns: KeyColumns | string[] | KeyColumnsObject): this {
     if (this.$columns) {
       throw new Error(`Columns is defined.`);
     }
@@ -4527,6 +3393,31 @@ export interface CreateTableMemberBuilder {
   uniqueKey(name?: string): UniqueKey;
 }
 
+export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): CreateTableColumn<N> {
+    return new CreateTableColumn(name, type);
+  },
+  primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  },
+  foreignKey(name?: string): ForeignKey {
+    return new ForeignKey(name);
+  },
+  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
+    let name: string;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  },
+  uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  },
+};
+
 export class CreateTable<N extends string = string> extends Statement {
   $type: SQL_SYMBOLE.CREATE_TABLE = SQL_SYMBOLE.CREATE_TABLE;
   $members: CreateTableMember[];
@@ -4550,7 +3441,7 @@ export class CreateTable<N extends string = string> extends Statement {
       | CreateTableMember[]
   ): this {
     if (typeof members[0] === 'function') {
-      this.as(...members[0](CreateTable.memberBuilder));
+      this.as(...members[0](CreateTableMemberBuilder));
       return this;
     }
     if (!this.$members) {
@@ -4559,31 +3450,6 @@ export class CreateTable<N extends string = string> extends Statement {
     this.$members.push(...(members as CreateTableMember[]));
     return this;
   }
-
-  static readonly memberBuilder: CreateTableMemberBuilder = {
-    column<N extends string, T extends DbType>(
-      name: N,
-      type: T
-    ): CreateTableColumn<N> {
-      return new CreateTableColumn(name, type);
-    },
-    primaryKey(name?: string): PrimaryKey {
-      return new PrimaryKey(name);
-    },
-    foreignKey(name?: string): ForeignKey {
-      return new ForeignKey(name);
-    },
-    check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
-      let name: string;
-      if (typeof nameOrSql === 'string') {
-        name = nameOrSql;
-      }
-      return new CheckConstraint(sql, name);
-    },
-    uniqueKey(name?: string): UniqueKey {
-      return new UniqueKey(name);
-    },
-  };
 }
 
 export class CreateIndex extends Statement {
@@ -4609,10 +3475,7 @@ export class CreateIndex extends Statement {
     return this;
   }
 
-  on(
-    table: Name,
-    columns: KeyColumns | string[] | Record<string, SORT_DIRECTION>
-  ): this {
+  on(table: Name, columns: KeyColumns | string[] | KeyColumnsObject): this {
     if (this.$table) {
       throw new Error(`Table & Columns is defined.`);
     }
@@ -4679,6 +3542,60 @@ export interface AlterTableDropBuilder {
   uniqueKey(name: string): AlterTableDropMember;
 }
 
+export const AlterTableDropBuilder: AlterTableDropBuilder = {
+  column(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.COLUMN, name);
+  },
+
+  primaryKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY, name);
+  },
+
+  foreignKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY, name);
+  },
+
+  check(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(
+      SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT,
+      name
+    );
+  },
+
+  uniqueKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY, name);
+  },
+};
+
+export const AlterTableAddBuilder: AlterTableAddBuilder = {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): AlterTableColumn<N> {
+    return new AlterTableColumn(name, type);
+  },
+
+  primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  },
+
+  foreignKey(name?: string): ForeignKey {
+    return new ForeignKey(name);
+  },
+
+  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
+    let name: string;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  },
+
+  uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  },
+};
+
 export class AlterTable<N extends string = string> extends Statement {
   $type: SQL_SYMBOLE.ALTER_TABLE = SQL_SYMBOLE.ALTER_TABLE;
   $name: Name<N>;
@@ -4705,7 +3622,7 @@ export class AlterTable<N extends string = string> extends Statement {
       throw new Error(`A alter statement is only used by add or drop.`);
     }
     if (typeof members[0] === 'function') {
-      this.add(...members[0](AlterTable.addBuilder));
+      this.add(...members[0](AlterTableAddBuilder));
       return this;
     }
     if (!this.$adds) {
@@ -4721,7 +3638,7 @@ export class AlterTable<N extends string = string> extends Statement {
     ...members:
       | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
       | AlterTableDropMember[]
-  ): this
+  ): this;
   drop(
     ...members:
       | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
@@ -4734,87 +3651,32 @@ export class AlterTable<N extends string = string> extends Statement {
       this.$drops = [];
     }
     if (typeof members[0] === 'function') {
-      this.drop(...members[0](AlterTable.dropBuilder));
+      this.drop(...members[0](AlterTableDropBuilder));
       return this;
     }
     this.$drops.push(...(members as AlterTableDropMember[]));
     return this;
   }
 
-  alterColumn(buildColumn: AlterTableColumn | ((builder: (name: string, type: DbType) => AlterTableColumn) => AlterTableColumn)): this {
+  alterColumn(
+    buildColumn:
+      | AlterTableColumn
+      | ((
+          builder: (name: string, type: DbType) => AlterTableColumn
+        ) => AlterTableColumn)
+  ): this {
     if (this.$adds || this.$drops || this.$alterColumn) {
-      throw new Error(`A alter statement is only used by add or drop or alterColumn.`);
+      throw new Error(
+        `A alter statement is only used by add or drop or alterColumn.`
+      );
     }
     if (typeof buildColumn === 'function') {
-      this.$alterColumn = buildColumn(AlterTable.addBuilder.column);
+      this.$alterColumn = buildColumn(AlterTableAddBuilder.column);
     } else {
       this.$alterColumn = buildColumn;
     }
     return this;
   }
-
-  static readonly dropBuilder: AlterTableDropBuilder = {
-    column(name: string): AlterTableDropMember {
-      return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.COLUMN, name);
-    },
-
-    primaryKey(name: string): AlterTableDropMember {
-      return new AlterTableDropMember(
-        SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY,
-        name
-      );
-    },
-
-    foreignKey(name: string): AlterTableDropMember {
-      return new AlterTableDropMember(
-        SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY,
-        name
-      );
-    },
-
-    check(name: string): AlterTableDropMember {
-      return new AlterTableDropMember(
-        SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT,
-        name
-      );
-    },
-
-    uniqueKey(name: string): AlterTableDropMember {
-      return new AlterTableDropMember(
-        SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY,
-        name
-      );
-    },
-  };
-
-  static readonly addBuilder: AlterTableAddBuilder = {
-    column<N extends string, T extends DbType>(
-      name: N,
-      type: T
-    ): AlterTableColumn<N> {
-      return new AlterTableColumn(name, type);
-    },
-
-    primaryKey(name?: string): PrimaryKey {
-      return new PrimaryKey(name);
-    },
-
-    foreignKey(name?: string): ForeignKey {
-      return new ForeignKey(name);
-    },
-
-    check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
-      let name: string;
-      if (typeof nameOrSql === 'string') {
-        name = nameOrSql;
-      }
-      return new CheckConstraint(sql, name);
-    },
-
-    uniqueKey(name?: string): UniqueKey {
-      return new UniqueKey(name);
-    },
-  };
 }
 
 abstract class TableColumn<N extends string = string> extends AST {

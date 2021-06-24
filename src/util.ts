@@ -81,6 +81,7 @@ import {
   CreateSequence,
   DropSequence,
   Annotation,
+  CompatibleCondition,
 } from './ast';
 
 import {
@@ -89,7 +90,9 @@ import {
   OPERATION_KIND,
   $IsProxy,
   SQL_SYMBOLE,
+  LOGIC_OPERATOR,
 } from './constants';
+import { SqlBuilder } from './sql-builder'
 
 import {
   Binary,
@@ -118,7 +121,7 @@ export function ensureLiteral<T extends Scalar>(
   value: T | Literal<T>
 ): Literal<T> {
   if (isLiteral(value)) return value;
-  return Expression.literal(value);
+  return SqlBuilder.literal(value);
 }
 
 /**
@@ -128,7 +131,7 @@ export function ensureExpression<T extends Scalar>(
   expr: CompatibleExpression<T>
 ): Expression<T> {
   if (!(expr instanceof AST)) {
-    return Expression.literal(expr);
+    return SqlBuilder.literal(expr);
   }
   return expr;
 }
@@ -257,7 +260,7 @@ export function ensureCondition<T extends RowObject>(
     return field.eq(value);
   });
 
-  return compares.length >= 2 ? Condition.and(compares) : compares[0];
+  return compares.length >= 2 ? SqlBuilder.and(compares) : compares[0];
 }
 
 function makeProxied<T extends RowObject>(
@@ -419,22 +422,6 @@ export function pathName<T extends string>(name: Name<T>): PathedName<T> {
 
 export function isPlainObject(obj: any): boolean {
   return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
-}
-
-function fix(num: number, digits: number): string {
-  return num.toString().padStart(digits, '0');
-}
-
-export function dateToString(date: Date): string {
-  return `${date.getFullYear()}-${fix(date.getMonth() + 1, 2)}-${fix(
-    date.getDate(),
-    2
-  )}T${fix(date.getHours(), 2)}:${fix(date.getMinutes(), 2)}:${fix(
-    date.getSeconds(),
-    2
-  )}.${fix(date.getMilliseconds(), 3)}${
-    date.getTimezoneOffset() > 0 ? '-' : '+'
-  }${fix(Math.abs(date.getTimezoneOffset() / 60), 2)}:00`;
 }
 
 export function isStandardExpression(value: any): value is StandardExpression {
@@ -956,4 +943,27 @@ export function map<T>(
   const map: Record<string, T> = {};
   list.forEach(item => (map[keyer(item)] = item));
   return map;
+}
+
+
+/**
+ * 使用逻辑表达式联接多个条件
+ */
+export function joinConditions(
+  logic: LOGIC_OPERATOR.AND | LOGIC_OPERATOR.OR,
+  conditions: CompatibleCondition[]
+): Condition {
+  if (conditions.length < 2) {
+    throw new Error(`conditions must more than or equals 2 element.`);
+  }
+  const cond: Condition = conditions.reduce((previous, current) => {
+    let condition = ensureCondition(current);
+    // 如果是二元逻辑条件运算，则将其用括号括起来，避免逻辑运算出现优先级的问题
+    if (isBinaryLogicCondition(condition)) {
+      condition = SqlBuilder.enclose(condition);
+    }
+    if (!previous) return condition;
+    return new BinaryLogicCondition(logic, previous, condition);
+  }) as Condition;
+  return SqlBuilder.enclose(cond);
 }

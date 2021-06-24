@@ -13,7 +13,7 @@ import {
   Select,
   CompatibleSortInfo,
 } from './ast';
-import { and, select } from './sql-builder';
+import SQL from './sql-builder';
 import { ROWSET_ALIAS } from './constants';
 import { Executor } from './execute';
 import {
@@ -32,6 +32,7 @@ import { Constructor, Entity, isStringType, RowObject } from './types';
 import { ensureCondition } from './util';
 // import { getMetadata } from 'typeorm'
 
+const { and, select } = SQL;
 /**
  * 可查询对象，接口类似js自带的`Array`对象，并且其本身是一个异步可迭代对象，实现了延迟加载功能，数据将在调用`toArray`，或者对其进行遍历时才执行加载
  * // TODO: 实现延迟在线逐条查询功能

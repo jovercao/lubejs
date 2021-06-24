@@ -9,7 +9,6 @@ import {
   dateDiff,
   datePart,
   DATE_PART,
-  getDate,
   IDENTITY,
   len,
   lower,
@@ -50,8 +49,6 @@ import {
   atan2,
   cot,
   sp_rename,
-  sp_dropextendedproperty,
-  sp_addextendedproperty,
 } from './build-in';
 import {
   Compiler,
@@ -63,11 +60,10 @@ import {
   CompatibleExpression,
   Star,
   Expression,
-  func,
   Scalar,
   Binary,
   TsTypeOf,
-  mod,
+  SqlBuilder as SQL,
   TableVariantDeclare,
   Insert,
   AST,
@@ -92,7 +88,6 @@ import {
   Annotation,
 } from '../../ast';
 import { Name } from '../../types';
-import { SQL_SYMBOLE } from '../../constants';
 import {
   isAlterTableColumn,
   isCheckConstraint,
@@ -102,6 +97,7 @@ import {
   isUniqueKey,
 } from '../../util';
 import { formatSql, sqlifyLiteral } from './util';
+
 
 export interface MssqlCompileOptions extends CompileOptions {}
 
@@ -198,7 +194,7 @@ WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'PROCEDURE', ${table}`;
     }
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentFunction(name: Name, comment: string): Statement {
@@ -215,7 +211,7 @@ IF EXISTS(SELECT p.[value]
     if (comment)
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'FUNCTION', ${table}`;
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
   commentTable(name: Name, comment: string): Statement {
     if (typeof name === 'string' || name.length <= 1)
@@ -231,7 +227,7 @@ IF EXISTS(SELECT p.[value]
     if (comment)
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${table}`;
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentColumn(table: Name, name: string, comment: string): Statement {
@@ -250,7 +246,7 @@ IF EXISTS(SELECT p.[value]
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'COLUMN', ${name}`;
     }
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentIndex(table: Name, name: string, comment: string): Statement {
@@ -268,7 +264,7 @@ IF EXISTS(SELECT p.[value]
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'INDEX', ${name}`;
     }
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentConstraint(table: Name, name: string, comment: string): Statement {
@@ -285,7 +281,7 @@ IF EXISTS(SELECT p.[value]
     if (comment)
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'CONSTRAINT', ${name}`;
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentSchema(name: string, comment: string): Statement {
@@ -299,7 +295,7 @@ IF EXISTS(SELECT p.[value]
     if (comment)
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${name};`;
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   commentSequence(name: Name, comment: string): Statement {
@@ -316,7 +312,7 @@ IF EXISTS(SELECT p.[value]
     if (comment)
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'SEQUENCE', ${sequence}`;
-    return Statement.raw(sql);
+    return SQL.raw(sql);
   }
 
   renameTable(name: Name, newName: string): Statement {
@@ -371,7 +367,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     value: CompatibleExpression<number>,
     x: CompatibleExpression<number>
   ): Expression<number> {
-    return mod(value, x);
+    return SQL.mod(value, x);
   }
 
   pi(): Expression<number> {
@@ -444,7 +440,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return cot(value);
   }
 
-  isNull<T extends Scalar>(
+  nvl<T extends Scalar>(
     value: CompatibleExpression<T>,
     defaultValue: CompatibleExpression<T>
   ): Expression<T> {
@@ -1055,11 +1051,6 @@ SET IDENTITY_INSERT OFF
 
   compileType(type: DbType): string {
     return dbTypeToSql(type);
-  }
-
-  protected compileDate(date: Date) {
-    const str = super.compileDate(date);
-    return `CONVERT(DATETIMEOFFSET(7), ${str})`;
   }
 
   protected compileOffsetLimit(

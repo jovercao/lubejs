@@ -1,5 +1,4 @@
-import { DbType, now } from '../src';
-import { context, Entity, DbContext, Repository } from '../src/orm';
+import { context, DbContext, Repository, DbType, Entity, SqlBuilder as SQL } from '../src';
 
 /*************************试验代码****************************/
 export class Order extends Entity {
@@ -67,7 +66,7 @@ context(DB, (modelBuilder) => {
   modelBuilder.entity(Order).asTable((builder) => {
     builder.column((p) => p.id, Number);
     builder.column(p => p.orderNo, String).autogen((item) => 'abc');
-    builder.column((p) => p.date, Date).dbType(DbType.datetime).defaultValue(now());
+    builder.column((p) => p.date, Date).dbType(DbType.datetime).defaultValue(SQL.now());
     builder.column((p) => p.description, String).nullable();
     builder.hasMany((p) => p.details, OrderDetail).withOne((p) => p.order);
   });

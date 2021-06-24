@@ -38,8 +38,10 @@ import { Compiler } from './compile';
 import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
 import { Queryable } from './queryable';
-import { and, doc, or } from './sql-builder';
+import SQL from './sql-builder';
 import { Name, RowObject, Scalar } from './types';
+
+const { and, doc, or } = SQL;
 
 export interface Command {
   sql: string;
@@ -215,7 +217,7 @@ export class Executor {
       let params: Parameter[] = [];
       if (typeof args[1] === 'object') {
         params = Object.entries(args[1]).map(([name, value]: any) =>
-          Parameter.input(name, value)
+          SQL.input(name, value)
         );
       }
       command = {
@@ -383,7 +385,7 @@ export class Executor {
       while (i < packedValues.length) {
         const items = packedValues.slice(i, i + INSERT_MAXIMUM_ROWS);
         i += INSERT_MAXIMUM_ROWS;
-        const sql = Statement.insert(table, fields).values(items);
+        const sql = SQL.insert(table, fields).values(items);
         const res = await executor.query(sql);
         rowsAffected += res.rowsAffected;
       }
@@ -411,7 +413,7 @@ export class Executor {
     } else {
       columns = [t.star];
     }
-    const sql = Statement.select<T>(...columns)
+    const sql = SQL.select<T>(...columns)
       .top(1)
       .from(t)
       .where(typeof where === 'function' ? where(t) : where);
@@ -459,7 +461,7 @@ export class Executor {
     } else {
       columns = t.star;
     }
-    const sql = Statement.select(columns).from(table);
+    const sql = SQL.select(columns).from(table);
     if (where) {
       sql.where(typeof where === 'function' ? where(t) : where);
     }
@@ -543,7 +545,7 @@ export class Executor {
           } else {
             condition = where(item, t);
           }
-          const sql = Statement.update(table).set(item).where(condition);
+          const sql = SQL.update(table).set(item).where(condition);
           return sql;
         })
       );
@@ -557,7 +559,7 @@ export class Executor {
       return res.rowsAffected;
     }
     const sets = setsOrItems as Assignment[] | InputObject<T>;
-    const sql = Statement.update(t).set(sets);
+    const sql = SQL.update(t).set(sets);
     const where = whereOrKeys as
       | Condition
       | ((table: Readonly<ProxiedRowset<T>>) => Condition);
@@ -580,7 +582,7 @@ export class Executor {
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
     const t = ensureProxiedRowset(table);
-    const sql = Statement.delete(t);
+    const sql = SQL.delete(t);
     if (where) {
       sql.where(where instanceof Function ? where(t) : where);
     }
@@ -594,7 +596,7 @@ export class Executor {
     // eslint-disable-next-line
     // @ts-ignore
   ): Promise<QueryResult<O[0], R, O>> {
-    const sql = Statement.execute<R, O>(spName, params);
+    const sql = SQL.execute<R, O>(spName, params);
     const res = await this.query(sql);
     return res;
   }

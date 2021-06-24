@@ -26,6 +26,7 @@ import {
   ScalarType,
 } from './types';
 import { isClass } from './util';
+import SQL from './sql-builder'
 
 export interface IndexMetadata {
   name: string;
@@ -1393,9 +1394,9 @@ export function makeRowset<T extends Entity = any>(
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_');
   } else if (isTableEntity(metadata)) {
-    rowset = Identifier.table(metadata.tableName);
+    rowset = SQL.table(metadata.tableName);
   } else {
-    rowset = Identifier.table(metadata.viewName);
+    rowset = SQL.table(metadata.viewName);
   }
   return new Proxy(rowset, {
     get(target: any, key: string | symbol | number): any {

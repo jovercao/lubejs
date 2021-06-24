@@ -1,20 +1,18 @@
 import { dbTypeToSql } from './types';
 import {
+  Statement,
   Binary,
-  builtIn,
   BuiltIn,
   CompatibleExpression,
   DbType,
   Expression,
-  func,
-  makeInvoke,
   Name,
   Scalar,
   TsTypeOf,
-  variant,
-} from '../../index';
-import { Statement } from '../../ast';
-import { makeExec } from '../../sql-builder';
+  SqlBuilder as SQL,
+} from '../..';
+
+const { makeExec, variant, builtIn, func, makeInvoke } = SQL;
 
 type InvokeHandler0<TResult extends Scalar> = () => Expression<TResult>;
 type InvokeHandler1<TResult extends Scalar, TArg1 extends Scalar> = (
@@ -827,7 +825,7 @@ export const sp_addextendedproperty: (
   level1Type?: 'TABLE' | 'PROCEDURE' | 'FUNCTION',
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
-  level2?: string,
+  level2?: string
 ) => Statement = makeExec(['sp_addextendedproperty', 'sys'], false);
 
 export const sp_dropextendedproperty: (
@@ -837,7 +835,7 @@ export const sp_dropextendedproperty: (
   level1Type?: 'TABLE' | 'PROCEDURE' | 'FUNCTION',
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
-  level2?: string,
+  level2?: string
 ) => Statement = makeExec(['sp_addextendedproperty', 'sys'], true);
 
 export const sp_updateextendedproperty: (
@@ -848,6 +846,5 @@ export const sp_updateextendedproperty: (
   level1Type?: 'TABLE' | 'PROCEDURE' | 'FUNCTION',
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
-  level2?: string,
+  level2?: string
 ) => Statement = makeExec(['sp_updateextendedproperty', 'sys'], true);
-

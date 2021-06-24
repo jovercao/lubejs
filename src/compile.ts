@@ -65,12 +65,10 @@ import {
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
-import { Standard } from './std';
-
 import { DbType, Name, Scalar } from './types';
+import SQL from './sql-builder'
 
 import {
-  dateToString,
   invalidAST,
   isAssignment,
   isBinary,
@@ -130,6 +128,7 @@ import {
   isDropSequence,
   isAnnotation,
 } from './util';
+import { Standard } from './std'
 
 /**
  * 标准操作转换器
@@ -331,7 +330,7 @@ export abstract class Compiler {
   //   let sql: string = arr[0];
   //   for (let i = 0; i < arr.length - 1; i++) {
   //     const name = "__p__" + i;
-  //     const param = Parameter.input(name, paramValues[i]);
+  //     const param = SQL.input(name, paramValues[i]);
   //     sql += this.stringifyParameterName(param);
   //     sql += arr[i + 1];
   //     params.push(param);
@@ -346,26 +345,26 @@ export abstract class Compiler {
     return this.stringifyVariantName(variant.$name);
   }
 
-  /**
-   * 编译日期常量
-   */
-  protected compileDate(date: Date): string {
-    return `'${dateToString(date)}'`;
-  }
+  // /**
+  //  * 编译日期常量
+  //  */
+  // protected compileDate(date: Date): string {
+  //   return `'${dateToString(date)}'`;
+  // }
 
-  /**
-   * 编译Boolean常量
-   */
-  protected compileBoolean(value: boolean): string {
-    return value ? '1' : '0';
-  }
+  // /**
+  //  * 编译Boolean常量
+  //  */
+  // protected compileBoolean(value: boolean): string {
+  //   return value ? '1' : '0';
+  // }
 
-  /**
-   * 编译字符串常量
-   */
-  protected compileString(value: string): string {
-    return `'${value.replace(/'/g, "''")}'`;
-  }
+  // /**
+  //  * 编译字符串常量
+  //  */
+  // protected compileString(value: string): string {
+  //   return `'${value.replace(/'/g, "''")}'`;
+  // }
 
   /**
    * 编译字面量
@@ -719,7 +718,7 @@ export abstract class Compiler {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
   ): string {
-    const returnParam = Parameter.output(
+    const returnParam = SQL.output(
       this.options.returnParameterName,
       DbType.int32
     );

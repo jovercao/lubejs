@@ -6,7 +6,7 @@ import {
   Document,
   Select,
 } from './ast';
-import { sqlBuilder, $delete, $insert, $table, $update, and, doc, SqlBuilder } from './sql-builder';
+import SQL, { SqlBuilder } from './sql-builder';
 import { Compiler } from './compile';
 import { DbContext } from './db-context';
 import { ConnectOptions } from './lube';
@@ -24,16 +24,15 @@ import {
 import { compare } from './schema-compare';
 import { Constructor, DbType, Name } from './types';
 import { Executor } from './execute';
+import { isStatement } from './util'
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
   up(
-    run: (statement: Statement | string) => void,
     scripter: SqlBuilder,
     dialect: string | symbol
   ): Promise<void> | void;
   down(
-    run: (statement: Statement | string) => void,
     scripter: SqlBuilder,
     dialect: string | symbol
   ): Promise<void> | void;
@@ -57,6 +56,24 @@ interface MigrateInfo {
 const LUBE_MIGRATE_TABLE_NAME = '__LubeMigrate';
 const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)(\.ts|\.js)$/i;
 
+
+function makeScripter(statements: Statement[]): SqlBuilder {
+  return new Proxy(SQL, {
+    get(target, key: string) {
+      const val = Reflect.get(target, key);
+      if (typeof val === 'function') {
+        return function(...args: any) {
+          const ret = val.call(target, ...args);
+          if (isStatement(ret)) {
+            statements.push(ret);
+          }
+        }
+      }
+      return val;
+    }
+  })
+}
+
 /**
  * 迁移命令行
  */
@@ -69,30 +86,17 @@ export class MigrateCli {
   private up(Ctr: Constructor<Migrate>): Statement[] {
     const instance = new Ctr();
     const statements: Statement[] = [];
-    const run = (statement: Statement | string): void => {
-      if (typeof statement === 'string') {
-        statements.push(sqlBuilder.raw(statement));
-      } else {
-        statements.push(statement);
-      }
-    };
-
-    instance.up(run, sqlBuilder, this.dbContext.lube.provider.dialect);
+    const scripter = makeScripter(statements);
+    instance.up(scripter, this.dbContext.lube.provider.dialect);
     return statements;
   }
 
   private down(Ctr: Constructor<Migrate>): Statement[] {
     const instance = new Ctr();
     const statements: Statement[] = [];
-    const run = (statement: Statement | string): void => {
-      if (typeof statement === 'string') {
-        statements.push(sqlBuilder.raw(statement));
-      } else {
-        statements.push(statement);
-      }
-    };
+    const scripter = makeScripter(statements);
 
-    instance.down(run, sqlBuilder, this.dbContext.lube.provider.dialect);
+    instance.down(scripter, this.dbContext.lube.provider.dialect);
     return statements;
   }
 
@@ -140,7 +144,7 @@ export class MigrateCli {
 
   private async ensureMigrateTable(): Promise<void> {
     if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
-      const sql = sqlBuilder
+      const sql = SQL
         .createTable(LUBE_MIGRATE_TABLE_NAME)
         .as(builder => [
           builder.column('migrate_id', DbType.string(100)).primaryKey(),
@@ -265,7 +269,7 @@ export class MigrateCli {
       for (let i = sourceIndex + 1; i <= targetIndex; i++) {
         const info = migrates[i];
         statements.push(
-          sqlBuilder.annotation(`Migrate up script from "${info.path}"`)
+          SQL.annotation(`Migrate up script from "${info.path}"`)
         );
         const Migrate = await importMigrate(info);
         statements.push(...this.up(Migrate));
@@ -275,14 +279,14 @@ export class MigrateCli {
       for (let i = sourceIndex; i > targetIndex; i--) {
         const info = migrates[i];
         statements.push(
-          sqlBuilder.annotation(`Migrate down script from "${info.path}"`)
+          SQL.annotation(`Migrate down script from "${info.path}"`)
         );
         const Migrate = await importMigrate(info);
         statements.push(...this.down(Migrate));
       }
     }
     const { sql: scripts } = this.dbContext.lube.compiler.compile(
-      doc(statements)
+      SQL.doc(statements)
     );
     if (options?.outputPath) {
       await writeFile(options.outputPath, scripts, 'utf-8');
