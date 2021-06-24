@@ -4,29 +4,23 @@
 import {
   CompatibleExpression,
   Expression,
-  Identifier,
   ProxiedRowset,
-  ProxiedTable,
   Rowset,
   Select,
-  Table,
+  SqlBuilder as SQL
 } from './ast';
-import { $IsProxy, $ROWSET_INSTANCE, SQL_SYMBOLE } from './constants';
+import { $IsProxy, $ROWSET_INSTANCE } from './constants';
 import { DbContext } from './db-context';
 import { FetchRelations } from './repository';
 import {
   Constructor,
-  DataType,
   DbType,
   Entity,
   EntityType,
-  ListType,
-  RowObject,
   Scalar,
   ScalarType,
 } from './types';
 import { isClass } from './util';
-import SQL from './sql-builder'
 
 export interface IndexMetadata {
   name: string;

@@ -62,11 +62,11 @@ import {
   CreateSequence,
   DropSequence,
   Annotation,
+  SqlBuilder as SQL
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
 import { DbType, Name, Scalar } from './types';
-import SQL from './sql-builder'
 
 import {
   invalidAST,
@@ -75,7 +75,7 @@ import {
   isBinaryCompareCondition,
   isBinaryLogicCondition,
   isBinaryOperation,
-  isBracket,
+  isParenthese,
   isBuiltIn,
   isCase,
   isColumn,
@@ -917,7 +917,7 @@ export abstract class Compiler {
       return this.stringifyIdentifier(expr);
     }
 
-    if (isBracket(expr)) {
+    if (isParenthese(expr)) {
       return this.compileParenthesesExpression(expr, params);
     }
 

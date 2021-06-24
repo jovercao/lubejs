@@ -2,14 +2,6 @@ import { Migrate, Statement, SqlBuilder } from '../../src';
 
 export class A implements Migrate {
   up(scripter: SqlBuilder, dialect: string | symbol): void {
-    scripter.dropTable('Order');
-    scripter.dropTable('OrderDetail');
-    scripter.dropTable('Position');
-    scripter.dropTable('Employee');
-    scripter.dropTable('EmployeePosition');
-  }
-
-  down(scripter: SqlBuilder, dialect: string | symbol): void {
     scripter
       .createTable('Order')
       .as(builder => [
@@ -77,6 +69,14 @@ export class A implements Migrate {
           .on('EmployeeId')
           .reference('Employee', ['id']),
       ]);
+  }
+
+  down(scripter: SqlBuilder, dialect: string | symbol): void {
+    scripter.dropTable('Order');
+    scripter.dropTable('OrderDetail');
+    scripter.dropTable('Position');
+    scripter.dropTable('Employee');
+    scripter.dropTable('EmployeePosition');
   }
 }
 

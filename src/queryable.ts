@@ -12,8 +12,8 @@ import {
   Condition,
   Select,
   CompatibleSortInfo,
+  SqlBuilder as SQL
 } from './ast';
-import SQL from './sql-builder';
 import { ROWSET_ALIAS } from './constants';
 import { Executor } from './execute';
 import {

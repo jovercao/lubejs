@@ -5,8 +5,9 @@ import {
   Statement,
   Document,
   Select,
+  SqlBuilder,
+  SqlBuilder as SQL
 } from './ast';
-import SQL, { SqlBuilder } from './sql-builder';
 import { Compiler } from './compile';
 import { DbContext } from './db-context';
 import { ConnectOptions } from './lube';
@@ -187,16 +188,13 @@ export class MigrateCli {
    * @param name
    */
   async gen(name: string): Promise<void> {
-    console.log(1);
     const metadata = metadataStore.getContext(
       this.dbContext.constructor as Constructor<DbContext>
     );
-    console.log(2);
     const dbSchema = await this.loadSchema();
-    console.log(3);
     const entityScheam = generate(this.dbContext.executor.compiler, metadata);
 
-    const code = genMigrate(name, dbSchema, entityScheam);
+    const code = genMigrate(name, entityScheam, dbSchema);
 
     const timestamp = this.getTimestamp();
     const id = `${timestamp}_${name}`;

@@ -32,13 +32,12 @@ import {
   Execute,
   CompatibleSortInfo,
   SortInfo,
-  Expression,
+  SqlBuilder as SQL,
 } from './ast';
 import { Compiler } from './compile';
 import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
 import { Queryable } from './queryable';
-import SQL from './sql-builder';
 import { Name, RowObject, Scalar } from './types';
 
 const { and, doc, or } = SQL;

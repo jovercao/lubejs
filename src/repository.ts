@@ -14,8 +14,7 @@ import {
   TableEntityMetadata,
 } from "./metadata";
 import { Constructor, Entity, isStringType, Scalar } from "./types";
-import { Condition } from "./ast";
-import { SqlBuilder } from './sql-builder'
+import { Condition, SqlBuilder } from "./ast";
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 

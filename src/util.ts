@@ -82,6 +82,7 @@ import {
   DropSequence,
   Annotation,
   CompatibleCondition,
+  SqlBuilder,
 } from './ast';
 
 import {
@@ -92,7 +93,6 @@ import {
   SQL_SYMBOLE,
   LOGIC_OPERATOR,
 } from './constants';
-import { SqlBuilder } from './sql-builder'
 
 import {
   Binary,
@@ -569,7 +569,24 @@ export function isStatement(value: any): value is Statement {
     isDeclare(value) ||
     isAssignment(value) ||
     isWith(value) ||
-    isExecute(value)
+    isExecute(value) ||
+    isBlock(value) ||
+    isCreateTable(value) ||
+    isCreateView(value) ||
+    isCreateIndex(value) ||
+    isCreateProcedure(value) ||
+    isCreateFunction(value) ||
+    isCreateSequence(value) ||
+    isAlterTable(value) ||
+    isAlterView(value) ||
+    isAlterFunction(value) ||
+    isAlterProcedure(value) ||
+    isDropTable(value) ||
+    isDropView(value) ||
+    isDropIndex(value) ||
+    isDropProcedure(value) ||
+    isDropFunction(value) ||
+    isDropSequence(value)
   );
 }
 
@@ -650,7 +667,7 @@ export function isExpression(value: any): value is Expression {
     isOperation(value) ||
     isScalarFuncInvoke(value) ||
     isCase(value) ||
-    isBracket(value) ||
+    isParenthese(value) ||
     isValuedSelect(value) ||
     isParameter(value)
   );
@@ -660,7 +677,7 @@ export function isCase(value: any): value is Case {
   return value?.$type === SQL_SYMBOLE.CASE;
 }
 
-export function isBracket(value: any): value is ParenthesesExpression {
+export function isParenthese(value: any): value is ParenthesesExpression {
   return value?.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
 }
 
@@ -944,7 +961,6 @@ export function map<T>(
   list.forEach(item => (map[keyer(item)] = item));
   return map;
 }
-
 
 /**
  * 使用逻辑表达式联接多个条件
