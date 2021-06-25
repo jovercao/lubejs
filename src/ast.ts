@@ -88,8 +88,8 @@ export type DefaultRowObject = {
  */
 export type WhereObject<T extends RowObject = DefaultRowObject> = {
   [K in FieldsOf<T>]?:
-    | CompatibleExpression<FieldTypeOf<T, K>>
-    | CompatibleExpression<FieldTypeOf<T, K>>[];
+  | CompatibleExpression<FieldTypeOf<T, K>>
+  | CompatibleExpression<FieldTypeOf<T, K>>[];
 };
 
 /**
@@ -118,24 +118,24 @@ export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @ty
   ? {}
   : T extends Field<infer V, infer N>
   ? {
-      [K in N]: V;
-    }
+    [K in N]: V;
+  }
   : T extends SelectColumn<infer V, infer N>
   ? {
-      [K in N]: V;
-    }
+    [K in N]: V;
+  }
   : T extends Star<infer M>
   ? {
-      [P in FieldsOf<M>]: M[P];
-    }
+    [P in FieldsOf<M>]: M[P];
+  }
   : T extends InputObject
   ? {
-      [K in keyof T]: TypeOf<T[K]>;
-    }
+    [K in keyof T]: TypeOf<T[K]>;
+  }
   : T extends Record<string, RowObject>
   ? {
-      [K in FieldsOf<T>]: TypeOf<T[K]>;
-    } // eslint-disable-next-line @typescript-eslint/ban-types
+    [K in FieldsOf<T>]: TypeOf<T[K]>;
+  } // eslint-disable-next-line @typescript-eslint/ban-types
   : {};
 
 /**
@@ -173,7 +173,7 @@ export type RowTypeByColumns<
   X = unknown,
   Y = unknown,
   Z = unknown
-> = RowTypeFrom<A> &
+  > = RowTypeFrom<A> &
   RowTypeFrom<B> &
   RowTypeFrom<C> &
   RowTypeFrom<D> &
@@ -242,10 +242,10 @@ export type Proxied<T> = T extends
   | TableFuncInvoke<infer M>
   | TableVariant<infer M>
   ? T &
-      {
-        // 排除AST自有属性
-        [P in FieldsOf<M>]: Field<M[P], P>;
-      }
+  {
+    // 排除AST自有属性
+    [P in FieldsOf<M>]: Field<M[P], P>;
+  }
   : never;
 
 /**
@@ -253,9 +253,9 @@ export type Proxied<T> = T extends
  */
 export type ProxiedTable<T extends RowObject, N extends string = string> =
   Table<T, N> &
-    {
-      [P in FieldsOf<T>]: Field<T[P], P>;
-    };
+  {
+    [P in FieldsOf<T>]: Field<T[P], P>;
+  };
 
 /**
  * 代理后的行集
@@ -267,9 +267,9 @@ export type ProxiedRowset<T extends RowObject> = Rowset<T> &
 
 export type ProxiedNamedSelect<T extends RowObject, N extends string = string> =
   NamedSelect<T, N> &
-    {
-      [P in FieldsOf<T>]: Field<T[P], P>;
-    };
+  {
+    [P in FieldsOf<T>]: Field<T[P], P>;
+  };
 
 /**
  * AST 基类
@@ -808,7 +808,7 @@ export class Alias<N extends string> extends Identifier<N> {
 export class Func<
   N extends string = string
   // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
 
   // /**
@@ -949,13 +949,13 @@ export type CompatibleTable<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-> = Name | Table<T, N> | ProxiedTable<T>;
+  > = Name | Table<T, N> | ProxiedTable<T>;
 
 export type CompatibleNamedSelect<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-> = NamedSelect<T, N> | ProxiedNamedSelect<T, N>;
+  > = NamedSelect<T, N> | ProxiedNamedSelect<T, N>;
 
 /**
  * 所有可兼容的行集参数
@@ -964,7 +964,7 @@ export type CompatibleRowset<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-> =
+  > =
   | CompatibleTable<T, N>
   | Rowset<T>
   | NamedSelect<T, N>
@@ -976,8 +976,8 @@ export type CompatibleRowset<
   | Proxied<TableVariant<T, N>>;
 
 export class Table<
-    T extends RowObject = DefaultRowObject,
-    N extends string = string
+  T extends RowObject = DefaultRowObject,
+  N extends string = string
   >
   extends Rowset<T>
   implements Identifier<N>
@@ -1061,7 +1061,7 @@ export class TableVariant<T extends RowObject = any, N extends string = string>
 export class SelectColumn<
   T extends Scalar = Scalar,
   N extends string = string
-> extends Identifier<N> {
+  > extends Identifier<N> {
   /**
    * 列名称
    */
@@ -1113,7 +1113,7 @@ export type SelectAction = {
     B extends SelectCloumn,
     C extends SelectCloumn,
     D extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1125,7 +1125,7 @@ export type SelectAction = {
     C extends SelectCloumn,
     D extends SelectCloumn,
     E extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1139,7 +1139,7 @@ export type SelectAction = {
     D extends SelectCloumn,
     E extends SelectCloumn,
     F extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1155,7 +1155,7 @@ export type SelectAction = {
     E extends SelectCloumn,
     F extends SelectCloumn,
     G extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1173,7 +1173,7 @@ export type SelectAction = {
     F extends SelectCloumn,
     G extends SelectCloumn,
     H extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1193,7 +1193,7 @@ export type SelectAction = {
     G extends SelectCloumn,
     H extends SelectCloumn,
     I extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1215,7 +1215,7 @@ export type SelectAction = {
     H extends SelectCloumn,
     I extends SelectCloumn,
     J extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1239,7 +1239,7 @@ export type SelectAction = {
     I extends SelectCloumn,
     J extends SelectCloumn,
     K extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1265,7 +1265,7 @@ export type SelectAction = {
     J extends SelectCloumn,
     K extends SelectCloumn,
     L extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1293,7 +1293,7 @@ export type SelectAction = {
     K extends SelectCloumn,
     L extends SelectCloumn,
     M extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1323,7 +1323,7 @@ export type SelectAction = {
     L extends SelectCloumn,
     M extends SelectCloumn,
     N extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1355,7 +1355,7 @@ export type SelectAction = {
     M extends SelectCloumn,
     N extends SelectCloumn,
     O extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1389,7 +1389,7 @@ export type SelectAction = {
     N extends SelectCloumn,
     O extends SelectCloumn,
     P extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1425,7 +1425,7 @@ export type SelectAction = {
     O extends SelectCloumn,
     P extends SelectCloumn,
     Q extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1465,7 +1465,7 @@ export type SelectAction = {
     P extends SelectCloumn,
     Q extends SelectCloumn,
     R extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1507,7 +1507,7 @@ export type SelectAction = {
     Q extends SelectCloumn,
     R extends SelectCloumn,
     S extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1551,7 +1551,7 @@ export type SelectAction = {
     R extends SelectCloumn,
     S extends SelectCloumn,
     T extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1597,7 +1597,7 @@ export type SelectAction = {
     S extends SelectCloumn,
     T extends SelectCloumn,
     U extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1667,7 +1667,7 @@ export type SelectAction = {
     T extends SelectCloumn,
     U extends SelectCloumn,
     V extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1740,7 +1740,7 @@ export type SelectAction = {
     U extends SelectCloumn,
     V extends SelectCloumn,
     W extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1816,7 +1816,7 @@ export type SelectAction = {
     V extends SelectCloumn,
     W extends SelectCloumn,
     X extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1895,7 +1895,7 @@ export type SelectAction = {
     W extends SelectCloumn,
     X extends SelectCloumn,
     Y extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -1977,7 +1977,7 @@ export type SelectAction = {
     X extends SelectCloumn,
     Y extends SelectCloumn,
     Z extends SelectCloumn
-  >(
+    >(
     a: A,
     b: B,
     c: C,
@@ -2045,7 +2045,7 @@ export type SelectAction = {
  */
 export class ScalarFuncInvoke<
   TReturn extends Scalar = any
-> extends Expression<TReturn> {
+  > extends Expression<TReturn> {
   $func: Func<string>;
   $args: (Expression<Scalar> | BuiltIn<string> | Star)[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
@@ -2067,7 +2067,7 @@ export class ScalarFuncInvoke<
 
 export class TableFuncInvoke<
   TReturn extends RowObject = any
-> extends Rowset<TReturn> {
+  > extends Rowset<TReturn> {
   readonly $func: Func<string>;
   readonly $args: (Expression<Scalar> | Star | BuiltIn)[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
@@ -2230,7 +2230,7 @@ export class ParenthesesCondition extends Condition {
  */
 export class ParenthesesExpression<
   T extends Scalar = Scalar
-> extends Expression<T> {
+  > extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET_EXPRESSION = SQL_SYMBOLE.BRACKET_EXPRESSION;
   $inner: Expression<T>;
   constructor(inner: CompatibleExpression<T>) {
@@ -2244,7 +2244,7 @@ export class ParenthesesExpression<
  */
 export abstract class Operation<
   T extends Scalar = Scalar
-> extends Expression<T> {
+  > extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
   readonly $kind: OPERATION_KIND;
   $operator: OPERATION_OPERATOR;
@@ -2480,10 +2480,10 @@ export class Select<T extends RowObject = any> extends Fromable {
     sorts:
       | SortObject<T>
       | (
-          | SortInfo
-          | CompatibleExpression<Scalar>
-          | [CompatibleExpression, SORT_DIRECTION]
-        )[]
+        | SortInfo
+        | CompatibleExpression<Scalar>
+        | [CompatibleExpression, SORT_DIRECTION]
+      )[]
   ): this;
   orderBy(
     ...sorts: (
@@ -2518,8 +2518,8 @@ export class Select<T extends RowObject = any> extends Fromable {
       isSortInfo(item)
         ? item
         : isScalar(item) || isExpression(item)
-        ? new SortInfo(item as CompatibleExpression<Scalar>)
-        : new SortInfo(item[0], item[1])
+          ? new SortInfo(item as CompatibleExpression<Scalar>)
+          : new SortInfo(item[0], item[1])
     );
     return this;
   }
@@ -2844,7 +2844,7 @@ export class Procedure<
   P10 extends Scalar = never,
   P11 extends Scalar = never,
   P12 extends Scalar = never
-> extends Identifier<N> {
+  > extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
 
   execute(...params: [CompatibleExpression<P1>]): Execute<R>;
@@ -2882,7 +2882,7 @@ export class Procedure<
 export class Execute<
   R extends Scalar = any,
   O extends RowObject[] = []
-> extends Statement {
+  > extends Statement {
   readonly $proc: Procedure<R, O, string>;
   readonly $args: Expression<Scalar>[];
   // | NamedArgument<JsConstant, string>[];
@@ -3078,7 +3078,7 @@ export class Raw extends AST {
 export class NamedSelect<
   T extends RowObject = any,
   A extends string = string
-> extends Rowset<T> {
+  > extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
   $inWith: boolean;
   $select: Select<T>;
@@ -3611,18 +3611,20 @@ export class AlterTable<N extends string = string> extends Statement {
     this.$name = name;
   }
 
-  add(build: (builder: AlterTableAddBuilder) => AlterTableMember[]): this;
+  add(build: (builder: AlterTableAddBuilder) => AlterTableMember | AlterTableMember[]): this;
   add(...members: AlterTableMember[]): this;
   add(
     ...members:
-      | [(builder: AlterTableAddBuilder) => AlterTableMember[]]
+      | [(builder: AlterTableAddBuilder) => AlterTableMember[] | AlterTableMember]
       | AlterTableMember[]
   ): this {
     if (this.$drops || this.$alterColumn) {
       throw new Error(`A alter statement is only used by add or drop.`);
     }
     if (typeof members[0] === 'function') {
-      this.add(...members[0](AlterTableAddBuilder));
+      const ret = members[0](AlterTableAddBuilder);
+      members = Array.isArray(ret) ? ret : [ret]
+      this.add(...members);
       return this;
     }
     if (!this.$adds) {
@@ -3633,15 +3635,10 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 
   drop(...members: AlterTableDropMember[]): this;
-  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember[]): this;
+  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember[] | AlterTableDropMember): this;
   drop(
     ...members:
-      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
-      | AlterTableDropMember[]
-  ): this;
-  drop(
-    ...members:
-      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[]]
+      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[] | AlterTableDropMember]
       | AlterTableDropMember[]
   ): this {
     if (this.$adds || this.$alterColumn) {
@@ -3651,7 +3648,9 @@ export class AlterTable<N extends string = string> extends Statement {
       this.$drops = [];
     }
     if (typeof members[0] === 'function') {
-      this.drop(...members[0](AlterTableDropBuilder));
+      const ret = members[0](AlterTableDropBuilder);
+      members = Array.isArray(ret) ? ret : [ret]
+      this.drop(...members);
       return this;
     }
     this.$drops.push(...(members as AlterTableDropMember[]));
@@ -3662,8 +3661,8 @@ export class AlterTable<N extends string = string> extends Statement {
     buildColumn:
       | AlterTableColumn
       | ((
-          builder: (name: string, type: DbType) => AlterTableColumn
-        ) => AlterTableColumn)
+        builder: (name: string, type: DbType) => AlterTableColumn
+      ) => AlterTableColumn)
   ): this {
     if (this.$adds || this.$drops || this.$alterColumn) {
       throw new Error(
@@ -3734,7 +3733,7 @@ export class AlterTableColumn<N extends string = string> extends TableColumn {
 export class CreateView<
   T extends RowObject = any,
   N extends string = string
-> extends Statement {
+  > extends Statement {
   $type: SQL_SYMBOLE.CREATE_VIEW = SQL_SYMBOLE.CREATE_VIEW;
   $name: Name<N>;
   $body: Select<T>;
@@ -3751,7 +3750,7 @@ export class CreateView<
 export class AlterView<
   T extends RowObject = any,
   N extends string = string
-> extends Statement {
+  > extends Statement {
   $type: SQL_SYMBOLE.ALTER_VIEW = SQL_SYMBOLE.ALTER_VIEW;
   $name: Name<N>;
   $body: Select<T>;
@@ -3774,7 +3773,7 @@ export type CreateTableMember =
 
 export class CreateTableColumn<
   N extends string = string
-> extends TableColumn<N> {
+  > extends TableColumn<N> {
   $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $primaryKey?: {
     nonclustered: boolean;
@@ -3946,7 +3945,7 @@ export class DropIndex<N extends string = string> extends Statement {
 export class CreateSequence<
   T extends Scalar = any,
   N extends string = string
-> extends Statement {
+  > extends Statement {
   $type: SQL_SYMBOLE.CREATE_SEQUENCE = SQL_SYMBOLE.CREATE_SEQUENCE;
   $name: Name<N>;
   $startValue: Literal<number>;
@@ -4017,7 +4016,7 @@ export class Annotation extends Statement {
  */
 export class StandardExpression<
   T extends Scalar = Scalar
-> extends Expression<T> {
+  > extends Expression<T> {
   constructor(kind: string, datas: any[]) {
     super();
     this.$kind = kind;
@@ -4066,8 +4065,7 @@ export interface SqlBuilder extends Standard {
    * 字符串连接运算
    */
   concat(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
+    ...strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
   ): Expression<string>;
 
   /**
@@ -4893,10 +4891,13 @@ export const SqlBuilder: SqlBuilder = {
    * 字符串连接运算
    */
   concat(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
+    strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
   ): Expression<string> {
-    return new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, left, right);
+    let exp = strs[0];
+    for (let i = 1; i < strs.length; i++) {
+      exp = new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, exp, val)
+    }
+    return exp as Expression<string>;
   },
 
   /**
@@ -5434,7 +5435,10 @@ export const SqlBuilder: SqlBuilder = {
     throw new Error('invalid arg value of `type`');
   },
   createTable: Object.assign(
-    (name: any) => new CreateTable(name),
+    (name: any) => {
+      const table = new CreateTable(name);
+      return table;
+    },
     CreateTableMemberBuilder
   ),
 

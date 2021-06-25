@@ -398,7 +398,6 @@ export function generate(
 
   function genTableSchema(entity: TableEntityMetadata): TableSchema {
     const columns = entity.columns.map(col => genColumnSchema(col));
-    console.log(entity.className, entity.indexes);
     const indexes = entity.indexes.map(index => genIndexSchema(index));
     const foreignKeys = entity.relations
       .filter(p => isForeignRelation(p))

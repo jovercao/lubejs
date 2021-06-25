@@ -61,7 +61,7 @@ const migrateCreate = migrate
       await cli.create(name);
     } catch (error) {
       console.error(error.message.red);
-      console.log(error.stack);
+      console.info(error.stack);
     } finally {
       await cli.dispose();
     }
@@ -89,8 +89,7 @@ migrate
   .action(async () => {
     const cli = await createMigrateCli(migrate.opts());
     try {
-      const list = await cli.list();
-      console.table(list, ['name', 'timestamp', 'path']);
+      await cli.list();
     } catch (error) {
       console.error(error.message.red);
       console.log(error.stack);
@@ -109,18 +108,33 @@ const migrateScript = migrate
     const opts = migrateScript.opts();
     const cli = await createMigrateCli(migrateScript.opts());
     try {
-      const scripts = await cli.script({
+      await cli.script({
         target: opts.target,
         source: opts.source,
         outputPath: opts.outputPath,
       });
-      console.log(scripts);
     } catch (error) {
       console.error(error.message.red);
-      console.log(error.stack);
+      console.error(error.stack);
     } finally {
       await cli.dispose();
     }
   });
 
+const migrateUpdate = migrate
+  .command('update <target>')
+  .description('更新数据库')
+  .action(async (targetName) => {
+    const opts = migrateUpdate.opts();
+    console.log(opts, targetName)
+    const cli = await createMigrateCli(migrateUpdate.opts());
+    try {
+      await cli.update(targetName)
+    } catch (error) {
+      console.error(error.message.red);
+      console.error(error.stack);
+    } finally {
+      await cli.dispose();
+    }
+  });
 Program.parse(process.argv);

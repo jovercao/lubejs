@@ -10,7 +10,7 @@ export const config: LubeConfig = {
     default: () => {
       return DbContext.create(DB, {
         driver,
-        host: 'jover.rancher',
+        host: 'jover.wicp.net',
         user: 'sa',
         password: '!crgd-2019',
         database: 'TEST',

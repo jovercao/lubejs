@@ -182,10 +182,11 @@ export class Executor {
       sql += arr[i + 1];
     }
     return {
-      sql
+      sql,
     };
   }
 
+  private async _internalQuery(command: Command): Promise<QueryResult>;
   private async _internalQuery(
     sql: string,
     params?: Parameter[] | Record<string, any>
@@ -208,6 +209,12 @@ export class Executor {
     // 如果是模板字符串
     else if (Array.isArray(args[0] && args[0].raw)) {
       command = this.makeCommand(args[0], ...args.slice(1));
+    } else if (
+      args.length === 1 &&
+      typeof args[0] === 'object' &&
+      typeof args[0].sql === 'string'
+    ) {
+      command = args[0];
     } else {
       assert(
         args.length <= 2 && typeof args[0] === 'string',
@@ -249,6 +256,9 @@ export class Executor {
   // async query<T extends RowObject = any> (
   //   sql: string
   // ): Promise<QueryResult<T>>
+  async query<T extends RowObject = any>(
+    command: Command
+  ): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: Select<T>
   ): Promise<QueryResult<T>>;

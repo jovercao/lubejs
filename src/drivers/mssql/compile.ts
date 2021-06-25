@@ -905,16 +905,17 @@ export class MssqlCompiler extends Compiler {
   }
 
   protected compileAlterTable(statement: AlterTable<string>): string {
-    let sql = `ALTER TABLE ${this.stringifyName(statement.$name)} `;
+    let sql = `ALTER TABLE ${this.stringifyName(statement.$name)}`;
     if (statement.$adds) {
+      sql += ' ADD '
       sql += statement.$adds
         .map(member => this.compileTableMember(member))
         .join(',\n  ');
     }
     if (statement.$drops) {
-      sql += 'DROP ';
+      sql += ' DROP ';
       sql += statement.$drops
-        .map(member => `CONSTRAINT ${this.quoted(member.$name)}`)
+        .map(member => ` CONSTRAINT ${this.quoted(member.$name)}`)
         .join(',\n  ');
     }
     return sql;
@@ -926,7 +927,7 @@ export class MssqlCompiler extends Compiler {
         member.$dbType
       )}`;
       if (member.$nullable !== undefined) {
-        sql += member.$nullable ? 'NULL' : 'NOT NULL';
+        sql += member.$nullable ? ' NULL' : ' NOT NULL';
       }
       if (member.$identity) {
         sql += ` IDENTITY(${member.$identity.startValue}, ${member.$identity.increment})`;
@@ -949,7 +950,7 @@ export class MssqlCompiler extends Compiler {
     if (isPrimaryKey(member)) {
       return (
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
-        `PRIMARY KEY(${member.$columns.map(
+        ` PRIMARY KEY(${member.$columns.map(
           col => `${this.quoted(col.name)} ${col.sort}`
         )})`
       );
@@ -969,7 +970,7 @@ export class MssqlCompiler extends Compiler {
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         `FOREIGN KEY(${member.$columns.map(col =>
           this.quoted(col)
-        )}) REFERENCE ${this.stringifyName(
+        )}) REFERENCES ${this.stringifyName(
           member.$referenceTable
         )}(${member.$referenceColumns.map(col => this.quoted(col)).join(', ')})`
       );
@@ -984,10 +985,11 @@ export class MssqlCompiler extends Compiler {
   }
 
   compileCreateTable(statement: CreateTable): string {
-    let sql = `CREATE TABLE ${this.stringifyName(statement.$name)} ()`;
+    let sql = `CREATE TABLE ${this.stringifyName(statement.$name)} (`;
     sql += statement.$members
       .map(member => this.compileTableMember(member))
       .join(',\n  ');
+    sql += ')'
     return sql;
   }
 

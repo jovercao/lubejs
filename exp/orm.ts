@@ -88,6 +88,11 @@ context(DB, (modelBuilder) => {
     entityBuilder.column((p) => p.id, Number);
     entityBuilder.column((p) => p.name, String);
     entityBuilder.column((p) => p.description, String).nullable();
+    entityBuilder.hasData([
+      { id: 1, name: '总经理', description: '无'},
+      { id: 2, name: '总监', description: '无'},
+      { id: 3, name: '普通职员', description: '无'}
+    ])
   });
 
   modelBuilder.entity(Employee).asTable((entity) => {

@@ -6,7 +6,7 @@ import {
   Document,
   Select,
   SqlBuilder,
-  SqlBuilder as SQL
+  SqlBuilder as SQL,
 } from './ast';
 import { Compiler } from './compile';
 import { DbContext } from './db-context';
@@ -24,19 +24,13 @@ import {
 } from './schema';
 import { compare } from './schema-compare';
 import { Constructor, DbType, Name } from './types';
-import { Executor } from './execute';
-import { isStatement } from './util'
+import { Command, Executor } from './execute';
+import { isStatement, outputCommand } from './util';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
-  up(
-    scripter: SqlBuilder,
-    dialect: string | symbol
-  ): Promise<void> | void;
-  down(
-    scripter: SqlBuilder,
-    dialect: string | symbol
-  ): Promise<void> | void;
+  up(scripter: SqlBuilder, dialect: string | symbol): Promise<void> | void;
+  down(scripter: SqlBuilder, dialect: string | symbol): Promise<void> | void;
 }
 
 export interface LubeConfig {
@@ -52,27 +46,28 @@ interface MigrateInfo {
   name: string;
   timestamp: string;
   path: string;
+  index: number;
 }
 
 const LUBE_MIGRATE_TABLE_NAME = '__LubeMigrate';
 const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)(\.ts|\.js)$/i;
-
 
 function makeScripter(statements: Statement[]): SqlBuilder {
   return new Proxy(SQL, {
     get(target, key: string) {
       const val = Reflect.get(target, key);
       if (typeof val === 'function') {
-        return function(...args: any) {
+        return function (...args: any) {
           const ret = val.call(target, ...args);
           if (isStatement(ret)) {
             statements.push(ret);
           }
-        }
+          return ret;
+        };
       }
       return val;
-    }
-  })
+    },
+  });
 }
 
 /**
@@ -104,7 +99,7 @@ export class MigrateCli {
   constructor(
     private readonly dbContext: DbContext,
     private migrateDir: string
-  ) {}
+  ) { }
 
   async dispose(): Promise<void> {
     await this.dbContext.lube.close();
@@ -122,49 +117,50 @@ export class MigrateCli {
     return await this.dbContext.lube.provider.getSchema();
   }
 
-  private async getCurrentMigrate(): Promise<string> {
+  private async getCurrentMigrate(): Promise<MigrateInfo> {
     try {
       const items = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
         { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
       );
-      return items?.[0]?.migrate_id;
+      const id = items?.[0]?.migrate_id;
+      return await this.getMigrate(id);
     } catch {
       return null;
     }
   }
 
   private async getLastMigrate(): Promise<MigrateInfo> {
-    const items = await this.list();
+    const items = await this._list();
     return items[items.length - 1];
   }
 
-  private async ensureDatabase(): Promise<void> {}
+  private async ensureDatabase(): Promise<void> { }
 
-  private async ensureSchema(): Promise<void> {}
+  private async ensureSchema(): Promise<void> { }
 
   private async ensureMigrateTable(): Promise<void> {
     if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
-      const sql = SQL
-        .createTable(LUBE_MIGRATE_TABLE_NAME)
-        .as(builder => [
-          builder.column('migrate_id', DbType.string(100)).primaryKey(),
-        ]);
+      const sql = SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
+        builder.column('migrate_id', DbType.string(100)).primaryKey(),
+      ]);
       await this.dbContext.executor.query(sql);
     }
   }
 
   getTimestamp(): string {
     const now = new Date();
-    const timestamp = `${now.getFullYear()}${(now.getMonth() + 1)
+    const timestamp = now.getFullYear().toString().padStart(4, '0') + (
+      now.getMonth() + 1
+    )
       .toString()
-      .padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now
-      .getHours()
-      .toString()
-      .padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now
-      .getSeconds()
-      .toString()
-      .padStart(2, '0')}`;
+      .padStart(2, '0') + now.getDate().toString().padStart(2, '0') + now
+        .getHours()
+        .toString()
+        .padStart(2, '0') + now.getMinutes().toString().padStart(2, '0') + now
+          .getSeconds()
+          .toString()
+          .padStart(2, '0');
     return timestamp;
   }
 
@@ -175,6 +171,10 @@ export class MigrateCli {
   async create(name: string): Promise<void> {
     if (!existsSync(this.migrateDir)) {
       await promises.mkdir(this.migrateDir);
+    }
+    const exists = await this.findMigrate(name);
+    if (exists) {
+      throw new Error(`迁移文件${name}已经存在：${exists.path}`);
     }
     const timestamp = this.getTimestamp();
 
@@ -194,11 +194,31 @@ export class MigrateCli {
     const dbSchema = await this.loadSchema();
     const entityScheam = generate(this.dbContext.executor.compiler, metadata);
 
-    const code = genMigrate(name, entityScheam, dbSchema);
+    const code = genMigrate(name, entityScheam, dbSchema, metadata);
 
     const timestamp = this.getTimestamp();
     const id = `${timestamp}_${name}`;
+
     await writeFile(join(this.migrateDir, `${id}.ts`), code);
+  }
+
+  async findMigrate(name: string): Promise<MigrateInfo> {
+    const items = await this._list();
+    const item = items.find(
+      item => item.name === name || item.id === name || item.timestamp === name
+    );
+    return item;
+  }
+
+  async getMigrate(name: string): Promise<MigrateInfo> {
+    const items = await this._list();
+    const item = items.find(
+      item => item.name === name || item.id === name || item.timestamp === name
+    );
+    if (!item) {
+      throw new Error(`找不到指定的迁移${name}`);
+    }
+    return item;
   }
 
   /**
@@ -209,55 +229,59 @@ export class MigrateCli {
   async update(name?: string): Promise<void> {
     await this.init();
 
-    const currentId = await this.getCurrentMigrate();
-    const scripts = await this.script({
+    const target = await this.getMigrate(name);
+
+    const source = await this.getCurrentMigrate();
+    const scripts = await this._script({
       target: name,
-      source: currentId,
+      source: source?.name,
     });
     await this.dbContext.trans(async instance => {
-      for (const sql of scripts) {
-        await instance.executor.query(sql);
+      for (const cmd of scripts) {
+        // try {
+        outputCommand(cmd);
+        await instance.executor.query(cmd);
+        console.info(`----------------------------------------------------`);
+        // } catch (error) {
+        //   console.error(`${error.message}`.red)
+        //   throw error;
+        // }
       }
+      await this.ensureMigrateTable();
+      await this.dbContext.executor.query(
+        SQL.delete(LUBE_MIGRATE_TABLE_NAME)
+      )
+      await this.dbContext.executor.query(
+        SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([target.id])
+      );
     });
+    console.info(`------------执行成功，已更新到${target.id}.----------------`);
   }
 
-  async script(options: {
+  async _script(options: {
     target?: string;
     source?: string;
     outputPath?: string;
-  }): Promise<string> {
-    let target = options?.target;
-    if (!target) {
-      target = (await this.getLastMigrate()).name;
+  }): Promise<Command[]> {
+    let target: MigrateInfo;
+    if (!options?.target) {
+      target = await this.getLastMigrate();
+    } else {
+      target = await this.getMigrate(options.target);
     }
-    const migrates = await this.list();
-    const targetIndex = migrates.findIndex(
-      item =>
-        item.id === target || item.name === target || item.timestamp === target
-    );
-    if (targetIndex === -1) {
-      throw new Error(`未找到目标${target}的迁移信息。`);
-    }
-    let source = options?.source;
+    const migrates = await this._list();
+    let source: MigrateInfo;
     if (!source) {
       source = await this.getCurrentMigrate();
-    }
-    let sourceIndex: number;
-    if (source) {
-      sourceIndex = migrates.findIndex(
-        item =>
-          item.id === source ||
-          item.name === source ||
-          item.timestamp === source
-      );
-      if (sourceIndex === -1) {
-        throw new Error(`未找到源${source}的迁移信息。`);
-      }
     } else {
-      sourceIndex = -1;
+      source = await this.getMigrate(options?.source);
     }
+    const sourceIndex = source?.index ?? -1;
+    const targetIndex = target?.index ?? -1;
+
     if (sourceIndex === targetIndex) {
-      throw new Error(`源和目标一致，无法生成脚本。`);
+      console.log(`未找到可供生成的的脚本。`);
+      return [];
     }
     const isUpgrade = targetIndex > sourceIndex;
     const isDemotion = targetIndex < sourceIndex;
@@ -283,19 +307,38 @@ export class MigrateCli {
         statements.push(...this.down(Migrate));
       }
     }
-    const { sql: scripts } = this.dbContext.lube.compiler.compile(
-      SQL.doc(statements)
+    const scripts = statements.map(statement =>
+      this.dbContext.lube.compiler.compile(statement)
     );
-    if (options?.outputPath) {
-      await writeFile(options.outputPath, scripts, 'utf-8');
-    }
+    // const { sql: scripts } = this.dbContext.lube.compiler.compile(
+    //   SQL.doc(statements)
+    // );
     return scripts;
   }
+
+  async script(options: {
+    target?: string;
+    source?: string;
+    outputPath?: string;
+  }): Promise<void> {
+    const scripts = await this._script(options);
+    if (options?.outputPath) {
+      await writeFile(
+        options.outputPath,
+        scripts.map(cmd => cmd.sql).join('\n'),
+        'utf-8'
+      );
+    }
+  }
+
+  private _migrateList: MigrateInfo[];
 
   /**
    * 列出当前所有迁移
    */
-  async list(): Promise<MigrateInfo[]> {
+  private async _list(): Promise<MigrateInfo[]> {
+    if (this._migrateList) return this._migrateList;
+
     const results: MigrateInfo[] = [];
     if (!existsSync(this.migrateDir)) {
       return [];
@@ -310,10 +353,20 @@ export class MigrateCli {
           timestamp: match[1],
           name: match[2],
           path: resolve(process.cwd(), path),
+          index: 0,
         });
       }
     }
-    return results.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    this._migrateList = results.sort((a, b) =>
+      a.timestamp.localeCompare(b.timestamp)
+    );
+    this._migrateList.forEach((item, index) => (item.index = index));
+    return this._migrateList;
+  }
+
+  async list(): Promise<void> {
+    const list = await this._list();
+    console.table(list, ['name', 'timestamp', 'path']);
   }
 }
 

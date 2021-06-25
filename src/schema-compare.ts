@@ -1,5 +1,5 @@
 import { DatabaseSchema } from "./schema";
-import { map } from './util'
+import { isBinary, map } from './util'
 
 type Scalar =
   | undefined
@@ -19,20 +19,24 @@ type ScalarDifference<T extends Scalar> = {
 type ObjectDifference<T extends object> = {
   source: T;
   target: T;
+  added: T;
+  removed: T;
   changes: {
     [P in keyof T]?: T[P] extends Scalar | Scalar[]
-      ? ScalarDifference<T[P]>
-      : T[P] extends (infer M)[]
-      ? M extends object
-        ? ListDifference<M>
-        : never
-      : T[P] extends object
-      ? ObjectDifference<T[P]>
-      : never;
+    ? ScalarDifference<T[P]>
+    : T[P] extends (infer M)[]
+    ? M extends object
+    ? ListDifference<M>
+    : never
+    : T[P] extends object
+    ? ObjectDifference<T[P]>
+    : never;
   };
 };
 
 type ListDifference<T extends object> = {
+  source: T[];
+  target: T[];
   addeds: T[];
   removeds: T[];
   changes: ObjectDifference<T>[];
@@ -55,7 +59,7 @@ function getType(value: any): ValueType {
     return ValueType.scalar;
   }
   if (typeof value === "object") {
-    if (value instanceof Date) {
+    if (isBinary(value) || value instanceof Date) {
       return ValueType.scalar;
     }
     return ValueType.object;
@@ -100,6 +104,28 @@ function compareObject<T extends object>(
   target: T,
   keyer: (item: any) => string
 ): ObjectDifference<T> {
+  if (!source && !target) {
+    return null;
+  }
+  if (source && !target) {
+    return {
+      source,
+      target,
+      added: source,
+      removed: null,
+      changes: null
+    }
+  }
+  if (!source && target) {
+    return {
+      source,
+      target,
+      removed: target,
+      added: null,
+      changes: null
+    }
+  }
+
   const keyTypes: Record<string, ValueType> = {};
   Object.entries(source).forEach(([key, value]) => {
     keyTypes[key] = getType(value);
@@ -143,6 +169,8 @@ function compareObject<T extends object>(
       source,
       target,
       changes,
+      added: null,
+      removed: null
     };
   }
 
@@ -173,6 +201,8 @@ function compareList<T extends object>(
     return null;
   }
   return {
+    source,
+    target,
     addeds,
     removeds,
     changes,

@@ -3,10 +3,12 @@ import { connect, ConnectOptions, DbProvider, Lube } from './lube'
 import { Constructor, Entity } from './types'
 import { Queryable } from './queryable'
 import { Repository } from './repository'
+import { outputCommand } from './util'
 
 export class DbInstance {
   constructor (executor: Executor) {
     this.executor = executor
+    // this.executor.on('command', outputCommand);
   }
 
   readonly executor: Executor

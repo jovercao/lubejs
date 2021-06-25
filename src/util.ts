@@ -93,6 +93,7 @@ import {
   SQL_SYMBOLE,
   LOGIC_OPERATOR,
 } from './constants';
+import { Command } from './execute';
 
 import {
   Binary,
@@ -982,4 +983,16 @@ export function joinConditions(
     return new BinaryLogicCondition(logic, previous, condition);
   }) as Condition;
   return SqlBuilder.enclose(cond);
+}
+
+export function outputCommand(cmd: Command): void {
+  console.debug('sql:', cmd.sql)
+  if (cmd.params && cmd.params.length > 0) {
+    console.debug(
+      'params: {\n',
+      cmd.params
+        .map(p => `${p.name}: ${JSON.stringify(p.value)}`)
+        .join(',\n') + '\n}'
+    )
+  }
 }

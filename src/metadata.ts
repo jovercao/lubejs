@@ -187,6 +187,12 @@ export interface TableEntityMetadata extends EntityMetadataClass {
    * 表名
    */
   tableName: string;
+
+  // TODO: metdata 需要添加数据架构支持
+  // /**
+  //  * 架构
+  //  */
+  // schema: string;
 }
 
 /**
@@ -277,6 +283,13 @@ export class DbContextMetadata {
    */
   getEntity(ctr: Constructor<Entity>): EntityMetadata {
     return this._entitiyMap.get(ctr);
+  }
+
+  /**
+   *
+   */
+  findTableEntityByName(tableName: string): EntityMetadata {
+    return this.entities.find(entity => isTableEntity(entity) && entity.tableName === tableName);
   }
 
   addEntity(entity: EntityMetadata): this {

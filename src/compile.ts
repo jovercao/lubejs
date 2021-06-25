@@ -183,10 +183,10 @@ export interface CompileOptions {
    */
   fieldAliasJoinWith?: string;
 
-  // /**
-  //  * SQL块分隔符，如在mssql中为"\nGO\n"
-  //  */
-  // blockSplitWord?: string;
+  /**
+   * 语句结尾
+   */
+  statementEnd?: string;
 }
 
 const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
@@ -206,7 +206,7 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
    */
   parameterPrefix: '@',
 
-  // blockSplitWord: ';',
+  statementEnd: ';',
 
   /**
    * 变量前缀
@@ -402,114 +402,66 @@ export abstract class Compiler {
      */
     parent?: AST
   ): string {
+    let sql: string;
     if (isRaw(statement)) {
-      return statement.$sql;
-    }
-
-    if (isSelect(statement)) {
-      return this.compileSelect(statement, params, parent);
-    }
-
-    if (isUpdate(statement)) {
-      return this.compileUpdate(statement, params, parent);
-    }
-
-    if (isInsert(statement)) {
-      return this.compileInsert(statement, params, parent);
-    }
-
-    if (isDelete(statement)) {
-      return this.compileDelete(statement, params, parent);
-    }
-
-    if (isDeclare(statement)) {
-      return this.compileDeclare(statement);
-    }
-
-    if (isExecute(statement)) {
-      return this.compileExecute(statement, params, parent);
-    }
-
-    if (isAssignment(statement)) {
-      return this.compileAssignment(statement, params, parent);
-    }
-
-    if (isCreateTable(statement)) {
-      return this.compileCreateTable(statement);
-    }
-
-    if (isAlterTable(statement)) {
-      return this.compileAlterTable(statement);
-    }
-
-    if (isDropTable(statement)) {
-      return this.compileDropTable(statement.$name);
-    }
-
-    if (isCreateView(statement)) {
-      return this.compileCreateView(statement);
-    }
-
-    if (isAlterView(statement)) {
-      return this.compileAlterView(statement);
-    }
-
-    if (isDropView(statement)) {
-      return this.compileDropView(statement.$name);
-    }
-
-    if (isCreateProcedure(statement)) {
-      return this.compileCreateProcedure(statement);
-    }
-
-    if (isAlterProcedure(statement)) {
-      return this.compileAlterProcedure(statement);
-    }
-
-    if (isDropProcedure(statement)) {
-      return this.compileDropProcedure(statement.$name);
-    }
-
-    if (isCreateFunction(statement)) {
-      return this.compileCreateFunction(statement);
-    }
-
-    if (isAlterFunction(statement)) {
-      return this.compileAlterFunction(statement);
-    }
-
-    if (isDropFunction(statement)) {
-      return this.compileDropFunction(statement.$name);
-    }
-
-    if (isCreateIndex(statement)) {
-      return this.compileCreateIndex(statement);
-    }
-
-    if (isDropIndex(statement)) {
-      return this.compileDropIndex(statement.$table, statement.$name);
-    }
-
-    if (isCreateSequence(statement)) {
-      return this.compileCreateSequence(statement);
-    }
-
-    if (isDropSequence(statement)) {
-      return this.compileDropSequence(statement);
-    }
-
-    if (isBlock(statement)) {
-      return this.compileBlock(statement);
-    }
-
-    if (isStandardStatement(statement)) {
-      return this.compileStatement(
+      sql + statement.$sql;
+    } else if (isSelect(statement)) {
+      sql = this.compileSelect(statement, params, parent);
+    } else if (isUpdate(statement)) {
+      sql = this.compileUpdate(statement, params, parent);
+    } else if (isInsert(statement)) {
+      sql = this.compileInsert(statement, params, parent);
+    } else if (isDelete(statement)) {
+      sql = this.compileDelete(statement, params, parent);
+    } else if (isDeclare(statement)) {
+      sql = this.compileDeclare(statement);
+    } else if (isExecute(statement)) {
+      sql = this.compileExecute(statement, params, parent);
+    } else if (isAssignment(statement)) {
+      sql = this.compileAssignment(statement, params, parent);
+    } else if (isCreateTable(statement)) {
+      sql = this.compileCreateTable(statement);
+    } else if (isAlterTable(statement)) {
+      sql = this.compileAlterTable(statement);
+    } else if (isDropTable(statement)) {
+      sql = this.compileDropTable(statement.$name);
+    } else if (isCreateView(statement)) {
+      sql = this.compileCreateView(statement);
+    } else if (isAlterView(statement)) {
+      sql = this.compileAlterView(statement);
+    } else if (isDropView(statement)) {
+      sql = this.compileDropView(statement.$name);
+    } else if (isCreateProcedure(statement)) {
+      sql = this.compileCreateProcedure(statement);
+    } else if (isAlterProcedure(statement)) {
+      sql = this.compileAlterProcedure(statement);
+    } else if (isDropProcedure(statement)) {
+      sql = this.compileDropProcedure(statement.$name);
+    } else if (isCreateFunction(statement)) {
+      sql = this.compileCreateFunction(statement);
+    } else if (isAlterFunction(statement)) {
+      sql = this.compileAlterFunction(statement);
+    } else if (isDropFunction(statement)) {
+      sql = this.compileDropFunction(statement.$name);
+    } else if (isCreateIndex(statement)) {
+      sql = this.compileCreateIndex(statement);
+    } else if (isDropIndex(statement)) {
+      sql = this.compileDropIndex(statement.$table, statement.$name);
+    } else if (isCreateSequence(statement)) {
+      sql = this.compileCreateSequence(statement);
+    } else if (isDropSequence(statement)) {
+      sql = this.compileDropSequence(statement);
+    } else if (isBlock(statement)) {
+      sql = this.compileBlock(statement);
+    } else if (isStandardStatement(statement)) {
+      sql = this.compileStatement(
         this.translationStandardOperation(statement)
       );
+    } else if (isAnnotation(statement)) {
+      sql = this.compileAnnotation(statement);
     }
-
-    if (isAnnotation(statement)) {
-      return this.compileAnnotation(statement);
+    if (sql) {
+      return sql + this.options.statementEnd;
     }
     invalidAST('statement', statement);
   }
@@ -753,7 +705,7 @@ export abstract class Compiler {
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
-            PARAMETER_DIRECTION.OUTPUT
+          PARAMETER_DIRECTION.OUTPUT
         ) {
           sql += ' OUTPUT';
         }
@@ -839,8 +791,8 @@ export abstract class Compiler {
       ' ' +
       (Array.isArray(expr.$right)
         ? '(' +
-          expr.$right.map(p => this.compileExpression(p, params, expr)) +
-          ')'
+        expr.$right.map(p => this.compileExpression(p, params, expr)) +
+        ')'
         : this.compileExpression(expr.$right, params, expr))
     );
   }

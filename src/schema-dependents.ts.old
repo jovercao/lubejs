@@ -1,0 +1,17 @@
+import { DatabaseSchema, TableSchema } from "./schema";
+
+/**
+ * 从表架构生成表与表之间的依赖树
+ */
+export interface TableDependentTree {
+  table: TableSchema;
+  dependents: TableSchema[]
+}
+
+export function dependents(schema: DatabaseSchema): TableDependentTree[] {
+
+}
+
+export function sort(schema: DatabaseSchema): TableSchema[] {
+
+}

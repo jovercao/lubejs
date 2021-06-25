@@ -442,7 +442,7 @@ function ensureForeignProperty(
   }
 
   if (!relation.constraintName) {
-    relation.constraintName = `${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation}`;
+    relation.constraintName = `FK_${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation.referenceEntity.keyColumn}`;
   }
 }
 
@@ -1091,11 +1091,16 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     return builder;
   }
 
+
+  // TODO: 待添加种子数据结构化初始
   /**
-   * 种子数据
+   * 种子数据，
+   * 暂时只支持，数据表对象新增
    * 重复调用则追加
    */
-  hasData(data: T[]): this {
+  // hasData(data: T[]): this
+  // hasData(data: any[]): this
+  hasData(data: Record<string, Scalar>[]): this {
     if (this.metadata.kind !== "TABLE") {
       throw new Error("Seed data is allowed only on table.");
     }

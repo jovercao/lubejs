@@ -1,10 +1,11 @@
 import { SqlBuilder, DbType } from '../..';
+import { SQL_SYMBOLE } from '../../constants';
 import { DbProvider } from '../../lube';
 import { DatabaseSchema } from '../../schema';
 
 import { groupBy } from './util';
 
-const { case: $case, convert, select, table, unionAll } = SqlBuilder;
+const { case: $case, concat,  convert, select, table, unionAll } = SqlBuilder;
 
 const excludeTables: string[] = ['__Migrate'];
 
@@ -54,7 +55,6 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
           .and(d.minor_id.eq(0))
       );
     const sqlTxt = provider.compiler.compile(sql).sql;
-    console.log(sqlTxt);
     const keys = (await provider.query(sqlTxt)).rows;
     const result = groupBy<any, any>(
       keys,
@@ -125,7 +125,6 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
         .where(v.name.notIn(...excludeTables))
     );
     const sqlTxt = provider.compiler.compile(sql).sql;
-    console.log(sqlTxt);
     const rows = (await provider.query(sqlTxt)).rows;
     // const rows = (await provider.query(provider.compiler.compile(sql).sql)).rows;
     return rows;
@@ -140,7 +139,7 @@ export async function load(provider: DbProvider): Promise<DatabaseSchema> {
     const sql = select({
       id: c.column_id,
       name: c.name,
-      dbType: t.name,
+      type: $case().when(c.max_length.gt(0), concat(t.name, '(', c.max_length, ')')).else(t.name),
       isNullable: c.is_nullable,
       isIdentity: c.is_identity,
       isComputed: c.is_computed,
