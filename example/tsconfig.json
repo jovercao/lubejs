@@ -1,12 +1,14 @@
 {
   "extends": "../config/tsconfig.json",
   "compilerOptions": {
-    "outDir": "../dist",
+    "baseUrl": ".",
     "paths": {
-
+      "lubejs": ["../dist"],
+      "lubejs-mssql": ["../drivers/mssql"]
     }
   },
   "exclude": [
-
+    "../dist",
+    "../drivers/mssql"
   ]
 }

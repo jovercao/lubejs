@@ -249,11 +249,9 @@ export class Executor {
   /**
    * 执行一个存储过程执行代码
    */
-  async query<R extends Scalar = number, O extends RowObject[] = []>(
+  async query<R extends Scalar = number, T extends RowObject = never, O extends [T, ...RowObject[]] = [T]>(
     sql: Execute<R, O>
-  ): // eslint-disable-next-line
-  // @ts-ignore
-  Promise<QueryResult<O[0], R, O>>;
+  ): Promise<QueryResult<O[0], R, O>>;
   async query<T extends RowObject = any>(sql: string): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: string,

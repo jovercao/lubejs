@@ -5,7 +5,7 @@ import {
   DbType,
   Entity,
   SqlBuilder as SQL,
-} from '../src';
+} from 'lubejs';
 
 /*************************试验代码****************************/
 export class Order extends Entity {
