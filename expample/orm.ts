@@ -122,6 +122,4 @@ context(DB, modelBuilder => {
       });
     builder.hasKey(p => p.id);
   });
-
-  // console.log(JSON.stringify(modelBuilder.metadata));
 });

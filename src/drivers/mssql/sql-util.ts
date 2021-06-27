@@ -138,42 +138,7 @@ export const DefaultSqlOptions: MssqlSqlOptions = {
    * 字段别名连接字符器，默认为 ''
    */
   fieldAliasJoinWith: 'AS',
-
-  // blockSplitWord: '\nGO\n',
 };
-
-// const MssqlFormatStyleIdMap = {
-//   'mon dd yyyy hh:miAM ': 100,
-//   'mon dd yyyy hh:miPM ': 0,
-//   'mm/dd/yy': 101,
-//   'yy.mm.dd': 102,
-//   'dd/mm/yy': 103,
-//   'dd.mm.yy': 104,
-//   'dd-mm-yy': 105,
-//   'dd mon yy': 106,
-//   'Mon dd, yy': 107,
-//   'hh:mm:ss': 108,
-//   'mon dd yyyy hh:mi:ss:mmmAM': 109,
-//   'mon dd yyyy hh:mi:ss:mmmPM': 9,
-//   'mm-dd-yy': 110,
-//   'yy/mm/dd': 111,
-//   'yymmdd': 112,
-//   'dd mon yyyy hh:mm:ss:mmm(24h)': 113,
-//   'hh:mi:ss:mmm(24h)': 114,
-//   'yyyy-mm-dd hh:mi:ss(24h': 120,
-//   'yyyy-mm-dd hh:mi:ss.mmm(24h)': 121,
-//   'yyyy-mm-ddThh:mm:ss.mmm': 126,
-//   'dd mon yyyy hh:mi:ss:mmmAM': 130,
-//   'dd/mm/yy hh:mi:ss:mmmAM': 131,
-// }
-
-// `(SELECT o.name AS tableName, c.name AS columnName, p.[value] AS Description
-//   FROM sysproperties p INNER JOIN
-//   sysobjects o ON o.id = p.id INNER JOIN
-//   syscolumns c ON p.id = c.id AND p.smallid = c.colid
-//   WHERE (p.name = 'MS_Description')
-//   ORDER BY o.name)`
-// }
 
 export class MssqlStandardTranslator implements StandardTranslator {
   sqlUtil: MssqlSqlUtil;
@@ -645,6 +610,10 @@ export class MssqlSqlUtil extends SqlUtil {
     public readonly translator: MssqlStandardTranslator
   ) {
     super(Object.assign({}, DefaultSqlOptions, options));
+  }
+
+  public joinBatchSql(...sqls: string[]): string {
+    return sqls.join('\nGO\n');
   }
 
   protected sqlifyAnnotation(statement: Annotation): string {

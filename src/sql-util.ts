@@ -646,6 +646,12 @@ export abstract class SqlUtil {
     );
   }
 
+  /**
+   * 将多段SQL合成一个文件
+   * @param sqls
+   */
+  public abstract joinBatchSql(...sqls: string[]): string;
+
   protected sqlifyDocument(
     doc: Document,
     params?: Set<Parameter<Scalar, string>>

@@ -128,8 +128,6 @@ const migrateUpdate = migrate
   .command('update <target>')
   .description('更新数据库')
   .action(async (targetName) => {
-    const opts = migrateUpdate.opts();
-    console.log(opts, targetName)
     const cli = await createMigrateCli(migrateUpdate.opts());
     try {
       await cli.update(targetName)

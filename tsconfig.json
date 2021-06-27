@@ -14,11 +14,11 @@
       "ES2017"
     ],
     "paths": {
-      "lubejs": [ "src" ]
+      "lubejs": [ "./src" ]
     }
   },
   "include": [
-    "exp"
+    "expample"
   ],
   "exclude": [
     "node_modules",

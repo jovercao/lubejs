@@ -78,31 +78,18 @@ function assertName(name: string): void {
  * 迁移命令行
  */
 export class MigrateCli {
-  metadata: DbContextMetadata;
-
-  // private readonly scripter: MigrateScripter;
-  private dbSchema: DatabaseSchema;
-
-  private async up(Ctr: Constructor<Migrate>): Promise<Statement[]> {
-    const instance = new Ctr();
-    const statements: Statement[] = [];
-    const builder = makeMigrateBuilder(
-      this.dbContext.lube.provider.migrateBuilder,
-      statements
-    );
-    await instance.up(builder, this.dbContext.lube.provider.dialect);
-    return statements;
-  }
-
-  private async down(Ctr: Constructor<Migrate>): Promise<Statement[]> {
+  private async runMigrate(Ctr: Constructor<Migrate>, action: 'up' | 'down'): Promise<Statement[]> {
     const instance = new Ctr();
     const statements: Statement[] = [];
     const scripter = makeMigrateBuilder(
       this.dbContext.lube.provider.migrateBuilder,
       statements
     );
-
-    await instance.down(scripter, this.dbContext.lube.provider.dialect);
+    if (action === 'up') {
+      await instance.up(scripter, this.dbContext.lube.provider.dialect);
+    } else {
+      await instance.down(scripter, this.dbContext.lube.provider.dialect);
+    }
     return statements;
   }
 
@@ -113,13 +100,6 @@ export class MigrateCli {
 
   async dispose(): Promise<void> {
     await this.dbContext.lube.close();
-  }
-
-  private async init() {
-    this.metadata = metadataStore.getContext(
-      this.dbContext.constructor as Constructor<DbContext>
-    );
-    // this.dbSchema = await this.dbContext.lube.provider.getSchema();
   }
 
   private async loadSchema() {
@@ -223,7 +203,7 @@ export class MigrateCli {
     const id = `${timestamp}_${name}`;
     const filePath = resolve(join(this.migrateDir, `${id}.ts`));
     await writeFile(filePath, code);
-    console.log(`Generate migrate file successed, output to ${filePath}`.green);
+    console.log(`Generate migrate file successed, and output to file ${filePath}`.green);
   }
 
   async findMigrate(name: string): Promise<MigrateInfo> {
@@ -234,13 +214,13 @@ export class MigrateCli {
     return item;
   }
 
-  async getMigrate(name: string): Promise<MigrateInfo> {
+  async getMigrate(nameOrId: string): Promise<MigrateInfo> {
     const items = await this._list();
     const item = items.find(
-      item => item.name === name || item.id === name || item.timestamp === name
+      item => item.name === nameOrId || item.id === nameOrId || item.timestamp === nameOrId
     );
     if (!item) {
-      throw new Error(`找不到指定的迁移${name}`);
+      throw new Error(`找不到指定的迁移${nameOrId}`);
     }
     return item;
   }
@@ -251,8 +231,6 @@ export class MigrateCli {
    * @param name
    */
   async update(name?: string): Promise<void> {
-    await this.init();
-
     const target = await this.getMigrate(name);
 
     const source = await this.getCurrentMigrate();
@@ -262,14 +240,9 @@ export class MigrateCli {
     });
     await this.dbContext.trans(async instance => {
       for (const cmd of scripts) {
-        // try {
         outputCommand(cmd);
         await instance.executor.query(cmd);
         console.info(`----------------------------------------------------`);
-        // } catch (error) {
-        //   console.error(`${error.message}`.red)
-        //   throw error;
-        // }
       }
     });
     console.info(`------------执行成功，已更新到${target.id}.----------------`);
@@ -297,7 +270,7 @@ export class MigrateCli {
     const targetIndex = target?.index ?? -1;
 
     if (sourceIndex === targetIndex) {
-      console.log(`未找到可供生成的的脚本。`);
+      console.log(`源和目标版本一致或未找到可供生成的的迁移文件。`.yellow);
       return [];
     }
     const isUpgrade = targetIndex > sourceIndex;
@@ -309,7 +282,7 @@ export class MigrateCli {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate up script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.up(Migrate);
+        const codes = await this.runMigrate(Migrate, 'up');
         statements.push(...codes);
       }
     }
@@ -318,7 +291,7 @@ export class MigrateCli {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate down script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.down(Migrate);
+        const codes = await this.runMigrate(Migrate, 'down');
         statements.push(...codes);
       }
     }
@@ -344,20 +317,22 @@ export class MigrateCli {
     outputPath?: string;
   }): Promise<void> {
     const scripts = await this._script(options);
+    const text = this.dbContext.lube.sqlUtil.joinBatchSql(...scripts.map(cmd => cmd.sql));
     if (options?.outputPath) {
       const filePath = resolve(options.outputPath);
       const dir = dirname(filePath);
       if (!existsSync(dir)) {
         await mkdir(dir);
       }
+
       await writeFile(
         options.outputPath,
-        scripts.map(cmd => cmd.sql).join('\nGO\n'),
+        text,
         'utf-8'
       );
-      console.log(`Generate scripts successed, output to ${filePath}`);
+      console.log(`Generate scripts successed, and output to file ${filePath}`.green);
     } else {
-      console.log(scripts.map(cmd => cmd.sql).join('\nGO\n'));
+      console.log(text);
     }
   }
 
