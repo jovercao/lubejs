@@ -48,7 +48,6 @@ import {
   atan,
   atan2,
   cot,
-  sp_rename,
 } from './build-in';
 import {
   Compiler,
@@ -68,16 +67,11 @@ import {
   Insert,
   AST,
   SQL_SYMBOLE_TABLE_MEMBER,
-} from '../..';
-
-import { dbTypeToRaw, rawToDbType } from './types';
-import {
   Block,
   CreateIndex,
   AlterFunction,
   CreateFunction,
   AlterProcedure,
-  Statement,
   AlterTable,
   CreateProcedure,
   AlterTableAddMember,
@@ -87,9 +81,9 @@ import {
   CreateSequence,
   DropSequence,
   Annotation,
-  Condition,
-} from '../../ast';
-import { Name } from '../../types';
+  Name,
+} from 'lubejs';
+import { dbTypeToRaw, rawToDbType } from './types';
 import {
   isAlterTableColumn,
   isCheckConstraint,
@@ -100,8 +94,8 @@ import {
   isRaw,
   isUniqueKey,
   isVariantDeclare,
-} from '../../util';
-import { formatSql, sqlifyLiteral } from './util';
+} from 'lubejs';
+import { sqlifyLiteral } from './util';
 import { MssqlProvider } from './provider';
 
 export interface MssqlCompileOptions extends CompileOptions {}
@@ -660,7 +654,14 @@ export class MssqlCompiler extends Compiler {
         .map(line => '-- ' + line)
         .join('\n');
     }
-    return '/**\n' + statement.$text.split(/\n|\r\n/g).map(line => ' * ' + line.replace(/\*\//g, '* /')).join('\n') + '\n */';
+    return (
+      '/**\n' +
+      statement.$text
+        .split(/\n|\r\n/g)
+        .map(line => ' * ' + line.replace(/\*\//g, '* /'))
+        .join('\n') +
+      '\n */'
+    );
   }
 
   public compileLiteral(literal: Scalar): string {
@@ -775,9 +776,9 @@ export class MssqlCompiler extends Compiler {
       sql += statement.$drops
         .map(member => {
           if (member.$kind === SQL_SYMBOLE_TABLE_MEMBER.COLUMN) {
-            return ` COLUMN ${this.quoted(member.$name)}`
+            return ` COLUMN ${this.quoted(member.$name)}`;
           }
-          return ` CONSTRAINT ${this.quoted(member.$name)}`
+          return ` CONSTRAINT ${this.quoted(member.$name)}`;
         })
         .join(',\n  ');
     }

@@ -10,7 +10,7 @@ import {
   Scalar,
   TsTypeOf,
   SqlBuilder as SQL,
-} from '../..';
+} from 'lubejs';
 
 const { makeExec, variant, builtIn, func, makeInvoke } = SQL;
 

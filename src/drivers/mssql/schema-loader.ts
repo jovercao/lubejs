@@ -1,23 +1,19 @@
-import { SqlBuilder, DbType, LUBE_MIGRATE_TABLE_NAME } from '../..';
-import { SQL_SYMBOLE } from '../../constants';
-import { DbProvider } from '../../lube';
 import {
+  SqlBuilder,
+  DbType,
+  LUBE_MIGRATE_TABLE_NAME,
+  DbProvider,
   CheckConstraintSchema,
   ColumnSchema,
-  ConstraintSchema,
   DatabaseSchema,
   ForeignKeySchema,
   IndexSchema,
-  KeyColumnSchema,
   PrimaryKeySchema,
   TableSchema,
   UniqueConstraintSchema,
   ViewSchema,
-} from '../../schema';
-import { Name } from '../../types';
+} from 'lubejs';
 import { fullType } from './types';
-
-import { groupBy } from './util';
 
 const {
   case: $case,

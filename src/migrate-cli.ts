@@ -179,7 +179,9 @@ export class MigrateCli {
     if (!existsSync(this.migrateDir)) {
       await promises.mkdir(this.migrateDir);
     }
-    await writeFile(join(this.migrateDir, `${id}.ts`), codes);
+    const filePath = join(this.migrateDir, `${id}.ts`);
+    await writeFile(filePath, codes);
+    console.info(`迁移文件创建成功：${filePath}`);
   }
 
   /**

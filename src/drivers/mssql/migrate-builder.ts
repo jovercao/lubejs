@@ -5,15 +5,12 @@ import {
   SqlBuilder as SQL,
   CompatibleExpression,
   Scalar,
-  DbType,
   Condition,
-} from '../..';
-import { Compiler } from '../../compile';
-import { DbProvider, Lube } from '../../lube';
-import { ensureExpression } from '../../util';
+  Compiler,
+  Lube,
+} from 'lubejs';
 import { sp_rename } from './build-in';
 import { MssqlProvider } from './provider';
-import { load } from './schema-loader';
 import { formatSql } from './util';
 
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
@@ -56,8 +53,8 @@ WHERE c.object_id = object_id('${this.compiler.stringifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
  EXEC ('ALTER TABLE ${this.compiler.stringifyName(
-      table
-    )} DROP CONSTRAINT ' + @ConstaintName)
+   table
+ )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
 ALTER TABLE ${this.compiler.stringifyName(
@@ -78,8 +75,8 @@ WHERE c.object_id = object_id('${this.compiler.stringifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
   EXEC ('ALTER TABLE ${this.compiler.stringifyName(
-      table
-    )} DROP CONSTRAINT ' + @ConstaintName)
+    table
+  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 `);
   }

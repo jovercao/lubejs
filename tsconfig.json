@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "module": "commonjs",
     "target": "ES2017",
     "declaration": true,
@@ -11,7 +12,10 @@
     "strict": false,
     "lib": [
       "ES2017"
-    ]
+    ],
+    "paths": {
+      "lubejs": [ "src" ]
+    }
   },
   "exclude": [
     "node_modules",

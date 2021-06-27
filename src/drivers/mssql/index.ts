@@ -1,15 +1,10 @@
-import sql from "mssql";
-import { MssqlProvider } from "./provider";
-import { DefaultCompilerOptions, MssqlCompileOptions } from "./compile";
-import {
-  Driver,
-  ConnectOptions,
-  DbProvider,
-} from "../..";
-import { Lube } from '../../lube'
+import sql from 'mssql';
+import { MssqlProvider } from './provider';
+import { DefaultCompilerOptions, MssqlCompileOptions } from './compile';
+import { Driver, ConnectOptions, DbProvider } from 'lubejs';
 
 const DefaultConnectOptions: sql.config = {
-  server: "localhost",
+  server: 'localhost',
   // 端口号
   port: 1433,
   options: {
@@ -52,8 +47,8 @@ export const connect: Driver = async function (
   options: MssqlConnectOptions
 ): Promise<DbProvider> {
   const mssqlOptions: sql.config = Object.assign({}, DefaultConnectOptions);
-  const keys = ["user", "password", "port", "database"];
-  keys.forEach((key) => {
+  const keys = ['user', 'password', 'port', 'database'];
+  keys.forEach(key => {
     if (Reflect.has(options, key)) {
       Reflect.set(mssqlOptions, key, Reflect.get(options, key));
     }
@@ -100,6 +95,6 @@ export const connect: Driver = async function (
 
 export default connect;
 
-export * from "./build-in";
+export * from './build-in';
 
 export { DIALECT } from './provider';

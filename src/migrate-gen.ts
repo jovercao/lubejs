@@ -649,7 +649,7 @@ export function generateMigrateClass(
   upcodes?: string[],
   downcodes?: string[]
 ): string {
-  return `import { Migrate, Statement, SqlBuilder as SQL, DbType, MigrateBuilder } from '../../src';
+  return `import { Migrate, Statement, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
 
 export class ${name} implements Migrate {
 

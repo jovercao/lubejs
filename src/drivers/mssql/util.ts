@@ -1,5 +1,4 @@
-import { Name, Scalar } from '../..';
-import { isBinary } from '../../util';
+import { Scalar, isBinary } from 'lubejs';
 
 // export function quoted(name: string): string {
 //   return `[${name.replace(/\]/g, "]]")}]`;

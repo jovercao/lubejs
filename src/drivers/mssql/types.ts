@@ -1,6 +1,5 @@
 import mssql, { ISqlType, TYPES } from 'mssql';
-import { DbType, ISOLATION_LEVEL } from '../..';
-import { isRaw } from '../../util';
+import { DbType, ISOLATION_LEVEL, isRaw } from 'lubejs';
 
 const strTypeMapps: Record<string, any> = {};
 Object.entries(mssql.TYPES).forEach(([name, dbType]) => {

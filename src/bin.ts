@@ -53,7 +53,7 @@ const migrate = Program.command('migrate')
   .description('Migration comannders.');
 const migrateCreate = migrate
   .command('create <name>')
-  .description('Create a empty migrate file.')
+  .description('创建一个空白的迁移文件.')
   .option('-o, --output-dir <outputDir>', '输出目录.')
   .action(async (name: string) => {
     const cli = await createMigrateCli(migrate.opts());

@@ -5,7 +5,7 @@ import {
   PARAMETER_DIRECTION,
   QueryResult,
   Scalar,
-} from '../..';
+} from 'lubejs';
 import { toMssqlType } from './types';
 
 export type IDriver = {

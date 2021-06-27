@@ -9,11 +9,11 @@ import {
   Parameter,
   Transaction,
   DatabaseSchema,
-} from '../..';
-import { load } from './schema-loader'
-import { MigrateBuilder } from '../../migrate-builder'
-import { MssqlMigrateBuilder } from './migrate-builder'
-import { Lube } from '../../lube'
+  MigrateBuilder,
+  Lube,
+} from 'lubejs';
+import { load } from './schema-loader';
+import { MssqlMigrateBuilder } from './migrate-builder';
 
 export const DIALECT = Symbol('mssql');
 
@@ -34,12 +34,11 @@ export class MssqlProvider implements DbProvider {
     return this._migrateBuilder;
   }
 
-  dialect: string | symbol = DIALECT
+  dialect: string | symbol = DIALECT;
 
   getSchema(): Promise<DatabaseSchema> {
     return load(this);
   }
-
 
   async query(sql: string, params: Parameter<any, string>[]) {
     const res = await doQuery(this._pool, sql, params, this.compiler.options);
