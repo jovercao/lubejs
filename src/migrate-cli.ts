@@ -50,10 +50,11 @@ function makeMigrateBuilder(
         return function (...args: any) {
           const ret = val.call(target, ...args);
           if (ret instanceof Promise) {
-            return ret.then(statement => {
-              if (isStatement(statement)) {
-                statements.push(statement);
+            return ret.then(ret => {
+              if (isStatement(ret)) {
+                statements.push(ret);
               }
+              return ret
             });
           } else if (isStatement(ret) || isRaw(ret)) {
             statements.push(ret);
