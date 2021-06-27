@@ -1,0 +1,13 @@
+{
+  "extends": "../../config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "outDir": "dist",
+    "paths": {
+      "lubejs": ["../../src"]
+    }
+  },
+  "exclude": [
+    "../../src"
+  ]
+}

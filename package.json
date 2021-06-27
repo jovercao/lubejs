@@ -14,8 +14,8 @@
   ],
   "scripts": {
     "test": "mocha --fulltrace --full-trace --require ts-node/register --extensions ts,tsx 'test/**/*.{ts,tsx}'",
-    "build": "npm run clean && tsc",
-    "clean": "pwsh -c 'rm -r -force dist'",
+    "build": "npm run clean && tsc --build src/tsconfig.json && tsc --build drivers/mssql",
+    "clean": "pwsh -c 'rm -r -force dist; rm -r -force drivers/mssql/dist'",
     "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ./src --ext .ts",
     "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src",
