@@ -257,7 +257,8 @@ export interface PrimaryKeySchema {
    * 是否是非聚焦索引
    */
   isNonclustered: boolean;
-  columns: KeyColumnSchema[]
+  comment?: string;
+  columns: KeyColumnSchema[];
 }
 
 
@@ -407,7 +408,7 @@ export function generate(
       name: entity.tableName,
       primaryKey: {
         name: `PK_${entity.tableName}_${entity.keyColumn.columnName}`,
-        isNonclustered: true,
+        isNonclustered: false,
         columns: [{
           name: entity.keyColumn.columnName,
           isAscending: true
@@ -424,7 +425,7 @@ export function generate(
 
   function genColumnSchema(column: ColumnMetadata): ColumnSchema {
     const col: ColumnSchema = {
-      type: compiler.compileType(column.dbType),
+      type: compiler.compileType(column.dbType).replace(/ /g, ''),
       name: column.columnName,
       isNullable: column.isNullable,
       isIdentity: column.isIdentity,

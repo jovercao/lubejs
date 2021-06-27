@@ -3,9 +3,10 @@ import { Executor, QueryResult } from './execute';
 import { URL } from 'url';
 import { ISOLATION_LEVEL } from './constants';
 import assert from 'assert';
-import { CompileOptions, Compiler } from './compile';
+import { CompileOptions, Compiler, StandardTranslator } from './compile';
 import { Parameter } from './ast';
 import { DatabaseSchema } from './schema';
+import { MigrateBuilder } from './migrate-builder'
 
 export type ConnectOptions = {
   /**
@@ -79,10 +80,15 @@ export type TransactionHandler<T> = (
  */
 export interface DbProvider {
   /**
+   * lube对象
+   */
+  lube: Lube;
+  /**
    * 必须实现编译器
    */
   // getCompiler(options: CompileOptions): Compiler;
   readonly compiler: Compiler;
+  readonly migrateBuilder: MigrateBuilder;
   query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
   close(): Promise<void>;
@@ -150,10 +156,9 @@ export class Lube extends Executor {
     //   }
     //   compiler = new Compiler(compileOptions);
     // }
-    super(function (...args: any[]) {
-      return provider.query.call(provider, ...args);
-    }, compiler);
+    super(provider.query.bind(provider), compiler);
     this.provider = provider;
+    this.provider.lube = this;
   }
 
   /**
@@ -264,7 +269,7 @@ export async function connect(arg: ConnectOptions | string): Promise<Lube> {
     }
   }
 
-  const provider: DbProvider = await config.driver(config);
+  const provider: DbProvider = await config.driver(config, );
   return new Lube(provider);
 }
 

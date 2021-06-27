@@ -1,7 +1,7 @@
 import mssql from 'mssql';
 import { doQuery } from './query';
 import { toMssqlIsolationLevel } from './types';
-import { MssqlCompiler } from './compile';
+import { MssqlCompiler, MssqlStandardTranslator } from './compile';
 import {
   CompileOptions,
   DbProvider,
@@ -11,20 +11,35 @@ import {
   DatabaseSchema,
 } from '../..';
 import { load } from './schema-loader'
+import { MigrateBuilder } from '../../migrate-builder'
+import { MssqlMigrateBuilder } from './migrate-builder'
+import { Lube } from '../../lube'
 
 export const DIALECT = Symbol('mssql');
 
 export class MssqlProvider implements DbProvider {
   constructor(private _pool: mssql.ConnectionPool, options: CompileOptions) {
-    this.compiler = new MssqlCompiler(options);
+    const translator = new MssqlStandardTranslator(this);
+    this.compiler = new MssqlCompiler(options, translator);
+    translator.compiler = this.compiler;
   }
+
+  readonly lube: Lube;
+  readonly compiler: MssqlCompiler;
+  private _migrateBuilder: MssqlMigrateBuilder;
+  get migrateBuilder(): MigrateBuilder {
+    if (!this._migrateBuilder) {
+      this._migrateBuilder = new MssqlMigrateBuilder(this);
+    }
+    return this._migrateBuilder;
+  }
+
   dialect: string | symbol = DIALECT
 
   getSchema(): Promise<DatabaseSchema> {
     return load(this);
   }
 
-  readonly compiler: MssqlCompiler;
 
   async query(sql: string, params: Parameter<any, string>[]) {
     const res = await doQuery(this._pool, sql, params, this.compiler.options);

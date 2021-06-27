@@ -382,7 +382,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 自动生成表达式（程序）
    */
-  generator?: (item: any) => CompatibleExpression<T>;
+  generator?: (rowset: ProxiedRowset<any>, item: any) => CompatibleExpression<T>;
 }
 
 /**

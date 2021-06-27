@@ -1,4 +1,11 @@
-import { context, DbContext, Repository, DbType, Entity, SqlBuilder as SQL } from '../src';
+import {
+  context,
+  DbContext,
+  Repository,
+  DbType,
+  Entity,
+  SqlBuilder as SQL,
+} from '../src';
 
 /*************************试验代码****************************/
 export class Order extends Entity {
@@ -62,51 +69,58 @@ export class DB extends DbContext {
   }
 }
 
-context(DB, (modelBuilder) => {
-  modelBuilder.entity(Order).asTable((builder) => {
-    builder.column((p) => p.id, Number);
-    builder.column(p => p.orderNo, String).autogen((item) => 'abc');
-    builder.column((p) => p.date, Date).dbType(DbType.datetime).defaultValue(SQL.now());
-    builder.column((p) => p.description, String).nullable();
-    builder.hasMany((p) => p.details, OrderDetail).withOne((p) => p.order);
+context(DB, modelBuilder => {
+  modelBuilder.entity(Order).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.orderNo, String).autogen(item => 'abc');
+    builder
+      .column(p => p.date, Date)
+      .dbType(DbType.datetime)
+      .defaultValue(SQL.now());
+    builder.column(p => p.description, String).nullable();
+    builder.hasMany(p => p.details, OrderDetail).withOne(p => p.order);
+    builder.hasKey(p => p.id);
   });
 
-  modelBuilder.entity(OrderDetail).asTable((builder) => {
-    builder.column((p) => p.id, Number);
-    builder.column((p) => p.product, String);
-    builder.column((p) => p.count, Number);
-    builder.column((p) => p.price, Number).dbType(DbType.numeric(18, 6));
-    builder.column((p) => p.amount, Number).dbType(DbType.numeric(18, 2));
+  modelBuilder.entity(OrderDetail).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.product, String);
+    builder.column(p => p.count, Number);
+    builder.column(p => p.price, Number).dbType(DbType.numeric(18, 6));
+    builder.column(p => p.amount, Number).dbType(DbType.numeric(18, 2));
     builder.column(p => p.orderId, Number);
     builder
-      .hasOne((p) => p.order, Order)
-      .withMany((p) => p.details)
-      .hasForeignKey((p) => p.orderId);
+      .hasOne(p => p.order, Order)
+      .withMany(p => p.details)
+      .hasForeignKey(p => p.orderId);
+    builder.hasKey(p => p.id);
   });
 
-  modelBuilder.entity(Position).asTable((entityBuilder) => {
-    entityBuilder.column((p) => p.id, Number);
-    entityBuilder.column((p) => p.name, String);
-    entityBuilder.column((p) => p.description, String).nullable();
-    entityBuilder.hasData([
-      { id: 1, name: '总经理', description: '无'},
-      { id: 2, name: '总监', description: '无'},
-      { id: 3, name: '普通职员', description: '无'}
-    ])
+  modelBuilder.entity(Position).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.name, String);
+    builder.column(p => p.description, String).nullable();
+    builder.hasKey(p => p.id);
+    builder.hasData([
+      { id: 1, name: '总经理', description: '无' },
+      { id: 2, name: '总监', description: '无' },
+      { id: 3, name: '普通职员', description: '无' },
+    ]);
   });
 
-  modelBuilder.entity(Employee).asTable((entity) => {
-    entity.column((p) => p.id, Number);
-    entity
-      .column((p) => p.name, String)
+  modelBuilder.entity(Employee).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder
+      .column(p => p.name, String)
       .dbType(DbType.string(100))
       .nullable();
-    entity
-      .hasMany((p) => p.positions, Position)
+    builder
+      .hasMany(p => p.positions, Position)
       .withMany()
-      .hasRelationTable(EmployeePosition, (builder) => {
-        builder.column((p) => p.id, Number).identity();
+      .hasRelationTable(EmployeePosition, builder => {
+        builder.column(p => p.id, Number).identity();
       });
+    builder.hasKey(p => p.id);
   });
 
   // console.log(JSON.stringify(modelBuilder.metadata));

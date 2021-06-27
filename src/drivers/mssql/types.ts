@@ -1,36 +1,66 @@
-import mssql, { ISqlType, TYPES } from 'mssql'
-import { DbType, ISOLATION_LEVEL } from "../..";
-import { isRaw } from '../../util'
+import mssql, { ISqlType, TYPES } from 'mssql';
+import { DbType, ISOLATION_LEVEL } from '../..';
+import { isRaw } from '../../util';
 
-
-
-const strTypeMapps: Record<string, any> = {}
+const strTypeMapps: Record<string, any> = {};
 Object.entries(mssql.TYPES).forEach(([name, dbType]) => {
-  strTypeMapps[name.toUpperCase()] = dbType
-})
+  strTypeMapps[name.toUpperCase()] = dbType;
+});
 
-const typeReg = /^\s*(?<type>\w+)\s*(?:\(\s*((?<max>max)|((?<p1>\d+)(\s*,\s*(?<p2>\d+))?))\s*\))?\s*$/i
+const typeReg =
+  /^\s*(?<type>\w+)\s*(?:\(\s*((?<max>max)|((?<p1>\d+)(\s*,\s*(?<p2>\d+))?))\s*\))?\s*$/i;
 
-export function parseRawType(type: string): ISqlType  {
-  const matched = typeReg.exec(type)
+export function parseRawType(type: string): ISqlType {
+  const matched = typeReg.exec(type);
   if (!matched) {
-    throw new Error('Error mssql datat type: ' + type)
+    throw new Error('Error mssql datat type: ' + type);
   }
-  const sqlType = strTypeMapps[matched.groups.type.toUpperCase()]
+  const sqlType = strTypeMapps[matched.groups.type.toUpperCase()];
   if (!sqlType) {
-    throw new Error('Unspport mssql datat type:' + type)
+    throw new Error('Unspport mssql datat type:' + type);
   }
   if (matched.groups.max) {
-    return sqlType(mssql.MAX)
+    return sqlType(mssql.MAX);
   }
-  return sqlType(matched.groups.p1, matched.groups.p2)
+  if (matched.groups.p2 !== undefined) {
+    return sqlType(
+      Number.parseInt(matched.groups.p1),
+      Number.parseInt(matched.groups.p2)
+    );
+  }
+  return sqlType(Number.parseInt(matched.groups.p1));
+}
+
+export function fullType(
+  typeName: string,
+  length: number,
+  precision: number,
+  scale: number
+): string {
+  typeName = typeName.toUpperCase();
+  if (
+    ['NVARCHAR', 'VARCHAR', 'NCHAR', 'CHAR', 'VARBINARY', 'BINARY'].includes(
+      typeName
+    )
+  ) {
+    return `${typeName}(${length === -1 ? 'MAX' : length})`;
+  }
+
+  if (typeName === 'DATETIMEOFFSET') {
+    return `${typeName}(${scale})`;
+  }
+
+  if (['DECIMAL', 'NUMERIC'].includes(typeName)) {
+    return `${typeName}(${precision},${scale})`;
+  }
+  return typeName;
 }
 
 export function toMssqlType(type: DbType): mssql.ISqlType {
   if (isRaw(type)) {
     return parseRawType(type.$sql);
   }
-  switch(type.name) {
+  switch (type.name) {
     case 'BINARY':
       return mssql.Binary();
     case 'BOOLEAN':
@@ -63,7 +93,7 @@ export function toMssqlType(type: DbType): mssql.ISqlType {
     case 'OBJECT':
       return mssql.NVarChar(mssql.MAX);
     default:
-      throw new Error(`Unsupport data type ${type['name']}`)
+      throw new Error(`Unsupport data type ${type['name']}`);
   }
 }
 
@@ -76,48 +106,104 @@ const IsolationLevelMapps = {
 };
 
 export function toMssqlIsolationLevel(level: ISOLATION_LEVEL): number {
-  const result = IsolationLevelMapps[level]
+  const result = IsolationLevelMapps[level];
   if (result === undefined) {
-    throw new Error('不受支持的事务隔离级别：' + level)
+    throw new Error('不受支持的事务隔离级别：' + level);
   }
   return result;
 }
 
-export function dbTypeToSql(type: DbType): string {
+export function dbTypeToRaw(type: DbType): string {
   if (isRaw(type)) return type.$sql;
   switch (type.name) {
-    case "STRING":
-      return `VARCHAR(${type.length === DbType.MAX ? "MAX" : type.length})`;
-    case "INT8":
-      return "TINYINT";
-    case "INT16":
-      return "SMALLINT";
-    case "INT32":
-      return "INT";
-    case "INT64":
-      return "BIGINT";
-    case "BINARY":
-      return `VARBINARY(${type.length === 0 ? "MAX" : type.length})`;
-    case "BOOLEAN":
-      return "BIT";
-    case "DATE":
-      return "DATE";
-    case "DATETIME":
-      return "DATETIMEOFFSET(7)";
-    case "FLOAT":
-      return "REAL";
-    case "DOUBLE":
-      return "FLOAT(53)";
-    case "NUMERIC":
-      return `NUMERIC(${type.precision}, ${type.digit})`;
-    case "UUID":
-      return "UNIQUEIDENTIFIER";
-    case "OBJECT":
-    case "ARRAY":
-      return "NVARCHAR(MAX)";
-    case "ROWFLAG":
-      return "TIMESTAMP";
+    case 'STRING':
+      return `VARCHAR(${type.length === DbType.MAX ? 'MAX' : type.length})`;
+    case 'INT8':
+      return 'TINYINT';
+    case 'INT16':
+      return 'SMALLINT';
+    case 'INT32':
+      return 'INT';
+    case 'INT64':
+      return 'BIGINT';
+    case 'BINARY':
+      return `VARBINARY(${type.length === 0 ? 'MAX' : type.length})`;
+    case 'BOOLEAN':
+      return 'BIT';
+    case 'DATE':
+      return 'DATE';
+    case 'DATETIME':
+      return 'DATETIME';
+    case 'FLOAT':
+      return 'REAL';
+    case 'DOUBLE':
+      return 'FLOAT(53)';
+    case 'NUMERIC':
+      return `DECIMAL(${type.precision}, ${type.digit})`;
+    case 'UUID':
+      return 'UNIQUEIDENTIFIER';
+    case 'OBJECT':
+    case 'ARRAY':
+      return 'NVARCHAR(MAX)';
+    case 'ROWFLAG':
+      return 'TIMESTAMP';
+    case 'DATETIMEOFFSET':
+      return 'DATETIMEOFFSET(7)';
     default:
-      throw new Error(`Unsupport data type ${type["name"]}`);
+      throw new Error(`Unsupport data type ${type['name']}`);
   }
+}
+
+/**
+ * 原始类型到DbType类型的映射
+ */
+const raw2DbTypeMap: Record<string, keyof typeof DbType> = {
+  NCHAR: 'string',
+  NVARCHAR: 'string',
+  VARCHAR: 'string',
+  CHAR: 'string',
+  TEXT: 'string',
+  INT: 'int32',
+  BIGINT: 'int64',
+  SMALLINT: 'int16',
+  TINYINT: 'int8',
+  DECIMAL: 'numeric',
+  NUMERIC: 'numeric',
+  FLOAT: 'float',
+  REAL: 'double',
+  DATE: 'date',
+  DATETIME: 'datetime',
+  DATETIMEOFFSET: 'datetimeoffset',
+  BIT: 'boolean',
+  UNIQUEIDENTIFIER: 'uuid',
+  BINARY: 'binary',
+  VARBINARY: 'binary',
+  IMAGE: 'binary',
+};
+
+export function rawToDbType(type: string): DbType {
+  const matched = typeReg.exec(type);
+  if (!matched) {
+    throw new Error('Error mssql datat type: ' + type);
+  }
+  const dbTypeKey = raw2DbTypeMap[matched.groups.type.toUpperCase()];
+  if (!dbTypeKey) {
+    throw new Error('Unknown mssql datat type:' + type);
+  }
+  const dbTypeFactory = DbType[dbTypeKey];
+  if (typeof dbTypeFactory === 'object') {
+    return dbTypeFactory as DbType;
+  }
+  if (matched.groups.max) {
+    return Reflect.apply(dbTypeFactory as Function, DbType, [DbType.MAX]);
+  }
+  if (matched.groups.p2 !== undefined) {
+    return Reflect.apply(dbTypeFactory as Function, DbType, [
+      Number.parseInt(matched.groups.p1),
+      Number.parseInt(matched.groups.p2),
+    ]);
+  }
+  return Reflect.apply(dbTypeFactory as Function, DbType, [
+    Number.parseInt(matched.groups.p1),
+  ]);
 }

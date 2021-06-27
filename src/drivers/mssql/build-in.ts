@@ -1,4 +1,4 @@
-import { dbTypeToSql } from './types';
+import { dbTypeToRaw } from './types';
 import {
   Statement,
   Binary,
@@ -795,7 +795,7 @@ export function convert<T extends DbType>(
   expr: CompatibleExpression,
   styleId?: CompatibleExpression<number>
 ): Expression<TsTypeOf<T>> {
-  let typeDesc = builtIn(dbTypeToSql(type));
+  let typeDesc = builtIn(dbTypeToRaw(type));
   if (styleId === undefined) {
     return func('CONVERT', true).invokeAsScalar(typeDesc, expr);
   } else {

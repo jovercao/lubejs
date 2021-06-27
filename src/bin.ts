@@ -71,10 +71,12 @@ migrate
   .command('gen <name>')
   .description('生成数据库迁移源代码.')
   .option('-o, --output-dir <outputDir>', '输出目录.')
+  .option('-n, --not-resolver-type', '生成的代码中不转换原始数据类型到DbType.')
   .action(async name => {
-    const cli = await createMigrateCli(migrate.opts());
+    const opts = migrate.opts();
+    const cli = await createMigrateCli(opts);
     try {
-      await cli.gen(name);
+      await cli.gen(name, opts.notResolverType);
     } catch (error) {
       console.error(error.message.red);
       console.log(error.stack);

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { CompatibleExpression, Expression, Select } from "./ast";
+import { CompatibleExpression, Expression, ProxiedRowset, Select } from "./ast";
 import { DbContext } from "./db-context";
 import {
   ManyToManyMetadata,
@@ -92,6 +92,12 @@ function fixColumn(
   if (column.isPrimaryKey === undefined) {
     column.isPrimaryKey = false;
   }
+  if (column.isCalculate === undefined) {
+    column.isCalculate = false;
+  }
+  if (column.isIdentity === undefined) {
+    column.isIdentity = false
+  }
 }
 
 function fixIndex(entity: TableEntityMetadata, index: IndexMetadata) {
@@ -178,7 +184,7 @@ function fixOneToMany(
       referenceRelation = {
         property: relation.referenceProperty,
         // dbName: relation.referenceProperty,
-        constraintName: `${relation.referenceEntity.tableName}_${foreignProperty}_TO_${entity.tableName}_${entity.keyProperty}`,
+        constraintName: `FK_${relation.referenceEntity.tableName}_${foreignProperty}_TO_${entity.tableName}_${entity.keyProperty}`,
         kind: "MANY_TO_ONE",
         isImplicit: true,
         referenceClass: entity.class,
@@ -442,7 +448,7 @@ function ensureForeignProperty(
   }
 
   if (!relation.constraintName) {
-    relation.constraintName = `FK_${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation.referenceEntity.keyColumn}`;
+    relation.constraintName = `FK_${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation.referenceEntity.keyColumn.columnName}`;
   }
 }
 
@@ -1094,7 +1100,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
 
   // TODO: 待添加种子数据结构化初始
   /**
-   * 种子数据，
+   * 种子数据，必须指定所有字段值，包括Identity字段
    * 暂时只支持，数据表对象新增
    * 重复调用则追加
    */
@@ -1154,7 +1160,12 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
     return this;
   }
 
-  autogen(generator: (item: any) => CompatibleExpression<V>): this {
+  /**
+   * 列自动填充值，通过表达式生成，如调用函数等
+   * @param generator
+   * @returns
+   */
+  autogen(generator: (s: ProxiedRowset<T>, item: T) => CompatibleExpression<V>): this {
     this.metadata.generator = generator;
     return this;
   }

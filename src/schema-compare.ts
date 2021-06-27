@@ -1,5 +1,6 @@
 import { DatabaseSchema } from "./schema";
-import { isBinary, map } from './util'
+import { Binary } from './types'
+import { isBinary, isScalar, map } from './util'
 
 type Scalar =
   | undefined
@@ -51,6 +52,8 @@ enum ValueType {
 }
 
 function getType(value: any): ValueType {
+  if (isScalar(value)) return ValueType.scalar;
+
   if (Array.isArray(value)) {
     const el1Type = getType(value[0]);
     if (el1Type === ValueType.object) {
@@ -59,9 +62,6 @@ function getType(value: any): ValueType {
     return ValueType.scalar;
   }
   if (typeof value === "object") {
-    if (isBinary(value) || value instanceof Date) {
-      return ValueType.scalar;
-    }
     return ValueType.object;
   }
   return ValueType.scalar;
@@ -75,6 +75,8 @@ function getType(value: any): ValueType {
  */
 function isNochange<T extends Scalar>(value1: T, value2: T): boolean {
   if (value1 === value2) return true;
+  // undefined 与 null 视作相等
+  if ((value1 === undefined || value1 === null) && (value2 === undefined || value2 === null)) return true;
   if (value1 === undefined || value2 === undefined) return false;
   if (value1 === null || value2 === null) return false;
 
@@ -88,6 +90,10 @@ function isNochange<T extends Scalar>(value1: T, value2: T): boolean {
       }
     }
     return true;
+  }
+
+  if (isBinary(value1)) {
+    return Buffer.compare(Buffer.from(value1), Buffer.from(value2 as any)) === 0
   }
 
   if (value1 instanceof Date && value2 instanceof Date) {

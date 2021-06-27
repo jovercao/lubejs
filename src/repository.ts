@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { FieldsOf, ProxiedTable } from "./ast";
+import { FieldsOf, ProxiedRowset, ProxiedTable } from "./ast";
 import { Executor } from "./execute";
 import { Queryable } from "./queryable";
 import {
@@ -111,20 +111,20 @@ export class Repository<T extends Entity> extends Queryable<T> {
         // 不保存关联关系
         await this.saveDependents(item, withoutRelations);
       }
-      const data: any = Object.create(null);
+      const row: any = Object.create(null);
       for (const column of this.metadata.columns) {
         if (column.isIdentity || column.isRowflag) continue;
         if (column.generator) {
           if (Reflect.get(item, column.property) !== undefined) {
             console.warn(`Entity ${this.metadata.className} Property ${column.property} is autoGen column, but value found, will override it here.`)
           }
-          data[column.columnName] = column.generator(item);
+          row[column.columnName] = column.generator(this.rowset as ProxiedRowset<any>, item);
           continue;
         }
         if (!Reflect.has(item, column.property) && (column.isImplicit || column.defaultValue)) continue;
-        data[column.columnName] = this.toDbValue(item, column);
+        row[column.columnName] = this.toDbValue(item, column);
       }
-      await this.executor.insert(this.rowset, data);
+      await this.executor.insert(this.rowset, row);
 
       const key = this.metadata.keyColumn.isIdentity
         ? SqlBuilder.identityValue(

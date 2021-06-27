@@ -102,6 +102,11 @@ export type DATETIME = {
   readonly name: "DATETIME";
 };
 
+export type DATETIMEOFFSET = {
+  readonly name: "DATETIMEOFFSET";
+};
+
+
 export type BINARY = {
   readonly name: "BINARY";
   readonly length: number;
@@ -163,13 +168,13 @@ export type DbType =
   | STRING
   | DATE
   | DATETIME
+  | DATETIMEOFFSET
   | BINARY
   | BOOLEAN
   | UUID
   | ROWFLAG
   | OBJECT
-  | ARRAY<any>
-  | Raw;
+  | ARRAY<any>;
 
 /**
  * 类型转换
@@ -322,6 +327,9 @@ export const DbType = {
   datetime: {
     name: "DATETIME",
   } as DATETIME,
+  datetimeoffset: {
+    name: 'DATETIMEOFFSET'
+  } as DATETIMEOFFSET,
   binary(length: number): BINARY {
     return {
       name: "BINARY",

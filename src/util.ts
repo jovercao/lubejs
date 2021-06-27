@@ -12,7 +12,7 @@ import {
   Document,
   Assignment,
   BinaryOperation,
-  ParenthesesExpression,
+  GroupExpression,
   BuiltIn,
   Case,
   SelectColumn,
@@ -42,7 +42,7 @@ import {
   BinaryCompareCondition,
   BinaryLogicCondition,
   ExistsCondition,
-  ParenthesesCondition,
+  GroupCondition,
   UnaryCompareCondition,
   UnaryLogicCondition,
   With,
@@ -75,8 +75,8 @@ import {
   ForeignKey,
   UniqueKey,
   CheckConstraint,
-  CreateTableColumn,
-  AlterTableColumn,
+  TableColumnForAdd,
+  TableColumnForAlter,
   StandardStatement,
   CreateSequence,
   DropSequence,
@@ -525,11 +525,11 @@ export function isCheckConstraint(value: any): value is CheckConstraint {
   return value?.$type === SQL_SYMBOLE.CHECK_CONSTRAINT;
 }
 
-export function isCreateTableColumn(value: any): value is CreateTableColumn {
+export function isCreateTableColumn(value: any): value is TableColumnForAdd {
   return value?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN;
 }
 
-export function isAlterTableColumn(value: any): value is AlterTableColumn {
+export function isAlterTableColumn(value: any): value is TableColumnForAlter {
   return value?.$type === SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
@@ -587,7 +587,8 @@ export function isStatement(value: any): value is Statement {
     isDropIndex(value) ||
     isDropProcedure(value) ||
     isDropFunction(value) ||
-    isDropSequence(value)
+    isDropSequence(value) ||
+    isAnnotation(value)
   );
 }
 
@@ -668,7 +669,7 @@ export function isExpression(value: any): value is Expression {
     isOperation(value) ||
     isScalarFuncInvoke(value) ||
     isCase(value) ||
-    isParenthese(value) ||
+    isGroupExpression(value) ||
     isValuedSelect(value) ||
     isParameter(value)
   );
@@ -678,7 +679,7 @@ export function isCase(value: any): value is Case {
   return value?.$type === SQL_SYMBOLE.CASE;
 }
 
-export function isParenthese(value: any): value is ParenthesesExpression {
+export function isGroupExpression(value: any): value is GroupExpression {
   return value?.$type === SQL_SYMBOLE.BRACKET_EXPRESSION;
 }
 
@@ -725,37 +726,35 @@ export function isCondition(value: any): value is Condition {
 }
 
 export function isUnaryCompareCondition(
-  value: Condition
+  value: any
 ): value is UnaryCompareCondition {
-  return value?.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return isCondition(value) && value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryCompareCondition(
-  value: Condition
+  value: any
 ): value is BinaryCompareCondition {
-  return value?.$kind === CONDITION_KIND.BINARY_COMPARE;
+  return isCondition(value) && value.$kind === CONDITION_KIND.BINARY_COMPARE;
 }
 
 export function isUnaryLogicCondition(
-  value: Condition
+  value: any
 ): value is UnaryLogicCondition {
-  return value?.$kind === CONDITION_KIND.UNARY_COMPARE;
+  return isCondition(value) && value.$kind === CONDITION_KIND.UNARY_COMPARE;
 }
 
 export function isBinaryLogicCondition(
-  value: Condition
+  value: any
 ): value is BinaryLogicCondition {
-  return value?.$kind === CONDITION_KIND.BINARY_LOGIC;
+  return isCondition(value) && value.$kind === CONDITION_KIND.BINARY_LOGIC;
 }
 
-export function isGroupCondition(
-  value: Condition
-): value is ParenthesesCondition {
-  return value?.$kind === CONDITION_KIND.BRACKET_CONDITION;
+export function isGroupCondition(value: any): value is GroupCondition {
+  return isCondition(value) && value.$kind === CONDITION_KIND.BRACKET_CONDITION;
 }
 
-export function isExistsCondition(value: Condition): value is ExistsCondition {
-  return value?.$kind === CONDITION_KIND.EXISTS;
+export function isExistsCondition(value: any): value is ExistsCondition {
+  return isCondition(value) && value?.$kind === CONDITION_KIND.EXISTS;
 }
 
 export function isDocument(value: any): value is Document {
@@ -977,22 +976,21 @@ export function joinConditions(
     let condition = ensureCondition(current);
     // 如果是二元逻辑条件运算，则将其用括号括起来，避免逻辑运算出现优先级的问题
     if (isBinaryLogicCondition(condition)) {
-      condition = SqlBuilder.enclose(condition);
+      condition = SqlBuilder.group(condition);
     }
     if (!previous) return condition;
     return new BinaryLogicCondition(logic, previous, condition);
   }) as Condition;
-  return SqlBuilder.enclose(cond);
+  return SqlBuilder.group(cond);
 }
 
 export function outputCommand(cmd: Command): void {
-  console.debug('sql:', cmd.sql)
+  console.debug('sql:', cmd.sql);
   if (cmd.params && cmd.params.length > 0) {
     console.debug(
       'params: {\n',
-      cmd.params
-        .map(p => `${p.name}: ${JSON.stringify(p.value)}`)
-        .join(',\n') + '\n}'
-    )
+      cmd.params.map(p => `${p.name}: ${JSON.stringify(p.value)}`).join(',\n') +
+        '\n}'
+    );
   }
 }

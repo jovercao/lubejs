@@ -6,6 +6,7 @@ import {
   ConnectOptions,
   DbProvider,
 } from "../..";
+import { Lube } from '../../lube'
 
 const DefaultConnectOptions: sql.config = {
   server: "localhost",

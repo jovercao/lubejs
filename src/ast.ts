@@ -76,8 +76,10 @@ export type AsScalarType<T extends RowObject> = T[FieldsOf<T>] extends Scalar
   : never;
 
 export type DefaultRowObject = {
-  [P in string]: Scalar;
+  [P in string]: any;
 };
+
+export type DefaultInputObject = Record<string, Scalar>;
 
 // {
 //   [field: string]: ScalarType;
@@ -86,7 +88,7 @@ export type DefaultRowObject = {
 /**
  * 简化后的whereObject查询条件
  */
-export type WhereObject<T extends RowObject = DefaultRowObject> = {
+export type WhereObject<T extends RowObject = DefaultInputObject> = {
   [K in FieldsOf<T>]?:
   | CompatibleExpression<FieldTypeOf<T, K>>
   | CompatibleExpression<FieldTypeOf<T, K>>[];
@@ -95,7 +97,7 @@ export type WhereObject<T extends RowObject = DefaultRowObject> = {
 /**
  * 值列表，用于传递Select、Insert、Update、Parameters 的键值对
  */
-export type InputObject<T extends RowObject = DefaultRowObject> = {
+export type InputObject<T extends RowObject = DefaultInputObject> = {
   [K in FieldsOf<T>]?: CompatibleExpression<T[K]>;
 };
 
@@ -208,11 +210,11 @@ export type CompatibleExpression<T extends Scalar = Scalar> = Expression<T> | T;
 /**
  * 可兼容的查询条件
  */
-export type CompatibleCondition<T extends RowObject = DefaultRowObject> =
+export type CompatibleCondition<T extends RowObject = DefaultInputObject> =
   | Condition
   | WhereObject<T>;
 
-export type CompatibleSortInfo<T extends RowObject = DefaultRowObject> =
+export type CompatibleSortInfo<T extends RowObject = DefaultInputObject> =
   | SortInfo[]
   | SortObject<T>
   | [CompatibleExpression, SORT_DIRECTION][];
@@ -494,8 +496,22 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param values 要与当前表达式相比较的表达式
    * @returns 返回对比条件表达式
    */
-  notIn(...values: CompatibleExpression<T>[]): Condition {
-    return SqlBuilder.notIn(this, values);
+  notIn(select: Select<any>): Condition;
+  notIn(values: CompatibleExpression<T>[]): Condition;
+  notIn(...values: CompatibleExpression<T>[]): Condition;
+  notIn(
+    ...values:
+      | CompatibleExpression<T>[]
+      | [Select<any>]
+      | [CompatibleExpression<T>[]]
+  ): Condition {
+    if (
+      values.length === 1 &&
+      (isSelect(values[0]) || Array.isArray(values[0]))
+    ) {
+      return SqlBuilder.notIn(this, values[0] as any);
+    }
+    return SqlBuilder.notIn(this, values as any);
   }
 
   /**
@@ -512,14 +528,6 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    */
   isNotNull(): Condition {
     return SqlBuilder.isNotNull(this);
-  }
-
-  /**
-   * isNotNull 的简称别名
-   * @returns 返回对比条件表达式
-   */
-  notNull(): Condition {
-    return this.isNotNull();
   }
 
   /**
@@ -548,8 +556,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
   /**
    * 将本表达式括起来
    */
-  enclose(): Expression<T> {
-    return SqlBuilder.enclose(this);
+  group(): Expression<T> {
+    return SqlBuilder.group(this);
   }
 
   /**
@@ -582,8 +590,10 @@ export abstract class Condition extends AST {
    * @returns 返回新的查询条件
    */
   and(condition: CompatibleCondition): Condition {
-    condition = ensureCondition(condition);
-    return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, condition);
+    return SqlBuilder.and(this, condition);
+
+    // condition = ensureCondition(condition);
+    // return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, SqlBuilder.group(condition));
   }
 
   /**
@@ -592,8 +602,7 @@ export abstract class Condition extends AST {
    * @returns 返回新的查询条件
    */
   or(condition: Condition): Condition {
-    condition = ensureCondition(condition);
-    return new BinaryLogicCondition(LOGIC_OPERATOR.OR, this, condition);
+    return SqlBuilder.or(this, condition);
   }
 }
 
@@ -2213,7 +2222,7 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
   }
 }
 
-export class ParenthesesCondition extends Condition {
+export class GroupCondition extends Condition {
   $inner: Condition;
 
   readonly $kind: CONDITION_KIND.BRACKET_CONDITION =
@@ -2228,7 +2237,7 @@ export class ParenthesesCondition extends Condition {
 /**
  * 括号表达式
  */
-export class ParenthesesExpression<
+export class GroupExpression<
   T extends Scalar = Scalar
   > extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET_EXPRESSION = SQL_SYMBOLE.BRACKET_EXPRESSION;
@@ -2391,6 +2400,17 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
       condition = ensureCondition(condition);
     }
     this.$where = condition as Condition;
+    return this;
+  }
+
+  /**
+   * 追加查询条件
+   * @param condition
+   * @returns
+   */
+  andWhere(condition: CompatibleCondition<T>) {
+    if (!this.$where) return this.where(condition);
+    this.$where = SqlBuilder.and(this.$where, condition);
     return this;
   }
 }
@@ -3381,7 +3401,7 @@ export interface CreateTableMemberBuilder {
   column<N extends string, T extends DbType>(
     name: N,
     type: T
-  ): CreateTableColumn<N>;
+  ): TableColumnForAdd<N>;
 
   primaryKey(name?: string): PrimaryKey;
 
@@ -3397,8 +3417,8 @@ export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
   column<N extends string, T extends DbType>(
     name: N,
     type: T
-  ): CreateTableColumn<N> {
-    return new CreateTableColumn(name, type);
+  ): TableColumnForAdd<N> {
+    return new TableColumnForAdd(name, type);
   },
   primaryKey(name?: string): PrimaryKey {
     return new PrimaryKey(name);
@@ -3410,6 +3430,8 @@ export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
     let name: string;
     if (typeof nameOrSql === 'string') {
       name = nameOrSql;
+    } else {
+      sql = nameOrSql;
     }
     return new CheckConstraint(sql, name);
   },
@@ -3495,8 +3517,8 @@ export class CreateIndex extends Statement {
   }
 }
 
-export type AlterTableMember =
-  | AlterTableColumn
+export type AlterTableAddMember =
+  | TableColumnForAdd
   | PrimaryKey
   | ForeignKey
   | CheckConstraint
@@ -3518,7 +3540,7 @@ export interface AlterTableAddBuilder {
   column<N extends string, T extends DbType>(
     name: N,
     type: T
-  ): AlterTableColumn<N>;
+  ): TableColumnForAdd<N>;
 
   primaryKey(name?: string): PrimaryKey;
 
@@ -3571,8 +3593,8 @@ export const AlterTableAddBuilder: AlterTableAddBuilder = {
   column<N extends string, T extends DbType>(
     name: N,
     type: T
-  ): AlterTableColumn<N> {
-    return new AlterTableColumn(name, type);
+  ): TableColumnForAdd<N> {
+    return new TableColumnForAdd(name, type);
   },
 
   primaryKey(name?: string): PrimaryKey {
@@ -3600,23 +3622,23 @@ export class AlterTable<N extends string = string> extends Statement {
   $type: SQL_SYMBOLE.ALTER_TABLE = SQL_SYMBOLE.ALTER_TABLE;
   $name: Name<N>;
 
-  $adds?: AlterTableMember[];
+  $adds?: AlterTableAddMember[];
 
   $drops?: AlterTableDropMember[];
 
-  $alterColumn?: AlterTableColumn;
+  $alterColumn?: TableColumnForAlter;
 
   constructor(name: Name<N>) {
     super();
     this.$name = name;
   }
 
-  add(build: (builder: AlterTableAddBuilder) => AlterTableMember | AlterTableMember[]): this;
-  add(...members: AlterTableMember[]): this;
+  add(build: (builder: AlterTableAddBuilder) => AlterTableAddMember | AlterTableAddMember[]): this;
+  add(...members: AlterTableAddMember[]): this;
   add(
     ...members:
-      | [(builder: AlterTableAddBuilder) => AlterTableMember[] | AlterTableMember]
-      | AlterTableMember[]
+      | [(builder: AlterTableAddBuilder) => AlterTableAddMember[] | AlterTableAddMember]
+      | AlterTableAddMember[]
   ): this {
     if (this.$drops || this.$alterColumn) {
       throw new Error(`A alter statement is only used by add or drop.`);
@@ -3630,7 +3652,7 @@ export class AlterTable<N extends string = string> extends Statement {
     if (!this.$adds) {
       this.$adds = [];
     }
-    this.$adds.push(...(members as AlterTableMember[]));
+    this.$adds.push(...(members as AlterTableAddMember[]));
     return this;
   }
 
@@ -3659,10 +3681,10 @@ export class AlterTable<N extends string = string> extends Statement {
 
   alterColumn(
     buildColumn:
-      | AlterTableColumn
+      | TableColumnForAlter
       | ((
-        builder: (name: string, type: DbType) => AlterTableColumn
-      ) => AlterTableColumn)
+        builder: (name: string, type: DbType) => TableColumnForAlter
+      ) => TableColumnForAlter)
   ): this {
     if (this.$adds || this.$drops || this.$alterColumn) {
       throw new Error(
@@ -3670,7 +3692,7 @@ export class AlterTable<N extends string = string> extends Statement {
       );
     }
     if (typeof buildColumn === 'function') {
-      this.$alterColumn = buildColumn(AlterTableAddBuilder.column);
+      this.$alterColumn = buildColumn((name: string, type: DbType) => new TableColumnForAlter(name, type));
     } else {
       this.$alterColumn = buildColumn;
     }
@@ -3689,7 +3711,6 @@ abstract class TableColumn<N extends string = string> extends AST {
   };
   // 检查约束
   $check?: Condition;
-  $default?: Expression;
 
   constructor(name: N, type: DbType) {
     super();
@@ -3719,14 +3740,9 @@ abstract class TableColumn<N extends string = string> extends AST {
     this.$check = sql;
     return this;
   }
-
-  default(value: CompatibleExpression): this {
-    this.$default = ensureExpression(value);
-    return this;
-  }
 }
 
-export class AlterTableColumn<N extends string = string> extends TableColumn {
+export class TableColumnForAlter<N extends string = string> extends TableColumn {
   $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN = SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
@@ -3765,16 +3781,18 @@ export class AlterView<
 }
 
 export type CreateTableMember =
-  | CreateTableColumn
+  | TableColumnForAdd
   | PrimaryKey
   | ForeignKey
   | CheckConstraint
   | UniqueKey;
 
-export class CreateTableColumn<
+export class TableColumnForAdd<
   N extends string = string
   > extends TableColumn<N> {
   $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  $default?: Expression;
+
   $primaryKey?: {
     nonclustered: boolean;
   };
@@ -3783,6 +3801,11 @@ export class CreateTableColumn<
     this.$primaryKey = {
       nonclustered,
     };
+    return this;
+  }
+
+  default(value: CompatibleExpression): this {
+    this.$default = ensureExpression(value);
     return this;
   }
 }
@@ -3794,6 +3817,13 @@ export class Block extends Statement {
   constructor(statements: Statement[]) {
     super();
     this.$statements = statements;
+  }
+
+  append(...statements: Statement[]) {
+    if (!this.$statements) {
+      this.$statements = []
+    }
+    this.$statements.push(...statements);
   }
 }
 
@@ -3847,17 +3877,25 @@ export class CreateFunction extends Statement {
   $name: Name;
   $params: VariantDeclare[];
   $body: Statement[];
-  $kind: FunctinKind;
+  $returns: VariantDeclare | TableVariantDeclare | DbType;
 
-  constructor(name: Name, kind: FunctinKind) {
+  constructor(name: Name) {
     super();
     this.$name = name;
-    this.$kind = kind;
   }
 
-  params(params: VariantDeclare[]) {
-    this.$params = params;
+  params(params: VariantDeclare[]):this
+  params(...params: VariantDeclare[]): this
+  params(...params: VariantDeclare[] | [VariantDeclare[]]): this {
+    if (params.length === 1 && Array.isArray(params)) {
+      params = params[0] as VariantDeclare[];
+    }
+    this.$params = params as VariantDeclare[];
     return this;
+  }
+
+  returns(returns: VariantDeclare | TableVariantDeclare | DbType) {
+    this.$returns = returns;
   }
 
   as(sql: Statement[]): this {
@@ -4045,13 +4083,24 @@ export type CreateTableHandler = {
 } & CreateTableMemberBuilder;
 
 export interface SqlBuilder extends Standard {
+  createSequence(name: Name<string>): CreateSequence;
+  dropSequence(name: Name<string>): DropSequence;
+
+  type: typeof DbType,
+  /**
+   * 创建一个SQL文档
+   * @param statements 文档代码
+   */
   doc(statements: Statement[]): Document;
   doc(...statements: Statement[]): Document;
   /**
    * 括号表达式，将表达式括起来，如优先级
    */
-  enclose<T extends Scalar>(value: CompatibleExpression<T>): Expression<T>;
-  enclose(condition: Condition): Condition;
+  group<T extends Scalar>(value: CompatibleExpression<T>): Expression<T>;
+  /**
+   * 括号条件运算，将条件括起来
+   */
+  group(condition: Condition): Condition;
 
   /**
    * 算术运算 +
@@ -4436,6 +4485,7 @@ export interface SqlBuilder extends Standard {
 
   raw(sql: string): any;
 
+  block(...statements: Statement[]): Block;
   block(statements: Statement[]): Block;
 
   /**
@@ -4684,9 +4734,9 @@ export interface SqlBuilder extends Standard {
   with(...rowsets: CompatibleNamedSelect[]): With;
   with(rowsets: Record<string, Select>): With;
 
-  union<T extends RowObject = any>(...selects: Select<T>[]): Select<T>;
+  union<T extends RowObject = any>(...selects: [Select<T>, Select<T>, ...Select<T>[]]): Select<T>;
 
-  unionAll<T extends RowObject = any>(...selects: Select<T>[]): Select<T>;
+  unionAll<T extends RowObject = any>(...selects: [Select<T>, Select<T>, ...Select<T>[]]): Select<T>;
 
   invoke<T extends RowObject>(
     type: 'table',
@@ -4826,17 +4876,13 @@ export interface SqlBuilder extends Standard {
 
   createIndex(name: string): CreateIndex;
 
-  createProcedure(name: string): CreateProcedure;
+  createProcedure(name: Name): CreateProcedure;
 
-  alterProcedure(name: string): AlterProcedure;
+  alterProcedure(name: Name): AlterProcedure;
 
-  createScalarFunction(name: Name): CreateFunction;
+  createFunction(name: Name): CreateFunction;
 
-  createTableFunction(name: Name): CreateFunction;
-
-  alterScalarFunction(name: Name): AlterFunction;
-
-  alterTableFunction(name: Name): AlterFunction;
+  alterFunction(name: Name): AlterFunction;
 
   dropTable<N extends string>(name: Name<N>): DropTable<N>;
 
@@ -4848,7 +4894,8 @@ export interface SqlBuilder extends Standard {
 
   dropIndex<N extends string>(table: Name, name: N): DropIndex<N>;
 
-  annotation(text: string, kind?: AnnotationKind): Annotation;
+  comments(...text: string[]): Annotation;
+  note(text: string): Annotation;
 
   /**
    * input 参数
@@ -4871,17 +4918,24 @@ export interface SqlBuilder extends Standard {
 
 export const SqlBuilder: SqlBuilder = {
   ...Standard,
+  type: DbType,
+  createSequence(name: Name): CreateSequence {
+    return new CreateSequence(name);
+  },
+  dropSequence(name: Name): DropSequence {
+    return new DropSequence(name);
+  },
   doc(...statements: Statement[] | [Statement[]]): Document {
     const lines = Array.isArray(statements[0])
       ? statements[0]
       : (statements as Statement[]);
     return new Document(lines);
   },
-  enclose(value: Condition | CompatibleExpression): any {
+  group(value: Condition | CompatibleExpression): any {
     if (isCondition(value)) {
-      return new ParenthesesCondition(value);
+      return new GroupCondition(value);
     }
-    return new ParenthesesExpression(value);
+    return new GroupExpression(value);
   },
   neg(expr: CompatibleExpression<number>): Expression<number> {
     return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
@@ -4891,11 +4945,11 @@ export const SqlBuilder: SqlBuilder = {
    * 字符串连接运算
    */
   concat(
-    strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
+    ...strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
   ): Expression<string> {
     let exp = strs[0];
     for (let i = 1; i < strs.length; i++) {
-      exp = new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, exp, val)
+      exp = new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, exp, strs[i])
     }
     return exp as Expression<string>;
   },
@@ -5301,8 +5355,11 @@ export const SqlBuilder: SqlBuilder = {
   raw(sql: string): any {
     return new Raw(sql);
   },
-  block(statements: Statement[]): Block {
-    return new Block(statements);
+  block(...statements: Statement[] | [Statement[]]): Block {
+    if (statements.length === 1 && Array.isArray(statements[0])) {
+      statements = statements[0];
+    }
+    return new Block(statements as Statement[]);
   },
 
   execute<R extends Scalar = any, O extends RowObject[] = []>(
@@ -5464,17 +5521,11 @@ export const SqlBuilder: SqlBuilder = {
   alterProcedure(name: string): AlterProcedure {
     return new AlterProcedure(name);
   },
-  createScalarFunction(name: Name): CreateFunction {
-    return new CreateFunction(name, 'SCALAR');
+  createFunction(name: Name): CreateFunction {
+    return new CreateFunction(name);
   },
-  createTableFunction(name: Name): CreateFunction {
-    return new CreateFunction(name, 'TABLE');
-  },
-  alterScalarFunction(name: Name): AlterFunction {
+  alterFunction(name: Name): AlterFunction {
     return new AlterFunction(name, 'SCALAR');
-  },
-  alterTableFunction(name: Name): AlterFunction {
-    return new AlterFunction(name, 'TABLE');
   },
   dropTable<N extends string>(name: Name<N>): DropTable<N> {
     return new DropTable(name);
@@ -5491,8 +5542,11 @@ export const SqlBuilder: SqlBuilder = {
   dropIndex<N extends string>(table: Name, name: N): DropIndex<N> {
     return new DropIndex(table, name);
   },
-  annotation(text: string, kind: AnnotationKind = 'LINE'): Annotation {
-    return new Annotation(kind, text);
+  comments(...text: string[]): Annotation {
+    return new Annotation('BLOCK', text.join('\n'));
+  },
+  note(text: string): Annotation {
+    return new Annotation('LINE', text);
   },
   /**
    * input 参数

@@ -29,7 +29,7 @@ import {
   BinaryOperation,
   ExistsCondition,
   Raw,
-  ParenthesesCondition,
+  GroupCondition,
   With,
   NamedSelect,
   Expression,
@@ -41,7 +41,7 @@ import {
   Star,
   Statement,
   // ConvertOperation,
-  ParenthesesExpression,
+  GroupExpression,
   ValuedSelect,
   TableVariant,
   // IdentityValue,
@@ -62,7 +62,7 @@ import {
   CreateSequence,
   DropSequence,
   Annotation,
-  SqlBuilder as SQL
+  SqlBuilder as SQL,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
@@ -75,7 +75,7 @@ import {
   isBinaryCompareCondition,
   isBinaryLogicCondition,
   isBinaryOperation,
-  isParenthese,
+  isGroupExpression,
   isBuiltIn,
   isCase,
   isColumn,
@@ -128,7 +128,7 @@ import {
   isDropSequence,
   isAnnotation,
 } from './util';
-import { Standard } from './std'
+import { Standard } from './std';
 
 /**
  * 标准操作转换器
@@ -225,7 +225,7 @@ export abstract class Compiler {
   options: CompileOptions;
 
   /**
-   * 必须实现标准转译器
+   * 转译器
    */
   abstract get translator(): StandardTranslator;
 
@@ -248,7 +248,26 @@ export abstract class Compiler {
     return buildIn ? name : this.quoted(name);
   }
 
+  /**
+   * 通过模板参数创建一个SQL命令
+   */
+  public sql(arr: TemplateStringsArray, ...paramValues: any[]): string {
+    // const params: Parameter[] = [];
+    let sql: string = arr[0];
+    for (let i = 0; i < arr.length - 1; i++) {
+      sql += this.compileLiteral(paramValues[i]);
+      sql += arr[i + 1];
+    }
+    return sql;
+  }
+
   abstract compileType(type: DbType): string;
+
+  /**
+   * 将原始SQL类型转换为DbType
+   * @param type
+   */
+  abstract parseRawType(type: string): DbType;
 
   /**
    *
@@ -404,8 +423,13 @@ export abstract class Compiler {
   ): string {
     let sql: string;
     if (isRaw(statement)) {
-      sql + statement.$sql;
-    } else if (isSelect(statement)) {
+      return statement.$sql;
+    }
+    if (isAnnotation(statement)) {
+      return this.compileAnnotation(statement);
+    }
+
+    if (isSelect(statement)) {
       sql = this.compileSelect(statement, params, parent);
     } else if (isUpdate(statement)) {
       sql = this.compileUpdate(statement, params, parent);
@@ -454,16 +478,24 @@ export abstract class Compiler {
     } else if (isBlock(statement)) {
       sql = this.compileBlock(statement);
     } else if (isStandardStatement(statement)) {
-      sql = this.compileStatement(
-        this.translationStandardOperation(statement)
-      );
-    } else if (isAnnotation(statement)) {
-      sql = this.compileAnnotation(statement);
+      sql = this.compileStatement(this.translationStandardOperation(statement));
     }
-    if (sql) {
+    if (sql !== undefined) {
       return sql + this.options.statementEnd;
     }
     invalidAST('statement', statement);
+  }
+
+  compileStatements(
+    statements: Statement[],
+    /**
+     * 参数容器
+     */
+    params?: Set<Parameter<Scalar, string>>
+  ): string {
+    return statements
+      .map(statement => this.compileStatement(statement, params))
+      .join('\n');
   }
 
   protected abstract compileAnnotation(statement: Annotation): string;
@@ -515,7 +547,7 @@ export abstract class Compiler {
   protected abstract compileCreateTable(statement: Statement): string;
 
   protected compileParenthesesExpression(
-    expr: ParenthesesExpression<Scalar>,
+    expr: GroupExpression<Scalar>,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return `(${this.compileExpression(expr.$inner, params, expr)})`;
@@ -705,7 +737,7 @@ export abstract class Compiler {
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
-          PARAMETER_DIRECTION.OUTPUT
+            PARAMETER_DIRECTION.OUTPUT
         ) {
           sql += ' OUTPUT';
         }
@@ -761,7 +793,7 @@ export abstract class Compiler {
   }
 
   protected compileParenthesesCondition(
-    expr: ParenthesesCondition,
+    expr: GroupCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return '(' + this.compileCondition(expr.$inner, params, expr) + ')';
@@ -791,8 +823,8 @@ export abstract class Compiler {
       ' ' +
       (Array.isArray(expr.$right)
         ? '(' +
-        expr.$right.map(p => this.compileExpression(p, params, expr)) +
-        ')'
+          expr.$right.map(p => this.compileExpression(p, params, expr)) +
+          ')'
         : this.compileExpression(expr.$right, params, expr))
     );
   }
@@ -869,7 +901,7 @@ export abstract class Compiler {
       return this.stringifyIdentifier(expr);
     }
 
-    if (isParenthese(expr)) {
+    if (isGroupExpression(expr)) {
       return this.compileParenthesesExpression(expr, params);
     }
 
@@ -1074,7 +1106,7 @@ export abstract class Compiler {
     }
     if (isGroupCondition(condition)) {
       return this.compileParenthesesCondition(
-        condition as ParenthesesCondition,
+        condition as GroupCondition,
         params
       );
     }

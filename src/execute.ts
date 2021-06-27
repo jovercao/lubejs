@@ -168,24 +168,6 @@ export class Executor {
     return this;
   }
 
-  /**
-   * 通过模板参数创建一个SQL命令
-   */
-  private makeCommand(
-    arr: TemplateStringsArray,
-    ...paramValues: any[]
-  ): Command {
-    // const params: Parameter[] = [];
-    let sql: string = arr[0];
-    for (let i = 0; i < arr.length - 1; i++) {
-      sql += this.compiler.compileLiteral(paramValues[i]);
-      sql += arr[i + 1];
-    }
-    return {
-      sql,
-    };
-  }
-
   private async _internalQuery(command: Command): Promise<QueryResult>;
   private async _internalQuery(
     sql: string,
@@ -208,7 +190,9 @@ export class Executor {
     }
     // 如果是模板字符串
     else if (Array.isArray(args[0] && args[0].raw)) {
-      command = this.makeCommand(args[0], ...args.slice(1));
+      command = {
+        sql: this.compiler.sql(args[0], ...args.slice(1)),
+      };
     } else if (
       args.length === 1 &&
       typeof args[0] === 'object' &&

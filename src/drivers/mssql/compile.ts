@@ -67,9 +67,10 @@ import {
   TableVariantDeclare,
   Insert,
   AST,
+  SQL_SYMBOLE_TABLE_MEMBER,
 } from '../..';
 
-import { dbTypeToSql } from './types';
+import { dbTypeToRaw, rawToDbType } from './types';
 import {
   Block,
   CreateIndex,
@@ -79,25 +80,29 @@ import {
   Statement,
   AlterTable,
   CreateProcedure,
-  AlterTableMember,
+  AlterTableAddMember,
   CreateTableMember,
   CreateTable,
   ProcedureParameter,
   CreateSequence,
   DropSequence,
   Annotation,
+  Condition,
 } from '../../ast';
 import { Name } from '../../types';
 import {
   isAlterTableColumn,
   isCheckConstraint,
   isCreateTableColumn,
+  isDbType,
   isForeignKey,
   isPrimaryKey,
+  isRaw,
   isUniqueKey,
+  isVariantDeclare,
 } from '../../util';
 import { formatSql, sqlifyLiteral } from './util';
-
+import { MssqlProvider } from './provider';
 
 export interface MssqlCompileOptions extends CompileOptions {}
 
@@ -176,168 +181,10 @@ export const DefaultCompilerOptions: MssqlCompileOptions = {
 //   ORDER BY o.name)`
 // }
 
-const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
-
 export class MssqlStandardTranslator implements StandardTranslator {
-  commentProcedure(name: Name, comment: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-FROM sysproperties p INNER JOIN
-sysobjects o ON o.id = p.id INNER JOIN
-syscolumns c ON p.id = c.id AND p.smallid = c.colid
-WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'PROCEDURE', ${table};`;
-    if (comment) {
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'PROCEDURE', ${table}`;
-    }
-    return SQL.raw(sql);
-  }
+  compiler: MssqlCompiler;
 
-  commentFunction(name: Name, comment: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'FUNCTION', ${table};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'FUNCTION', ${table}`;
-    return SQL.raw(sql);
-  }
-  commentTable(name: Name, comment: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${table};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${table}`;
-    return SQL.raw(sql);
-  }
-
-  commentColumn(table: Name, name: string, comment: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'COLUMN', ${name};`;
-
-    if (comment) {
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'COLUMN', ${name}`;
-    }
-    return SQL.raw(sql);
-  }
-
-  commentIndex(table: Name, name: string, comment: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'INDEX', ${name};`;
-    if (comment) {
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'INDEX', ${name}`;
-    }
-    return SQL.raw(sql);
-  }
-
-  commentConstraint(table: Name, name: string, comment: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'CONSTRAINT', ${name};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'CONSTRAINT', ${name}`;
-    return SQL.raw(sql);
-  }
-
-  commentSchema(name: string, comment: string): Statement {
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${name};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${name};`;
-    return SQL.raw(sql);
-  }
-
-  commentSequence(name: Name, comment: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [sequence, schema] = name;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'SEQUENCE', ${sequence};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'SEQUENCE', ${sequence}`;
-    return SQL.raw(sql);
-  }
-
-  renameTable(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
-  }
-
-  renameColumn(table: Name, name: string, newName: string): Statement {
-    return sp_rename([name, ...table] as Name, newName, 'COLUMN');
-  }
-
-  renameView(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
-  }
-
-  renameIndex(table: Name, name: string, newName: string): Statement {
-    return sp_rename([name, ...table] as Name, newName, 'INDEX');
-  }
-
-  renameProcedure(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
-  }
-
-  renameFunction(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
-  }
+  constructor(private provider: MssqlProvider) {}
 
   abs(value: CompatibleExpression<number>): Expression<number> {
     return abs(value);
@@ -798,9 +645,14 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
   }
 }
 
-const defaultTranslator = new MssqlStandardTranslator();
-
 export class MssqlCompiler extends Compiler {
+  constructor(
+    options: MssqlCompileOptions,
+    public readonly translator: MssqlStandardTranslator
+  ) {
+    super(Object.assign({}, DefaultCompilerOptions, options));
+  }
+
   protected compileAnnotation(statement: Annotation): string {
     if (statement.$kind === 'LINE') {
       return statement.$text
@@ -808,7 +660,7 @@ export class MssqlCompiler extends Compiler {
         .map(line => '-- ' + line)
         .join('\n');
     }
-    return '/*' + statement.$text.replace(/\*\//g, '* /') + '*/';
+    return '/**\n' + statement.$text.split(/\n|\r\n/g).map(line => ' * ' + line.replace(/\*\//g, '* /')).join('\n') + '\n */';
   }
 
   public compileLiteral(literal: Scalar): string {
@@ -843,9 +695,9 @@ export class MssqlCompiler extends Compiler {
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    return `BEGIN\n${statement.$statements
+    return `BEGIN\n  ${statement.$statements
       .map(statement => this.compileStatement(statement, params, parent))
-      .join('\n')}\nEND`;
+      .join('\n  ')}\nEND`;
   }
 
   protected compileDropIndex(table: Name, name: string): string {
@@ -875,13 +727,19 @@ export class MssqlCompiler extends Compiler {
   }
 
   protected compileCreateFunction(statement: CreateFunction): string {
-    if (statement.$kind === 'SCALAR') {
-      return `CREATE FUNCTION ${this.stringifyName(
-        statement.$name
-      )}(${statement.$params
-        .map(param => this.compileVariantDeclare(param))
-        .join(', ')}) `;
-    }
+    return `CREATE FUNCTION ${this.stringifyName(
+      statement.$name
+    )}(${statement.$params
+      .map(param => this.compileVariantDeclare(param))
+      .join(', ')}) RETURNS ${
+      isRaw(statement.$returns)
+        ? statement.$returns.$sql
+        : isDbType(statement.$returns)
+        ? this.compileType(statement.$returns)
+        : isVariantDeclare(statement.$returns)
+        ? this.compileVariantDeclare(statement.$returns)
+        : this.compileTableVariantDeclare(statement.$returns)
+    } AS ${this.compileStatements(statement.$body)}`;
   }
 
   protected compileDropProcedure(name: Name): string {
@@ -907,7 +765,7 @@ export class MssqlCompiler extends Compiler {
   protected compileAlterTable(statement: AlterTable<string>): string {
     let sql = `ALTER TABLE ${this.stringifyName(statement.$name)}`;
     if (statement.$adds) {
-      sql += ' ADD '
+      sql += ' ADD ';
       sql += statement.$adds
         .map(member => this.compileTableMember(member))
         .join(',\n  ');
@@ -915,13 +773,18 @@ export class MssqlCompiler extends Compiler {
     if (statement.$drops) {
       sql += ' DROP ';
       sql += statement.$drops
-        .map(member => ` CONSTRAINT ${this.quoted(member.$name)}`)
+        .map(member => {
+          if (member.$kind === SQL_SYMBOLE_TABLE_MEMBER.COLUMN) {
+            return ` COLUMN ${this.quoted(member.$name)}`
+          }
+          return ` CONSTRAINT ${this.quoted(member.$name)}`
+        })
         .join(',\n  ');
     }
     return sql;
   }
 
-  private compileTableMember(member: AlterTableMember | CreateTableMember) {
+  private compileTableMember(member: AlterTableAddMember | CreateTableMember) {
     if (isCreateTableColumn(member)) {
       let sql = `${this.quoted(member.$name)} ${this.compileType(
         member.$dbType
@@ -989,7 +852,7 @@ export class MssqlCompiler extends Compiler {
     sql += statement.$members
       .map(member => this.compileTableMember(member))
       .join(',\n  ');
-    sql += ')'
+    sql += ')';
     return sql;
   }
 
@@ -1000,9 +863,9 @@ export class MssqlCompiler extends Compiler {
   ): string {
     const sql = super.compileInsert(insert, params, parent);
     if (!insert.$identityInsert) return sql;
-    return `SET IDENTITY_INSERT ON
+    return `SET IDENTITY_INSERT ${this.stringifyIdentifier(insert.$table)} ON
 ${sql}
-SET IDENTITY_INSERT OFF
+SET IDENTITY_INSERT ${this.stringifyIdentifier(insert.$table)} OFF
 `;
   }
 
@@ -1043,16 +906,21 @@ SET IDENTITY_INSERT OFF
     // )`;
   }
 
-  get translator(): StandardTranslator {
-    return defaultTranslator;
-  }
+  // private _translator: StandardTranslator;
 
-  constructor(options: MssqlCompileOptions) {
-    super(Object.assign({}, DefaultCompilerOptions, options));
-  }
+  // get translator(): StandardTranslator {
+  //   if (!this._translator) {
+  //     this._translator = new MssqlStandardTranslator(this);
+  //   }
+  //   return this._translator;
+  // }
 
   compileType(type: DbType): string {
-    return dbTypeToSql(type);
+    return dbTypeToRaw(type);
+  }
+
+  parseRawType(type: string): DbType {
+    return rawToDbType(type);
   }
 
   protected compileOffsetLimit(

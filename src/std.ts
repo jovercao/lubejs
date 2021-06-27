@@ -10,6 +10,7 @@ import {
   StandardExpression,
   Statement,
   StandardStatement,
+  Condition,
 } from './ast';
 import { Binary, DbType, TsTypeOf, Scalar, Name } from './types';
 
@@ -189,33 +190,33 @@ import { Binary, DbType, TsTypeOf, Scalar, Name } from './types';
 
 //   cot(value: CompatibleExpression<number>): Expression<number>;
 
-//   renameTable(name: Name, newName: string): Statement;
+//   renameTable(name: Name, newName: string): Statement | Promise<Statement>;
 
-//   renameColumn(table: Name, name: string, newName: string): Statement;
+//   renameColumn(table: Name, name: string, newName: string): Statement | Promise<Statement>;
 
-//   renameView(name: Name, newName: string): Statement;
+//   renameView(name: Name, newName: string): Statement | Promise<Statement>;
 
-//   renameIndex(table: Name, name: string, newName: string): Statement;
+//   renameIndex(table: Name, name: string, newName: string): Statement | Promise<Statement>;
 
-//   renameProcedure(name: Name, newName: string): Statement;
+//   renameProcedure(name: Name, newName: string): Statement | Promise<Statement>;
 
-//   renameFunction(name: Name, newName: string): Statement;
+//   renameFunction(name: Name, newName: string): Statement | Promise<Statement>;
 
-//   commentTable(name: Name, comment: string): Statement;
+//   commentTable(name: Name, comment: string): Statement | Promise<Statement>;
 
-//   commentColumn(table: Name, column: string, comment: string): Statement;
+//   commentColumn(table: Name, column: string, comment: string): Statement | Promise<Statement>;
 
-//   commentIndex(table: Name, name: string, comment: string): Statement;
+//   commentIndex(table: Name, name: string, comment: string): Statement | Promise<Statement>;
 
-//   commentConstraint(table: Name, name: string, comment: string): Statement;
+//   commentConstraint(table: Name, name: string, comment: string): Statement | Promise<Statement>;
 
-//   commentSchema(name: string, comment: string): Statement;
+//   commentSchema(name: string, comment: string): Statement | Promise<Statement>;
 
-//   commentSequence(name: Name, comment: string): Statement;
+//   commentSequence(name: Name, comment: string): Statement | Promise<Statement>;
 
-//   commentProcedure(name: Name, comment: string): Statement;
+//   commentProcedure(name: Name, comment: string): Statement | Promise<Statement>;
 
-//   commentFunction(name: Name, comment: string): Statement;
+//   commentFunction(name: Name, comment: string): Statement | Promise<Statement>;
 // }
 
 export interface Standard {
@@ -415,12 +416,12 @@ export interface Standard {
    * @param str
    * @returns
    */
-  trimEnd(str: CompatibleExpression<string>): Expression<string>
+  trimEnd(str: CompatibleExpression<string>): Expression<string>;
   /**
    * 转换成大写字母
    * @param str
    * @returns
-   */;
+   */
   upper(str: CompatibleExpression<string>): Expression<string>;
   /**
    * 转换成小写字母
@@ -484,20 +485,6 @@ export interface Standard {
   atan(value: CompatibleExpression<number>): Expression<number>;
   atan2(value: CompatibleExpression<number>): Expression<number>;
   cot(value: CompatibleExpression<number>): Expression<number>;
-  renameTable(name: Name, newName: string): Statement;
-  renameColumn(table: Name, name: string, newName: string): Statement;
-  renameView(name: Name, newName: string): Statement;
-  renameIndex(table: Name, name: string, newName: string): Statement
-  renameProcedure(name: Name, newName: string): Statement;
-  renameFunction(name: Name, newName: string): Statement;
-  commentTable(name: Name, comment: string): Statement;
-  commentColumn(table: Name, name: string, comment: string): Statement;
-  commentIndex(table: Name, name: string, comment: string): Statement;
-  commentConstraint(table: Name, name: string, comment: string): Statement;
-  commentSchema(name: string, comment: string): Statement;
-  commentSequence(name: Name, comment: string): Statement;
-  commentProcedure(name: Name, comment: string): Statement;
-  commentFunction(name: Name, comment: string): Statement;
 }
 
 export const Standard: Standard = {
@@ -771,13 +758,12 @@ export const Standard: Standard = {
    */
   trimEnd(str: CompatibleExpression<string>): Expression<string> {
     return StandardExpression.create(Standard.trimEnd.name, [str]);
-  }
+  },
   /**
    * 转换成大写字母
    * @param str
    * @returns
-   */,
-  upper(str: CompatibleExpression<string>): Expression<string> {
+   */ upper(str: CompatibleExpression<string>): Expression<string> {
     return StandardExpression.create(Standard.upper.name, [str]);
   },
   /**
@@ -916,86 +902,7 @@ export const Standard: Standard = {
   },
   cot(value: CompatibleExpression<number>): Expression<number> {
     return StandardExpression.create(Standard.cot.name, [value]);
-  },
-  renameTable(name: Name, newName: string): Statement {
-    return StandardStatement.create(Standard.renameTable.name, [name, newName]);
-  },
-  renameColumn(table: Name, name: string, newName: string): Statement {
-    return StandardStatement.create(Standard.renameColumn.name, [
-      table,
-      name,
-      newName,
-    ]);
-  },
-  renameView(name: Name, newName: string): Statement {
-    return StandardStatement.create(Standard.renameView.name, [name, newName]);
-  },
-  renameIndex(table: Name, name: string, newName: string): Statement {
-    return StandardStatement.create(Standard.renameIndex.name, [table, name, newName]);
-  },
-  renameProcedure(name: Name, newName: string): Statement {
-    return StandardStatement.create(Standard.renameProcedure.name, [
-      name,
-      newName,
-    ]);
-  },
-  renameFunction(name: Name, newName: string): Statement {
-    return StandardStatement.create(Standard.renameFunction.name, [
-      name,
-      newName,
-    ]);
-  },
-  commentTable(name: Name, comment: string): Statement {
-    return StandardStatement.create(Standard.commentTable.name, [
-      name,
-      comment,
-    ]);
-  },
-  commentColumn(table: Name, name: string, comment: string): Statement {
-    return StandardStatement.create(Standard.commentColumn.name, [
-      table,
-      name,
-      comment,
-    ]);
-  },
-  commentIndex(table: Name, name: string, comment: string): Statement {
-    return StandardStatement.create(Standard.commentIndex.name, [
-      table,
-      name,
-      comment,
-    ]);
-  },
-  commentConstraint(table: Name, name: string, comment: string): Statement {
-    return StandardStatement.create(Standard.commentConstraint.name, [
-      table,
-      name,
-      comment,
-    ]);
-  },
-  commentSchema(name: string, comment: string): Statement {
-    return StandardStatement.create(Standard.commentSchema.name, [
-      name,
-      comment,
-    ]);
-  },
-  commentSequence(name: Name, comment: string): Statement {
-    return StandardStatement.create(Standard.commentSequence.name, [
-      name,
-      comment,
-    ]);
-  },
-  commentProcedure(name: Name, comment: string): Statement {
-    return StandardStatement.create(Standard.commentProcedure.name, [
-      name,
-      comment,
-    ]);
-  },
-  commentFunction(name: Name, comment: string): Statement {
-    return StandardStatement.create(Standard.commentFunction.name, [
-      name,
-      comment,
-    ]);
-  },
+  }
 };
 /********************************************扩展 Expression.to方法**********************************************/
 // declare module lubejs {

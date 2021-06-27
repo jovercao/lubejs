@@ -7,4 +7,5 @@ export * from './queryable';
 export * from './metadata';
 export * from './db-context';
 export * from './migrate-cli';
+export * from './migrate-builder';
 export * from './schema';
