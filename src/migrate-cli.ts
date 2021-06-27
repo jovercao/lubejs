@@ -1,5 +1,5 @@
 import { existsSync, promises } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { dirname, extname, join, resolve } from 'path';
 import { Statement, SqlBuilder, SqlBuilder as SQL } from './ast';
 import { DbContext } from './db-context';
 import { DbContextMetadata, metadataStore } from './metadata';
@@ -33,11 +33,12 @@ interface MigrateInfo {
   name: string;
   timestamp: string;
   path: string;
+  kind: 'ts' | 'js';
   index: number;
 }
 
 export const LUBE_MIGRATE_TABLE_NAME = '__LubeMigrate';
-const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)(\.ts|\.js)$/i;
+const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)\.(ts|js)$/i;
 
 function makeMigrateBuilder(
   builder: MigrateBuilder,
@@ -375,6 +376,7 @@ export class MigrateCli {
           timestamp: match[1],
           name: match[2],
           path: resolve(process.cwd(), path),
+          kind: match[3].toLowerCase() as 'js' | 'ts',
           index: 0,
         });
       }
@@ -393,7 +395,12 @@ export class MigrateCli {
 }
 
 async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
-  const imported = await import(info.path);
+  let imported: any;
+  if (info.kind === 'ts') {
+    imported = await import(info.path);
+  } else {
+    imported = require(info.path);
+  }
   const migrate = imported?.default || imported?.[info.name] || imported;
   if (!migrate)
     throw new Error(`Migrate 文件 ${info.path} ，无法找到迁移实例类。`);
