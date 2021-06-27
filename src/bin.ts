@@ -14,9 +14,8 @@ async function loadConfig() {
   } else if (existsSync(configFile + '.ts')) {
     configFile = configFile + '.ts';
   } else {
-    throw new Error(
-      `在执行迁移命令之前，请先使用'lube init'命令创建配置文件'.lubejs(.ts|.js)'`
-    );
+    console.error(`错误：在执行迁移命令之前，请先使用'lube init'命令创建配置文件'.lubejs(.ts|.js)'`.red);
+    return;
   }
   let config: LubeConfig;
   try {

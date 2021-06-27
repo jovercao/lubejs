@@ -583,11 +583,9 @@ export class Executor {
     return res.rowsAffected;
   }
 
-  async execute<R extends Scalar = number, O extends RowObject[] = []>(
+  async execute<R extends Scalar = number, T extends RowObject = never, O extends [T, ...RowObject[]] = [T]>(
     spName: Name | Procedure<R, O>,
     params?: CompatibleExpression[]
-    // eslint-disable-next-line
-    // @ts-ignore
   ): Promise<QueryResult<O[0], R, O>> {
     const sql = SQL.execute<R, O>(spName, params);
     const res = await this.query(sql);

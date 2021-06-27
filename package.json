@@ -6,15 +6,20 @@
   "directories": {
     "dist": "dist"
   },
+  "bin": {
+    "lube": "./dist/bin.js"
+  },
   "files": [
     "dist"
   ],
   "scripts": {
     "test": "mocha --fulltrace --full-trace --require ts-node/register --extensions ts,tsx 'test/**/*.{ts,tsx}'",
-    "build": "tsc",
+    "build": "npm run clean && tsc",
+    "clean": "pwsh -c 'rm -r -force dist'",
     "dep": "npm i oracledb mssql --no-save",
     "lint": "eslint --fix ./src --ext .ts",
-    "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src"
+    "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src",
+    "migrate": "node --require ts-node/register --require tsconfig-paths/register  ./src/bin.ts migrate"
   },
   "repository": {
     "type": "git",
