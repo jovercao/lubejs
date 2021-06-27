@@ -12,7 +12,7 @@
  **********************************/
 
 import { Document } from './ast';
-import { Compiler } from './compile';
+import { SqlUtil } from './sql-util';
 import { PARAMETER_DIRECTION } from './constants';
 import {
   ColumnMetadata,
@@ -352,12 +352,12 @@ export interface IndexSchema {
 
 /**
  * 从Metadata生成架构
- * @param compiler
+ * @param sqlUtil
  * @param context
  * @returns
  */
 export function generate(
-  compiler: Compiler,
+  sqlUtil: SqlUtil,
   context: DbContextMetadata
 ): DatabaseSchema {
   function genDbSchema(context: DbContextMetadata): DatabaseSchema {
@@ -425,7 +425,7 @@ export function generate(
 
   function genColumnSchema(column: ColumnMetadata): ColumnSchema {
     const col: ColumnSchema = {
-      type: compiler.compileType(column.dbType).replace(/ /g, ''),
+      type: sqlUtil.compileType(column.dbType).replace(/ /g, ''),
       name: column.columnName,
       isNullable: column.isNullable,
       isIdentity: column.isIdentity,
@@ -434,11 +434,11 @@ export function generate(
       isCalculate: column.isCalculate,
       calculateExpression:
         column.calculateExpression &&
-        compiler.compileExpression(column.calculateExpression, null),
+        sqlUtil.compileExpression(column.calculateExpression, null),
       comment: column.description,
       defaultValue:
         column.defaultValue &&
-        compiler.compileExpression(column.defaultValue, null),
+        sqlUtil.compileExpression(column.defaultValue, null),
     };
     return col;
   }
@@ -476,7 +476,7 @@ export function generate(
   function genViewSchema(view: ViewEntityMetadata): ViewSchema {
     const v: ViewSchema = {
       name: view.viewName,
-      body: compiler.compile(view.body).sql,
+      body: sqlUtil.compile(view.body).sql,
       comment: view.description,
     };
     return v;

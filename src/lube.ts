@@ -3,7 +3,7 @@ import { Executor, QueryResult } from './execute';
 import { URL } from 'url';
 import { ISOLATION_LEVEL } from './constants';
 import assert from 'assert';
-import { CompileOptions, Compiler, StandardTranslator } from './compile';
+import { SqlOptions, SqlUtil, StandardTranslator } from './sql-util';
 import { Parameter } from './ast';
 import { DatabaseSchema } from './schema';
 import { MigrateBuilder } from './migrate-builder'
@@ -60,7 +60,7 @@ export type ConnectOptions = {
   /**
    * 编译选项
    */
-  compileOptions?: CompileOptions;
+  compileOptions?: SqlOptions;
 };
 
 const defaultConnectOptions: Partial<ConnectOptions> = {
@@ -83,11 +83,7 @@ export interface DbProvider {
    * lube对象
    */
   lube: Lube;
-  /**
-   * 必须实现编译器
-   */
-  // getCompiler(options: CompileOptions): Compiler;
-  readonly compiler: Compiler;
+  readonly sqlUtil: SqlUtil;
   readonly migrateBuilder: MigrateBuilder;
   query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
@@ -148,15 +144,8 @@ export class Lube extends Executor {
   public readonly provider: DbProvider;
 
   constructor(provider: DbProvider) {
-    const compiler = provider.compiler;
-    // if (!compiler) {
-    //   let compileOptions: CompileOptions = {};
-    //   if (options.strict !== undefined) {
-    //     compileOptions.strict = options.strict;
-    //   }
-    //   compiler = new Compiler(compileOptions);
-    // }
-    super(provider.query.bind(provider), compiler);
+    const sqlUtil = provider.sqlUtil;
+    super(provider.query.bind(provider), sqlUtil);
     this.provider = provider;
     this.provider.lube = this;
   }
@@ -177,7 +166,7 @@ export class Lube extends Executor {
     const { query, commit, rollback } = await this.provider.beginTrans(
       isolationLevel
     );
-    const executor = new Executor(query, this.compiler, true);
+    const executor = new Executor(query, this.sqlUtil, true);
     const abort = async () => {
       canceled = true;
       await rollback();

@@ -132,7 +132,6 @@ export async function load(
       ];
       table.foreignKeys = await getForeignKeys(tableId);
     }
-    // const rows = (await provider.query(provider.compiler.compile(sql).sql)).rows;
     return tables;
   }
 
@@ -159,7 +158,7 @@ export async function load(
     const views: ViewSchema[] = (await provider.lube.query(sql)).rows;
 
     for (const view of views) {
-      const cmd = provider.compiler.compile(
+      const cmd = provider.sqlUtil.compile(
         execute('sp_helptext', [view.name])
       );
       // const code = (await provider.query(cmd.sql, cmd.params)).rows.join('\n');
@@ -287,7 +286,7 @@ export async function load(
         and(p.class.eq(1), p.major_id.eq(k.object_id), p.minor_id.eq(0))
       )
       .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
-    const { rows } = await provider.query(provider.compiler.compile(sql).sql);
+    const { rows } = await provider.query(provider.sqlUtil.compile(sql).sql);
     const pk: PrimaryKeySchema = rows[0];
 
     if (pk) {
@@ -308,7 +307,7 @@ export async function load(
         .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
 
       const { rows: colRows } = await provider.query(
-        provider.compiler.compile(colSql).sql
+        provider.sqlUtil.compile(colSql).sql
       );
       pk.columns = colRows.map(p => ({ name: p.name, isAscending: !p.isDesc }));
     }
@@ -429,7 +428,7 @@ export async function load(
           i.type.in(1, 2)
         )
       );
-    const st = provider.compiler.compile(sql);
+    const st = provider.sqlUtil.compile(sql);
     const { rows } = await provider.query(st.sql);
     const indexes: IndexSchema[] = rows;
 
@@ -452,7 +451,7 @@ export async function load(
           i.is_unique_constraint.eq(false)
         )
       );
-    const sqlTxt = provider.compiler.compile(colSql).sql;
+    const sqlTxt = provider.sqlUtil.compile(colSql).sql;
     const { rows: colRows } = await provider.query(sqlTxt);
     for (const index of indexes) {
       index.columns = colRows

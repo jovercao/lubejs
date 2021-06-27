@@ -1,9 +1,9 @@
 import mssql from 'mssql';
 import { doQuery } from './query';
 import { toMssqlIsolationLevel } from './types';
-import { MssqlCompiler, MssqlStandardTranslator } from './compile';
+import { MssqlSqlUtil, MssqlStandardTranslator } from './sql-util';
 import {
-  CompileOptions,
+  SqlOptions,
   DbProvider,
   ISOLATION_LEVEL,
   Parameter,
@@ -18,14 +18,14 @@ import { MssqlMigrateBuilder } from './migrate-builder';
 export const DIALECT = Symbol('mssql');
 
 export class MssqlProvider implements DbProvider {
-  constructor(private _pool: mssql.ConnectionPool, options: CompileOptions) {
+  constructor(private _pool: mssql.ConnectionPool, options: SqlOptions) {
     const translator = new MssqlStandardTranslator(this);
-    this.compiler = new MssqlCompiler(options, translator);
-    translator.compiler = this.compiler;
+    this.sqlUtil = new MssqlSqlUtil(options, translator);
+    translator.sqlUtil = this.sqlUtil;
   }
 
   readonly lube: Lube;
-  readonly compiler: MssqlCompiler;
+  readonly sqlUtil: MssqlSqlUtil;
   private _migrateBuilder: MssqlMigrateBuilder;
   get migrateBuilder(): MigrateBuilder {
     if (!this._migrateBuilder) {
@@ -41,7 +41,7 @@ export class MssqlProvider implements DbProvider {
   }
 
   async query(sql: string, params: Parameter<any, string>[]) {
-    const res = await doQuery(this._pool, sql, params, this.compiler.options);
+    const res = await doQuery(this._pool, sql, params, this.sqlUtil.options);
     return res;
   }
 
@@ -51,14 +51,14 @@ export class MssqlProvider implements DbProvider {
     const trans = this._pool.transaction();
     await trans.begin(toMssqlIsolationLevel(isolationLevel));
     return {
-      async query(sql, params) {
-        const res = await doQuery(trans, sql, params, this.compiler.options);
+      query: async (sql, params) => {
+        const res = await doQuery(trans, sql, params, this.sqlUtil.options);
         return res;
       },
-      async commit() {
+      commit: async() => {
         await trans.commit();
       },
-      async rollback() {
+      rollback: async() => {
         await trans.rollback();
       },
     };

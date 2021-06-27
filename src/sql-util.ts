@@ -138,7 +138,7 @@ export type StandardTranslator = Standard;
 /**
  * 编译选项
  */
-export interface CompileOptions {
+export interface SqlOptions {
   /**
    * 是否启用严格模式，默认启用
    * 如果为false，则生成的SQL标识不会被[]或""包括
@@ -189,7 +189,7 @@ export interface CompileOptions {
   statementEnd?: string;
 }
 
-const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
+const DEFAULT_COMPILE_OPTIONS: SqlOptions = {
   strict: true,
 
   /**
@@ -221,15 +221,15 @@ const DEFAULT_COMPILE_OPTIONS: CompileOptions = {
 /**
  * AST到SQL的编译器基类，包含大部分标准实现
  */
-export abstract class Compiler {
-  options: CompileOptions;
+export abstract class SqlUtil {
+  options: SqlOptions;
 
   /**
    * 转译器
    */
   abstract get translator(): StandardTranslator;
 
-  constructor(options?: CompileOptions) {
+  constructor(options?: SqlOptions) {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 

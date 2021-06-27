@@ -50,8 +50,8 @@ import {
   cot,
 } from './build-in';
 import {
-  Compiler,
-  CompileOptions,
+  SqlUtil,
+  SqlOptions,
   DbType,
   Select,
   Parameter,
@@ -98,12 +98,12 @@ import {
 import { sqlifyLiteral } from './util';
 import { MssqlProvider } from './provider';
 
-export interface MssqlCompileOptions extends CompileOptions {}
+export interface MssqlSqlOptions extends SqlOptions {}
 
 /**
  * 默认编译选项
  */
-export const DefaultCompilerOptions: MssqlCompileOptions = {
+export const DefaultSqlOptions: MssqlSqlOptions = {
   strict: true,
   /**
    * 标识符引用，左
@@ -176,7 +176,7 @@ export const DefaultCompilerOptions: MssqlCompileOptions = {
 // }
 
 export class MssqlStandardTranslator implements StandardTranslator {
-  compiler: MssqlCompiler;
+  sqlUtil: MssqlSqlUtil;
 
   constructor(private provider: MssqlProvider) {}
 
@@ -639,12 +639,12 @@ export class MssqlStandardTranslator implements StandardTranslator {
   }
 }
 
-export class MssqlCompiler extends Compiler {
+export class MssqlSqlUtil extends SqlUtil {
   constructor(
-    options: MssqlCompileOptions,
+    options: MssqlSqlOptions,
     public readonly translator: MssqlStandardTranslator
   ) {
-    super(Object.assign({}, DefaultCompilerOptions, options));
+    super(Object.assign({}, DefaultSqlOptions, options));
   }
 
   protected compileAnnotation(statement: Annotation): string {

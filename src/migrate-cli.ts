@@ -117,7 +117,7 @@ export class MigrateCli {
   }
 
   private async loadSchema() {
-    return await this.dbContext.lube.provider.getSchema();
+    return this.dbContext.lube.provider.getSchema();
   }
 
   private async getCurrentMigrate(): Promise<MigrateInfo> {
@@ -127,7 +127,7 @@ export class MigrateCli {
         { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
       );
       const id = items?.[0]?.migrate_id;
-      return await this.getMigrate(id);
+      return this.getMigrate(id);
     } catch {
       return null;
     }
@@ -198,7 +198,7 @@ export class MigrateCli {
     );
     const dbSchema = await this.loadSchema();
     const entityScheam = generateSchema(
-      this.dbContext.executor.compiler,
+      this.dbContext.executor.sqlUtil,
       metadata
     );
     const code = generateMigrate(
@@ -208,7 +208,7 @@ export class MigrateCli {
       metadata,
       notResolverType
         ? undefined
-        : this.dbContext.lube.provider.compiler.parseRawType
+        : this.dbContext.lube.provider.sqlUtil.parseRawType
     );
 
     const timestamp = this.getTimestamp();
@@ -325,11 +325,8 @@ export class MigrateCli {
     statements.push(SQL.delete(LUBE_MIGRATE_TABLE_NAME));
     statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([target.id]));
     const scripts = statements.map(statement =>
-      this.dbContext.lube.compiler.compile(statement)
+      this.dbContext.lube.sqlUtil.compile(statement)
     );
-    // const { sql: scripts } = this.dbContext.lube.compiler.compile(
-    //   SQL.doc(statements)
-    // );
     return scripts;
   }
 

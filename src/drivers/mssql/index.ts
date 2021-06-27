@@ -1,6 +1,6 @@
 import sql from 'mssql';
 import { MssqlProvider } from './provider';
-import { DefaultCompilerOptions, MssqlCompileOptions } from './compile';
+import { DefaultSqlOptions, MssqlSqlOptions } from './sql-util';
 import { Driver, ConnectOptions, DbProvider } from 'lubejs';
 
 const DefaultConnectOptions: sql.config = {
@@ -36,7 +36,7 @@ export interface MssqlConnectOptions extends ConnectOptions {
    */
   useUTC?: boolean;
 
-  compileOptions?: MssqlCompileOptions;
+  compileOptions?: MssqlSqlOptions;
 }
 
 /**
@@ -87,7 +87,7 @@ export const connect: Driver = async function (
   await pool.connect();
   const compilerOptions = Object.assign(
     {},
-    DefaultCompilerOptions,
+    DefaultSqlOptions,
     options.compileOptions
   );
   return new MssqlProvider(pool, compilerOptions);

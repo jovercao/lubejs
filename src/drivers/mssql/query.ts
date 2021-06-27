@@ -1,6 +1,6 @@
 import { IResult, ISqlType, Request } from 'mssql';
 import {
-  CompileOptions,
+  SqlOptions,
   Parameter,
   PARAMETER_DIRECTION,
   QueryResult,
@@ -16,7 +16,7 @@ export async function doQuery(
   driver: IDriver,
   sql: string,
   params: Parameter<Scalar, string>[] = [],
-  options: CompileOptions
+  options: SqlOptions
 ) {
   const request = await driver.request();
   params &&

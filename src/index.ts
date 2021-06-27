@@ -6,7 +6,7 @@ export * from './constants'
 
 export * from './ast'
 
-export * from './compile'
+export * from './sql-util'
 
 export * from './execute'
 

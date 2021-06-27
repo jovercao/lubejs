@@ -6,7 +6,7 @@ import {
   CompatibleExpression,
   Scalar,
   Condition,
-  Compiler,
+  SqlUtil,
   Lube,
 } from 'lubejs';
 import { sp_rename } from './build-in';
@@ -17,25 +17,13 @@ const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
   private readonly lube: Lube;
-  private readonly compiler: Compiler;
+  private readonly sqlUtil: SqlUtil;
   constructor(private readonly provider: MssqlProvider) {
     super();
 
     this.lube = provider.lube;
-    this.compiler = provider.compiler;
+    this.sqlUtil = provider.sqlUtil;
   }
-
-  // private _getDefaultConstraint(
-  //   table: Name<string>,
-  //   column: string
-  // ): string {
-  //   return this.compiler.sql`select dc.name
-  //   from sys.default_constraints dc
-  //   join sys.columns c on dc.parent_column_id = c.column_id and dc.parent_object_id = c.object_id
-  //   where c.object_id = object_id(${this.compiler.stringifyName(
-  //     table
-  //   )}) and c.name = ${column}`;
-  // }
 
   setDefaultValue(
     table: Name<string>,
@@ -47,19 +35,19 @@ DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id and dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.compiler.stringifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.stringifyName(
       table
-    )}') AND c.name = ${this.compiler.compileLiteral(column)};
+    )}') AND c.name = ${this.sqlUtil.compileLiteral(column)};
 IF (@ConstaintName IS NOT NULL)
 BEGIN
- EXEC ('ALTER TABLE ${this.compiler.stringifyName(
+ EXEC ('ALTER TABLE ${this.sqlUtil.stringifyName(
    table
  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
-ALTER TABLE ${this.compiler.stringifyName(
+ALTER TABLE ${this.sqlUtil.stringifyName(
       table
-    )} ADD DEFAULT (${defaultValue}) FOR ${this.compiler.quoted(column)}
+    )} ADD DEFAULT (${defaultValue}) FOR ${this.sqlUtil.quoted(column)}
 `);
   }
 
@@ -69,12 +57,12 @@ DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id AND dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.compiler.stringifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.stringifyName(
       table
-    )}') and c.name = ${this.compiler.compileLiteral(column)}
+    )}') and c.name = ${this.sqlUtil.compileLiteral(column)}
 IF (@ConstaintName IS NOT NULL)
 BEGIN
-  EXEC ('ALTER TABLE ${this.compiler.stringifyName(
+  EXEC ('ALTER TABLE ${this.sqlUtil.stringifyName(
     table
   )} DROP CONSTRAINT ' + @ConstaintName)
 END
@@ -143,7 +131,7 @@ END
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，setIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： setIdentity(table: ${this.compiler.stringifyName(
+        `操作信息： setIdentity(table: ${this.sqlUtil.stringifyName(
           table
         )}, column: ${column}, startValue: ${startValue}, increment: ${increment})`
       ),
@@ -158,7 +146,7 @@ END
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，dropIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： dropIdentity(table: ${this.compiler.stringifyName(
+        `操作信息： dropIdentity(table: ${this.sqlUtil.stringifyName(
           table
         )}, column: ${column})`
       ),

@@ -34,7 +34,7 @@ import {
   SortInfo,
   SqlBuilder as SQL,
 } from './ast';
-import { Compiler } from './compile';
+import { SqlUtil } from './sql-util';
 import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
 import { Queryable } from './queryable';
@@ -116,16 +116,16 @@ export class Executor {
   /**
    * SQL执行器
    * @param {*} query 查询函数
-   * @param {*} compiler 编译函数
+   * @param {*} sqlUtil 编译函数
    */
   protected constructor(
     query: QueryHandler,
-    compiler: Compiler,
+    sqlUtil: SqlUtil,
     isTrans = false
   ) {
     // 是否启用严格模式，避免关键字等问题
     this.doQuery = query;
-    this.compiler = compiler;
+    this.sqlUtil = sqlUtil;
     this.isTrans = isTrans;
   }
 
@@ -134,7 +134,7 @@ export class Executor {
   /**
    * 编译器
    */
-  readonly compiler: Compiler;
+  readonly sqlUtil: SqlUtil;
 
   /**
    * 是否在事务当中
@@ -186,12 +186,12 @@ export class Executor {
     let command: Command;
     // 如果是AST直接编译
     if (isStatement(args[0]) || isDocument(args[0])) {
-      command = this.compiler.compile(args[0]);
+      command = this.sqlUtil.compile(args[0]);
     }
     // 如果是模板字符串
     else if (Array.isArray(args[0] && args[0].raw)) {
       command = {
-        sql: this.compiler.sql(args[0], ...args.slice(1)),
+        sql: this.sqlUtil.sql(args[0], ...args.slice(1)),
       };
     } else if (
       args.length === 1 &&
@@ -223,7 +223,7 @@ export class Executor {
         Object.entries(res.output).forEach(([name, value]) => {
           const p = command.params.find(p => p.$name === name);
           p.value = value;
-          if (p.$name === this.compiler.options.returnParameterName) {
+          if (p.$name === this.sqlUtil.options.returnParameterName) {
             res.returnValue = value;
           }
         });
@@ -386,9 +386,9 @@ export class Executor {
     };
     // 启用事务
     if (this instanceof Lube && !this.isTrans) {
-      return await this.trans(action);
+      return this.trans(action);
     }
-    return await action(this);
+    return action(this);
   }
 
   async find<T extends RowObject = any>(

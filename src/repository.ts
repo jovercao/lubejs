@@ -92,7 +92,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     if (options?.includes) {
       query = query.include(options.includes);
     }
-    return await query.fetchFirst();
+    return query.fetchFirst();
   }
 
   async add(items: T | T[]): Promise<void> {
