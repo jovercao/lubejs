@@ -425,7 +425,7 @@ export function generate(
 
   function genColumnSchema(column: ColumnMetadata): ColumnSchema {
     const col: ColumnSchema = {
-      type: sqlUtil.compileType(column.dbType).replace(/ /g, ''),
+      type: sqlUtil.sqlifyType(column.dbType).replace(/ /g, ''),
       name: column.columnName,
       isNullable: column.isNullable,
       isIdentity: column.isIdentity,
@@ -434,11 +434,11 @@ export function generate(
       isCalculate: column.isCalculate,
       calculateExpression:
         column.calculateExpression &&
-        sqlUtil.compileExpression(column.calculateExpression, null),
+        sqlUtil.sqlifyExpression(column.calculateExpression, null),
       comment: column.description,
       defaultValue:
         column.defaultValue &&
-        sqlUtil.compileExpression(column.defaultValue, null),
+        sqlUtil.sqlifyExpression(column.defaultValue, null),
     };
     return col;
   }
@@ -476,7 +476,7 @@ export function generate(
   function genViewSchema(view: ViewEntityMetadata): ViewSchema {
     const v: ViewSchema = {
       name: view.viewName,
-      body: sqlUtil.compile(view.body).sql,
+      body: sqlUtil.sqlify(view.body).sql,
       comment: view.description,
     };
     return v;

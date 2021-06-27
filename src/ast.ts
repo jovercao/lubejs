@@ -2974,18 +2974,52 @@ export class ProcedureParameter extends AST {
   $default?: Literal;
 }
 
-export class TableVariantDeclare<T extends RowObject = any> extends AST {
-  readonly $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE =
-    SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
+// export class TableVariantDeclare<T extends RowObject = any> extends AST {
+//   readonly $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE =
+//     SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
 
-  constructor(name: TableVariant<T> | string, schema: TableSchema) {
+//   constructor(name: TableVariant<T> | string, schema: TableSchema) {
+//     super();
+//     this.$name = ensureTableVariant(name);
+//     this.$schema = schema;
+//   }
+
+//   $name: TableVariant;
+//   $schema: Omit<TableSchema, 'name'>;
+// }
+
+export class TableVariantDeclare<N extends string = string> extends AST {
+  $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE = SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
+  $members: CreateTableMember[];
+  $name: Name<N>;
+
+  constructor(name: Name<N>) {
     super();
-    this.$name = ensureTableVariant(name);
-    this.$schema = schema;
+    this.$name = name;
   }
 
-  $name: TableVariant;
-  $schema: Omit<TableSchema, 'name'>;
+  // has(build: (builder: CreateTableBuilder) => CreateTableMember[]): this {
+  //   this.$members = build(CreateTable);
+  //   return this;
+  // }
+
+  as(build: (builder: TableVariantMemberBuilder) => TableVariantMember[]): this;
+  as(...members: TableVariantMember[]): this;
+  as(
+    ...members:
+      | [(builder: TableVariantMemberBuilder) => TableVariantMember[]]
+      | TableVariantMember[]
+  ): this {
+    if (typeof members[0] === 'function') {
+      this.as(...members[0](TableVariantMemberBuilder));
+      return this;
+    }
+    if (!this.$members) {
+      this.$members = [];
+    }
+    this.$members.push(...(members as TableVariantMember[]));
+    return this;
+  }
 }
 
 export interface DeclareBuilder {
@@ -2997,8 +3031,8 @@ export const DeclareBuilder: DeclareBuilder = {
   variant(name: string, type: DbType): VariantDeclare {
     return new VariantDeclare(name, type);
   },
-  table(name: string, schema: TableSchema): TableVariantDeclare {
-    return new TableVariantDeclare(name, schema);
+  table(name: string): TableVariantDeclare {
+    return new TableVariantDeclare(name);
   },
 };
 
@@ -3397,6 +3431,46 @@ export class ForeignKey extends AST {
   }
 }
 
+export interface TableVariantMemberBuilder {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): TableColumnForAdd<N>;
+
+  primaryKey(name?: string): PrimaryKey;
+
+  check(sql: Condition): CheckConstraint;
+  check(name: string, sql: Condition): CheckConstraint;
+
+  uniqueKey(name?: string): UniqueKey;
+}
+
+export type TableVariantMember = PrimaryKey | CheckConstraint | UniqueKey | TableColumnForAdd;
+
+export const TableVariantMemberBuilder: TableVariantMemberBuilder = {
+  primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  },
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): TableColumnForAdd<N> {
+    return new TableColumnForAdd(name, type);
+  },
+  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
+    let name: string;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+    } else {
+      sql = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  },
+  uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  },
+}
+
 export interface CreateTableMemberBuilder {
   column<N extends string, T extends DbType>(
     name: N,
@@ -3414,29 +3488,9 @@ export interface CreateTableMemberBuilder {
 }
 
 export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
-  column<N extends string, T extends DbType>(
-    name: N,
-    type: T
-  ): TableColumnForAdd<N> {
-    return new TableColumnForAdd(name, type);
-  },
-  primaryKey(name?: string): PrimaryKey {
-    return new PrimaryKey(name);
-  },
+  ...TableVariantMemberBuilder,
   foreignKey(name?: string): ForeignKey {
     return new ForeignKey(name);
-  },
-  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
-    let name: string;
-    if (typeof nameOrSql === 'string') {
-      name = nameOrSql;
-    } else {
-      sql = nameOrSql;
-    }
-    return new CheckConstraint(sql, name);
-  },
-  uniqueKey(name?: string): UniqueKey {
-    return new UniqueKey(name);
   },
 };
 

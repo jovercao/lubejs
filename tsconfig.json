@@ -17,6 +17,9 @@
       "lubejs": [ "src" ]
     }
   },
+  "include": [
+    "exp"
+  ],
   "exclude": [
     "node_modules",
     "test",

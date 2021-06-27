@@ -233,7 +233,7 @@ export abstract class SqlUtil {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  stringifyName(name: Name, buildIn = false): string {
+  sqlifyName(name: Name, buildIn = false): string {
     if (Array.isArray(name)) {
       return name
         .map((n, index) => {
@@ -255,13 +255,13 @@ export abstract class SqlUtil {
     // const params: Parameter[] = [];
     let sql: string = arr[0];
     for (let i = 0; i < arr.length - 1; i++) {
-      sql += this.compileLiteral(paramValues[i]);
+      sql += this.sqlifyLiteral(paramValues[i]);
       sql += arr[i + 1];
     }
     return sql;
   }
 
-  abstract compileType(type: DbType): string;
+  abstract sqlifyType(type: DbType): string;
 
   /**
    * 将原始SQL类型转换为DbType
@@ -290,7 +290,7 @@ export abstract class SqlUtil {
    * 编译Insert语句中的字段，取掉表别名
    * @param field 字段
    */
-  protected compileInsertField(field: Field<Scalar, string>): string {
+  protected sqlifyInsertField(field: Field<Scalar, string>): string {
     if (typeof field.$name === 'string') return this.quoted(field.$name);
     return this.quoted(field.$name[0]);
   }
@@ -318,27 +318,24 @@ export abstract class SqlUtil {
    * @param {array} values 参数列表
    * @param {any} value 参数值
    */
-  protected compileParameter(
+  protected sqlifyParameter(
     param: Parameter<Scalar, string>,
     params: Set<Parameter<Scalar, string>>
   ): string {
-    if (!params) {
-      throw new Error(`Params not allowed null when compile expression.`);
-    }
     params.add(param);
-    return this.stringifyParameterName(param);
+    return this.sqlifyParameterName(param);
   }
 
-  protected stringifyParameterName(p: Parameter<Scalar, string>): string {
+  protected sqlifyParameterName(p: Parameter<Scalar, string>): string {
     return this.options.parameterPrefix + (p.$name || '');
   }
 
-  protected stringifyVariantName(name: Name): string {
+  protected sqlifyVariantName(name: Name): string {
     return this.options.variantPrefix + name;
   }
 
-  protected stringifyIdentifier(identifier: Identifier<string>): string {
-    return this.stringifyName(identifier.$name, identifier.$builtin);
+  protected sqlifyIdentifier(identifier: Identifier<string>): string {
+    return this.sqlifyName(identifier.$name, identifier.$builtin);
   }
 
   // /**
@@ -360,46 +357,25 @@ export abstract class SqlUtil {
   //   };
   // }
 
-  protected compileVariant(variant: Variant): string {
-    return this.stringifyVariantName(variant.$name);
+  protected sqlifyVariant(variant: Variant): string {
+    return this.sqlifyVariantName(variant.$name);
   }
-
-  // /**
-  //  * 编译日期常量
-  //  */
-  // protected compileDate(date: Date): string {
-  //   return `'${dateToString(date)}'`;
-  // }
-
-  // /**
-  //  * 编译Boolean常量
-  //  */
-  // protected compileBoolean(value: boolean): string {
-  //   return value ? '1' : '0';
-  // }
-
-  // /**
-  //  * 编译字符串常量
-  //  */
-  // protected compileString(value: string): string {
-  //   return `'${value.replace(/'/g, "''")}'`;
-  // }
 
   /**
    * 编译字面量
    */
-  public abstract compileLiteral(literal: Scalar): string;
+  public abstract sqlifyLiteral(literal: Scalar): string;
 
   /**
    * 将AST编译成一个可供执行的命令
    */
-  public compile(ast: Statement | Document): Command {
+  public sqlify(ast: Statement | Document): Command {
     const params = new Set<Parameter<Scalar, string>>();
     let sql: string;
     if (isDocument(ast)) {
-      sql = this.compileDocument(ast, params);
+      sql = this.sqlifyDocument(ast, params);
     } else {
-      sql = this.compileStatement(ast, params);
+      sql = this.sqlifyStatement(ast, params);
     }
     return {
       sql,
@@ -407,7 +383,7 @@ export abstract class SqlUtil {
     };
   }
 
-  protected compileStatement(
+  protected sqlifyStatement(
     /**
      * AST
      */
@@ -426,59 +402,59 @@ export abstract class SqlUtil {
       return statement.$sql;
     }
     if (isAnnotation(statement)) {
-      return this.compileAnnotation(statement);
+      return this.sqlifyAnnotation(statement);
     }
 
     if (isSelect(statement)) {
-      sql = this.compileSelect(statement, params, parent);
+      sql = this.sqlifySelect(statement, params, parent);
     } else if (isUpdate(statement)) {
-      sql = this.compileUpdate(statement, params, parent);
+      sql = this.sqlifyUpdate(statement, params, parent);
     } else if (isInsert(statement)) {
-      sql = this.compileInsert(statement, params, parent);
+      sql = this.sqlifyInsert(statement, params, parent);
     } else if (isDelete(statement)) {
-      sql = this.compileDelete(statement, params, parent);
+      sql = this.sqlifyDelete(statement, params, parent);
     } else if (isDeclare(statement)) {
-      sql = this.compileDeclare(statement);
+      sql = this.sqlifyDeclare(statement);
     } else if (isExecute(statement)) {
-      sql = this.compileExecute(statement, params, parent);
+      sql = this.sqlifyExecute(statement, params, parent);
     } else if (isAssignment(statement)) {
-      sql = this.compileAssignment(statement, params, parent);
+      sql = this.sqlifyAssignment(statement, params, parent);
     } else if (isCreateTable(statement)) {
-      sql = this.compileCreateTable(statement);
+      sql = this.sqlifyCreateTable(statement);
     } else if (isAlterTable(statement)) {
-      sql = this.compileAlterTable(statement);
+      sql = this.sqlifyAlterTable(statement);
     } else if (isDropTable(statement)) {
-      sql = this.compileDropTable(statement.$name);
+      sql = this.sqlifyDropTable(statement.$name);
     } else if (isCreateView(statement)) {
-      sql = this.compileCreateView(statement);
+      sql = this.sqlifyCreateView(statement);
     } else if (isAlterView(statement)) {
-      sql = this.compileAlterView(statement);
+      sql = this.sqlifyAlterView(statement);
     } else if (isDropView(statement)) {
-      sql = this.compileDropView(statement.$name);
+      sql = this.sqlifyDropView(statement.$name);
     } else if (isCreateProcedure(statement)) {
-      sql = this.compileCreateProcedure(statement);
+      sql = this.sqlifyCreateProcedure(statement);
     } else if (isAlterProcedure(statement)) {
-      sql = this.compileAlterProcedure(statement);
+      sql = this.sqlifyAlterProcedure(statement);
     } else if (isDropProcedure(statement)) {
-      sql = this.compileDropProcedure(statement.$name);
+      sql = this.sqlifyDropProcedure(statement.$name);
     } else if (isCreateFunction(statement)) {
-      sql = this.compileCreateFunction(statement);
+      sql = this.sqlifyCreateFunction(statement);
     } else if (isAlterFunction(statement)) {
-      sql = this.compileAlterFunction(statement);
+      sql = this.sqlifyAlterFunction(statement);
     } else if (isDropFunction(statement)) {
-      sql = this.compileDropFunction(statement.$name);
+      sql = this.sqlifyDropFunction(statement.$name);
     } else if (isCreateIndex(statement)) {
-      sql = this.compileCreateIndex(statement);
+      sql = this.sqlifyCreateIndex(statement);
     } else if (isDropIndex(statement)) {
-      sql = this.compileDropIndex(statement.$table, statement.$name);
+      sql = this.sqlifyDropIndex(statement.$table, statement.$name);
     } else if (isCreateSequence(statement)) {
-      sql = this.compileCreateSequence(statement);
+      sql = this.sqlifyCreateSequence(statement);
     } else if (isDropSequence(statement)) {
-      sql = this.compileDropSequence(statement);
+      sql = this.sqlifyDropSequence(statement);
     } else if (isBlock(statement)) {
-      sql = this.compileBlock(statement);
+      sql = this.sqlifyBlock(statement);
     } else if (isStandardStatement(statement)) {
-      sql = this.compileStatement(this.translationStandardOperation(statement));
+      sql = this.sqlifyStatement(this.translationStandardOperation(statement));
     }
     if (sql !== undefined) {
       return sql + this.options.statementEnd;
@@ -486,7 +462,7 @@ export abstract class SqlUtil {
     invalidAST('statement', statement);
   }
 
-  compileStatements(
+  protected sqlifyStatements(
     statements: Statement[],
     /**
      * 参数容器
@@ -494,185 +470,170 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return statements
-      .map(statement => this.compileStatement(statement, params))
+      .map(statement => this.sqlifyStatement(statement, params))
       .join('\n');
   }
 
-  protected abstract compileAnnotation(statement: Annotation): string;
+  protected abstract sqlifyAnnotation(statement: Annotation): string;
 
-  protected abstract compileDropSequence(statement: DropSequence): string;
+  protected abstract sqlifyDropSequence(statement: DropSequence): string;
 
-  protected abstract compileCreateSequence(statement: CreateSequence): string;
+  protected abstract sqlifyCreateSequence(statement: CreateSequence): string;
 
-  protected abstract compileBlock(statement: Block): string;
+  protected abstract sqlifyBlock(statement: Block): string;
 
-  protected abstract compileDropIndex(table: Name, name: string): string;
+  protected abstract sqlifyDropIndex(table: Name, name: string): string;
 
-  protected abstract compileCreateIndex(statement: CreateIndex): string;
+  protected abstract sqlifyCreateIndex(statement: CreateIndex): string;
 
-  protected abstract compileDropFunction($name: Name): string;
+  protected abstract sqlifyDropFunction($name: Name): string;
 
-  protected abstract compileAlterFunction(statement: AlterFunction): string;
+  protected abstract sqlifyAlterFunction(statement: AlterFunction): string;
 
-  protected abstract compileCreateFunction(statement: CreateFunction): string;
+  protected abstract sqlifyCreateFunction(statement: CreateFunction): string;
 
-  protected abstract compileDropProcedure($name: Name): string;
+  protected abstract sqlifyDropProcedure($name: Name): string;
 
-  protected abstract compileAlterProcedure(statement: AlterProcedure): string;
+  protected abstract sqlifyAlterProcedure(statement: AlterProcedure): string;
 
-  protected abstract compileCreateProcedure(statement: CreateProcedure): string;
+  protected abstract sqlifyCreateProcedure(statement: CreateProcedure): string;
 
-  protected compileAlterView(statement: AlterView<any, string>): string {
-    return `ALTER VIEW ${this.stringifyName(
+  protected sqlifyAlterView(statement: AlterView<any, string>): string {
+    return `ALTER VIEW ${this.sqlifyName(
       statement.$name
-    )} AS ${this.compileSelect(statement.$body)}`;
+    )} AS ${this.sqlifySelect(statement.$body)}`;
   }
 
-  protected compileDropView(name: Name): string {
-    return `DROP VIEW ${this.stringifyName(name)}`;
+  protected sqlifyDropView(name: Name): string {
+    return `DROP VIEW ${this.sqlifyName(name)}`;
   }
 
-  protected compileCreateView(statement: CreateView<any, string>): string {
-    return `CREATE VIEW ${this.stringifyName(
+  protected sqlifyCreateView(statement: CreateView<any, string>): string {
+    return `CREATE VIEW ${this.sqlifyName(
       statement.$name
-    )} AS ${this.compileSelect(statement.$body)}`;
+    )} AS ${this.sqlifySelect(statement.$body)}`;
   }
 
-  protected compileDropTable(name: Name): string {
-    return `DROP TABLE ${this.stringifyName(name)}`;
+  protected sqlifyDropTable(name: Name): string {
+    return `DROP TABLE ${this.sqlifyName(name)}`;
   }
 
-  protected abstract compileAlterTable(statement: AlterTable<string>): string;
+  protected abstract sqlifyAlterTable(statement: AlterTable<string>): string;
 
-  protected abstract compileCreateTable(statement: Statement): string;
+  protected abstract sqlifyCreateTable(statement: Statement): string;
 
-  protected compileParenthesesExpression(
+  protected sqlifyGroupExpression(
     expr: GroupExpression<Scalar>,
     params?: Set<Parameter<Scalar, string>>
   ): string {
-    return `(${this.compileExpression(expr.$inner, params, expr)})`;
+    return `(${this.sqlifyExpression(expr.$inner, params, expr)})`;
   }
 
   /**
    * SELECT 语句 当值使用
    */
-  protected compileValuedSelect(
+  protected sqlifyValuedSelect(
     expr: ValuedSelect<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    return `(${this.compileSelect(expr.$select, params, parent)})`;
+    return `(${this.sqlifySelect(expr.$select, params, parent)})`;
   }
 
-  protected compileStar(star: Star): string {
+  protected sqlifyStar(star: Star): string {
     if (star.$parent) {
-      return this.stringifyName(star.$parent) + '.*';
+      return this.sqlifyName(star.$parent) + '.*';
     }
     return '*';
   }
 
-  protected compileOperation(
+  protected sqlifyOperation(
     operation: Operation,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isUnaryOperation(operation)) {
-      return this.compileUnaryOperation(operation, params, parent);
+      return this.sqlifyUnaryOperation(operation, params, parent);
     }
 
     if (isBinaryOperation(operation)) {
-      return this.compileBinaryOperation(operation, params);
+      return this.sqlifyBinaryOperation(operation, params);
     }
 
-    // if (isConvertOperation(operation)) {
-    //   return this.compileConvert(
-    //     operation as ConvertOperation<Scalar>,
-    //     params,
-    //     parent
-    //   )
-    // }
     invalidAST('operation', operation);
   }
 
-  // abstract compileConvert (
-  //   ast: ConvertOperation<Scalar>,
-  //   params?: Set<Parameter<Scalar, string>>,
-  //   parent?: AST
-  // ): string
-
-  protected compileUnaryOperation(
+  protected sqlifyUnaryOperation(
     opt: UnaryOperation<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    return opt.$operator + this.compileExpression(opt.$value, params, parent);
+    return opt.$operator + this.sqlifyExpression(opt.$value, params, parent);
   }
 
-  protected compileRowsetName(rowset: Rowset | Raw): string {
+  protected sqlifyRowsetName(rowset: Rowset | Raw): string {
     if (isRaw(rowset)) return rowset.$sql;
     if (rowset.$alias) {
-      return this.stringifyIdentifier(rowset.$alias);
+      return this.sqlifyIdentifier(rowset.$alias);
     }
     if (isIdentifier(rowset)) {
-      return this.stringifyIdentifier(rowset);
+      return this.sqlifyIdentifier(rowset);
     }
     throw new Error('Rowset must have alias or name.');
   }
 
-  protected compileNamedSelect(
+  protected sqlifyNamedSelect(
     rowset: NamedSelect,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
       '(' +
-      this.compileSelect(rowset.$select, params, rowset) +
+      this.sqlifySelect(rowset.$select, params, rowset) +
       ') AS ' +
-      this.compileRowsetName(rowset)
+      this.sqlifyRowsetName(rowset)
     );
   }
 
-  protected compileTableInvoke(): string {
+  protected sqlifyTableInvoke(): string {
     throw new Error('Method not implemented.');
   }
-  // compileNamedArgument(arg0: NamedArgument<JsConstant, string>, params: Set<Parameter<JsConstant, string>>, parent?: AST): string {
-  //   throw new Error("Method not implemented.");
-  // }
-  protected compileBuildIn(buildIn: BuiltIn<string>): string {
+
+  protected sqlifyBuildIn(buildIn: BuiltIn<string>): string {
     return buildIn.$name;
   }
 
-  protected compileColumn(
+  protected sqlifyColumn(
     column: SelectColumn<Scalar, string> | Star | Expression<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isColumn(column)) {
-      return `${this.compileExpression(
+      return `${this.sqlifyExpression(
         column.$expr,
         params,
         column
       )} AS ${this.quoted(column.$name)}`;
     }
     if (isStar(column)) {
-      return this.compileStar(column);
+      return this.sqlifyStar(column);
     }
-    return this.compileExpression(column, params, parent);
+    return this.sqlifyExpression(column, params, parent);
   }
 
-  protected compileWithSelect(
+  protected sqlifyWithSelect(
     item: NamedSelect<any, string> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isRaw(item)) return item.$sql;
-    return `${this.quoted(item.$alias.$name)} AS (${this.compileSelect(
+    return `${this.quoted(item.$alias.$name)} AS (${this.sqlifySelect(
       item.$select,
       params,
       parent
     )})`;
   }
 
-  protected compileWith(
+  protected sqlifyWith(
     withs: With | Raw,
     params?: Set<Parameter<Scalar, string>>
   ): string {
@@ -680,23 +641,21 @@ export abstract class SqlUtil {
     return (
       'WITH ' +
       withs.$rowsets
-        .map(item => this.compileWithSelect(item, params, withs))
+        .map(item => this.sqlifyWithSelect(item, params, withs))
         .join(', ')
     );
   }
 
-  // protected abstract compileIdentityValue(ast: IdentityValue, params: Set<Parameter>): string;
-
-  protected compileDocument(
+  protected sqlifyDocument(
     doc: Document,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return doc.statements
-      .map(statement => this.compileStatement(statement, params, doc))
+      .map(statement => this.sqlifyStatement(statement, params, doc))
       .join('\n');
   }
 
-  protected compileExecute(
+  protected sqlifyExecute(
     exec: Execute,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -708,32 +667,32 @@ export abstract class SqlUtil {
     );
     return (
       'EXECUTE ' +
-      this.compileParameter(returnParam, params) +
+      this.sqlifyParameter(returnParam, params) +
       ' = ' +
-      this.stringifyIdentifier(exec.$proc) +
+      this.sqlifyIdentifier(exec.$proc) +
       ' ' +
-      this.compileExecuteArgumentList(exec.$args, params, exec)
+      this.sqlifyExecuteArgumentList(exec.$args, params, exec)
     );
   }
 
-  protected compileInvokeArgumentList(
+  protected sqlifyInvokeArgumentList(
     args: Expression<Scalar>[],
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
-      .map(expr => this.compileExpression(expr, params, parent))
+      .map(expr => this.sqlifyExpression(expr, params, parent))
       .join(', ');
   }
 
-  protected compileExecuteArgumentList(
+  protected sqlifyExecuteArgumentList(
     args: Expression<Scalar>[],
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return args
       .map(ast => {
-        let sql = this.compileExpression(ast, params, parent);
+        let sql = this.sqlifyExpression(ast, params, parent);
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
@@ -746,7 +705,7 @@ export abstract class SqlUtil {
       .join(', ');
   }
 
-  protected compileUnion(
+  protected sqlifyUnion(
     union: Union,
     params?: Set<Parameter<Scalar, string>>
   ): string {
@@ -754,30 +713,30 @@ export abstract class SqlUtil {
       'UNION ' +
       (union.$all ? 'ALL ' : '') +
       (isSelect(union.$select)
-        ? this.compileSelect(union.$select, params, union)
-        : this.compileRowsetName(union.$select))
+        ? this.sqlifySelect(union.$select, params, union)
+        : this.sqlifyRowsetName(union.$select))
     );
   }
 
-  protected compileCase(
+  protected sqlifyCase(
     caseExpr: Case<any>,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     let fragment = 'CASE';
     if (caseExpr.$expr)
-      fragment += ' ' + this.compileExpression(caseExpr.$expr, params, parent);
+      fragment += ' ' + this.sqlifyExpression(caseExpr.$expr, params, parent);
     fragment +=
       ' ' +
-      caseExpr.$whens.map(when => this.compileWhen(when, params)).join(' ');
+      caseExpr.$whens.map(when => this.sqlifyWhen(when, params)).join(' ');
     if (caseExpr.$default)
       fragment +=
-        ' ELSE ' + this.compileExpression(caseExpr.$default, params, caseExpr);
+        ' ELSE ' + this.sqlifyExpression(caseExpr.$default, params, caseExpr);
     fragment += ' END';
     return fragment;
   }
 
-  protected compileWhen(
+  protected sqlifyWhen(
     when: When<any> | Raw,
     params?: Set<Parameter<Scalar, string>>
   ): string {
@@ -785,95 +744,91 @@ export abstract class SqlUtil {
     return (
       'WHEN ' +
       (isCondition(when.$expr)
-        ? this.compileCondition(when.$expr, params, when)
-        : this.compileExpression(when.$expr, params, when)) +
+        ? this.sqlifyCondition(when.$expr, params, when)
+        : this.sqlifyExpression(when.$expr, params, when)) +
       ' THEN ' +
-      this.compileExpression(when.$value, params, when)
+      this.sqlifyExpression(when.$value, params, when)
     );
   }
 
-  protected compileParenthesesCondition(
+  protected sqlifyGroupCondition(
     expr: GroupCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
-    return '(' + this.compileCondition(expr.$inner, params, expr) + ')';
+    return '(' + this.sqlifyCondition(expr.$inner, params, expr) + ')';
   }
 
-  protected compileBinaryLogicCondition(
+  protected sqlifyBinaryLogicCondition(
     expr: BinaryLogicCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileCondition(expr.$left, params, expr) +
+      this.sqlifyCondition(expr.$left, params, expr) +
       ' ' +
       expr.$operator +
       ' ' +
-      this.compileCondition(expr.$right, params, expr)
+      this.sqlifyCondition(expr.$right, params, expr)
     );
   }
 
-  protected compileBinaryCompareCondition(
+  protected sqlifyBinaryCompareCondition(
     expr: BinaryCompareCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileExpression(expr.$left, params, expr) +
+      this.sqlifyExpression(expr.$left, params, expr) +
       ' ' +
       expr.$operator +
       ' ' +
       (Array.isArray(expr.$right)
         ? '(' +
-          expr.$right.map(p => this.compileExpression(p, params, expr)) +
+          expr.$right.map(p => this.sqlifyExpression(p, params, expr)) +
           ')'
-        : this.compileExpression(expr.$right, params, expr))
+        : this.sqlifyExpression(expr.$right, params, expr))
     );
   }
 
-  protected compileBinaryOperation(
+  protected sqlifyBinaryOperation(
     expr: BinaryOperation<Scalar>,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileExpression(expr.$left, params, expr) +
+      this.sqlifyExpression(expr.$left, params, expr) +
       ' ' +
       expr.$operator +
       ' ' +
-      this.compileExpression(expr.$right, params, expr)
+      this.sqlifyExpression(expr.$right, params, expr)
     );
   }
 
-  protected compileUnaryCompareCondition(
+  protected sqlifyUnaryCompareCondition(
     expr: UnaryCompareCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      this.compileExpression(expr.$expr, params, expr) + ' ' + expr.$operator
+      this.sqlifyExpression(expr.$expr, params, expr) + ' ' + expr.$operator
     );
   }
 
-  protected compileExistsCondition(
+  protected sqlifyExistsCondition(
     expr: ExistsCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
-    return 'EXISTS(' + this.compileSelect(expr.$statement, params, expr) + ')';
+    return 'EXISTS(' + this.sqlifySelect(expr.$statement, params, expr) + ')';
   }
 
-  protected compileUnaryLogicCondition(
+  protected sqlifyUnaryLogicCondition(
     expr: UnaryLogicCondition,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
       expr.$operator +
       ' ' +
-      this.compileCondition(expr.$condition, params, expr)
+      this.sqlifyCondition(expr.$condition, params, expr)
     );
   }
 
-  public joinSql(sqls: string[]) {
-    return sqls.join(this.options.setsAliasJoinWith);
-  }
-
-  public compileExpression(
+  public sqlifyExpression(
     expr: Expression<Scalar> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -883,58 +838,58 @@ export abstract class SqlUtil {
     }
     // 编译标准操作
     if (isStandardExpression(expr)) {
-      return this.compileExpression(
+      return this.sqlifyExpression(
         this.translationStandardOperation(expr),
         params,
         parent
       );
     }
     if (isLiteral(expr)) {
-      return this.compileLiteral(expr.$value);
+      return this.sqlifyLiteral(expr.$value);
     }
 
     if (isOperation(expr)) {
-      return this.compileOperation(expr, params, parent);
+      return this.sqlifyOperation(expr, params, parent);
     }
 
     if (isField(expr)) {
-      return this.stringifyIdentifier(expr);
+      return this.sqlifyIdentifier(expr);
     }
 
     if (isGroupExpression(expr)) {
-      return this.compileParenthesesExpression(expr, params);
+      return this.sqlifyGroupExpression(expr, params);
     }
 
     if (isValuedSelect(expr)) {
-      return this.compileValuedSelect(expr, params, parent);
+      return this.sqlifyValuedSelect(expr, params, parent);
     }
 
     if (isVariant(expr)) {
-      return this.stringifyVariantName(expr.$name);
+      return this.sqlifyVariantName(expr.$name);
     }
 
     if (isParameter(expr)) {
-      return this.compileParameter(expr, params);
+      return this.sqlifyParameter(expr, params);
     }
 
     if (isScalarFuncInvoke(expr)) {
-      return this.compileScalarInvoke(expr, params);
+      return this.sqlifyScalarInvoke(expr, params);
     }
 
     if (isCase(expr)) {
-      return this.compileCase(expr, params, parent);
+      return this.sqlifyCase(expr, params, parent);
     }
     invalidAST('expression', expr);
   }
 
-  protected compileScalarInvokeArgs(
+  protected sqlifyScalarInvokeArgs(
     arg: Expression | Star | BuiltIn,
     params: Set<Parameter>,
     parent?: AST
   ): string {
-    if (isStar(arg)) return this.compileStar(arg);
-    if (isBuiltIn(arg)) return this.compileBuildIn(arg);
-    return this.compileExpression(arg, params, parent);
+    if (isStar(arg)) return this.sqlifyStar(arg);
+    if (isBuiltIn(arg)) return this.sqlifyBuildIn(arg);
+    return this.sqlifyExpression(arg, params, parent);
   }
   /**
    * 函数调用
@@ -943,16 +898,16 @@ export abstract class SqlUtil {
    * @returns
    * @memberof Executor
    */
-  protected compileScalarInvoke(
+  protected sqlifyScalarInvoke(
     invoke: ScalarFuncInvoke<Scalar>,
     params?: Set<Parameter<Scalar, string>>
   ): string {
-    return `${this.stringifyIdentifier(invoke.$func)}(${(invoke.$args || [])
-      .map(v => this.compileScalarInvokeArgs(v, params, invoke))
+    return `${this.sqlifyIdentifier(invoke.$func)}(${(invoke.$args || [])
+      .map(v => this.sqlifyScalarInvokeArgs(v, params, invoke))
       .join(', ')})`;
   }
 
-  protected compileJoin(
+  protected sqlifyJoin(
     join: Join | Raw,
     params?: Set<Parameter<Scalar, string>>
   ): string {
@@ -960,23 +915,23 @@ export abstract class SqlUtil {
     return (
       (join.$left ? 'LEFT ' : '') +
       'JOIN ' +
-      this.compileFrom(join.$table, params, join) +
+      this.sqlifyFrom(join.$table, params, join) +
       ' ON ' +
-      this.compileCondition(join.$on, params, join)
+      this.sqlifyCondition(join.$on, params, join)
     );
   }
 
-  protected compileSort(
+  protected sqlifySort(
     sort: SortInfo | Raw,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     if (isRaw(sort)) return sort.$sql;
-    let sql = this.compileExpression(sort.$expr, params, sort);
+    let sql = this.sqlifyExpression(sort.$expr, params, sort);
     if (sort.$direction) sql += ' ' + sort.$direction;
     return sql;
   }
 
-  protected compileSelect(
+  protected sqlifySelect(
     select: Select,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -998,7 +953,7 @@ export abstract class SqlUtil {
     } = select;
     let sql = '';
     if ($with) {
-      sql += this.compileWith($with, params);
+      sql += this.sqlifyWith($with, params);
     }
     sql += 'SELECT ';
     if ($distinct) {
@@ -1008,40 +963,40 @@ export abstract class SqlUtil {
       sql += `TOP ${$top} `;
     }
     sql += $columns
-      .map(col => this.compileColumn(col, params, select))
+      .map(col => this.sqlifyColumn(col, params, select))
       .join(', ');
     if ($froms) {
       sql +=
         ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, select)).join(', ');
+        $froms.map(table => this.sqlifyFrom(table, params, select)).join(', ');
     }
     if ($joins && $joins.length > 0) {
-      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ');
+      sql += ' ' + $joins.map(join => this.sqlifyJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, parent);
+      sql += ' WHERE ' + this.sqlifyCondition($where, params, parent);
     }
     if ($groups && $groups.length) {
       sql +=
         ' GROUP BY ' +
-        $groups.map(p => this.compileExpression(p, params, parent)).join(', ');
+        $groups.map(p => this.sqlifyExpression(p, params, parent)).join(', ');
     }
     if ($having) {
-      sql += ' HAVING ' + this.compileCondition($having, params, parent);
+      sql += ' HAVING ' + this.sqlifyCondition($having, params, parent);
     }
     if ($sorts && $sorts.length > 0) {
       sql +=
         ' ORDER BY ' +
-        $sorts.map(sort => this.compileSort(sort, params)).join(', ');
+        $sorts.map(sort => this.sqlifySort(sort, params)).join(', ');
     }
-    sql += this.compileOffsetLimit(select, params);
+    sql += this.sqlifyOffsetLimit(select, params);
     if ($union) {
-      sql += ' ' + this.compileUnion($union, params);
+      sql += ' ' + this.sqlifyUnion($union, params);
     }
     return sql;
   }
 
-  protected compileOffsetLimit(
+  protected sqlifyOffsetLimit(
     select: Select<any>,
     params?: Set<Parameter<Scalar, string>>
   ): string {
@@ -1055,7 +1010,7 @@ export abstract class SqlUtil {
     return sql;
   }
 
-  protected compileFrom(
+  protected sqlifyFrom(
     table: Rowset<any> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1066,35 +1021,35 @@ export abstract class SqlUtil {
     }
     if (isTable(table)) {
       let sql = '';
-      sql += this.stringifyIdentifier(table);
-      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias);
+      sql += this.sqlifyIdentifier(table);
+      if (table.$alias) sql += ' AS ' + this.sqlifyIdentifier(table.$alias);
       return sql;
     }
     if (isTableVariant(table)) {
       let sql = '';
-      sql += this.stringifyVariantName(table.$name);
-      if (table.$alias) sql += ' AS ' + this.stringifyIdentifier(table.$alias);
+      sql += this.sqlifyVariantName(table.$name);
+      if (table.$alias) sql += ' AS ' + this.sqlifyIdentifier(table.$alias);
       return sql;
     }
     // 如果是命名行集
     if (isNamedSelect(table)) {
       if (table.$inWith) {
-        return this.stringifyIdentifier(table.$alias);
+        return this.sqlifyIdentifier(table.$alias);
       } else {
-        return this.compileNamedSelect(table, params);
+        return this.sqlifyNamedSelect(table, params);
       }
     }
     if (isTableFuncInvoke(table)) {
       return (
-        this.compileTableInvoke() +
+        this.sqlifyTableInvoke() +
         ' AS ' +
-        this.stringifyIdentifier(table.$alias)
+        this.sqlifyIdentifier(table.$alias)
       );
     }
-    return this.compileRowsetName(table);
+    return this.sqlifyRowsetName(table);
   }
 
-  protected compileCondition(
+  protected sqlifyCondition(
     condition: Condition | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1102,34 +1057,34 @@ export abstract class SqlUtil {
   ): string {
     if (isRaw(condition)) return condition.$sql;
     if (isExistsCondition(condition)) {
-      return this.compileExistsCondition(condition as ExistsCondition, params);
+      return this.sqlifyExistsCondition(condition as ExistsCondition, params);
     }
     if (isGroupCondition(condition)) {
-      return this.compileParenthesesCondition(
+      return this.sqlifyGroupCondition(
         condition as GroupCondition,
         params
       );
     }
     if (isBinaryCompareCondition(condition)) {
-      return this.compileBinaryCompareCondition(
+      return this.sqlifyBinaryCompareCondition(
         condition as BinaryCompareCondition,
         params
       );
     }
     if (isUnaryCompareCondition(condition)) {
-      return this.compileUnaryCompareCondition(
+      return this.sqlifyUnaryCompareCondition(
         condition as UnaryCompareCondition,
         params
       );
     }
     if (isBinaryLogicCondition(condition)) {
-      return this.compileBinaryLogicCondition(
+      return this.sqlifyBinaryLogicCondition(
         condition as BinaryLogicCondition,
         params
       );
     }
     if (isUnaryLogicCondition(condition)) {
-      return this.compileUnaryLogicCondition(
+      return this.sqlifyUnaryLogicCondition(
         condition as UnaryLogicCondition,
         params
       );
@@ -1137,7 +1092,7 @@ export abstract class SqlUtil {
     invalidAST('condition', condition);
   }
 
-  protected compileInsert(
+  protected sqlifyInsert(
     insert: Insert,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -1145,18 +1100,18 @@ export abstract class SqlUtil {
     const { $table, $values, $fields, $with } = insert;
     let sql = '';
     if ($with) {
-      sql += this.compileWith($with, params);
+      sql += this.sqlifyWith($with, params);
     }
     sql += 'INSERT INTO ';
     if ($table.$alias) {
       throw new Error('Insert statements do not allow aliases on table.');
     }
-    sql += this.compileRowsetName($table);
+    sql += this.sqlifyRowsetName($table);
 
     if ($fields) {
       sql +=
         '(' +
-        $fields.map(field => this.compileInsertField(field)).join(', ') +
+        $fields.map(field => this.sqlifyInsertField(field)).join(', ') +
         ')';
     }
 
@@ -1167,62 +1122,62 @@ export abstract class SqlUtil {
           row =>
             '(' +
             row
-              .map(expr => this.compileExpression(expr, params, parent))
+              .map(expr => this.sqlifyExpression(expr, params, parent))
               .join(', ') +
             ')'
         )
         .join(', ');
     } else {
-      sql += ' ' + this.compileSelect($values, params, parent);
+      sql += ' ' + this.sqlifySelect($values, params, parent);
     }
 
     return sql;
   }
 
-  protected compileAssignment(
+  protected sqlifyAssignment(
     assign: Assignment<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     const { left, right } = assign;
     return (
-      this.compileExpression(left, params, parent) +
+      this.sqlifyExpression(left, params, parent) +
       ' = ' +
-      this.compileExpression(right, params, parent)
+      this.sqlifyExpression(right, params, parent)
     );
   }
 
-  protected abstract compileTableVariantDeclare(
+  protected abstract sqlifyTableVariantDeclare(
     declare: TableVariantDeclare
   ): string;
 
-  protected compileVariantDeclare(varDec: VariantDeclare): string {
+  protected sqlifyVariantDeclare(varDec: VariantDeclare): string {
     return (
-      this.stringifyVariantName(varDec.$name) +
+      this.sqlifyVariantName(varDec.$name) +
       ' ' +
-      this.compileType(varDec.$dbType)
+      this.sqlifyType(varDec.$dbType)
     );
   }
 
-  protected abstract compileProcedureParameter(
+  protected abstract sqlifyProcedureParameter(
     varDec: ProcedureParameter
   ): string;
 
-  protected compileDeclare(declare: Declare): string {
+  protected sqlifyDeclare(declare: Declare): string {
     return (
       'DECLARE ' +
       declare.$declares
         .map(dec =>
           isTableVariantDeclare(dec)
-            ? this.compileTableVariantDeclare(dec)
-            : this.compileVariantDeclare(dec)
+            ? this.sqlifyTableVariantDeclare(dec)
+            : this.sqlifyVariantDeclare(dec)
         )
         .join(', ') +
       ';'
     );
   }
 
-  protected compileUpdate(
+  protected sqlifyUpdate(
     update: Update,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -1234,33 +1189,33 @@ export abstract class SqlUtil {
 
     let sql = '';
     if ($with) {
-      sql += this.compileWith($with, params);
+      sql += this.sqlifyWith($with, params);
     }
     sql += 'UPDATE ';
-    sql += this.compileRowsetName($table);
+    sql += this.sqlifyRowsetName($table);
 
     sql +=
       ' SET ' +
       $sets
-        .map(assign => this.compileAssignment(assign, params, update))
+        .map(assign => this.sqlifyAssignment(assign, params, update))
         .join(', ');
 
     if ($froms && $froms.length > 0) {
       sql +=
         ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, update)).join(', ');
+        $froms.map(table => this.sqlifyFrom(table, params, update)).join(', ');
     }
 
     if ($joins && $joins.length > 0) {
-      sql += ' ' + $joins.map(join => this.compileJoin(join, params)).join(' ');
+      sql += ' ' + $joins.map(join => this.sqlifyJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, update);
+      sql += ' WHERE ' + this.sqlifyCondition($where, params, update);
     }
     return sql;
   }
 
-  protected compileDelete(
+  protected sqlifyDelete(
     del: Delete,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
@@ -1268,21 +1223,21 @@ export abstract class SqlUtil {
     const { $table, $froms, $joins, $where, $with } = del;
     let sql = '';
     if ($with) {
-      sql += this.compileWith($with, params);
+      sql += this.sqlifyWith($with, params);
     }
     sql += 'DELETE ';
-    if ($table) sql += this.compileRowsetName($table);
+    if ($table) sql += this.sqlifyRowsetName($table);
     if ($froms && $froms.length > 0) {
       sql +=
         ' FROM ' +
-        $froms.map(table => this.compileFrom(table, params, parent)).join(', ');
+        $froms.map(table => this.sqlifyFrom(table, params, parent)).join(', ');
     }
 
     if ($joins) {
-      sql += $joins.map(join => this.compileJoin(join, params)).join(' ');
+      sql += $joins.map(join => this.sqlifyJoin(join, params)).join(' ');
     }
     if ($where) {
-      sql += ' WHERE ' + this.compileCondition($where, params, parent);
+      sql += ' WHERE ' + this.sqlifyCondition($where, params, parent);
     }
     return sql;
   }

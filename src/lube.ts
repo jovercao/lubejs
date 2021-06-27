@@ -60,7 +60,7 @@ export type ConnectOptions = {
   /**
    * 编译选项
    */
-  compileOptions?: SqlOptions;
+  sqlOptions?: SqlOptions;
 };
 
 const defaultConnectOptions: Partial<ConnectOptions> = {

@@ -13,6 +13,7 @@ import { Command } from './execute';
 import { isRaw, isStatement, outputCommand } from './util';
 import { MigrateBuilder } from './migrate-builder';
 import { mkdir } from 'fs/promises';
+import 'colors';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -39,7 +40,7 @@ interface MigrateInfo {
 
 export const LUBE_MIGRATE_TABLE_NAME = '__LubeMigrate';
 const MIGRATE_FILE_REGX = /^(\d{14})_(\w[\w_\d]*)\.(ts|js)$/i;
-
+const NAME_REGX = /^[a-zA-Z_]\w*$/i
 function makeMigrateBuilder(
   builder: MigrateBuilder,
   statements: Statement[]
@@ -68,6 +69,11 @@ function makeMigrateBuilder(
   });
 }
 
+function assertName(name: string): void {
+  if (!NAME_REGX.test(name)) {
+    throw new Error(`Migrate class name '${name}' invalid.`)
+  }
+}
 /**
  * 迁移命令行
  */
@@ -168,6 +174,7 @@ export class MigrateCli {
    * @param name
    */
   async create(name: string): Promise<void> {
+    assertName(name);
     const exists = await this.findMigrate(name);
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
@@ -189,6 +196,7 @@ export class MigrateCli {
    * @param name
    */
   async gen(name: string, notResolverType = false): Promise<void> {
+    assertName(name);
     const exists = await this.findMigrate(name);
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
@@ -325,7 +333,7 @@ export class MigrateCli {
     statements.push(SQL.delete(LUBE_MIGRATE_TABLE_NAME));
     statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([target.id]));
     const scripts = statements.map(statement =>
-      this.dbContext.lube.sqlUtil.compile(statement)
+      this.dbContext.lube.sqlUtil.sqlify(statement)
     );
     return scripts;
   }

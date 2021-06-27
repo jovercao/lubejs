@@ -186,7 +186,7 @@ export class Executor {
     let command: Command;
     // 如果是AST直接编译
     if (isStatement(args[0]) || isDocument(args[0])) {
-      command = this.sqlUtil.compile(args[0]);
+      command = this.sqlUtil.sqlify(args[0]);
     }
     // 如果是模板字符串
     else if (Array.isArray(args[0] && args[0].raw)) {

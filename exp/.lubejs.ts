@@ -1,5 +1,4 @@
-import { DbContext } from '../src/db-context';
-import { LubeConfig } from '../src/migrate-cli';
+import { DbContext, LubeConfig } from 'lubejs';
 import { DB } from './orm';
 import driver from '../src/drivers/mssql';
 

@@ -35,17 +35,17 @@ DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id and dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.sqlUtil.stringifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
       table
-    )}') AND c.name = ${this.sqlUtil.compileLiteral(column)};
+    )}') AND c.name = ${this.sqlUtil.sqlifyLiteral(column)};
 IF (@ConstaintName IS NOT NULL)
 BEGIN
- EXEC ('ALTER TABLE ${this.sqlUtil.stringifyName(
+ EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
    table
  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
-ALTER TABLE ${this.sqlUtil.stringifyName(
+ALTER TABLE ${this.sqlUtil.sqlifyName(
       table
     )} ADD DEFAULT (${defaultValue}) FOR ${this.sqlUtil.quoted(column)}
 `);
@@ -57,12 +57,12 @@ DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id AND dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.sqlUtil.stringifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
       table
-    )}') and c.name = ${this.sqlUtil.compileLiteral(column)}
+    )}') and c.name = ${this.sqlUtil.sqlifyLiteral(column)}
 IF (@ConstaintName IS NOT NULL)
 BEGIN
-  EXEC ('ALTER TABLE ${this.sqlUtil.stringifyName(
+  EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
     table
   )} DROP CONSTRAINT ' + @ConstaintName)
 END
@@ -131,7 +131,7 @@ END
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，setIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： setIdentity(table: ${this.sqlUtil.stringifyName(
+        `操作信息： setIdentity(table: ${this.sqlUtil.sqlifyName(
           table
         )}, column: ${column}, startValue: ${startValue}, increment: ${increment})`
       ),
@@ -146,7 +146,7 @@ END
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，dropIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： dropIdentity(table: ${this.sqlUtil.stringifyName(
+        `操作信息： dropIdentity(table: ${this.sqlUtil.sqlifyName(
           table
         )}, column: ${column})`
       ),

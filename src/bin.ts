@@ -1,3 +1,4 @@
+
 import Program from 'commander';
 import { MigrateCli, LubeConfig } from './migrate-cli';
 import { existsSync } from 'fs';

@@ -647,7 +647,7 @@ export class MssqlSqlUtil extends SqlUtil {
     super(Object.assign({}, DefaultSqlOptions, options));
   }
 
-  protected compileAnnotation(statement: Annotation): string {
+  protected sqlifyAnnotation(statement: Annotation): string {
     if (statement.$kind === 'LINE') {
       return statement.$text
         .split(/\n|\r\n/g)
@@ -664,111 +664,111 @@ export class MssqlSqlUtil extends SqlUtil {
     );
   }
 
-  public compileLiteral(literal: Scalar): string {
+  public sqlifyLiteral(literal: Scalar): string {
     return sqlifyLiteral(literal);
   }
 
-  protected compileDropSequence(statement: DropSequence): string {
-    return `DROP SEQUENCE ${this.stringifyName(statement.$name)}`;
+  protected sqlifyDropSequence(statement: DropSequence): string {
+    return `DROP SEQUENCE ${this.sqlifyName(statement.$name)}`;
   }
-  protected compileCreateSequence(statement: CreateSequence): string {
-    return `CREATE SEQUENCE ${this.stringifyName(
+  protected sqlifyCreateSequence(statement: CreateSequence): string {
+    return `CREATE SEQUENCE ${this.sqlifyName(
       statement.$name
-    )} START WITH ${this.compileLiteral(
+    )} START WITH ${this.sqlifyLiteral(
       statement.$startValue.$value
-    )} INCREMENT BYH ${this.compileLiteral(statement.$increment.$value)}`;
+    )} INCREMENT BYH ${this.sqlifyLiteral(statement.$increment.$value)}`;
   }
-  protected compileProcedureParameter(param: ProcedureParameter): string {
-    let sql = `${this.stringifyVariantName(param.$name)} ${this.compileType(
+  protected sqlifyProcedureParameter(param: ProcedureParameter): string {
+    let sql = `${this.sqlifyVariantName(param.$name)} ${this.sqlifyType(
       param.$dbType
     )}`;
     if (param.$direct) {
       sql += ' ' + param.$direct;
     }
     if (param.$default) {
-      sql += ' = ' + this.compileLiteral(param.$default.$value);
+      sql += ' = ' + this.sqlifyLiteral(param.$default.$value);
     }
     return sql;
   }
 
-  protected compileBlock(
+  protected sqlifyBlock(
     statement: Block,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     return `BEGIN\n  ${statement.$statements
-      .map(statement => this.compileStatement(statement, params, parent))
+      .map(statement => this.sqlifyStatement(statement, params, parent))
       .join('\n  ')}\nEND`;
   }
 
-  protected compileDropIndex(table: Name, name: string): string {
-    return `DROP INDEX ${this.stringifyName([name, ...table] as Name)}`;
+  protected sqlifyDropIndex(table: Name, name: string): string {
+    return `DROP INDEX ${this.sqlifyName([name, ...table] as Name)}`;
   }
 
-  protected compileCreateIndex(statement: CreateIndex): string {
-    return `CREATE INDEX ${this.stringifyName(
+  protected sqlifyCreateIndex(statement: CreateIndex): string {
+    return `CREATE INDEX ${this.sqlifyName(
       statement.$name
-    )} ON ${this.stringifyName(statement.$table)}(${statement.$columns
+    )} ON ${this.sqlifyName(statement.$table)}(${statement.$columns
       .map(col => `${this.quoted(col.name)} ${col.sort}`)
       .join(', ')})`;
   }
 
-  protected compileDropFunction(name: Name): string {
+  protected sqlifyDropFunction(name: Name): string {
     return `DROP FUNCTION ${name}`;
   }
 
-  protected compileAlterFunction(statement: AlterFunction): string {
+  protected sqlifyAlterFunction(statement: AlterFunction): string {
     if (statement.$kind === 'SCALAR') {
-      return `ALTER FUNCTION ${this.stringifyName(
+      return `ALTER FUNCTION ${this.sqlifyName(
         statement.$name
       )}(${statement.$params
-        .map(param => this.compileVariantDeclare(param))
+        .map(param => this.sqlifyVariantDeclare(param))
         .join(', ')}) `;
     }
   }
 
-  protected compileCreateFunction(statement: CreateFunction): string {
-    return `CREATE FUNCTION ${this.stringifyName(
+  protected sqlifyCreateFunction(statement: CreateFunction): string {
+    return `CREATE FUNCTION ${this.sqlifyName(
       statement.$name
     )}(${statement.$params
-      .map(param => this.compileVariantDeclare(param))
+      .map(param => this.sqlifyVariantDeclare(param))
       .join(', ')}) RETURNS ${
       isRaw(statement.$returns)
         ? statement.$returns.$sql
         : isDbType(statement.$returns)
-        ? this.compileType(statement.$returns)
+        ? this.sqlifyType(statement.$returns)
         : isVariantDeclare(statement.$returns)
-        ? this.compileVariantDeclare(statement.$returns)
-        : this.compileTableVariantDeclare(statement.$returns)
-    } AS ${this.compileStatements(statement.$body)}`;
+        ? this.sqlifyVariantDeclare(statement.$returns)
+        : this.sqlifyTableVariantDeclare(statement.$returns)
+    } AS ${this.sqlifyStatements(statement.$body)}`;
   }
 
-  protected compileDropProcedure(name: Name): string {
-    return `DROP PROCEDURE ${this.stringifyName(name)}`;
+  protected sqlifyDropProcedure(name: Name): string {
+    return `DROP PROCEDURE ${this.sqlifyName(name)}`;
   }
 
-  protected compileAlterProcedure(statement: AlterProcedure): string {
-    return `ALTER PROCEDURE ${this.stringifyName(
+  protected sqlifyAlterProcedure(statement: AlterProcedure): string {
+    return `ALTER PROCEDURE ${this.sqlifyName(
       statement.$name
     )} (${statement.$params
-      .map(param => this.compileProcedureParameter(param))
+      .map(param => this.sqlifyProcedureParameter(param))
       .join(', ')})`;
   }
 
-  protected compileCreateProcedure(statement: CreateProcedure): string {
-    return `CREATE PROCEDURE ${this.stringifyName(
+  protected sqlifyCreateProcedure(statement: CreateProcedure): string {
+    return `CREATE PROCEDURE ${this.sqlifyName(
       statement.$name
     )} (${statement.$params
-      .map(param => this.compileProcedureParameter(param))
+      .map(param => this.sqlifyProcedureParameter(param))
       .join(', ')})`;
   }
 
-  protected compileAlterTable(statement: AlterTable<string>): string {
-    let sql = `ALTER TABLE ${this.stringifyName(statement.$name)}`;
+  protected sqlifyAlterTable(statement: AlterTable<string>): string {
+    let sql = `ALTER TABLE ${this.sqlifyName(statement.$name)}`;
     if (statement.$adds) {
       sql += ' ADD ';
       sql += statement.$adds
-        .map(member => this.compileTableMember(member))
+        .map(member => this.sqlifyTableMember(member))
         .join(',\n  ');
     }
     if (statement.$drops) {
@@ -785,9 +785,9 @@ export class MssqlSqlUtil extends SqlUtil {
     return sql;
   }
 
-  private compileTableMember(member: AlterTableAddMember | CreateTableMember) {
+  private sqlifyTableMember(member: AlterTableAddMember | CreateTableMember) {
     if (isCreateTableColumn(member)) {
-      let sql = `${this.quoted(member.$name)} ${this.compileType(
+      let sql = `${this.quoted(member.$name)} ${this.sqlifyType(
         member.$dbType
       )}`;
       if (member.$nullable !== undefined) {
@@ -803,7 +803,7 @@ export class MssqlSqlUtil extends SqlUtil {
         }
       }
       if (member.$check) {
-        sql += ` CHECK(${this.compileCondition(member.$check)})`;
+        sql += ` CHECK(${this.sqlifyCondition(member.$check)})`;
       }
       return sql;
     }
@@ -834,7 +834,7 @@ export class MssqlSqlUtil extends SqlUtil {
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         `FOREIGN KEY(${member.$columns.map(col =>
           this.quoted(col)
-        )}) REFERENCES ${this.stringifyName(
+        )}) REFERENCES ${this.sqlifyName(
           member.$referenceTable
         )}(${member.$referenceColumns.map(col => this.quoted(col)).join(', ')})`
       );
@@ -843,80 +843,45 @@ export class MssqlSqlUtil extends SqlUtil {
     if (isCheckConstraint(member)) {
       return (
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
-        `CHECK (${this.compileCondition(member.$sql)})`
+        `CHECK (${this.sqlifyCondition(member.$sql)})`
       );
     }
   }
 
-  compileCreateTable(statement: CreateTable): string {
-    let sql = `CREATE TABLE ${this.stringifyName(statement.$name)} (`;
+  sqlifyCreateTable(statement: CreateTable): string {
+    let sql = `CREATE TABLE ${this.sqlifyName(statement.$name)} (`;
     sql += statement.$members
-      .map(member => this.compileTableMember(member))
+      .map(member => this.sqlifyTableMember(member))
       .join(',\n  ');
     sql += ')';
     return sql;
   }
 
-  protected compileInsert(
+  protected sqlifyInsert(
     insert: Insert,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    const sql = super.compileInsert(insert, params, parent);
+    const sql = super.sqlifyInsert(insert, params, parent);
     if (!insert.$identityInsert) return sql;
-    return `SET IDENTITY_INSERT ${this.stringifyIdentifier(insert.$table)} ON
+    return `SET IDENTITY_INSERT ${this.sqlifyIdentifier(insert.$table)} ON
 ${sql}
-SET IDENTITY_INSERT ${this.stringifyIdentifier(insert.$table)} OFF
+SET IDENTITY_INSERT ${this.sqlifyIdentifier(insert.$table)} OFF
 `;
   }
 
-  protected compileTableVariantDeclare(
+  protected sqlifyTableVariantDeclare(
     declare: TableVariantDeclare<any>
   ): string {
-    throw new Error(`待完成!`);
-    //     if (declare.$schema.foreignKeys?.length > 0) {
-    //       throw new Error(`Table variant is not support foreign key at mssql.`);
-    //     }
-    //     return `DECLARE @${this.stringifyIdentifier(declare.$name)} TABLE(
-    // ${[
-    //   ...declare.$schema.columns.map((column) => {
-    //     if (column.isCalculate) {
-    //       return `${this.quoted(column.name)} AS ${column.calculateExpression}`;
-    //     }
-    //     let columnDesc = `${this.quoted(column.name)} ${this.compileType(
-    //       column.type
-    //     )} ${column.isNullable ? "NULL" : "NOT NULL"}`;
-    //     if (column.isIdentity) {
-    //       columnDesc += ` IDENTITY(${column.identityStartValue}, ${column.identityIncrement})`;
-    //     }
-    //     return columnDesc;
-    //   }),
-    //   ...declare.$schema.indexes.map((index) => {
-    //     if (index.isPrimaryKey) {
-    //       return `PRIMARY KEY (${index.columns
-    //         .map((col) => this.quoted(col))
-    //         .join(", ")})`;
-    //     }
-    //     if (index.isUnique) {
-    //       throw new Error(`Mssql not support unique index at table variant.`);
-    //     }
-    //     return "";
-    //   }),
-    // ].join(",\n")}
-
-    // )`;
+    let sql = `${this.sqlifyVariantName(declare.$name)} TABLE(`;
+    sql += declare.$members
+      .map(member => this.sqlifyTableMember(member))
+      .join(',\n  ');
+    sql += ')';
+    return sql;
   }
 
-  // private _translator: StandardTranslator;
-
-  // get translator(): StandardTranslator {
-  //   if (!this._translator) {
-  //     this._translator = new MssqlStandardTranslator(this);
-  //   }
-  //   return this._translator;
-  // }
-
-  compileType(type: DbType): string {
+  sqlifyType(type: DbType): string {
     return dbTypeToRaw(type);
   }
 
@@ -924,7 +889,7 @@ SET IDENTITY_INSERT ${this.stringifyIdentifier(insert.$table)} OFF
     return rawToDbType(type);
   }
 
-  protected compileOffsetLimit(
+  protected sqlifyOffsetLimit(
     select: Select<any>,
     params: Set<Parameter>
   ): string {

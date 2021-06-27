@@ -36,7 +36,7 @@ export interface MssqlConnectOptions extends ConnectOptions {
    */
   useUTC?: boolean;
 
-  compileOptions?: MssqlSqlOptions;
+  sqlOptions?: MssqlSqlOptions;
 }
 
 /**
@@ -85,12 +85,12 @@ export const connect: Driver = async function (
   }
   const pool = new sql.ConnectionPool(mssqlOptions);
   await pool.connect();
-  const compilerOptions = Object.assign(
+  const sqlOptions = Object.assign(
     {},
     DefaultSqlOptions,
-    options.compileOptions
+    options.sqlOptions
   );
-  return new MssqlProvider(pool, compilerOptions);
+  return new MssqlProvider(pool, sqlOptions);
 };
 
 export default connect;
