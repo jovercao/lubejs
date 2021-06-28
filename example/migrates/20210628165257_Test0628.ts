@@ -28,7 +28,7 @@ export class Test0628 implements Migrate {
     builder.alterTable('Employee').add(builder => builder.column('userId', DbType.int32).notNull());
     builder.alterTable('EmployeePosition').drop(builder => builder.column('PositionId'));
     builder.alterTable('EmployeePosition').alterColumn(column => column('id', DbType.int32).notNull());
-    builder.commentColumn('EmployeePosition', 'id');
+    builder.commentColumn('EmployeePosition', 'Auto generic key column.', 'id');
     builder.alterTable('Organization').add(builder => builder.foreignKey('FK_Organization_parentId_Organization_id').on('parentId').reference('Organization', ['id']));
     builder.alterTable('OrderDetail').add(builder => builder.foreignKey('FK_OrderDetail_orderId_Order_id').on('orderId').reference('Order', ['id']));
     builder.alterTable('Employee').add(builder => builder.foreignKey('FK_Employee_organizationId_Organization_id').on('organizationId').reference('Organization', ['id']));
@@ -54,11 +54,11 @@ export class Test0628 implements Migrate {
     builder.alterTable('Employee').drop(builder => builder.column('userId'));
     builder.alterTable('EmployeePosition').add(builder => builder.column('PositionId', DbType.int32).notNull());
     builder.alterTable('EmployeePosition').alterColumn(column => column('id', DbType.int64).notNull());
-    builder.commentColumn('EmployeePosition', 'Auto generic key column.', 'id');
+    builder.commentColumn('EmployeePosition', 'id');
     builder.dropDefaultValue('Order', 'date');
     builder.alterTable('EmployeePosition').add(builder => builder.column('PositionId', DbType.int32).notNull());
     builder.alterTable('EmployeePosition').alterColumn(column => column('id', DbType.int64).notNull());
-    builder.commentColumn('EmployeePosition', 'Auto generic key column.', 'id');
+    builder.commentColumn('EmployeePosition', 'id');
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_PositionId_Position_id').on('PositionId').reference('Position', ['id']));
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_EmployeeId_Employee_id').on('EmployeeId').reference('Employee', ['id']));
     builder.alterTable('OrderDetail').add(builder => builder.foreignKey('FK_OrderDetail_orderId_Order_id').on('orderId').reference('Order', ['id']));

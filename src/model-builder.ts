@@ -275,19 +275,6 @@ function fixManyToMany(
 ) {
   const ctx = ctxBuilder.metadata;
   ensureReferenceEntity(ctx, entity, relation);
-  let entityForFix: TableEntityMetadata;
-  if (!relation.relationClass) {
-    relation.relationClass = class extends Entity { };
-    ctxBuilder
-      .entity<any>(relation.relationClass)
-      .asTable(
-        `${entity.className}${relation.referenceEntity.className}`,
-        (builder) => {
-          entityForFix = relation.relationEntity = builder.metadata as TableEntityMetadata;
-        }
-      )
-  }
-
   if (!relation.referenceProperty) {
     const referenceProperty = lowerFirst(complex(entity.className));
     assertEntityMember(entity, referenceProperty, "MANY_TO_MANY");
@@ -296,32 +283,30 @@ function fixManyToMany(
 
   let referenceRelation = relation.referenceEntity.getRelation(
     relation.referenceProperty
-  );
+  ) as ManyToManyMetadata;
 
-  if (!referenceRelation) {
-    // 创建隐式一对多导航属性
-    referenceRelation = {
-      property: relation.referenceProperty,
-      kind: "MANY_TO_MANY",
-      isImplicit: true,
-      referenceClass: entity.class,
-      referenceEntity: entity,
-      referenceProperty: relation.property,
-      referenceRelation: relation,
-      relationClass: relation.relationClass,
-      relationEntity: relation.relationEntity,
-      isNullable: true,
-    } as ManyToManyMetadata;
-    relation.referenceEntity.addMember(referenceRelation);
-    fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
+  if (!relation.relationClass) {
+    if (!referenceRelation?.relationClass) {
+      relation.relationClass = class extends Entity { };
+      ctxBuilder
+        .entity<any>(relation.relationClass)
+        .asTable(
+          `${entity.className}${relation.referenceEntity.className}`,
+          (builder) => {
+            relation.relationEntity = builder.metadata as TableEntityMetadata;
+          }
+        );
+
+      fixEntity(ctxBuilder, relation.relationEntity);
+    } else {
+      relation.relationClass = referenceRelation.relationClass;
+      relation.relationEntity = referenceRelation.relationEntity;
+    }
   }
 
-  if (isManyToMany(referenceRelation)) {
-    relation.referenceRelation = referenceRelation;
-  } else {
-    throw new Error(
-      `ManyToMany relation reference property must ManyToMany relation too.`
-    );
+  if (!referenceRelation.relationClass) {
+    referenceRelation.relationClass = relation.relationClass;
+    referenceRelation.relationEntity = relation.relationEntity;
   }
 
   // 查找中间表对应当前表的ManyToOne外键属性
@@ -364,8 +349,31 @@ function fixManyToMany(
   relation.relationRelation = relationRelation;
   realtionEntityToThis.referenceProperty = relation.relationRelation.property;
   realtionEntityToThis.referenceRelation = relation.relationRelation;
-  if (entityForFix) {
-     fixEntity(ctxBuilder, entityForFix)
+
+  if (!referenceRelation) {
+    // 创建隐式一对多导航属性
+    referenceRelation = {
+      property: relation.referenceProperty,
+      kind: "MANY_TO_MANY",
+      isImplicit: true,
+      referenceClass: entity.class,
+      referenceEntity: entity,
+      referenceProperty: relation.property,
+      referenceRelation: relation,
+      relationClass: relation.relationClass,
+      relationEntity: relation.relationEntity,
+      isNullable: true,
+    } as ManyToManyMetadata;
+    relation.referenceEntity.addMember(referenceRelation);
+    fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
+  }
+
+  if (isManyToMany(referenceRelation)) {
+    relation.referenceRelation = referenceRelation;
+  } else {
+    throw new Error(
+      `ManyToMany relation reference property must ManyToMany relation too.`
+    );
   }
 }
 
@@ -1495,14 +1503,6 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
     build?: (builder: TableEntityBuilder<T>) => void
   ): TableEntityBuilder<T> {
-    if (this.metadata.referenceProperty) {
-      const referenceRelation = this.metadata.referenceEntity.getRelation(this.metadata.referenceProperty) as ManyToManyMetadata;
-      if (referenceRelation) {
-        if (referenceRelation.relationClass) {
-          throw new Error(`Duplicate relation entity declare.`)
-        }
-      }
-    }
 
     let name: string;
 
@@ -1519,6 +1519,16 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     }
     this.metadata.relationClass = ctr;
     this.metadata.relationEntity = builder.metadata as TableEntityMetadata;
+    if (this.metadata.referenceProperty) {
+      const referenceRelation = this.metadata.referenceEntity.getRelation(this.metadata.referenceProperty) as ManyToManyMetadata;
+      if (referenceRelation) {
+        if (referenceRelation.relationClass) {
+          throw new Error(`Duplicate relation entity declare.`)
+        }
+        referenceRelation.relationClass = ctr;
+        referenceRelation.relationEntity = this.metadata.relationEntity;
+      }
+    }
     return builder;
   }
 

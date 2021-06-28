@@ -117,18 +117,19 @@ export abstract class MigrateBuilder {
   abstract renameIndex(table: Name, name: string, newName: string): Statement;
   abstract renameProcedure(name: Name, newName: string): Statement;
   abstract renameFunction(name: Name, newName: string): Statement;
-  abstract commentTable(name: Name, comment: string): Statement;
-  abstract commentColumn(table: Name, name: string, comment: string): Statement;
-  abstract commentIndex(table: Name, name: string, comment: string): Statement;
+
+  abstract commentTable(name: Name, comment?: string): Statement;
+  abstract commentColumn(table: Name, name: string, comment?: string): Statement;
+  abstract commentIndex(table: Name, name: string, comment?: string): Statement;
   abstract commentConstraint(
     table: Name,
     name: string,
-    comment: string
+    comment?: string
   ): Statement;
-  abstract commentSchema(name: string, comment: string): Statement;
-  abstract commentSequence(name: Name, comment: string): Statement;
-  abstract commentProcedure(name: Name, comment: string): Statement;
-  abstract commentFunction(name: Name, comment: string): Statement;
+  abstract commentSchema(name: string, comment?: string): Statement;
+  abstract commentSequence(name: Name, comment?: string): Statement;
+  abstract commentProcedure(name: Name, comment?: string): Statement;
+  abstract commentFunction(name: Name, comment?: string): Statement;
   // 为列添加或修改默认值
   abstract setDefaultValue(
     table: Name,

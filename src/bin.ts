@@ -22,8 +22,7 @@ async function loadConfig() {
     const imported = await import(configFile);
     config = imported?.default ?? imported;
   } catch (error) {
-    console.error(`配置文件${configFile}不存在！`, error);
-    console.log(error.stack);
+    console.error(`加载配置文件时发生错误${configFile}`, error);
     return;
   }
   return config;

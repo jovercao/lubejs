@@ -143,6 +143,7 @@ export function generateMigrate(
   }
 
   function genName(name: Name): string {
+    if (name === '') return "''";
     if (!name) return '';
 
     if (typeof name === 'string') return `'${name.replace(/''/g, "''")}'`;
@@ -318,9 +319,11 @@ export function generateMigrate(
       member = args[0];
       comment = args[1];
     }
-    return `builder.comment${type}(${genName(object)}${
+    const code = `builder.comment${type}(${genName(object)}${
       member ? `, ${genName(member)}` : ''
     }, ${genName(comment)})`;
+    console.log('生成列备注：', type, object, ...args);
+    return code
   }
 
   function genSeedData(table: TableSchema, data: any[]): string {
@@ -400,9 +403,8 @@ export function generateMigrate(
         }
       }
 
-      // 删除表放在最后，以免造成依赖问题
+      // 删表前删除外键以免造成依赖问题
       for (const { name, foreignKeys } of diff.changes.tables.removeds) {
-        // 删表前删除外键
         dropFkCodes.push(
           ...foreignKeys.map(fk => genDropForeignKey(name, fk.name))
         );
@@ -410,7 +412,7 @@ export function generateMigrate(
       }
 
       for (const tableChanges of diff.changes.tables.changes) {
-        const tableName = tableChanges.source.name;
+        const tableName = tableChanges.target.name;
         // PRIMARY KEY
         if (tableChanges.changes?.primaryKey) {
           if (tableChanges.changes.primaryKey.added) {
@@ -430,16 +432,15 @@ export function generateMigrate(
           }
 
           if (tableChanges.changes?.primaryKey.changes) {
-            console.log(JSON.stringify(tableChanges.changes?.primaryKey))
             otherCodes.push(
               genDropConstraint(
                 tableName,
                 'PRIMARY_KEY',
-                tableChanges.changes.primaryKey.source.name
+                tableChanges.changes.primaryKey.target.name
               )
             );
             otherCodes.push(
-              genAddPrimaryKey(tableName, tableChanges.changes.primaryKey.target)
+              genAddPrimaryKey(tableName, tableChanges.changes.primaryKey.source)
             );
           }
         }
@@ -450,7 +451,7 @@ export function generateMigrate(
             otherCodes.push(genAddColumn(tableName, column));
             if (column.comment) {
               otherCodes.push(
-                genComment('Column', tableName, column.comment, column.name)
+                genComment('Column', tableName, column.name, column.comment)
               );
             }
           }
@@ -489,8 +490,8 @@ export function generateMigrate(
                 genComment(
                   'Column',
                   tableName,
-                  changes.comment.target,
-                  target.name
+                  changes.comment.source,
+                  source.name
                 )
               );
             }
@@ -515,14 +516,14 @@ export function generateMigrate(
 
           for (const { source, target, changes } of tableChanges.changes
             ?.foreignKeys?.changes || []) {
-            dropFkCodes.push(genDropForeignKey(tableName, source.name));
-            addFkCodes.push(genAddForeignKey(tableName, target));
+            dropFkCodes.push(genDropForeignKey(tableName, target.name));
+            addFkCodes.push(genAddForeignKey(tableName, source));
             if (changes.comment) {
               otherCodes.push(
                 genComment(
                   'Constraint',
                   tableName,
-                  changes.comment.target,
+                  changes.comment.source,
                   target.name
                 )
               );
@@ -558,15 +559,15 @@ export function generateMigrate(
           for (const { source, target, changes } of tableChanges.changes
             .constraints.changes || []) {
             otherCodes.push(
-              genDropConstraint(tableName, source.kind, source.name)
+              genDropConstraint(tableName, target.kind, target.name)
             );
-            otherCodes.push(genAddConstraint(tableName, target));
+            otherCodes.push(genAddConstraint(tableName, source));
             if (changes.comment) {
               otherCodes.push(
                 genComment(
                   'Constraint',
                   tableName,
-                  changes.comment.target,
+                  changes.comment.source,
                   target.name
                 )
               );
@@ -591,15 +592,15 @@ export function generateMigrate(
 
           for (const { source, target, changes } of tableChanges.changes.indexes
             .changes || []) {
-            otherCodes.push(genDropIndex(tableName, source.name));
-            otherCodes.push(genAddIndex(tableName, target));
+            otherCodes.push(genDropIndex(tableName, target.name));
+            otherCodes.push(genAddIndex(tableName, source));
             if (changes.comment) {
               otherCodes.push(
                 genComment(
                   'Index',
                   tableName,
-                  changes.comment.target,
-                  target.name
+                  changes.comment.source,
+                  source.name
                 )
               );
             }
@@ -608,7 +609,7 @@ export function generateMigrate(
 
         if (tableChanges.changes.comment) {
           otherCodes.push(
-            genComment('Table', tableName, tableChanges.changes.comment.target)
+            genComment('Table', tableName, tableChanges.changes.comment.source)
           );
         }
 

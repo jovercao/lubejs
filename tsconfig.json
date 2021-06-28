@@ -14,15 +14,20 @@
       "ES2017"
     ],
     "paths": {
-      "lubejs": ["./src"],
-      "lubejs-mssql": ["./drivers/mssql"]
+      "lubejs-mssql": ["./drivers/mssql"],
+      "lubejs": ["./src"]
     }
   },
+  "include": [
+    "./example/.lubejs.ts",
+    "./src/**/*.ts",
+    "./example/**/*.ts",
+    "./drivers/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "**/node_modules/*",
     "test",
-    "dist",
-    "example"
+    "dist"
   ]
 }

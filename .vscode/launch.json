@@ -5,6 +5,27 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "migrate gen",
+      "program": "../src/bin.ts",
+      "request": "launch",
+      "runtimeArgs": [
+        "--require",
+        "ts-node/register",
+        "--require",
+        "tsconfig-paths/register"
+      ],
+      "cwd": "${workspaceFolder}/example",
+      "args": [
+        "migrate",
+        "gen",
+        "Test2021062814341212"
+      ],
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "type": "pwa-node"
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "启动程序",
@@ -21,12 +42,6 @@
         "--inspect-brk",
         "--inspect=9229"
       ]
-    },
-    {
-      "name": "Launch Microsoft Edge and open the Edge DevTools",
-      "request": "launch",
-      "type": "vscode-edge-devtools.debug",
-      "url": "" // Provide your project's url to finish configuring
     }
   ]
 }

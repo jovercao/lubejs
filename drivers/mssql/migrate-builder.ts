@@ -156,7 +156,7 @@ END
     );
   }
 
-  commentProcedure(name: Name, comment: string): Statement {
+  commentProcedure(name: Name, comment?: string): Statement {
     if (typeof name === 'string' || name.length <= 1)
       throw Error(`Must special the schema.`);
     const [table, schema] = name;
@@ -174,7 +174,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentFunction(name: Name, comment: string): Statement {
+  commentFunction(name: Name, comment?: string): Statement {
     if (typeof name === 'string' || name.length <= 1)
       throw Error(`Must special the schema.`);
     const [table, schema] = name;
@@ -190,7 +190,7 @@ IF EXISTS(SELECT p.[value]
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'FUNCTION', ${table}`;
     return SQL.raw(sql);
   }
-  commentTable(name: Name, comment: string): Statement {
+  commentTable(name: Name, comment?: string): Statement {
     if (typeof name === 'string' || name.length <= 1)
       throw Error(`Must special the schema.`);
     const [table, schema] = name;
@@ -207,7 +207,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentColumn(table: Name, name: string, comment: string): Statement {
+  commentColumn(table: Name, name: string, comment?: string): Statement {
     if (typeof table === 'string' || table.length <= 1)
       throw Error(`Must special the schema.`);
     const [tableName, schema] = table;
@@ -226,7 +226,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentIndex(table: Name, name: string, comment: string): Statement {
+  commentIndex(table: Name, name: string, comment?: string): Statement {
     if (typeof table === 'string' || table.length <= 1)
       throw Error(`Must special the schema.`);
     const [tableName, schema] = table;
@@ -244,7 +244,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentConstraint(table: Name, name: string, comment: string): Statement {
+  commentConstraint(table: Name, name: string, comment?: string): Statement {
     if (typeof table === 'string' || table.length <= 1)
       throw Error(`Must special the schema.`);
     const [tableName, schema] = table;
@@ -261,7 +261,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentSchema(name: string, comment: string): Statement {
+  commentSchema(name: string, comment?: string): Statement {
     let sql = formatSql`
 IF EXISTS(SELECT p.[value]
   FROM sysproperties p INNER JOIN
@@ -275,7 +275,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  commentSequence(name: Name, comment: string): Statement {
+  commentSequence(name: Name, comment?: string): Statement {
     if (typeof name === 'string' || name.length <= 1)
       throw Error(`Must special the schema.`);
     const [sequence, schema] = name;
