@@ -1,4 +1,4 @@
-import { Migrate, Statement, SqlBuilder as SQL, DbType, MigrateBuilder } from '../../src';
+import { Migrate, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
 
 export class Init implements Migrate {
 
@@ -62,4 +62,3 @@ export class Init implements Migrate {
 }
 
 export default Init;
-  

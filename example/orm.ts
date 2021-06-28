@@ -8,6 +8,15 @@ import {
 } from 'lubejs';
 
 /*************************试验代码****************************/
+
+export class User extends Entity {
+  id: number;
+  name: string;
+  password: string;
+  description?: string;
+  employee?: Employee;
+}
+
 export class Order extends Entity {
   id: number;
   date: Date;
@@ -30,13 +39,16 @@ export class Position extends Entity {
   id: number;
   name: string;
   description?: string;
+  employees: Employee[];
 }
 
 export class Employee extends Entity {
   id: number;
   name: string;
   description?: string;
+  organization: Organization;
   positions: Position[];
+  user: User;
 }
 
 export class EmployeePosition extends Entity {
@@ -47,12 +59,13 @@ export class EmployeePosition extends Entity {
   employee: Employee;
 }
 
-export class Organization {
+export class Organization extends Entity {
   id: number;
   name: string;
   description?: string;
   parentId?: number;
   parent?: Organization;
+  employees?: Employee[];
 }
 
 export class DB extends DbContext {
@@ -67,9 +80,78 @@ export class DB extends DbContext {
   get Employee(): Repository<Employee> {
     return this.getRepository(Employee);
   }
+
+  get User(): Repository<User> {
+    return this.getRepository(User);
+  }
 }
 
 context(DB, modelBuilder => {
+
+  modelBuilder.entity(User).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.name, String);
+    builder.column(p => p.password, String).nullable();
+    builder.column(p => p.description, String).nullable();
+    builder
+      .hasOne(p => p.employee, Employee)
+      .withOne(p => p.user)
+      .isPrimary();
+    builder.hasKey(p => p.id);
+    builder.hasData([
+      { id: 0, name: 'admin' }
+    ])
+  });
+
+  modelBuilder.entity(Position).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.name, String);
+    builder.column(p => p.description, String).nullable();
+    builder.hasKey(p => p.id);
+    builder.hasMany(p => p.employees, Employee).withMany(p => p.positions).hasRelationTable(EmployeePosition);
+    builder.hasData([
+      { id: 1, name: '总经理', description: '无' },
+      { id: 2, name: '总监', description: '无' },
+      { id: 3, name: '普通职员', description: '无' },
+    ]);
+  });
+
+
+  modelBuilder.entity(Organization).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.name, String);
+    builder.column(p => p.description, String).nullable();
+    builder.hasMany(p => p.employees, Employee).withOne(p => p.organization);
+    builder
+      .hasOne(p => p.parent, Organization)
+      .withMany()
+      .hasForeignKey(p => p.parentId);
+    builder.hasData([
+      { id: 0, name: '公司', description: '没啥' },
+      { id: 1, name: '信息部', parentId: 0 },
+      { id: 2, name: '行政部', parentId: 0 }
+    ])
+  });
+
+  modelBuilder.entity(Employee).asTable(builder => {
+    builder.column(p => p.id, Number).identity();
+    builder
+      .column(p => p.name, String)
+      .dbType(DbType.string(100))
+      .nullable();
+    builder
+      .hasMany(p => p.positions, Position)
+      .withMany(p => p.employees)
+    builder.hasKey(p => p.id);
+    builder
+      .hasOne(p => p.organization, Organization)
+      .withMany(p => p.employees);
+    builder.hasOne(p => p.user, User).withOne(p => p.employee).hasForeignKey();
+    builder.hasData([
+      { id: 0, name: '管理员职员', userId: 0 }
+    ])
+  });
+
   modelBuilder.entity(Order).asTable(builder => {
     builder.column(p => p.id, Number).identity();
     builder.column(p => p.orderNo, String).autogen(item => 'abc');
@@ -93,33 +175,6 @@ context(DB, modelBuilder => {
       .hasOne(p => p.order, Order)
       .withMany(p => p.details)
       .hasForeignKey(p => p.orderId);
-    builder.hasKey(p => p.id);
-  });
-
-  modelBuilder.entity(Position).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
-    builder.column(p => p.name, String);
-    builder.column(p => p.description, String).nullable();
-    builder.hasKey(p => p.id);
-    builder.hasData([
-      { id: 1, name: '总经理', description: '无' },
-      { id: 2, name: '总监', description: '无' },
-      { id: 3, name: '普通职员', description: '无' },
-    ]);
-  });
-
-  modelBuilder.entity(Employee).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
-    builder
-      .column(p => p.name, String)
-      .dbType(DbType.string(100))
-      .nullable();
-    builder
-      .hasMany(p => p.positions, Position)
-      .withMany()
-      .hasRelationTable(EmployeePosition, builder => {
-        builder.column(p => p.id, Number).identity();
-      });
     builder.hasKey(p => p.id);
   });
 });

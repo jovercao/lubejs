@@ -404,6 +404,7 @@ export function generate(
       .filter(p => isForeignRelation(p))
       .map(p => genForeignKeySchema(entity, p as ForeignRelation));
 
+    console.log(entity);
     const table: TableSchema = {
       name: entity.tableName,
       primaryKey: {

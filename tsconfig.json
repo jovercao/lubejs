@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "module": "commonjs",
     "target": "ES2017",
     "declaration": true,
@@ -8,9 +9,14 @@
     "experimentalDecorators": true,
     "sourceMap": true,
     "strict": false,
+    "outDir": "dist",
     "lib": [
       "ES2017"
-    ]
+    ],
+    "paths": {
+      "lubejs": ["./src"],
+      "lubejs-mssql": ["./drivers/mssql"]
+    }
   },
   "exclude": [
     "node_modules",

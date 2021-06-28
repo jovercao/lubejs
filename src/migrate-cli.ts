@@ -34,7 +34,7 @@ interface MigrateInfo {
   name: string;
   timestamp: string;
   path: string;
-  kind: 'ts' | 'js';
+  kind: 'typescript' | 'javascript';
   index: number;
 }
 
@@ -358,7 +358,7 @@ export class MigrateCli {
           timestamp: match[1],
           name: match[2],
           path: resolve(process.cwd(), path),
-          kind: match[3].toLowerCase() as 'js' | 'ts',
+          kind: match[3].toLowerCase() === 'js' ? 'javascript' : 'typescript',
           index: 0,
         });
       }
@@ -372,13 +372,13 @@ export class MigrateCli {
 
   async list(): Promise<void> {
     const list = await this._list();
-    console.table(list, ['name', 'timestamp', 'path']);
+    console.table(list, ['kind', 'name', 'timestamp', 'path']);
   }
 }
 
 async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
   let imported: any;
-  if (info.kind === 'ts') {
+  if (info.kind === 'typescript') {
     imported = await import(info.path);
   } else {
     imported = require(info.path);

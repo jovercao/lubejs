@@ -296,6 +296,7 @@ export class DbContextMetadata {
     if (this._entitiyMap.has(entity.class)) {
       throw new Error(`Entity ${entity.className} is exists in DbContext.`);
     }
+    this._entitiyMap.set(entity.class, entity);
     this._entities.push(entity);
     return this;
   }
@@ -1364,6 +1365,7 @@ export class MetadataStore {
   getContext(contextClass: Constructor<DbContext>): DbContextMetadata {
     return this.contextMap.get(contextClass);
   }
+
   /**
    * 注册上下文
    */
