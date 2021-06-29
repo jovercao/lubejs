@@ -369,7 +369,7 @@ export function generate(
       procedures: [],
       functions: [],
       sequences: [],
-      comment: context.description,
+      comment: context.comment,
     };
 
     for (const entity of context.entities) {
@@ -403,8 +403,6 @@ export function generate(
     const foreignKeys = entity.relations
       .filter(p => isForeignRelation(p))
       .map(p => genForeignKeySchema(entity, p as ForeignRelation));
-
-    console.log(entity);
     const table: TableSchema = {
       name: entity.tableName,
       primaryKey: {
@@ -419,7 +417,7 @@ export function generate(
       indexes,
       foreignKeys,
       constraints: [], // TODO 实体添加约束代码
-      comment: entity.description,
+      comment: entity.comment,
     };
     return table;
   }
@@ -436,7 +434,7 @@ export function generate(
       calculateExpression:
         column.calculateExpression &&
         sqlUtil.sqlifyExpression(column.calculateExpression, null),
-      comment: column.description,
+      comment: column.comment,
       defaultValue:
         column.defaultValue &&
         sqlUtil.sqlifyExpression(column.defaultValue, null),
@@ -469,7 +467,7 @@ export function generate(
         name: cm.column.columnName,
         isAscending: cm.isAscending,
       })),
-      comment: index.description,
+      comment: index.comment,
     };
     return idx;
   }
@@ -478,7 +476,7 @@ export function generate(
     const v: ViewSchema = {
       name: view.viewName,
       body: sqlUtil.sqlify(view.body).sql,
-      comment: view.description,
+      comment: view.comment,
     };
     return v;
   }

@@ -15,6 +15,7 @@ import {
 } from './schema';
 import { compare, SchemaDifference } from './schema-compare';
 import { DbType, Name } from './types';
+import { isNameEquals } from './util';
 
 // TODO: 可空约束名称处理
 // TODO: 文本缩进美化处理
@@ -322,7 +323,6 @@ export function generateMigrate(
     const code = `builder.comment${type}(${genName(object)}${
       member ? `, ${genName(member)}` : ''
     }, ${genName(comment)})`;
-    console.log('生成列备注：', type, object, ...args);
     return code
   }
 
@@ -404,9 +404,11 @@ export function generateMigrate(
       }
 
       // 删表前删除外键以免造成依赖问题
-      for (const { name, foreignKeys } of diff.changes.tables.removeds) {
+      for (const { name } of diff.changes.tables.removeds) {
+        // 查找被引用的外键
+        const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
         dropFkCodes.push(
-          ...foreignKeys.map(fk => genDropForeignKey(name, fk.name))
+          ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
         );
         otherCodes.push(genDropTable(name));
       }
@@ -464,7 +466,8 @@ export function generateMigrate(
 
             // 如果类型或者是否可空变化
             if (changes.type || changes.isNullable) {
-              otherCodes.push(genAlterColumn(tableName, target));
+              console.group('>>>>>>>>>>>>', source, target);
+              otherCodes.push(genAlterColumn(tableName, source));
             }
 
             if (changes.defaultValue) {
@@ -476,11 +479,12 @@ export function generateMigrate(
             }
 
             if (changes.isIdentity || changes.identityIncrement || changes.identityIncrement) {
-              if (!changes.isIdentity.source) {
-                otherCodes.push('// 请重点注意，因为需要重建表，在mssql中尚未实现该功能。');
+              console.debug(source, target);
+              if (!source.isIdentity) {
+                otherCodes.push('// 敬告：因为需要重建表，在mssql中尚未实现该功能。');
                 otherCodes.push(genDropIdentity(tableName, target.name))
               } else {
-                otherCodes.push('// 请重点注意，因为需要重建表，在mssql中尚未实现该功能。');
+                otherCodes.push('// 敬告：因为需要重建表，在mssql中尚未实现该功能。');
                 otherCodes.push(genSetIdentity(tableName, source.name, source.identityStartValue, source.identityIncrement))
               }
             }
@@ -490,8 +494,8 @@ export function generateMigrate(
                 genComment(
                   'Column',
                   tableName,
-                  changes.comment.source,
-                  source.name
+                  source.name,
+                  changes.comment.source
                 )
               );
             }
@@ -504,7 +508,7 @@ export function generateMigrate(
             addFkCodes.push(genAddForeignKey(tableName, fk));
             if (fk.comment) {
               otherCodes.push(
-                genComment('Constraint', tableName, fk.comment, fk.name)
+                genComment('Constraint', tableName, fk.name, fk.comment)
               );
             }
           }
@@ -516,6 +520,7 @@ export function generateMigrate(
 
           for (const { source, target, changes } of tableChanges.changes
             ?.foreignKeys?.changes || []) {
+            console.debug('>>>>>', source, target);
             dropFkCodes.push(genDropForeignKey(tableName, target.name));
             addFkCodes.push(genAddForeignKey(tableName, source));
             if (changes.comment) {
@@ -523,8 +528,8 @@ export function generateMigrate(
                 genComment(
                   'Constraint',
                   tableName,
-                  changes.comment.source,
-                  target.name
+                  target.name,
+                  changes.comment.source
                 )
               );
             }
@@ -542,8 +547,8 @@ export function generateMigrate(
                 genComment(
                   'Constraint',
                   tableName,
-                  constraint.comment,
-                  constraint.name
+                  constraint.name,
+                  constraint.comment
                 )
               );
             }
@@ -567,8 +572,8 @@ export function generateMigrate(
                 genComment(
                   'Constraint',
                   tableName,
-                  changes.comment.source,
-                  target.name
+                  target.name,
+                  changes.comment.source
                 )
               );
             }
@@ -581,7 +586,7 @@ export function generateMigrate(
             otherCodes.push(genAddIndex(tableName, index));
             if (index.comment) {
               otherCodes.push(
-                genComment('Index', tableName, index.comment, index.name)
+                genComment('Index', tableName, index.name, index.comment)
               );
             }
           }
@@ -599,8 +604,8 @@ export function generateMigrate(
                 genComment(
                   'Index',
                   tableName,
-                  changes.comment.source,
-                  source.name
+                  source.name,
+                  changes.comment.source
                 )
               );
             }
@@ -641,6 +646,8 @@ export function generateMigrate(
 
   const downDiff = compare(target, source);
   const downCodes = genCodes(downDiff);
+
+  const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
 
   return generateMigrateClass(name, upCodes, downCodes);
 }

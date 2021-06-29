@@ -10,28 +10,13 @@
       },
       {
         "type": "typescript",
-        "tsconfig": "src/tsconfig.json",
+        "tsconfig": "tsconfig.json",
         "option": "watch",
         "problemMatcher": [
           "$tsc-watch"
         ],
         "group": "build",
         "label": "tsc: 监视 - src/tsconfig.json",
-        "runOptions": {
-          "runOn": "folderOpen"
-        }
-      },
-      {
-        "type": "typescript",
-        "tsconfig": "drivers/mssql/tsconfig.json",
-        "problemMatcher": [
-          "$tsc"
-        ],
-        "group": {
-          "kind": "build",
-          "isDefault": true
-        },
-        "label": "tsc: 构建 - drivers/mssql/tsconfig.json",
         "runOptions": {
           "runOn": "folderOpen"
         }

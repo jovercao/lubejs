@@ -13,6 +13,7 @@ import {
   UniqueConstraintSchema,
   ViewSchema,
 } from 'lubejs';
+import { isNull } from './build-in';
 import { fullType } from './types';
 
 const {
@@ -47,7 +48,7 @@ export async function load(
     const sql = select({
       id: fk.object_id,
       name: fk.name,
-      isCascade: convert(fk.delete_referential_action, DbType.boolean),
+      isCascade: fk.delete_referential_action.to(DbType.boolean),
       referenceTable: rt.name,
       comment: d.value,
     })
@@ -66,6 +67,7 @@ export async function load(
 
     for (const foreignKey of foreignKeys) {
       const foreignKeyId = Reflect.get(foreignKey, 'id');
+      Reflect.deleteProperty(foreignKey, 'id');
       const fkc = table(['foreign_key_columns', 'sys']).as('fkc');
       const fc = table(['columns', 'sys']).as('fc');
       const rc = table(['columns', 'sys']).as('rc');
@@ -194,8 +196,8 @@ export async function load(
       name: c.name,
       isNullable: c.is_nullable,
       isIdentity: c.is_identity,
-      identityStartValue: ic.seed_value,
-      identityIncrement: ic.increment_value,
+      identityStartValue: ic.seed_value.to(DbType.int32),
+      identityIncrement: ic.increment_value.to(DbType.int32),
       isCalculate: c.is_computed,
       calculateExpression: cc.definition,
       // isTimestamp: convert($case().when(t.name.eq('timestamp'), 1).else(0), DbType.boolean),

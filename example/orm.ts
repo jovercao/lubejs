@@ -89,10 +89,10 @@ export class DB extends DbContext {
 context(DB, modelBuilder => {
 
   modelBuilder.entity(User).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.id, Number).isIdentity();
     builder.column(p => p.name, String);
-    builder.column(p => p.password, String).nullable();
-    builder.column(p => p.description, String).nullable();
+    builder.column(p => p.password, String).isNullable();
+    builder.column(p => p.description, String).isNullable();
     builder
       .hasOne(p => p.employee, Employee)
       .withOne(p => p.user)
@@ -104,10 +104,10 @@ context(DB, modelBuilder => {
   });
 
   modelBuilder.entity(Position).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
-    builder.column(p => p.name, String);
-    builder.column(p => p.description, String).nullable();
-    builder.hasKey(p => p.id);
+    builder.column(p => p.id, Number).isIdentity().hasComment('ID');
+    builder.column(p => p.name, String).hasComment('职位名称');
+    builder.column(p => p.description, String).isNullable().hasComment('摘要说明');
+    builder.hasKey(p => p.id).hasComment('主键');
     builder.hasMany(p => p.employees, Employee).withMany(p => p.positions).hasRelationTable(EmployeePosition);
     builder.hasData([
       { id: 1, name: '总经理', description: '无' },
@@ -118,14 +118,15 @@ context(DB, modelBuilder => {
 
 
   modelBuilder.entity(Organization).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.id, Number).isIdentity();
     builder.column(p => p.name, String);
-    builder.column(p => p.description, String).nullable();
+    builder.column(p => p.description, String).isNullable();
     builder.hasMany(p => p.employees, Employee).withOne(p => p.organization);
     builder
       .hasOne(p => p.parent, Organization)
       .withMany()
-      .hasForeignKey(p => p.parentId);
+      .hasForeignKey(p => p.parentId)
+      .isRequired();
     builder.hasData([
       { id: 0, name: '公司', description: '没啥' },
       { id: 1, name: '信息部', parentId: 0 },
@@ -134,11 +135,11 @@ context(DB, modelBuilder => {
   });
 
   modelBuilder.entity(Employee).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.id, Number).isIdentity();
     builder
       .column(p => p.name, String)
-      .dbType(DbType.string(100))
-      .nullable();
+      .hasType(DbType.string(100))
+      .isNullable();
     builder
       .hasMany(p => p.positions, Position)
       .withMany(p => p.employees)
@@ -146,30 +147,30 @@ context(DB, modelBuilder => {
     builder
       .hasOne(p => p.organization, Organization)
       .withMany(p => p.employees);
-    builder.hasOne(p => p.user, User).withOne(p => p.employee).hasForeignKey();
+    builder.hasOne(p => p.user, User).withOne(p => p.employee).hasForeignKey().isRequired();
     builder.hasData([
       { id: 0, name: '管理员职员', userId: 0 }
     ])
   });
 
   modelBuilder.entity(Order).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
-    builder.column(p => p.orderNo, String).autogen(item => 'abc');
+    builder.column(p => p.id, Number).isIdentity();
+    builder.column(p => p.orderNo, String).isAutogen(item => 'abc');
     builder
       .column(p => p.date, Date)
-      .dbType(DbType.datetime)
-      .defaultValue(SQL.now());
-    builder.column(p => p.description, String).nullable();
+      .hasType(DbType.datetime)
+      .hasDefaultValue(SQL.now());
+    builder.column(p => p.description, String).isNullable();
     builder.hasMany(p => p.details, OrderDetail).withOne(p => p.order);
     builder.hasKey(p => p.id);
   });
 
   modelBuilder.entity(OrderDetail).asTable(builder => {
-    builder.column(p => p.id, Number).identity();
+    builder.column(p => p.id, Number).isIdentity();
     builder.column(p => p.product, String);
     builder.column(p => p.count, Number);
-    builder.column(p => p.price, Number).dbType(DbType.numeric(18, 6));
-    builder.column(p => p.amount, Number).dbType(DbType.numeric(18, 2));
+    builder.column(p => p.price, Number).hasType(DbType.numeric(18, 6));
+    builder.column(p => p.amount, Number).hasType(DbType.numeric(18, 2));
     builder.column(p => p.orderId, Number);
     builder
       .hasOne(p => p.order, Order)

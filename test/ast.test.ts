@@ -1,5 +1,8 @@
-import { table, select, update, insert, del, $case } from "../src";
+import { SqlBuilder as SQL } from "../src";
 import assert from "assert";
+
+
+const { table, select } = SQL;
 class Table1 {
   id: number;
   name: string;

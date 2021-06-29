@@ -41,8 +41,8 @@ WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
  EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
-   table
- )} DROP CONSTRAINT ' + @ConstaintName)
+      table
+    )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
 ALTER TABLE ${this.sqlUtil.sqlifyName(
@@ -63,8 +63,8 @@ WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
   EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
-    table
-  )} DROP CONSTRAINT ' + @ConstaintName)
+      table
+    )} DROP CONSTRAINT ' + @ConstaintName)
 END
 `);
   }
@@ -157,138 +157,181 @@ END
   }
 
   commentProcedure(name: Name, comment?: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-FROM sysproperties p INNER JOIN
-sysobjects o ON o.id = p.id INNER JOIN
-syscolumns c ON p.id = c.id AND p.smallid = c.colid
-WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'PROCEDURE', ${table};`;
+DECLARE @Schema VARCHAR(100), @Proc VARCHAR(100), @ObjectId INT
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Proc = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'PROCEDURE', @Proc
+END
+`;
+
     if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'PROCEDURE', ${table}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'PROCEDURE', @Proc`;
     }
     return SQL.raw(sql);
   }
 
   commentFunction(name: Name, comment?: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'FUNCTION', ${table};`;
-    if (comment)
+DECLARE @Schema VARCHAR(100), @Func VARCHAR(100), @ObjectId INT
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Func = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'FUNCTION', @Func
+END
+`;
+
+    if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'FUNCTION', ${table}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'FUNCTION', @Func`;
+    }
     return SQL.raw(sql);
   }
-  commentTable(name: Name, comment?: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [table, schema] = name;
+
+  commentSequence(name: Name, comment?: string): Statement {
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${table};`;
-    if (comment)
+DECLARE @Schema VARCHAR(100), @Sequence VARCHAR(100), @ObjectId INT
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Sequence = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'SEQUENCE', @Sequence
+END
+`;
+
+    if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${table}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'SEQUENCE', @Sequence`;
+    }
+    return SQL.raw(sql);
+  }
+
+  commentTable(name: Name, comment?: string): Statement {
+    let sql = formatSql`
+DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table
+END
+`;
+
+    if (comment) {
+      sql += formatSql`
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table`;
+    }
     return SQL.raw(sql);
   }
 
   commentColumn(table: Name, name: string, comment?: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'COLUMN', ${name};`;
+DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Column VARCHAR(100)
+
+SET @Column = ${name}
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+
+IF EXISTS(SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id
+  WHERE c.object_id = @ObjectId AND c.name = @Column AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'COLUMN', @Column
+END
+`;
 
     if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'COLUMN', ${name}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'COLUMN', ${name}`;
     }
     return SQL.raw(sql);
   }
 
   commentIndex(table: Name, name: string, comment?: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'INDEX', ${name};`;
+DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Index VARCHAR(100)
+
+SET @Index = ${name}
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+
+IF EXISTS(SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id
+  WHERE c.object_id = @ObjectId AND c.name = @Column AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'INDEX', @Index
+END
+`;
+
     if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'INDEX', ${name}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'INDEX', ${name}`;
     }
     return SQL.raw(sql);
   }
 
-  commentConstraint(table: Name, name: string, comment?: string): Statement {
-    if (typeof table === 'string' || table.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [tableName, schema] = table;
+  commentConstraint(table: Name<string>, name: string, comment?: string): Statement {
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'CONSTRAINT', ${name};`;
-    if (comment)
+DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
+
+SET @Index = ${name}
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+
+IF EXISTS(SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id
+  WHERE c.object_id = @ObjectId AND c.name = @Column AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', @Constraint
+END
+`;
+
+    if (comment) {
       sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'TABLE', ${tableName}, 'CONSTRAINT', ${name}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', ${name}`;
+    }
     return SQL.raw(sql);
   }
 
   commentSchema(name: string, comment?: string): Statement {
     let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${name};`;
-    if (comment)
+IF EXISTS(
+  SELECT 1 FROM sys.extended_properties p
+  WHERE p.name = ${COMMENT_EXTEND_PROPERTY_NAME} AND p.major_id = SCHEMA_ID(${name}) AND p.class = 7 AND p.minor_id = 0
+)
+BEGIN
+  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${name};
+END
+`;
+    if (comment) {
       sql += formatSql`
 EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${name};`;
-    return SQL.raw(sql);
-  }
-
-  commentSequence(name: Name, comment?: string): Statement {
-    if (typeof name === 'string' || name.length <= 1)
-      throw Error(`Must special the schema.`);
-    const [sequence, schema] = name;
-    let sql = formatSql`
-IF EXISTS(SELECT p.[value]
-  FROM sysproperties p INNER JOIN
-  sysobjects o ON o.id = p.id INNER JOIN
-  syscolumns c ON p.id = c.id AND p.smallid = c.colid
-  WHERE (p.name = ${COMMENT_EXTEND_PROPERTY_NAME}))
-  EXEC sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', ${schema}, 'SEQUENCE', ${sequence};`;
-    if (comment)
-      sql += formatSql`
-EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', ${schema}, 'SEQUENCE', ${sequence}`;
+    }
     return SQL.raw(sql);
   }
 

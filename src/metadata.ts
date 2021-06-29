@@ -40,7 +40,7 @@ export interface IndexMetadata {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 }
 
 /**
@@ -99,7 +99,7 @@ export class EntityMetadataClass {
   /**
    * 摘要描述
    */
-  description?: string;
+  comment?: string;
 
   private _members: EntityMemberMetadata[] = [];
   private _memberMap: Record<string, EntityMemberMetadata> = {};
@@ -275,7 +275,7 @@ export class DbContextMetadata {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 
   /**
    * 获取实体元数据
@@ -378,7 +378,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 摘要说明
    */
-  description?: string;
+  comment?: string;
 
   /**
    * 自动生成表达式（程序）
@@ -560,7 +560,7 @@ export interface PrimaryOneToOneMetadata {
   /**
    * 摘要描述
    */
-  description?: string;
+  comment?: string;
 
   /**
    * 是否可空
@@ -622,11 +622,11 @@ export interface ForeignOneToOneMetadata {
   /**
    * 摘要描述
    */
-  description?: string;
+  comment?: string;
   /**
    * 是否可空
    */
-  isNullable?: boolean;
+  isRequired?: boolean;
 
   /**
    * 是否级联删除
@@ -678,7 +678,7 @@ export interface OneToManyMetadata {
   /**
    * 摘要描述
    */
-  description: string;
+  comment: string;
 
   /**
    * 将该关系声明为明细属性，在主从表单据中非常有用；
@@ -748,7 +748,7 @@ export interface ManyToOneMetadata {
   /**
    * 是否可空
    */
-  isNullable: boolean;
+  isRequired: boolean;
 
   /**
    * 永远不可能
@@ -758,7 +758,7 @@ export interface ManyToOneMetadata {
   /**
    * 摘要描述
    */
-  description?: string;
+  comment?: string;
   /**
    * 是否级联删除
    */
@@ -830,7 +830,7 @@ export interface ManyToManyMetadata {
   /**
    * 摘要描述
    */
-  description?: string;
+  comment?: string;
   /**
    * 将该关系声明为明细属性，在主从表单据中非常有用；
    * 如果指定为true，

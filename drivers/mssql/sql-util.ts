@@ -751,6 +751,9 @@ export class MssqlSqlUtil extends SqlUtil {
         })
         .join(',\n  ');
     }
+    if (statement.$alterColumn) {
+      sql += ` ALTER COLUMN ${this.quoted(statement.$alterColumn.$name)} ${this.sqlifyType(statement.$alterColumn.$dbType)} ${statement.$alterColumn.$nullable ? 'NULL' : 'NOT NULL'}`; // + this.sqlifyTableMember(statement.$alterColumn)
+    }
     return sql;
   }
 
@@ -770,6 +773,9 @@ export class MssqlSqlUtil extends SqlUtil {
         if (member.$primaryKey.nonclustered) {
           sql += ' NONCLUSTERED';
         }
+      }
+      if (member.$default) {
+        sql += ` DEFAULT (${this.sqlifyExpression(member.$default)})`
       }
       if (member.$check) {
         sql += ` CHECK(${this.sqlifyCondition(member.$check)})`;

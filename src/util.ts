@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { isString } from 'util';
 import {
   Condition,
   CompatibleExpression,
@@ -993,4 +994,25 @@ export function outputCommand(cmd: Command): void {
         '\n}'
     );
   }
+}
+
+export function isNameEquals(name1: Name, name2: Name): boolean {
+  let schema1: string;
+  let table1: string;
+  let schema2: string;
+  let table2: string;
+
+  if (Array.isArray(name1)) {
+    schema1 = name1[1];
+    table1 = name1[0];
+  } else {
+    table1 = name1;
+  }
+
+  if (Array.isArray(name2)) {
+    schema2 = name2[1];
+    table2 = name2[0];
+  }
+
+  return schema1 === schema2 && table1 === table2;
 }
