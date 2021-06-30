@@ -260,7 +260,7 @@ export async function load(
         identityIncrement,
         isCalculate,
         calculateExpression,
-        defaultValue,
+        defaultValue: defaultValue ? defaultValue.substr(1, defaultValue.length - 2) : null,
         comment,
       };
       columns.push(column);

@@ -12,8 +12,9 @@ import {
   SequenceSchema,
   TableSchema,
   UniqueConstraintSchema,
+  SchemaDifference,
+  compareSchema
 } from './schema';
-import { compare, SchemaDifference } from './schema-compare';
 import { DbType, Name } from './types';
 import { isNameEquals } from './util';
 
@@ -354,6 +355,16 @@ export function generateMigrate(
     const otherCodes: string[] = [];
     const seedDataCodes: string[] = [];
     if (diff.changes?.tables) {
+      // 删表前删除外键以免造成依赖问题
+      for (const { name } of diff.changes.tables.removeds) {
+        // 注释掉的原因是因为表的变化本身就会记录需要删除的外键
+        // const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
+        // dropFkCodes.push(
+        //   ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
+        // );
+        otherCodes.push(genDropTable(name));
+      }
+
       for (const table of diff.changes.tables.addeds) {
         otherCodes.push(genCreateTable(table));
         if (metadata) {
@@ -403,16 +414,6 @@ export function generateMigrate(
         }
       }
 
-      // 删表前删除外键以免造成依赖问题
-      for (const { name } of diff.changes.tables.removeds) {
-        // 查找被引用的外键
-        const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
-        dropFkCodes.push(
-          ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
-        );
-        otherCodes.push(genDropTable(name));
-      }
-
       for (const tableChanges of diff.changes.tables.changes) {
         const tableName = tableChanges.target.name;
         // PRIMARY KEY
@@ -449,6 +450,10 @@ export function generateMigrate(
 
         // COLUMNS
         if (tableChanges.changes?.columns) {
+          for (const col of tableChanges.changes.columns.removeds || []) {
+            // const fk = findTargetForeignKey(({ table, foreignKey }) => isNameEquals(tableName, name))
+            otherCodes.push(genDropColumn(tableName, col.name));
+          }
           for (const column of tableChanges.changes.columns.addeds || []) {
             otherCodes.push(genAddColumn(tableName, column));
             if (column.comment) {
@@ -457,16 +462,12 @@ export function generateMigrate(
               );
             }
           }
-          for (const col of tableChanges.changes.columns.removeds || []) {
-            otherCodes.push(genDropColumn(tableName, col.name));
-          }
 
           for (const { target, source, changes } of tableChanges.changes.columns
             .changes || []) {
 
             // 如果类型或者是否可空变化
             if (changes.type || changes.isNullable) {
-              console.group('>>>>>>>>>>>>', source, target);
               otherCodes.push(genAlterColumn(tableName, source));
             }
 
@@ -520,7 +521,6 @@ export function generateMigrate(
 
           for (const { source, target, changes } of tableChanges.changes
             ?.foreignKeys?.changes || []) {
-            console.debug('>>>>>', source, target);
             dropFkCodes.push(genDropForeignKey(tableName, target.name));
             addFkCodes.push(genAddForeignKey(tableName, source));
             if (changes.comment) {
@@ -640,14 +640,28 @@ export function generateMigrate(
     }
     return [...dropFkCodes, ...otherCodes, ...addFkCodes, ...seedDataCodes];
   }
-  const upDiff = compare(source, target);
+  const upDiff = compareSchema(source, target);
   // 升级需要带上种子数据
   const upCodes = genCodes(upDiff, metadata);
 
-  const downDiff = compare(target, source);
+  const downDiff = compareSchema(target, source);
   const downCodes = genCodes(downDiff);
 
-  const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
+  // const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
+
+  const findTargetForeignKey = (finder: (table: Name, fk: ForeignKeySchema) => boolean): { table: Name, foreignKey: ForeignKeySchema } =>{
+    let result: { table: Name, foreignKey: ForeignKeySchema };
+    target.tables.find(({ name: table, foreignKeys }) => foreignKeys.find(fk => {
+      if (finder(table, fk)) {
+        result = {
+          table,
+          foreignKey: fk
+        };
+        return true
+      }
+    }));
+    return result;
+  }
 
   return generateMigrateClass(name, upCodes, downCodes);
 }

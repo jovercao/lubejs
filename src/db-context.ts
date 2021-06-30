@@ -33,6 +33,10 @@ export class DbInstance {
   }
 }
 
+export interface DbContextConstructor<T extends DbContext = DbContext> {
+  new (lube: Lube): T
+}
+
 /**
  * 数据库上下文对象
  */

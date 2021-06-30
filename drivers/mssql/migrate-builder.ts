@@ -164,7 +164,7 @@ SELECT @ObjectId = o.object_id, @Schema = s.name, @Proc = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
 WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
 
-IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'PROCEDURE', @Proc
 END
@@ -185,7 +185,7 @@ SELECT @ObjectId = o.object_id, @Schema = s.name, @Func = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
 WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
 
-IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'FUNCTION', @Func
 END
@@ -206,7 +206,7 @@ SELECT @ObjectId = o.object_id, @Schema = s.name, @Sequence = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
 WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
 
-IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'SEQUENCE', @Sequence
 END
@@ -227,7 +227,7 @@ SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
 WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
 
-IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.class = 1)
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table
 END
@@ -261,7 +261,7 @@ END
 
     if (comment) {
       sql += formatSql`
-EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'COLUMN', ${name}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'COLUMN', @Column`;
     }
     return SQL.raw(sql);
   }
@@ -278,8 +278,8 @@ WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
 
 IF EXISTS(SELECT 1
   FROM sys.extended_properties p INNER JOIN
-  sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id
-  WHERE c.object_id = @ObjectId AND c.name = @Column AND p.class = 1)
+  sys.indexes i ON p.major_id = i.object_id AND p.minor_id = i.index_id
+  WHERE c.object_id = @ObjectId AND i.name = @Index AND p.class = 1)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'INDEX', @Index
 END
@@ -296,16 +296,27 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     let sql = formatSql`
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
 
-SET @Index = ${name}
+SET @Constraint = ${name}
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
 WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
 
-IF EXISTS(SELECT 1
+IF EXISTS(
+  SELECT 1
   FROM sys.extended_properties p INNER JOIN
-  sys.columns c ON p.major_id = c.object_id AND p.minor_id = c.column_id
-  WHERE c.object_id = @ObjectId AND c.name = @Column AND p.class = 1)
+  sys.check_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+  UNION ALL
+  SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.default_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+  SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.key_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+)
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', @Constraint
 END
@@ -313,7 +324,8 @@ END
 
     if (comment) {
       sql += formatSql`
-EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', ${name}`;
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', @Constraint;
+`
     }
     return SQL.raw(sql);
   }

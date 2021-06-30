@@ -7,13 +7,14 @@ import {
   generateMigrate as generateMigrate,
   generateMigrateClass,
 } from './migrate-gen';
-import { DatabaseSchema, generate as generateSchema } from './schema';
+import { DatabaseSchema, generateSchema as generateSchema } from './schema';
 import { Constructor, DbType } from './types';
 import { Command } from './execute';
 import { isRaw, isStatement, outputCommand } from './util';
 import { MigrateBuilder } from './migrate-builder';
 import { mkdir } from 'fs/promises';
 import 'colors';
+import { ConnectOptions } from './lube';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -24,7 +25,7 @@ export interface Migrate {
 export interface LubeConfig {
   default: string;
   contexts: {
-    [key: string]: () => Promise<DbContext>;
+    [key: string]: ConnectOptions;
   };
   migrateDir: string;
 }
@@ -220,7 +221,7 @@ export class MigrateCli {
       item => item.name === nameOrId || item.id === nameOrId || item.timestamp === nameOrId
     );
     if (!item) {
-      throw new Error(`找不到指定的迁移${nameOrId}`);
+      throw new Error(`找不到指定的迁移${nameOrId}文件，或迁移文件已被删除。`);
     }
     return item;
   }
@@ -254,16 +255,18 @@ export class MigrateCli {
     outputPath?: string;
   }): Promise<Command[]> {
     let target: MigrateInfo;
-    if (!options?.target) {
+    if (!options?.target || options?.target === '*') {
       target = await this.getLastMigrate();
+    } else if (options?.target === '@') {
+      target = await this.getCurrentMigrate();
     } else {
       target = await this.getMigrate(options.target);
     }
     const migrates = await this._list();
     let source: MigrateInfo;
-    if (!source) {
+    if (!options?.source || options?.source === '@') {
       source = await this.getCurrentMigrate();
-    } else {
+    } else if (options?.source !== '*') {
       source = await this.getMigrate(options?.source);
     }
     const sourceIndex = source?.index ?? -1;

@@ -63,6 +63,7 @@ import {
   DropSequence,
   Annotation,
   SqlBuilder as SQL,
+  TableFuncInvoke,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
@@ -233,19 +234,20 @@ export abstract class SqlUtil {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  sqlifyName(name: Name, buildIn = false): string {
+  sqlifyName(name: Name, builtIn = false): string {
+    // TIPS: buildIn 使用小写原因是数据库默认值会被自动转换为小写从而产生结果差异，造成不必要的数据架构变化。
     if (Array.isArray(name)) {
       return name
         .map((n, index) => {
           if (index < name.length - 1) {
             return this.quoted(n);
           }
-          return buildIn ? n : this.quoted(n);
+          return builtIn ? n.toLowerCase() : this.quoted(n);
         })
         .reverse()
         .join('.');
     }
-    return buildIn ? name : this.quoted(name);
+    return builtIn ? name.toLowerCase() : this.quoted(name);
   }
 
   /**
@@ -594,9 +596,9 @@ export abstract class SqlUtil {
     );
   }
 
-  protected sqlifyTableInvoke(): string {
-    throw new Error('Method not implemented.');
-  }
+  // protected sqlifyTableInvoke(): string {
+  //   throw new Error('Method not implemented.');
+  // }
 
   protected sqlifyBuildIn(buildIn: BuiltIn<string>): string {
     return buildIn.$name;
@@ -879,7 +881,7 @@ export abstract class SqlUtil {
     }
 
     if (isScalarFuncInvoke(expr)) {
-      return this.sqlifyScalarInvoke(expr, params);
+      return this.sqlifyFuncInvoke(expr, params);
     }
 
     if (isCase(expr)) {
@@ -904,8 +906,8 @@ export abstract class SqlUtil {
    * @returns
    * @memberof Executor
    */
-  protected sqlifyScalarInvoke(
-    invoke: ScalarFuncInvoke<Scalar>,
+  protected sqlifyFuncInvoke(
+    invoke: ScalarFuncInvoke | TableFuncInvoke,
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return `${this.sqlifyIdentifier(invoke.$func)}(${(invoke.$args || [])
@@ -1047,7 +1049,7 @@ export abstract class SqlUtil {
     }
     if (isTableFuncInvoke(table)) {
       return (
-        this.sqlifyTableInvoke() +
+        this.sqlifyFuncInvoke(table) +
         ' AS ' +
         this.sqlifyIdentifier(table.$alias)
       );

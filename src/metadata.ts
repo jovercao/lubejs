@@ -10,7 +10,7 @@ import {
   SqlBuilder as SQL
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
-import { DbContext } from './db-context';
+import { DbContext, DbContextConstructor } from './db-context';
 import { FetchRelations } from './repository';
 import {
   Constructor,
@@ -64,7 +64,7 @@ export class EntityMetadataClass {
   /**
    * 数据库上下文类
    */
-  contextClass: Constructor<DbContext>;
+  contextClass: DbContextConstructor;
 
   /**
    * 模型名称
@@ -260,11 +260,11 @@ export type EntityMetadata =
   | QueryEntityMetadata;
 
 export class DbContextMetadata {
-  constructor(ctr: Constructor<DbContext>) {
+  constructor(ctr: DbContextConstructor) {
     this.class = ctr;
   }
 
-  class: Constructor<DbContext>;
+  class: DbContextConstructor;
   database: string;
   className: string;
   private _entitiyMap: Map<Constructor<Entity>, EntityMetadata> = new Map();
@@ -1134,7 +1134,7 @@ export interface ManyToManyMetadata {
 //   /**
 //    * 关联的上下文类
 //    */
-//   contextClass: Constructor<DbContext>;
+//   contextClass: DbContextConstructor;
 
 //   /**
 //    * 构造函数
@@ -1265,7 +1265,7 @@ export interface ManyToManyMetadata {
 //   /**
 //    * 类
 //    */
-//   class: Constructor<DbContext>;
+//   class: DbContextConstructor;
 //   /**
 //    * 数据库架构
 //    */
@@ -1333,7 +1333,7 @@ export interface ManyToManyMetadata {
 /**********************************装饰器声明*************************************/
 export class MetadataStore {
   private entityMap: Map<EntityType, EntityMetadata> = new Map();
-  private contextMap: Map<Constructor<DbContext>, DbContextMetadata> =
+  private contextMap: Map<DbContextConstructor, DbContextMetadata> =
     new Map();
   private _defaultContext: DbContextMetadata;
 
@@ -1347,6 +1347,7 @@ export class MetadataStore {
    * 可以通过实体构造函数/实体名称 获取已注册的元数据
    */
   getEntity(entityClass: EntityType): EntityMetadata {
+
     return this.entityMap.get(entityClass);
   }
   /**
@@ -1362,7 +1363,13 @@ export class MetadataStore {
   /**
    * 获取上下文无数据
    */
-  getContext(contextClass: Constructor<DbContext>): DbContextMetadata {
+  getContext(name: string): DbContextMetadata
+  getContext(contextClass: DbContextConstructor): DbContextMetadata
+  getContext(nameOrClass: DbContextConstructor | string): DbContextMetadata
+  getContext(contextClass: DbContextConstructor | string): DbContextMetadata {
+    if (typeof contextClass === 'string') {
+      return Array.from(this.contextMap.values()).find(metadata => metadata.class.name === contextClass);
+    }
     return this.contextMap.get(contextClass);
   }
 

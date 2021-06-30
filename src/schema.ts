@@ -30,6 +30,7 @@ import {
 } from './metadata';
 import { DataType, DbType, RowObject, Scalar, DataTypeOf, Name } from './types';
 import { map } from './util';
+import { compareObject, isChanged, ObjectDifference } from './util/compare';
 
 /**
  * 外键架构
@@ -113,6 +114,7 @@ export interface FunctionSchema {
 }
 
 export interface ParameterSchema {
+  name: string;
   type: string;
   defaultValue: Scalar;
   direction: PARAMETER_DIRECTION;
@@ -261,7 +263,6 @@ export interface PrimaryKeySchema {
   columns: KeyColumnSchema[];
 }
 
-
 export type ConstraintSchema = CheckConstraintSchema | UniqueConstraintSchema;
 
 /**
@@ -356,7 +357,7 @@ export interface IndexSchema {
  * @param context
  * @returns
  */
-export function generate(
+export function generateSchema(
   sqlUtil: SqlUtil,
   context: DbContextMetadata
 ): DatabaseSchema {
@@ -408,10 +409,12 @@ export function generate(
       primaryKey: {
         name: `PK_${entity.tableName}_${entity.keyColumn.columnName}`,
         isNonclustered: false,
-        columns: [{
-          name: entity.keyColumn.columnName,
-          isAscending: true
-        }]
+        columns: [
+          {
+            name: entity.keyColumn.columnName,
+            isAscending: true,
+          },
+        ],
       },
       columns,
       indexes,
@@ -456,9 +459,7 @@ export function generate(
     return fk;
   }
 
-  function genIndexSchema(
-    index: IndexMetadata
-  ): IndexSchema {
+  function genIndexSchema(index: IndexMetadata): IndexSchema {
     const idx: IndexSchema = {
       name: index.name,
       isUnique: index.isUnique,
@@ -482,4 +483,39 @@ export function generate(
   }
 
   return genDbSchema(context);
+}
+
+/**
+ * 架构对象类型
+ */
+export type SchemaObject =
+  | TableSchema
+  | ViewSchema
+  | ColumnSchema
+  | ConstraintSchema
+  | PrimaryKeySchema
+  | IndexSchema
+  | ProcedureSchema
+  | FunctionSchema
+  | SequenceSchema
+  | DatabaseSchema
+  | ParameterSchema;
+
+/**
+ * 数据库对象
+ */
+export type ObjectSchema = TableSchema | ViewSchema | ProcedureSchema | FunctionSchema;
+
+
+export type SchemaDifference = ObjectDifference<DatabaseSchema>;
+
+export const isSameSchemaObject = (left: SchemaObject, right: SchemaObject, path: string) => {
+  return !isChanged(left.name, right.name)
+};
+
+export function compareSchema(
+  source: DatabaseSchema,
+  target: DatabaseSchema
+): SchemaDifference {
+  return compareObject(source, target, isSameSchemaObject);
 }

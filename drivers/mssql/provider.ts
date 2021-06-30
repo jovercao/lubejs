@@ -49,6 +49,12 @@ export class MssqlProvider implements DbProvider {
     isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<Transaction> {
     const trans = this._pool.transaction();
+    let rolledBack = false;
+    trans.on('rollback', aborted => {
+      // emited with aborted === true
+
+      rolledBack = true
+    })
     await trans.begin(toMssqlIsolationLevel(isolationLevel));
     return {
       query: async (sql, params) => {
@@ -59,7 +65,9 @@ export class MssqlProvider implements DbProvider {
         await trans.commit();
       },
       rollback: async() => {
-        await trans.rollback();
+        if (!rolledBack) {
+          await trans.rollback();
+        }
       },
     };
   }

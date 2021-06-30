@@ -1,6 +1,6 @@
 import { Migrate, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
 
-export class AddComment implements Migrate {
+export class AddCommentX implements Migrate {
 
   async up(
     builder: MigrateBuilder,
@@ -13,10 +13,10 @@ export class AddComment implements Migrate {
     builder.commentColumn('Position', 'name', '职位名称');
     builder.commentColumn('Position', 'description', '摘要说明');
     builder.commentTable('Position', '主键');
-    builder.alterTable('EmployeePosition').add(builder => builder.column('employeeId', DbType.int32).null());
-    builder.alterTable('EmployeePosition').add(builder => builder.column('positionId', DbType.int32).null());
     builder.alterTable('EmployeePosition').drop(builder => builder.column('EmployeeId'));
     builder.alterTable('EmployeePosition').drop(builder => builder.column('PositionId'));
+    builder.alterTable('EmployeePosition').add(builder => builder.column('employeeId', DbType.int32).null());
+    builder.alterTable('EmployeePosition').add(builder => builder.column('positionId', DbType.int32).null());
     builder.setDefaultValue('Order', 'date', "sysDateTimeOffset()");
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_employeeId_Employee_id').on('employeeId').reference('Employee', ['id']));
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_positionId_Position_id').on('positionId').reference('Position', ['id']))
@@ -33,10 +33,10 @@ export class AddComment implements Migrate {
     builder.commentColumn('Position', 'name', );
     builder.commentColumn('Position', 'description', );
     builder.commentTable('Position', );
-    builder.alterTable('EmployeePosition').add(builder => builder.column('EmployeeId', DbType.int32).notNull());
-    builder.alterTable('EmployeePosition').add(builder => builder.column('PositionId', DbType.int32).notNull());
     builder.alterTable('EmployeePosition').drop(builder => builder.column('employeeId'));
     builder.alterTable('EmployeePosition').drop(builder => builder.column('positionId'));
+    builder.alterTable('EmployeePosition').add(builder => builder.column('EmployeeId', DbType.int32).notNull());
+    builder.alterTable('EmployeePosition').add(builder => builder.column('PositionId', DbType.int32).notNull());
     builder.dropDefaultValue('Order', 'date');
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_EmployeeId_Employee_id').on('EmployeeId').reference('Employee', ['id']));
     builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_PositionId_Position_id').on('PositionId').reference('Position', ['id']))
@@ -44,5 +44,5 @@ export class AddComment implements Migrate {
 
 }
 
-export default AddComment;
+export default AddCommentX;
   
