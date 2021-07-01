@@ -6,6 +6,9 @@ export class Init implements Migrate {
     builder: MigrateBuilder,
     dialect: string | symbol
   ): Promise<void> {
+    builder.alterTable('abc').drop(({ foreignKey }) => foreignKey('abc_FK'));
+    builder.dropTable("abc");
+    builder.dropTable("def");
     builder.createTable('User').as(builder => [
       builder.column('id', DbType.int32).notNull().identity(0, 1),
       builder.column('name', DbType.string(DbType.MAX)).notNull(),
@@ -26,10 +29,14 @@ export class Init implements Migrate {
       builder.column('description', DbType.string(DbType.MAX)).null(),
       builder.primaryKey('PK_Position_id').on({ 'id': 'ASC' })
     ]);
+    builder.commentTable('Position', '主键');
+    builder.commentColumn('Position', 'id', 'ID');
+    builder.commentColumn('Position', 'name', '职位名称');
+    builder.commentColumn('Position', 'description', '摘要说明');
     builder.createTable('EmployeePosition').as(builder => [
       builder.column('id', DbType.int64).notNull().identity(0, 1),
-      builder.column('EmployeeId', DbType.int32).notNull(),
-      builder.column('PositionId', DbType.int32).notNull(),
+      builder.column('employeeId', DbType.int32).null(),
+      builder.column('positionId', DbType.int32).null(),
       builder.primaryKey('PK_EmployeePosition_id').on({ 'id': 'ASC' })
     ]);
     builder.commentColumn('EmployeePosition', 'id', 'Auto generic key column.');
@@ -43,7 +50,7 @@ export class Init implements Migrate {
     builder.createTable('Order').as(builder => [
       builder.column('id', DbType.int32).notNull().identity(0, 1),
       builder.column('orderNo', DbType.string(DbType.MAX)).notNull(),
-      builder.column('date', DbType.datetime).notNull().default("sysDateTimeOffset()"),
+      builder.column('date', DbType.datetime).notNull().default("sysdatetimeoffset()"),
       builder.column('description', DbType.string(DbType.MAX)).null(),
       builder.primaryKey('PK_Order_id').on({ 'id': 'ASC' })
     ]);
@@ -58,8 +65,8 @@ export class Init implements Migrate {
     ]);
     builder.alterTable('Employee').add(builder => builder.foreignKey('FK_Employee_organizationId_Organization_id').on('organizationId').reference('Organization', ['id']));
     builder.alterTable('Employee').add(builder => builder.foreignKey('FK_Employee_userId_User_id').on('userId').reference('User', ['id']));
-    builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_EmployeeId_Employee_id').on('EmployeeId').reference('Employee', ['id']));
-    builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_PositionId_Position_id').on('PositionId').reference('Position', ['id']));
+    builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_employeeId_Employee_id').on('employeeId').reference('Employee', ['id']));
+    builder.alterTable('EmployeePosition').add(builder => builder.foreignKey('FK_EmployeePosition_positionId_Position_id').on('positionId').reference('Position', ['id']));
     builder.alterTable('Organization').add(builder => builder.foreignKey('FK_Organization_parentId_Organization_id').on('parentId').reference('Organization', ['id']));
     builder.alterTable('OrderDetail').add(builder => builder.foreignKey('FK_OrderDetail_orderId_Order_id').on('orderId').reference('Order', ['id']));
     builder.insert('User').values([{"id":0,"name":"admin"}]).withIdentity();
@@ -74,8 +81,8 @@ export class Init implements Migrate {
   ): Promise<void> {
     builder.alterTable('Employee').drop(({ foreignKey }) => foreignKey('FK_Employee_organizationId_Organization_id'));
     builder.alterTable('Employee').drop(({ foreignKey }) => foreignKey('FK_Employee_userId_User_id'));
-    builder.alterTable('EmployeePosition').drop(({ foreignKey }) => foreignKey('FK_EmployeePosition_EmployeeId_Employee_id'));
-    builder.alterTable('EmployeePosition').drop(({ foreignKey }) => foreignKey('FK_EmployeePosition_PositionId_Position_id'));
+    builder.alterTable('EmployeePosition').drop(({ foreignKey }) => foreignKey('FK_EmployeePosition_employeeId_Employee_id'));
+    builder.alterTable('EmployeePosition').drop(({ foreignKey }) => foreignKey('FK_EmployeePosition_positionId_Position_id'));
     builder.alterTable('Organization').drop(({ foreignKey }) => foreignKey('FK_Organization_parentId_Organization_id'));
     builder.alterTable('OrderDetail').drop(({ foreignKey }) => foreignKey('FK_OrderDetail_orderId_Order_id'));
     builder.dropTable("User");
@@ -84,10 +91,21 @@ export class Init implements Migrate {
     builder.dropTable("EmployeePosition");
     builder.dropTable("Organization");
     builder.dropTable("Order");
-    builder.dropTable("OrderDetail")
+    builder.dropTable("OrderDetail");
+    builder.createTable('abc').as(builder => [
+      builder.column('id', DbType.int32).notNull().identity(0, 1),
+      builder.column('value', DbType.string(200)).null(),
+      builder.column('how', DbType.int32).null(),
+      builder.primaryKey('abc_PK').on({ 'id': 'ASC' })
+    ]);
+    builder.createTable('def').as(builder => [
+      builder.column('id', DbType.int32).notNull().identity(0, 1),
+      builder.column('value', DbType.string(200)).null(),
+      builder.primaryKey('def_PK').on({ 'id': 'ASC' })
+    ]);
+    builder.alterTable('abc').add(builder => builder.foreignKey('abc_FK').on('how').reference('def', ['id']))
   }
 
 }
 
 export default Init;
-  

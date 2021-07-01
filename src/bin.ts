@@ -4,45 +4,19 @@ import { MigrateCli, LubeConfig } from './migrate-cli';
 import { existsSync } from 'fs';
 import 'colors';
 import { join } from 'path';
+import { createContext } from './lube';
 
 const OPTIONS_FILE = '.lubejs';
-
-async function loadConfig() {
-  let configFile = join(process.cwd(), OPTIONS_FILE);
-  if (existsSync(configFile + '.js')) {
-    configFile = configFile + '.js';
-  } else if (existsSync(configFile + '.ts')) {
-    configFile = configFile + '.ts';
-  } else {
-    console.error(`错误：在执行迁移命令之前，请先使用'lube init'命令创建配置文件'.lubejs(.ts|.js)'`.red);
-    return;
-  }
-  let config: LubeConfig;
-  try {
-    const imported = await import(configFile);
-    config = imported?.default ?? imported;
-  } catch (error) {
-    console.error(`加载配置文件时发生错误${configFile}`, error);
-    return;
-  }
-  return config;
-}
 
 async function createMigrateCli(options: {
   context?: string;
   migrateDir?: string;
 }): Promise<MigrateCli> {
-  const config = await loadConfig();
   let { context, migrateDir } = options;
-  if (!context) context = config?.default;
   if (!migrateDir) {
     migrateDir = './migrates';
   }
-  const factory = config?.contexts?.[context];
-  if (!factory) {
-    throw new Error(`未找到DbContext:${context}的配置。`);
-  }
-  const db = await factory();
+  const db = await createContext(context);
   const cli = await new MigrateCli(db, migrateDir);
   return cli;
 }

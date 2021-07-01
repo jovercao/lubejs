@@ -52,9 +52,8 @@ export function generateMigrate(
     switch (dbType.name) {
       case 'BINARY':
       case 'STRING':
-        return `DbType.${dbType.name.toLowerCase()}(${
-          dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
-        })`;
+        return `DbType.${dbType.name.toLowerCase()}(${dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
+          })`;
       case 'NUMERIC':
         return `DbType.numeric(${dbType.precision}, ${dbType.digit})`;
       default:
@@ -104,12 +103,11 @@ export function generateMigrate(
   }
 
   function genPrimaryKey(key: PrimaryKeySchema): string {
-    let sql = `builder.primaryKey(${
-      key.name ? genName(key.name) : ''
-    }).on({ ${key.columns.map(
-      ({ name, isAscending }) =>
-        `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
-    )} })`;
+    let sql = `builder.primaryKey(${key.name ? genName(key.name) : ''
+      }).on({ ${key.columns.map(
+        ({ name, isAscending }) =>
+          `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+      )} })`;
     if (key.isNonclustered) {
       sql += '.withNoclustered()';
     }
@@ -120,8 +118,8 @@ export function generateMigrate(
     let code = `builder.foreignKey(${genName(fk.name)}).on(${fk.columns
       .map(column => genName(column))
       .join(', ')}).reference(${genName(
-      fk.referenceTable
-    )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
+        fk.referenceTable
+      )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
 
     if (fk.isCascade) {
       code += 'deleteCascade()';
@@ -183,13 +181,12 @@ export function generateMigrate(
     kind: 'CHECK' | 'UNIQUE' | 'PRIMARY_KEY',
     constraint: string
   ): string {
-    return `builder.alterTable(${genName(table)}).drop(builder => builder.${
-      {
+    return `builder.alterTable(${genName(table)}).drop(builder => builder.${{
         CHECK: 'check',
         UNIQUE: 'uniqueKey',
         PRIMARY_KEY: 'primaryKey',
       }[kind]
-    }(${genName(constraint)}))`;
+      }(${genName(constraint)}))`;
   }
 
   function genCreateIndex(table: Name, index: IndexSchema): string {
@@ -243,9 +240,8 @@ export function generateMigrate(
     if (constaint.kind === 'CHECK') {
       return `builder.alterTable(${genName(
         table
-      )}).add(({ check }) => check(${genName(constaint.name)}, SQL.raw(${
-        constaint.sql
-      }))`;
+      )}).add(({ check }) => check(${genName(constaint.name)}, SQL.raw(${constaint.sql
+        }))`;
     }
     return `builder.alterTable(${genName(
       table
@@ -321,9 +317,8 @@ export function generateMigrate(
       member = args[0];
       comment = args[1];
     }
-    const code = `builder.comment${type}(${genName(object)}${
-      member ? `, ${genName(member)}` : ''
-    }, ${genName(comment)})`;
+    const code = `builder.comment${type}(${genName(object)}${member ? `, ${genName(member)}` : ''
+      }, ${genName(comment)})`;
     return code
   }
 
@@ -355,14 +350,18 @@ export function generateMigrate(
     const otherCodes: string[] = [];
     const seedDataCodes: string[] = [];
     if (diff.changes?.tables) {
-      // 删表前删除外键以免造成依赖问题
-      for (const { name } of diff.changes.tables.removeds) {
-        // 注释掉的原因是因为表的变化本身就会记录需要删除的外键
+      for (const table of diff.changes.tables.removeds) {
+        // 删表前删除外键以免造成依赖问题, 注释掉的原因是因为表的变化本身就会记录需要删除的外键，除非整表删除
         // const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
         // dropFkCodes.push(
         //   ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
         // );
-        otherCodes.push(genDropTable(name));
+
+        // 删除表之前本表外键，以免多表删除时造成依赖问题
+        table.foreignKeys.forEach((fk) => {
+          dropFkCodes.push(genDropForeignKey(table.name, fk.name));
+        });
+        otherCodes.push(genDropTable(table.name));
       }
 
       for (const table of diff.changes.tables.addeds) {
@@ -649,7 +648,7 @@ export function generateMigrate(
 
   // const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
 
-  const findTargetForeignKey = (finder: (table: Name, fk: ForeignKeySchema) => boolean): { table: Name, foreignKey: ForeignKeySchema } =>{
+  const findTargetForeignKey = (finder: (table: Name, fk: ForeignKeySchema) => boolean): { table: Name, foreignKey: ForeignKeySchema } => {
     let result: { table: Name, foreignKey: ForeignKeySchema };
     target.tables.find(({ name: table, foreignKeys }) => foreignKeys.find(fk => {
       if (finder(table, fk)) {

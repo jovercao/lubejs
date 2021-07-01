@@ -1,20 +1,18 @@
-import { DbContext, LubeConfig } from 'lubejs';
+import { LubeConfig } from 'lubejs';
 import driver from 'lubejs-mssql';
-import { DB } from './orm';
+import './orm'
 
 export const config: LubeConfig = {
-  default: 'default',
+  default: 'DB',
   migrateDir: 'migrates',
-  contexts: {
-    default: () => {
-      return DbContext.create(DB, {
-        driver,
-        host: 'jover.wicp.net',
-        user: 'sa',
-        password: '!crgd-2019',
-        database: 'TEST',
-        port: 2433
-      });
+  configures: {
+    DB: {
+      driver,
+      host: 'rancher.vm',
+      user: 'sa',
+      password: '!crgd-2021',
+      database: 'Test',
+      port: 1433,
     },
   },
 };

@@ -24,7 +24,7 @@ export interface Migrate {
 
 export interface LubeConfig {
   default: string;
-  contexts: {
+  configures: {
     [key: string]: ConnectOptions;
   };
   migrateDir: string;
