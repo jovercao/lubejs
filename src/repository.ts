@@ -108,7 +108,6 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
     for (const item of items) {
       if (withoutRelations !== true) {
-        // 不保存关联关系
         await this.saveDependents(item, withoutRelations);
       }
       const row: any = Object.create(null);
@@ -136,7 +135,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         this.rowset,
         this.rowset.field(this.metadata.keyProperty as any).eq(key)
       );
-      this.toEntity(item, added);
+      this.toEntity(added, item);
       if (withoutRelations !== true) {
         await this.saveReferences(item, withoutRelations);
       }
@@ -270,7 +269,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       items = [items];
     }
     for (const item of items) {
-      if (Reflect.has(item, this.metadata.keyProperty)) {
+      if (!Reflect.has(item, this.metadata.keyProperty)) {
         // 如果存在主键，则表示更新数据
         await this._add(item, withoutRelations);
       } else {
@@ -350,7 +349,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
           continue;
         }
 
-        this.getRepository(relation)._save(dependent, [
+        await this.getRepository(relation)._save(dependent, [
           relation.referenceRelation,
         ]);
         const foreignKey = Reflect.get(
@@ -370,8 +369,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
       if (withoutRelations?.includes(relation)) continue;
-
       if (!Reflect.has(item, relation.property)) continue;
+
       if (isOneToMany(relation)) {
         const refSnapshots: any = await this.fetchRelation(
           item,
@@ -400,7 +399,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
             itemKey
           );
         }
-        // 保存(新增或者修改)子项
+        // 保存(新增或者修改)子项,跳过父属性
         await repo._save(refItems, [relation.referenceRelation]);
 
         // 删除多余的子项

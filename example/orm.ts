@@ -9,16 +9,22 @@ import {
 
 /*************************试验代码****************************/
 
+/**
+ * 用户实体类
+ */
 export class User extends Entity {
-  id: number;
+  id?: number;
   name: string;
   password: string;
   description?: string;
   employee?: Employee;
 }
 
+/**
+ * 订单
+ */
 export class Order extends Entity {
-  id: number;
+  id?: number;
   date: Date;
   orderNo: string;
   description?: string;
@@ -26,7 +32,7 @@ export class Order extends Entity {
 }
 
 export class OrderDetail extends Entity {
-  id: number;
+  id?: number;
   product: string;
   count: number;
   price: number;
@@ -36,23 +42,23 @@ export class OrderDetail extends Entity {
 }
 
 export class Position extends Entity {
-  id: number;
+  id?: number;
   name: string;
   description?: string;
-  employees: Employee[];
+  employees?: Employee[];
 }
 
 export class Employee extends Entity {
-  id: number;
+  id?: number;
   name: string;
   description?: string;
-  organization: Organization;
-  positions: Position[];
-  user: User;
+  organization?: Organization;
+  positions?: Position[];
+  user?: User;
 }
 
 export class EmployeePosition extends Entity {
-  id: number;
+  id?: number;
   positionId: number;
   position: Position;
   employeeId: number;
@@ -60,7 +66,7 @@ export class EmployeePosition extends Entity {
 }
 
 export class Organization extends Entity {
-  id: number;
+  id?: number;
   name: string;
   description?: string;
   parentId?: number;
@@ -125,8 +131,7 @@ context(DB, modelBuilder => {
     builder
       .hasOne(p => p.parent, Organization)
       .withMany()
-      .hasForeignKey(p => p.parentId)
-      .isRequired();
+      .hasForeignKey(p => p.parentId);
     builder.hasData([
       { id: 0, name: '公司', description: '没啥' },
       { id: 1, name: '信息部', parentId: 0 },
@@ -140,13 +145,15 @@ context(DB, modelBuilder => {
       .column(p => p.name, String)
       .hasType(DbType.string(100))
       .isNullable();
+    builder.column(p => p.description, String).hasType(DbType.string(100)).isNullable();
     builder
       .hasMany(p => p.positions, Position)
       .withMany(p => p.employees)
     builder.hasKey(p => p.id);
     builder
       .hasOne(p => p.organization, Organization)
-      .withMany(p => p.employees);
+      .withMany(p => p.employees)
+      .isRequired();;
     builder.hasOne(p => p.user, User).withOne(p => p.employee).hasForeignKey().isRequired();
     builder.hasData([
       { id: 0, name: '管理员职员', userId: 0 }
@@ -175,7 +182,8 @@ context(DB, modelBuilder => {
     builder
       .hasOne(p => p.order, Order)
       .withMany(p => p.details)
-      .hasForeignKey(p => p.orderId);
+      .hasForeignKey(p => p.orderId)
+      .isRequired();
     builder.hasKey(p => p.id);
   });
 });

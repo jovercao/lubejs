@@ -132,11 +132,8 @@ function fixManyToOne(
   entity: TableEntityMetadata,
   relation: ManyToOneMetadata
 ) {
-  ensureReferenceEntity(ctx, entity, relation);
-  ensureForeignProperty(entity, relation);
-
-  if (!Reflect.has(relation, 'isNullable')) {
-    relation.foreignColumn.isNullable = true;
+  if (!Reflect.has(relation, 'isRequired')) {
+    relation.isRequired = false;
   }
   if (!Reflect.has(relation, 'comment')) {
     relation.comment = undefined;
@@ -145,6 +142,9 @@ function fixManyToOne(
   if (!Reflect.has(relation, 'isCascade')) {
     relation.isCascade = false;
   }
+
+  ensureReferenceEntity(ctx, entity, relation);
+  ensureForeignProperty(entity, relation);
 
   // 如果有声明对向属性的，将属性关联起来，未声明的无须理会
   if (relation.referenceProperty && !relation.referenceRelation) {
@@ -510,6 +510,13 @@ function ensureForeignProperty(
     };
     entity.addMember(column);
   } else {
+    // if (relation.isRequired && column.isNullable === false) {
+    //   console.warn(`Conflict Foreign column  isRequired is 'true`)
+    //   // throw new Error(`Foreign column nullable must 'false' when relation isRequired is 'true'.`)
+    // }
+    // if (!Reflect.has(column, 'isNullable')) {
+    column.isNullable = !relation.isRequired;
+    // }
     // 外键类型兼容检查
     if (
       column.type !== relation.referenceEntity.keyColumn.type ||
