@@ -17,7 +17,13 @@ export const EntitySymble = Symbol("LUBEJS#Entity");
  * 不一定非得从此继承
  */
 export class Entity {
-  [EntitySymble]: true;
+  static create<T extends Entity>(entity: Constructor<T>, data: T): T {
+    Object.setPrototypeOf(data, this.prototype);
+    return data;
+    // const item = Object.create(this);
+    // Object.assign(item, data);
+    // return item;
+  }
 }
 
 // **********************************类型声明******************************************

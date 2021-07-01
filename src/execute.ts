@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
   assert,
-  ensureProxiedRowset,
   ensureRowset,
   isDocument,
   isScalar,
   isStatement,
-  makeProxiedRowset,
 } from './util';
 import { EventEmitter } from 'events';
 import {
@@ -39,6 +37,7 @@ import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
 import { Queryable } from './queryable';
 import { Name, RowObject, Scalar } from './types';
+import { makeRowset } from './metadata';
 
 const { and, doc, or } = SQL;
 
@@ -398,7 +397,7 @@ export class Executor {
     fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
   ): Promise<T> {
     let columns: any[];
-    const t = makeProxiedRowset(ensureRowset(table));
+    const t = ensureRowset(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
       columns = (fields as FieldsOf<T>[]).map(fieldName => t.field(fieldName));
     } else {
@@ -430,7 +429,6 @@ export class Executor {
     table: Name | Table<T, string>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
-
   async select(
     table: Name | Table,
     arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
@@ -446,7 +444,7 @@ export class Executor {
     }
     const { where, sorts, offset, limit } = options || {};
     let columns: any;
-    const t = ensureProxiedRowset(table);
+    const t = ensureRowset(table);
     if (results) {
       columns = results(t);
     } else {
@@ -514,7 +512,7 @@ export class Executor {
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
       | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
-    const t = ensureProxiedRowset(table);
+    const t = ensureRowset(table);
 
     if (Array.isArray(setsOrItems) && !(setsOrItems[0] instanceof Assignment)) {
       let keys: FieldsOf<T>[];
@@ -572,7 +570,7 @@ export class Executor {
       | Condition
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
-    const t = ensureProxiedRowset(table);
+    const t = ensureRowset(table);
     const sql = SQL.delete(t);
     if (where) {
       sql.where(where instanceof Function ? where(t) : where);
@@ -626,7 +624,7 @@ export class Executor {
       itemsMap.set(key, item);
     });
 
-    const t = ensureProxiedRowset(table);
+    const t = ensureRowset(table);
 
     const existsItems = await this.select(t, {
       where: or(

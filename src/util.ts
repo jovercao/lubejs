@@ -168,29 +168,29 @@ export function ensureTableVariant<T extends RowObject, N extends string>(
   return name;
 }
 
-/**
- * 确保表格类型
- */
-export function ensureRowset<TModel extends RowObject>(
-  name: Name | Table<TModel>
-): Table<TModel>;
-export function ensureRowset<TModel extends RowObject>(
-  name: Name | Rowset<TModel>
-): Rowset<TModel>;
-export function ensureRowset<TModel extends RowObject>(
-  name: Name | Rowset<TModel> | Table<TModel>
-): Rowset<TModel> | Table<TModel> {
-  if (name instanceof AST) return name;
-  return new Table(name);
-}
+// /**
+//  * 确保表格类型
+//  */
+// export function ensureRowset<TModel extends RowObject>(
+//   name: Name | Table<TModel>
+// ): Table<TModel>;
+// export function ensureRowset<TModel extends RowObject>(
+//   name: Name | Rowset<TModel>
+// ): Rowset<TModel>;
+// export function ensureRowset<TModel extends RowObject>(
+//   name: Name | Rowset<TModel> | Table<TModel>
+// ): Rowset<TModel> | Table<TModel> {
+//   if (name instanceof AST) return name;
+//   return new Table(name);
+// }
 
-export function ensureProxiedRowset<T extends RowObject>(
+export function ensureRowset<T extends RowObject>(
   name: Name | Table<T>
 ): ProxiedTable<T>;
-export function ensureProxiedRowset<T extends RowObject>(
+export function ensureRowset<T extends RowObject>(
   name: Name | Rowset<T>
 ): ProxiedRowset<T>;
-export function ensureProxiedRowset<T extends RowObject>(
+export function ensureRowset<T extends RowObject>(
   name: Name | Rowset<T> | Table<T>
 ): ProxiedRowset<T> | ProxiedTable<T> {
   if (isRowset(name)) {
@@ -199,7 +199,7 @@ export function ensureProxiedRowset<T extends RowObject>(
     }
     return makeProxiedRowset(name);
   }
-  const table = ensureRowset<T>(name);
+  const table = new Table<T>(name); // ensureRowset<T>(name);
   return makeProxiedRowset(table);
 }
 
@@ -265,11 +265,23 @@ export function ensureCondition<T extends RowObject>(
   return compares.length >= 2 ? SqlBuilder.and(compares) : compares[0];
 }
 
-function makeProxied<T extends RowObject>(
-  table: Table<T> | Rowset<T> | NamedSelect<T>
+export function makeProxiedRowset<T extends RowObject>(
+  rowset: Table<T>
+): ProxiedTable<T>;
+export function makeProxiedRowset<T extends RowObject>(
+  rowset: Rowset<T>
+): ProxiedRowset<T>;
+export function makeProxiedRowset<T extends RowObject>(
+  rowset: Table<T> | Rowset<T> | NamedSelect<T>
 ): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
-  return new Proxy(table, {
+  const keys = Object.getOwnPropertyNames(rowset);
+  return new Proxy(rowset, {
     get(target: any, key: string | symbol | number): any {
+
+      const v = target[key];
+
+      if (v !== undefined) return v;
+
       /**
        * 标记为Proxy
        */
@@ -277,9 +289,7 @@ function makeProxied<T extends RowObject>(
         return true;
       }
 
-      const v = target[key];
-
-      if (v !== undefined) return v;
+      if (keys.includes(key as string)) return v;
 
       if (typeof key !== 'string' || v !== undefined) {
         return v;
@@ -295,20 +305,20 @@ function makeProxied<T extends RowObject>(
   });
 }
 
-/**
- * 将制作rowset的代理，用于通过属性访问字段
- */
-export function makeProxiedRowset<T extends RowObject>(
-  rowset: Table<T>
-): ProxiedTable<T>;
-export function makeProxiedRowset<T extends RowObject>(
-  rowset: Rowset<T>
-): ProxiedRowset<T>;
-export function makeProxiedRowset<T extends RowObject>(
-  rowsetOrMetadata: Table<T> | Rowset<T>
-): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
-  return makeProxied(rowsetOrMetadata);
-}
+// /**
+//  * 将制作rowset的代理，用于通过属性访问字段
+//  */
+// export function makeProxiedRowset<T extends RowObject>(
+//   rowset: Table<T>
+// ): ProxiedTable<T>;
+// export function makeProxiedRowset<T extends RowObject>(
+//   rowset: Rowset<T>
+// ): ProxiedRowset<T>;
+// export function makeProxiedRowset<T extends RowObject>(
+//   rowsetOrMetadata: Table<T> | Rowset<T>
+// ): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
+//   return makeProxied(rowsetOrMetadata);
+// }
 
 export function isScalar(value: any): value is Scalar {
   return (

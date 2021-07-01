@@ -7,7 +7,8 @@ import {
   ProxiedRowset,
   Rowset,
   Select,
-  SqlBuilder as SQL
+  SqlBuilder as SQL,
+  Table
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
 import { DbContext, DbContextConstructor } from './db-context';
@@ -1410,10 +1411,13 @@ export function makeRowset<T extends Entity = any>(
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_');
   } else if (isTableEntity(metadata)) {
-    rowset = SQL.table(metadata.tableName);
+    rowset = new Table(metadata.tableName);
+    // SQL.table(metadata.tableName);
   } else {
-    rowset = SQL.table(metadata.viewName);
+    rowset = new Table(metadata.viewName);
+    // rowset = SQL.table(metadata.viewName);
   }
+
   return new Proxy(rowset, {
     get(target: any, key: string | symbol | number): any {
       /**

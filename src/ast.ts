@@ -43,10 +43,11 @@ import {
   SQL_SYMBOLE_EXPRESSION,
   SQL_SYMBOLE_TABLE_MEMBER,
 } from './constants';
-import { DbType, TsTypeOf, DbTypeOf, RowObject, Name } from './types';
+import { DbType, TsTypeOf, DbTypeOf, RowObject, Name, Constructor, Entity } from './types';
 import { Scalar } from './types';
 import { TableSchema } from './schema';
 import { Standard } from './std'
+import { makeRowset, metadataStore } from './metadata';
 
 // /**
 //  * 混入函数，必须放最前面，避免循环引用导致无法获取
@@ -286,7 +287,7 @@ export abstract class AST {
   }
 }
 
-export type ModelClass<T extends RowObject = any> = new (...args: any) => T;
+// export type ModelClass<T extends RowObject = any> = new (...args: any) => T;
 
 /**
  * 表达式基类，抽象类，
@@ -4464,8 +4465,8 @@ export interface SqlBuilder extends Standard {
    * 创建表对象，该对象是可代理的，可以直接以 . 运算符获取下一节点Identifier
    * @param name
    */
-  table<T extends RowObject = any>(
-    modelCtr: ModelClass<T>
+  table<T extends Entity = any>(
+    modelCtr: Constructor<T>
   ): ProxiedTable<T, string>;
   table<T extends RowObject = DefaultRowObject, N extends string = string>(
     name: Name<N>
@@ -5324,13 +5325,13 @@ export const SqlBuilder: SqlBuilder = {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NOT_NULL, expr);
   },
 
-  table<T extends RowObject = DefaultRowObject>(
-    nameOrModel: Name | ModelClass<T>
-  ): ProxiedTable<T, string> {
+  table(
+    nameOrModel: Name | Constructor<Entity>
+  ): any {
     if (typeof nameOrModel === 'function') {
-      return makeProxiedRowset(new Table<T, string>(nameOrModel.name));
+      return makeRowset(nameOrModel);
     }
-    return makeProxiedRowset(new Table<T, string>(nameOrModel));
+    return makeProxiedRowset(new Table(nameOrModel));
   },
   /**
    * 声明一个函数
