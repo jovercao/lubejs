@@ -120,12 +120,14 @@ describe('ORM 测试之：repository', function () {
 
   it.only('多对多关系插入测试 - Employee <- EmployeePosition -> Position', async () => {
     const organization = await db.Organization.get(0);
-    const user = await db.User.get(0);
     await db.Employee.insert({
       name: '多对多关系插入测试 - 职员',
       description: '多对多关系插入测试 - Employee <- EmployeePosition -> Position',
       organization,
-      user,
+      user: {
+        name: '新用户',
+        password: '新密码'
+      },
       positions: [
         {
           name: '职员绑定的新职位1',

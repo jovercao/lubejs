@@ -581,7 +581,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     if (skipCompare) {
       await subRepo._submit(subItems, [relation.referenceRelation]);
       const relationItems = subItems.map((subItem: any) => makeRelationItem(subItem));
-      await subRepo._submit(relationItems, [relation.relationRelation]);
+      await relationRepo._insert(relationItems, [relation.relationRelation]);
       return;
     }
 
