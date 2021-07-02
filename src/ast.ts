@@ -3755,11 +3755,12 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 }
 
-abstract class TableColumn<N extends string = string> extends AST {
+abstract class TableColumn<N extends string = string, T extends DbType = DbType> extends AST {
   $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $name: N;
   $nullable: boolean;
-  $dbType: DbType;
+  $dbType: T;
+  $calculate: Expression<TsTypeOf<T>>;
   $identity?: {
     startValue: number;
     increment: number;
@@ -3767,10 +3768,15 @@ abstract class TableColumn<N extends string = string> extends AST {
   // 检查约束
   $check?: Condition;
 
-  constructor(name: N, type: DbType) {
+  constructor(name: N, type: T) {
     super();
     this.$name = name;
     this.$dbType = type;
+  }
+
+  as(expr: Expression<TsTypeOf<T>>): this {
+    this.$calculate = expr;
+    return this;
   }
 
   null(): this {
@@ -3797,7 +3803,7 @@ abstract class TableColumn<N extends string = string> extends AST {
   }
 }
 
-export class TableColumnForAlter<N extends string = string> extends TableColumn {
+export class TableColumnForAlter<N extends string = string, T extends DbType = DbType> extends TableColumn<N, T> {
   $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN = SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
@@ -3843,10 +3849,10 @@ export type CreateTableMember =
   | UniqueKey;
 
 export class TableColumnForAdd<
-  N extends string = string
-  > extends TableColumn<N> {
+  N extends string = string, T extends DbType = DbType
+  > extends TableColumn<N, T> {
   $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
-  $default?: Expression;
+  $default?: Expression<TsTypeOf<T>>;
 
   $primaryKey?: {
     nonclustered: boolean;
@@ -4054,12 +4060,14 @@ export class CreateSequence<
     return this;
   }
 
-  startWith(value: number | Literal<number>) {
+  startWith(value: number | Literal<number>): this {
     this.$startValue = ensureLiteral(value);
+    return this;
   }
 
-  incrementBy(value: number | Literal<number>) {
+  incrementBy(value: number | Literal<number>): this {
     this.$increment = ensureLiteral(value);
+    return this;
   }
 }
 

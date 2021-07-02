@@ -8,11 +8,11 @@ export const config: LubeConfig = {
   configures: {
     DB: {
       driver,
-      host: 'rancher.vm',
+      host: 'jover.wicp.net',
       user: 'sa',
-      password: '!crgd-2021',
+      password: '!crgd-2019',
       database: 'Test',
-      port: 1433,
+      port: 2433,
     },
   },
 };

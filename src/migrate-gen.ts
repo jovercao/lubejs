@@ -86,6 +86,9 @@ export function generateMigrate(
     if (column.defaultValue) {
       sql += `.default(${JSON.stringify(column.defaultValue)})`;
     }
+    if (column.isCalculate) {
+      sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`
+    }
     return sql;
   }
 
@@ -208,7 +211,7 @@ export function generateMigrate(
   }
 
   function genSetDefault(table: Name, column: string, defaultValue: string): string {
-    return `builder.setDefaultValue(${genName(table)}, ${genName(column)}, ${JSON.stringify(defaultValue)})`;
+    return `builder.setDefaultValue(${genName(table)}, ${genName(column)}, SQL.raw(${JSON.stringify(defaultValue)}))`;
   }
 
   function genDropDefault(table: Name, column: string): string {

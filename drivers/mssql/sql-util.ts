@@ -782,6 +782,9 @@ export class MssqlSqlUtil extends SqlUtil {
           sql += ' NONCLUSTERED';
         }
       }
+      if (member.$calculate) {
+        sql += ` AS (${this.sqlifyExpression(member.$calculate)})`;
+      }
       if (member.$default) {
         sql += ` DEFAULT (${this.sqlifyExpression(member.$default)})`
       }

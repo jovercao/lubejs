@@ -15,6 +15,7 @@ import { MigrateBuilder } from './migrate-builder';
 import { mkdir } from 'fs/promises';
 import 'colors';
 import { ConnectOptions } from './lube';
+import { generateUpdateStatements } from './migrate-runner'
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -373,9 +374,43 @@ export class MigrateCli {
     return this._migrateList;
   }
 
+  /**
+   * 列出迁移文件
+   */
   async list(): Promise<void> {
     const list = await this._list();
     console.table(list, ['kind', 'name', 'timestamp', 'path']);
+  }
+
+  /**
+   * 同步架构
+   */
+  async sync(): Promise<void> {
+    const metadata = metadataStore.getContext(
+      this.dbContext.constructor as Constructor<DbContext>
+    );
+
+    const metadataSchema = generateSchema(
+      this.dbContext.executor.sqlUtil,
+      metadata
+    );
+
+    const dbSchema = await this.loadSchema();
+
+    const statements = generateUpdateStatements(this.dbContext.lube.provider.migrateBuilder, metadataSchema, dbSchema, metadata);
+
+    const commands = statements.map(p => this.dbContext.lube.sqlUtil.sqlify(p));
+
+    console.info(`*************************************************`);
+    console.info(`开始开新数据库架构，请稍候......`)
+    await this.dbContext.trans(async instance => {
+      for (const cmd of commands) {
+        outputCommand(cmd);
+        await instance.executor.query(cmd);
+        console.info(`----------------------------------------------------`);
+      }
+    });
+    console.info(`更新数据库架构完成，数据库架构已经更新到与实体一致。`)
   }
 }
 

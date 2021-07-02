@@ -410,7 +410,7 @@ export const DbType = {
       type,
     };
   },
-  raw(name: string): Raw {
+  raw(name: string): any {
     return new Raw(name);
   },
   MAX: 0,
