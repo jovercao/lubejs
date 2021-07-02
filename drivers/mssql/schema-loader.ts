@@ -160,9 +160,7 @@ export async function load(
     const views: ViewSchema[] = (await provider.lube.query(sql)).rows;
 
     for (const view of views) {
-      const cmd = provider.sqlUtil.sqlify(
-        execute('sp_helptext', [view.name])
-      );
+      const cmd = provider.sqlUtil.sqlify(execute('sp_helptext', [view.name]));
       // const code = (await provider.query(cmd.sql, cmd.params)).rows.join('\n');
 
       const rows = (
@@ -260,7 +258,9 @@ export async function load(
         identityIncrement,
         isCalculate,
         calculateExpression,
-        defaultValue: defaultValue ? defaultValue.substr(1, defaultValue.length - 2) : null,
+        defaultValue: defaultValue
+          ? defaultValue.substr(1, defaultValue.length - 2)
+          : null,
         comment,
       };
       columns.push(column);
@@ -430,9 +430,17 @@ export async function load(
           i.type.in(1, 2)
         )
       );
-    const st = provider.sqlUtil.sqlify(sql);
-    const { rows } = await provider.query(st.sql);
-    const indexes: IndexSchema[] = rows;
+    // const st = provider.sqlUtil.sqlify(sql);
+    const { rows } = await provider.lube.query(sql);
+    const indexes: IndexSchema[] = rows.map(
+      ({ name, isUnique, isClustered, comment }) => ({
+        name,
+        isUnique,
+        isClustered,
+        comment,
+        columns: null
+      })
+    );
 
     const ic = table(['index_columns', 'sys']).as('ic');
     // const ik = table('sysindexkeys').as('ik')

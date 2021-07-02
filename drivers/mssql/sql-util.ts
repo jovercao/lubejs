@@ -671,15 +671,23 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyDropIndex(table: Name, name: string): string {
-    return `DROP INDEX ${this.sqlifyName([name, ...table] as Name)}`;
+    return `DROP INDEX ${this.sqlifyName(table)}.${this.quoted(name)}`;
   }
 
   protected sqlifyCreateIndex(statement: CreateIndex): string {
-    return `CREATE INDEX ${this.sqlifyName(
+    let sql = 'CREATE '
+    if (statement.$unique) {
+      sql += 'UNIQUE ';
+    }
+    if (statement.$clustered) {
+      sql += 'CLUSTERED '
+    }
+    sql += `INDEX ${this.sqlifyName(
       statement.$name
     )} ON ${this.sqlifyName(statement.$table)}(${statement.$columns
       .map(col => `${this.quoted(col.name)} ${col.sort}`)
       .join(', ')})`;
+    return sql;
   }
 
   protected sqlifyDropFunction(name: Name): string {

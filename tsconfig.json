@@ -14,6 +14,8 @@
       "ES2017"
     ],
     "paths": {
+      "lubejs-mssql/*": ["./drivers/mssql/*"],
+      "lubejs/*": ["./src/*"],
       "lubejs-mssql": ["./drivers/mssql"],
       "lubejs": ["./src"]
     }

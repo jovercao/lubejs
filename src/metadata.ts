@@ -20,6 +20,9 @@ import {
   EntityType,
   Scalar,
   ScalarType,
+  Uuid,
+  UUID,
+  UuidConstructor,
 } from './types';
 import { isClass } from './util';
 
@@ -107,6 +110,7 @@ export class EntityMetadataClass {
   private _columnMap: Record<string, ColumnMetadata> = {};
   private _columns: ColumnMetadata[] = [];
   private _relationMap: Record<string, RelationMetadata> = {};
+  private _indexMap: Record<string, IndexMetadata> = {};
   private _reations: RelationMetadata[] = [];
   private _indexes: IndexMetadata[] = [];
 
@@ -115,7 +119,11 @@ export class EntityMetadataClass {
   }
 
   addIndex(index: IndexMetadata): this {
+    if (this._indexMap[index.name]) {
+      throw new Error(`Index ${index.name} is exists in Entity.`)
+    }
     this._indexes.push(index);
+    this._indexMap[index.name] = index;
     return this;
   }
 
@@ -157,6 +165,10 @@ export class EntityMetadataClass {
 
   getRelation(name: string): RelationMetadata {
     return this._relationMap[name];
+  }
+
+  getIndex(name: string): IndexMetadata {
+    return this._indexMap[name];
   }
 
   private _detailIncludes: FetchRelations<any>;
@@ -268,6 +280,11 @@ export class DbContextMetadata {
   class: DbContextConstructor;
   database: string;
   className: string;
+  /**
+   * 全局主键字段名称
+   */
+  globalKeyName: string;
+  globalKeyType: NumberConstructor | StringConstructor | BigIntConstructor | UuidConstructor;
   private _entitiyMap: Map<Constructor<Entity>, EntityMetadata> = new Map();
   private _entities: EntityMetadata[] = [];
   get entities(): ReadonlyArray<EntityMetadata> {
@@ -556,17 +573,12 @@ export interface PrimaryOneToOneMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail?: boolean;
+  isDetail: boolean;
 
   /**
    * 摘要描述
    */
   comment?: string;
-
-  /**
-   * 是否可空
-   */
-  isNullable?: undefined;
 }
 
 /**
@@ -603,6 +615,12 @@ export interface ForeignOneToOneMetadata {
    * 引用实体指向当前表的属性
    */
   referenceProperty: string;
+
+  // TODO: 添加索引
+  /**
+   * 索引名称
+   */
+  indexName: string;
 
   /**
    * 对方的引用声明
@@ -679,7 +697,7 @@ export interface OneToManyMetadata {
   /**
    * 摘要描述
    */
-  comment: string;
+  comment?: string;
 
   /**
    * 将该关系声明为明细属性，在主从表单据中非常有用；
@@ -690,12 +708,7 @@ export interface OneToManyMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail: boolean;
-
-  /**
-   * 是否可空
-   */
-  isNullable: boolean;
+  isDetail?: boolean;
 }
 /**
  * 一对多引用属性
@@ -720,6 +733,11 @@ export interface ManyToOneMetadata {
    * 外键列
    */
   foreignColumn: ColumnMetadata;
+
+  /**
+   * 外键字段所建立的索引名称
+   */
+  indexName: string;
 
   /**
    * 关联实体
@@ -842,10 +860,6 @@ export interface ManyToManyMetadata {
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
   isDetail: boolean;
-  /**
-   * 是否可空
-   */
-  isNullable: boolean;
   /**
    * 是否级联删除
    */

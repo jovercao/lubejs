@@ -106,6 +106,7 @@ import {
   RowObject,
   Scalar,
   ScalarType,
+  Uuid,
 } from './types';
 
 /**
@@ -329,6 +330,7 @@ export function isScalar(value: any): value is Scalar {
     value === null ||
     value === undefined ||
     value instanceof Date ||
+    value instanceof Uuid ||
     isBinary(value)
   );
 }
@@ -465,11 +467,11 @@ export function isDropTable(value: any): value is DropTable {
 }
 
 export function isCreateView(value: any): value is CreateView {
-  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+  return value?.$type === SQL_SYMBOLE.CREATE_VIEW;
 }
 
 export function isAlterView(value: any): value is AlterView {
-  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+  return value?.$type === SQL_SYMBOLE.ALTER_VIEW;
 }
 
 export function isDropView(value: any): value is DropView {
@@ -481,35 +483,35 @@ export function isBlock(value: any): value is Block {
 }
 
 export function isCreateProcedure(value: any): value is CreateProcedure {
-  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+  return value?.$type === SQL_SYMBOLE.CREATE_PROCEDURE;
 }
 
 export function isAlterProcedure(value: any): value is AlterProcedure {
-  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+  return value?.$type === SQL_SYMBOLE.ALTER_PROCEDURE;
 }
 
 export function isDropProcedure(value: any): value is DropProcedure {
-  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+  return value?.$type === SQL_SYMBOLE.DROP_PROCEDURE;
 }
 
 export function isCreateFunction(value: any): value is CreateFunction {
-  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+  return value?.$type === SQL_SYMBOLE.CREATE_FUNCTION;
 }
 
 export function isAlterFunction(value: any): value is AlterFunction {
-  return value?.$type === SQL_SYMBOLE.ALTER_TABLE;
+  return value?.$type === SQL_SYMBOLE.ALTER_FUNCTION;
 }
 
 export function isDropFunction(value: any): value is DropFunction {
-  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+  return value?.$type === SQL_SYMBOLE.DROP_FUNCETION;
 }
 
 export function isCreateIndex(value: any): value is CreateIndex {
-  return value?.$type === SQL_SYMBOLE.CREATE_TABLE;
+  return value?.$type === SQL_SYMBOLE.CREATE_INDEX;
 }
 
 export function isDropIndex(value: any): value is DropIndex {
-  return value?.$type === SQL_SYMBOLE.DROP_TABLE;
+  return value?.$type === SQL_SYMBOLE.DROP_INDEX;
 }
 
 export function isCreateSequence(value: any): value is CreateSequence {

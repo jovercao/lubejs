@@ -31,6 +31,7 @@ import {
   isPrimaryOneToOne,
   isOneToMany,
   IndexMetadata,
+  ForeignRelation,
 } from './metadata';
 import {
   Constructor,
@@ -43,6 +44,8 @@ import {
   DataTypeOf,
   isSameDbType,
   TsTypeOf,
+  UuidConstructor,
+  Uuid,
 } from './types';
 import { assign, complex, ensureExpression, lowerFirst } from './util';
 
@@ -77,7 +80,7 @@ function fixColumn(
     column.columnName = column.property;
   }
   if (!column.dbType) {
-    column.dbType = getDefaultDbType(column.type);
+    column.dbType = dataTypeToDbType(column.type);
   }
   if (column.isIdentity) {
     if (column.identityStartValue === undefined) {
@@ -121,6 +124,41 @@ function fixEntityIndexes(entity: TableEntityMetadata) {
   }
 }
 
+function fixRelationIndex(entity: TableEntityMetadata, relation: ForeignRelation) {
+  if (!relation.indexName) {
+    relation.indexName = `${isForeignOneToOne(relation) ? 'UX' : 'IX'}_${entity.tableName}_${relation.foreignColumn.columnName}`;
+  }
+  let index = entity.getIndex(relation.indexName);
+  if (!index) {
+    index = {
+      name: relation.indexName
+    } as IndexMetadata;
+    entity.addIndex(index)
+  } else {
+    if (index.properties && (index.properties.length !== 1 || index.properties[0] !== relation.foreignProperty)) {
+      throw new Error(`Entity ${entity.className} index ${index.name} not satisfied for relation ${relation.property}`)
+    }
+  }
+
+  if (!index.properties) {
+    index.properties = [relation.foreignProperty]
+  }
+  if (!index.columns) {
+    index.columns = index.properties.map(prop => ({
+      column: entity.getColumn(prop),
+      isAscending: true
+    }));
+  }
+
+  if (!Reflect.has(index, 'isUnique')) {
+    index.isUnique = isForeignOneToOne(relation);
+  }
+
+  if (!Reflect.has(index, 'isClustered')) {
+    index.isClustered = false;
+  }
+}
+
 /**
  * 修复多对一声明
  * @param ctx
@@ -143,30 +181,39 @@ function fixManyToOne(
     relation.isCascade = false;
   }
 
-  ensureReferenceEntity(ctx, entity, relation);
-  ensureForeignProperty(entity, relation);
+  fixReferenceEntity(ctx, entity, relation);
+  fixForeignProperty(entity, relation);
 
-  // 如果有声明对向属性的，将属性关联起来，未声明的无须理会
-  if (relation.referenceProperty && !relation.referenceRelation) {
-    const exists = relation.referenceEntity.getRelation(
+  fixRelationIndex(entity, relation);
+
+  if (!relation.referenceProperty) {
+    relation.referenceProperty = genRelationProperty(entity.className, 'many');
+  }
+
+  if (!relation.referenceRelation) {
+    let referenceRelation = relation.referenceEntity.getRelation(
       relation.referenceProperty
     );
-    if (!exists) {
-      throw new Error(
-        `Relation ${entity.className}.${relation.property} reference relation ${relation.referenceEntity.className}.${relation.referenceProperty} is not found.`
-      );
+    if (referenceRelation) {
+      if (!isOneToMany(referenceRelation)) {
+        throw new Error(`ManyToOneRelation ${entity.className}.${relation.property} must reference OneToManyRelation`);
+      }
+      relation.referenceRelation = referenceRelation;
+    } else {
+      referenceRelation = {
+        isImplicit: true,
+        kind: 'ONE_TO_MANY',
+        property: relation.referenceProperty,
+        referenceClass: entity.class,
+        referenceEntity: entity,
+        referenceProperty: relation.property,
+        referenceRelation: relation,
+        isDetail: false
+      }
+      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceRelation = referenceRelation;
+      fixOneToMany(ctx, relation.referenceEntity, referenceRelation);
     }
-    if (!isOneToMany(exists)) {
-      throw new Error(
-        `Relation ${entity.className}.${relation.property}  reference relation ${relation.referenceEntity.className}.${relation.referenceProperty} expect 'ONE_TO_MANY' but ${exists.kind} found`
-      );
-    }
-    // if (exists.referenceClass !== entity.class) {
-    //   throw new Error(
-    //     `Relation ${entity.classname}.${relation.property}  reference relation ${relation.referenceEntity.classname}.${relation.referenceProperty} type error.`
-    //   );
-    // }
-    relation.referenceRelation = exists as OneToManyMetadata;
   }
 }
 
@@ -181,18 +228,18 @@ function fixOneToMany(
   entity: TableEntityMetadata,
   relation: OneToManyMetadata
 ) {
-  ensureReferenceEntity(ctx, entity, relation);
+  fixReferenceEntity(ctx, entity, relation);
   // 如果未指定该属性，则查找该属性
   // 如果未查找到该属性，则定义该属性
   if (!relation.referenceProperty) {
-    const referenceProperty = lowerFirst(complex(entity.className));
+    const referenceProperty = genRelationProperty(entity.className, 'one');
     relation.referenceProperty = referenceProperty;
   }
 
   if (!relation.referenceRelation) {
     let referenceRelation = relation.referenceEntity.getRelation(
       relation.referenceProperty
-    );
+    ) as ManyToOneMetadata;
     if (!referenceRelation) {
       const foreignProperty = `${relation.referenceProperty}Id`;
       referenceRelation = {
@@ -208,17 +255,18 @@ function fixOneToMany(
         referenceRelation: relation,
         isRequired: false,
         foreignColumn: null,
-      };
+      } as ManyToOneMetadata;
+      relation.referenceRelation = referenceRelation;
       // 创建隐式规则
       relation.referenceEntity.addMember(referenceRelation);
-      ensureForeignProperty(relation.referenceEntity, referenceRelation);
-    }
-    if (isManyToOne(referenceRelation)) {
-      relation.referenceRelation = referenceRelation;
+      fixForeignProperty(relation.referenceEntity, referenceRelation);
     } else {
-      throw new Error(
-        `OneToMany's referenct property must ManyToOne relation.`
-      );
+      if (!isManyToOne(referenceRelation)) {
+        throw new Error(
+          `OneToMany's referenct property must ManyToOne relation.`
+        );
+      }
+      relation.referenceRelation = referenceRelation;
     }
   }
 }
@@ -242,21 +290,22 @@ function fixEntity(builder: ContextBuilder, entity: EntityMetadata): void {
     keyColumn.isPrimaryKey = true;
     entity.keyColumn = keyColumn;
   } else {
-    let keyColumn =
-      entity.getColumn('Id') ||
-      entity.getColumn('id') ||
-      entity.getColumn('ID') ||
-      entity.getColumn(`${entity.className}Id`) ||
-      entity.getColumn(`${lowerFirst(entity.className)}Id`);
+    if (!entity.keyProperty) {
+      entity.keyProperty = builder.metadata.globalKeyName;
+      builder.metadata.globalKeyType = BigInt;
+    }
+
+    let keyColumn = entity.getColumn(entity.keyProperty);
 
     if (!keyColumn) {
+      // 隐式主键
       keyColumn = {
         kind: 'COLUMN',
         isImplicit: true,
-        property: 'id',
+        property: builder.metadata.globalKeyName,
         type: Number,
-        columnName: 'id',
-        dbType: DbType.int64,
+        columnName: builder.metadata.globalKeyName,
+        dbType: dataTypeToDbType(builder.metadata.globalKeyType),
         isIdentity: true,
         identityStartValue: 0,
         identityIncrement: 1,
@@ -284,12 +333,14 @@ function fixManyToMany(
   entity: TableEntityMetadata,
   relation: ManyToManyMetadata
 ) {
+  // 不支持自引用多对多关系
+  if (relation.referenceClass === entity.class) {
+    throw new Error(`Not support self reference many to many relation.`)
+  }
   const ctx = ctxBuilder.metadata;
-  ensureReferenceEntity(ctx, entity, relation);
+  fixReferenceEntity(ctx, entity, relation);
   if (!relation.referenceProperty) {
-    const referenceProperty = lowerFirst(complex(entity.className));
-    assertEntityMember(entity, referenceProperty, 'MANY_TO_MANY');
-    relation.referenceProperty = referenceProperty;
+    relation.referenceProperty = genRelationProperty(entity.className, 'many');
   }
 
   let referenceRelation = relation.referenceEntity.getRelation(
@@ -299,15 +350,11 @@ function fixManyToMany(
   if (!relation.relationClass) {
     if (!referenceRelation?.relationClass) {
       relation.relationClass = class extends Entity { };
-      ctxBuilder
+      relation.relationEntity = ctxBuilder
         .entity<any>(relation.relationClass)
         .asTable(
-          `${entity.className}${relation.referenceEntity.className}`,
-          builder => {
-            relation.relationEntity = builder.metadata as TableEntityMetadata;
-          }
-        );
-
+          `${entity.className}${relation.referenceEntity.className}`
+        ).metadata;
       fixEntity(ctxBuilder, relation.relationEntity);
     } else {
       relation.relationClass = referenceRelation.relationClass;
@@ -315,54 +362,35 @@ function fixManyToMany(
     }
   }
 
-  if (!referenceRelation.relationClass) {
-    referenceRelation.relationClass = relation.relationClass;
-    referenceRelation.relationEntity = relation.relationEntity;
+  if (!relation.relationProperty) {
+    relation.relationProperty = relation.relationClass.name || `${lowerFirst(entity.className)}`;
   }
 
-  // 查找中间表对应当前表的ManyToOne外键属性
-  let realtionEntityToThis = relation.relationEntity.members.find(
-    p => isManyToOne(p) && p.referenceClass === entity.class
-  ) as ManyToOneMetadata;
-
-  // 如果未找到，则声明
-  if (!realtionEntityToThis) {
-    realtionEntityToThis = {
-      property: genRelationProperty(
-        relation.relationEntity,
-        entity.className,
-        'one'
-      ),
-      isImplicit: true,
-      kind: 'MANY_TO_ONE',
-      referenceClass: entity.class,
-      referenceEntity: entity,
-      foreignProperty: `${lowerFirst(entity.className)}Id`,
-      isRequired: true,
-    } as ManyToOneMetadata;
-    // 自动声明外键
-    ensureForeignProperty(relation.relationEntity, realtionEntityToThis);
-    relation.relationEntity.addMember(realtionEntityToThis);
+  if (!relation.relationRelation) {
+    let relationRelation = entity.getRelation(relation.relationProperty);
+    if (relationRelation) {
+      if (!isOneToMany(relationRelation)) {
+        throw new Error(`Relation ${entity.className}`)
+      }
+      relation.relationRelation = relationRelation;
+    } else {
+      relationRelation = {
+        kind: 'ONE_TO_MANY',
+        isImplicit: true,
+        property: relation.relationProperty,
+        isDetail: relation.isDetail,
+        referenceClass: relation.relationClass,
+        referenceEntity: relation.relationEntity,
+        referenceProperty: null,
+        referenceRelation: null,
+      }
+      relation.relationRelation = relationRelation;
+      entity.addMember(relationRelation);
+      fixOneToMany(ctx, entity, relationRelation);
+    }
   }
-
-  // 添加到关系表的导航属性
-  const relationRelation = {
-    property: complex(relation.relationEntity.className),
-    isImplicit: true,
-    kind: 'ONE_TO_MANY',
-    referenceClass: relation.relationClass,
-    referenceEntity: relation.relationEntity as EntityMetadata,
-    referenceProperty: realtionEntityToThis.property,
-    referenceRelation: realtionEntityToThis,
-  } as OneToManyMetadata;
-  entity.addMember(relationRelation);
-
-  relation.relationRelation = relationRelation;
-  realtionEntityToThis.referenceProperty = relation.relationRelation.property;
-  realtionEntityToThis.referenceRelation = relation.relationRelation;
 
   if (!referenceRelation) {
-    // 创建隐式一对多导航属性
     referenceRelation = {
       property: relation.referenceProperty,
       kind: 'MANY_TO_MANY',
@@ -373,18 +401,16 @@ function fixManyToMany(
       referenceRelation: relation,
       relationClass: relation.relationClass,
       relationEntity: relation.relationEntity,
-      isNullable: true,
     } as ManyToManyMetadata;
     relation.referenceEntity.addMember(referenceRelation);
-    fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
-  }
-
-  if (isManyToMany(referenceRelation)) {
     relation.referenceRelation = referenceRelation;
+    fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
   } else {
-    throw new Error(
-      `ManyToMany relation reference property must ManyToMany relation too.`
-    );
+    if (!isManyToMany(referenceRelation)) {
+      throw new Error(
+        `ManyToMany relation reference property must ManyToMany relation too.`
+      );
+    }
   }
 }
 
@@ -399,82 +425,95 @@ function fixOneToOne(
   entity: TableEntityMetadata,
   relation: OneToOneMetadata
 ) {
+  if (relation.isPrimary === true) {
+    fixPrimaryOneToOne(ctx, entity, relation);
+  } else {
+    fixForeignOneToOne(ctx, entity, relation);
+  }
+}
+
+function fixPrimaryOneToOne(ctx: DbContextMetadata, entity: TableEntityMetadata, relation: PrimaryOneToOneMetadata) {
   if (!Reflect.has(relation, 'comment')) {
     relation.comment = undefined;
   }
-  ensureReferenceEntity(ctx, entity, relation);
-  if (relation.isPrimary === true) {
-    if (!relation.referenceProperty) {
-      const referenceProperty = lowerFirst(entity.className);
-      assertEntityMember(
-        relation.referenceEntity,
-        referenceProperty,
-        'ONE_TO_ONE'
-      );
-      if (relation.isPrimary) {
-        throw new Error(
-          `Reference property must kind of foreign one to one relation.`
-        );
-      }
-      relation.referenceProperty = referenceProperty;
-    }
-    if (!relation.referenceRelation) {
-      let referenceRelation = relation.referenceEntity.getRelation(
-        relation.referenceProperty
-      );
+  fixReferenceEntity(ctx, entity, relation);
+  if (!relation.referenceProperty) {
+    relation.referenceProperty = genRelationProperty(entity.className, 'one');
+  }
 
-      if (!referenceRelation) {
-        referenceRelation = {
-          isImplicit: true,
-          kind: 'ONE_TO_ONE',
-          isPrimary: false,
-          property: relation.referenceProperty,
-          referenceClass: entity.class,
-          referenceEntity: entity,
-          referenceProperty: relation.property,
-          referenceRelation: relation,
-        } as ForeignOneToOneMetadata;
-        relation.referenceEntity.addMember(referenceRelation);
-        // 生成外键
-        ensureForeignProperty(relation.referenceEntity, referenceRelation);
-      }
-      if (isForeignOneToOne(referenceRelation)) {
-        relation.referenceRelation = referenceRelation;
-      } else {
+  if (!relation.referenceRelation) {
+    let referenceRelation = relation.referenceEntity.getRelation(
+      relation.referenceProperty
+    );
+
+    if (referenceRelation) {
+      if (!isForeignOneToOne(referenceRelation)) {
         throw new Error(
           `PrimaryOneToOne's referenct property must ForeignOneToOne relation.`
         );
       }
+      relation.referenceRelation = referenceRelation as ForeignOneToOneMetadata;
+    } else {
+      referenceRelation = {
+        isImplicit: true,
+        kind: 'ONE_TO_ONE',
+        isPrimary: false,
+        property: relation.referenceProperty,
+        referenceClass: entity.class,
+        referenceEntity: entity,
+        referenceProperty: relation.property,
+        referenceRelation: relation,
+      } as ForeignOneToOneMetadata;
+      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceRelation = referenceRelation as ForeignOneToOneMetadata;
+      fixForeignOneToOne(ctx, relation.referenceEntity, referenceRelation);
     }
-  } else {
-    if (!Reflect.has(relation, 'isNullable')) {
-      relation.isRequired = true;
-    }
-    if (!Reflect.has(relation, 'isCascade')) {
-      relation.isCascade = false;
-    }
-    ensureForeignProperty(entity, relation);
-    if (relation.referenceProperty && !relation.referenceRelation) {
-      const exists = relation.referenceEntity.getRelation(
-        relation.referenceProperty
-      );
-      if (!exists) {
-        throw new Error(
-          `Entity ${relation.referenceEntity.className} relation not exists ${relation.referenceProperty}`
-        );
-      }
-      if (!isPrimaryOneToOne(exists)) {
+  }
+}
+
+function fixForeignOneToOne(ctx: DbContextMetadata, entity: TableEntityMetadata, relation: ForeignOneToOneMetadata) {
+  if (!Reflect.has(relation, 'comment')) {
+    relation.comment = undefined;
+  }
+  fixReferenceEntity(ctx, entity, relation);
+  if (!Reflect.has(relation, 'isRequired')) {
+    relation.isRequired = false;
+  }
+  if (!Reflect.has(relation, 'isCascade')) {
+    relation.isCascade = false;
+  }
+
+  fixForeignProperty(entity, relation);
+
+  fixRelationIndex(entity, relation);
+
+  if (!relation.referenceProperty) {
+    relation.referenceProperty = genRelationProperty(entity.className, 'one');
+  }
+
+  if (!relation.referenceRelation) {
+    let referenceRelation: OneToOneMetadata = relation.referenceEntity.getRelation(relation.referenceProperty) as OneToOneMetadata;
+    if (!referenceRelation) {
+      referenceRelation = {
+        kind: 'ONE_TO_ONE',
+        isImplicit: true,
+        referenceClass: entity.class,
+        referenceEntity: entity,
+        isPrimary: true,
+        referenceRelation: relation,
+        property: relation.referenceProperty,
+        isDetail: false,
+      };
+      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceRelation = referenceRelation;
+      fixOneToOne(ctx, relation.referenceEntity, referenceRelation);
+    } else {
+      if (!isPrimaryOneToOne(referenceRelation)) {
         throw new Error(
           `ForeignOneToOne's referenct property must PrimaryOneToOne relation.`
         );
       }
-      // TIPS: TS 过滤掉了，可以省掉此代码以节省性能
-      // if (exists.referenceClass !== entity.class) {
-      //   throw new Error(
-      //     `Relation ${entity.classname}.${relation.property} reference relation ${relation.referenceEntity.classname}.${relation.referenceProperty} type error.`
-      //   );
-      // }
-      relation.referenceRelation = exists as PrimaryOneToOneMetadata;
+      relation.referenceRelation = referenceRelation;
     }
   }
 }
@@ -484,7 +523,7 @@ function fixOneToOne(
  * @param entity
  * @param relation
  */
-function ensureForeignProperty(
+function fixForeignProperty(
   entity: TableEntityMetadata,
   relation: ManyToOneMetadata | ForeignOneToOneMetadata
 ): void {
@@ -537,7 +576,7 @@ function ensureForeignProperty(
   }
 }
 
-function ensureReferenceEntity(
+function fixReferenceEntity(
   ctx: DbContextMetadata,
   entity: TableEntityMetadata,
   relation: RelationMetadata
@@ -566,7 +605,7 @@ function ensureReferenceEntity(
  * @returns
  */
 function genRelationProperty(
-  entity: TableEntityMetadata,
+  // entity: TableEntityMetadata,
   referenceType: string,
   type: 'one' | 'many'
 ): string {
@@ -574,9 +613,9 @@ function genRelationProperty(
   if (type === 'many') {
     property = complex(property);
   }
-  while (entity.getMember(property)) {
-    property = '_' + property;
-  }
+  // while (entity.getMember(property)) {
+  //   property = '_' + property;
+  // }
   return property;
 }
 
@@ -728,6 +767,10 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       this.metadata.database = this.metadata.className;
     }
 
+    if (!this.metadata.globalKeyName) {
+      this.metadata.globalKeyName = 'id';
+    }
+
     for (const entity of this.metadata.entities) {
       fixEntity(this, entity);
     }
@@ -735,13 +778,22 @@ export class ContextBuilder<T extends DbContext = DbContext> {
     // 处理关联关系
     for (const entity of this.metadata.entities) {
       if (!isTableEntity(entity)) continue;
-      fixEntityRelations(this, entity);
       fixEntityIndexes(entity);
+      fixEntityRelations(this, entity);
     }
 
     this._completed = true;
     // 注册进 metadataStore中
     metadataStore.registerContext(this.metadata);
+  }
+
+  /**
+   * 指定全局主键字段名称
+   */
+  hasGlobalKey(name: string, type: NumberConstructor | StringConstructor | BigIntConstructor | UuidConstructor): this {
+    this.metadata.globalKeyName = name;
+    this.metadata.globalKeyType = type;
+    return this;
   }
 }
 
@@ -768,13 +820,13 @@ function fixEntityRelations(
 }
 
 /**
- * ts类型转换为默认数据库类型
+ * Js类型转换为默认数据库类型
  * @param dataType
  * @returns
  */
-function getDefaultDbType(dataType: DataType): DbType {
+function dataTypeToDbType(dataType: DataType): DbType {
   if (Array.isArray(dataType)) {
-    return DbType.array(getDefaultDbType(dataType[0]));
+    return DbType.array(dataTypeToDbType(dataType[0]));
   }
   switch (dataType) {
     case String:
@@ -793,6 +845,8 @@ function getDefaultDbType(dataType: DataType): DbType {
       return DbType.object();
     case BigInt:
       return DbType.int64;
+    case Uuid:
+      return DbType.uuid;
     default:
       throw new Error(`Unsupport to default db type ${dataType}`);
   }
@@ -1046,7 +1100,7 @@ export abstract class EntityBuilder<T extends Entity> {
  * 表实体构造器
  */
 export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  public readonly metadata: Partial<TableEntityMetadata>;
+  public readonly metadata: TableEntityMetadata;
 
   private assertRelation(property: string) {
     if (this.memberMaps.has(property)) {
@@ -1078,13 +1132,14 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
   }
 
   hasIndex(
+    name: string,
     selector: (p: T) => Scalar[],
     isUnique: boolean = false,
     isClustered: boolean = false
   ): this {
     const properties: string[] = selectProperty(selector);
     this.metadata.addIndex({
-      name: undefined,
+      name,
       properties,
       columns: null,
       isUnique,
@@ -1153,7 +1208,6 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
       referenceClass: type,
       referenceEntity: this.modelBuilder.entity(type)
         .metadata as TableEntityMetadata,
-      isNullable: true,
       property: property,
       isDetail: false,
       isImplicit: false,

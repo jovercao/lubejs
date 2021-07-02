@@ -15,6 +15,7 @@ import {
   SqlBuilder as SQL
 } from './ast';
 import { ROWSET_ALIAS } from './constants';
+import { DbContext, DbInstance } from './db-context';
 import { Executor } from './execute';
 import {
   EntityMetadata,
@@ -53,7 +54,9 @@ export class Queryable<T extends Entity | RowObject>
   private _where: CompatibleCondition;
   private _sorts: CompatibleSortInfo;
   private _includes: FetchRelations<T>;
-  protected executor: Executor;
+  protected get executor(): Executor {
+    return this.context.executor;
+  };
   /**
    * 默认使用缓存
    */
@@ -61,18 +64,14 @@ export class Queryable<T extends Entity | RowObject>
   private _withDetail: boolean = false;
 
   constructor(
-    executor: Executor,
-    ctr: Constructor<T> // constructor(
-  ) //   executor: Executor,
-  //   rowsetOrCtr: Constructor<T & Entity>
-  // )
-  {
-    this.executor = executor;
-    this.metadata = metadataStore.getEntity(ctr as Constructor<Entity>);
+    protected context: DbInstance,
+    Entity: Constructor<T> // constructor(
+  ) {
+    this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
     if (!this.metadata) {
       throw new Error(`Only allow register entity constructor.`);
     }
-    this.rowset = makeRowset<any>(ctr) as ProxiedRowset<T>;
+    this.rowset = makeRowset<any>(Entity) as ProxiedRowset<T>;
   }
 
   private _appendWhere(where: CompatibleCondition<T>): this {
@@ -142,7 +141,7 @@ export class Queryable<T extends Entity | RowObject>
    */
   private create<T extends RowObject>(rowset: ProxiedRowset<T>): Queryable<T> {
     const queryable: Queryable<T> = Object.create(Queryable.prototype);
-    queryable.executor = this.executor;
+    queryable.context = this.context;
     queryable.rowset = rowset;
     return queryable;
   }
@@ -278,6 +277,7 @@ export class Queryable<T extends Entity | RowObject>
     if (!this.metadata) {
       return rows[0];
     }
+    if (!rows[0]) return null;
     const item = this.toEntity(rows[0]);
     if (this._withDetail) {
       await this.loadRelation(item, this.metadata.getDetailIncludes());
@@ -299,7 +299,7 @@ export class Queryable<T extends Entity | RowObject>
       if (subIncludes === true) subIncludes = null;
 
       const relationQueryable = new Queryable<any>(
-        this.executor,
+        this.context,
         relation.referenceEntity.class as Constructor<any>
       );
       if (subIncludes) {

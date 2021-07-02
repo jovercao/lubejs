@@ -9,6 +9,7 @@
 
 import { Raw } from './ast'
 import { deepthEqual } from "./util";
+import { parse, stringify, v4 } from 'uuid';
 
 export const EntitySymble = Symbol("LUBEJS#Entity");
 
@@ -17,7 +18,7 @@ export const EntitySymble = Symbol("LUBEJS#Entity");
  * 不一定非得从此继承
  */
 export class Entity {
-  static create<T extends Entity>(entity: Constructor<T>, data: T): T {
+  static create<T extends Entity>(data: T): T {
     Object.setPrototypeOf(data, this.prototype);
     return data;
     // const item = Object.create(this);
@@ -25,6 +26,13 @@ export class Entity {
     // return item;
   }
 }
+
+export type DbEvents = 'submit' | 'insert' | 'update' | 'delete' | 'submited' | 'inserted' | 'updated' | 'deleted';
+
+export type RepositoryEventHandler<T> = (items: T[]) => void;
+
+export type DbContextEventHandler = (event: DbEvents, Entity: Entity, items: Entity[]) => void;
+
 
 // **********************************类型声明******************************************
 
@@ -44,10 +52,54 @@ export type Scalar =
   | number
   | bigint
   | Date
-  | Binary;
+  | Binary
+  | Uuid;
 // TODO: 适配 JSON 和 ARRAY数据类型
 // | RowObject
 // | Array<ScalarType>
+
+export class Uuid {
+  private constructor(strOrBuffer?: string | ArrayLike<number>) {
+    if (typeof strOrBuffer === 'string') {
+      this._buffer = Array.from(parse(strOrBuffer));
+    } else if (strOrBuffer) {
+      this._buffer = Array.from(strOrBuffer);
+    }
+  }
+
+  readonly [n: number]: number;
+  length: number;
+  private _buffer: number[];
+
+  toString(): string {
+    return stringify(this._buffer || Uuid.DEFAULT);
+  }
+
+  private static DEFAULT = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  static new(): Uuid {
+    const uuid = new Uuid();
+    v4({}, uuid._buffer);
+    return uuid;
+  }
+
+  static from(strOrBuffer: string | ArrayLike<number>): Uuid {
+    return new Uuid(strOrBuffer);
+  }
+
+  static readonly empty = new Uuid;
+
+  static equals(left: Uuid, right: Uuid): boolean {
+    for (let i = 0; i < 16; i++) {
+      if (left._buffer[i] !== right._buffer[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+}
+
+export type UuidConstructor = typeof Uuid;
 
 export type ScalarType =
   | StringConstructor
@@ -59,7 +111,8 @@ export type ScalarType =
   | typeof Buffer
   | SharedArrayBufferConstructor
   | ObjectConstructor
-  | ArrayConstructor;
+  | ArrayConstructor
+  | UuidConstructor;
 
 export type INT64 = {
   readonly name: "INT64";
@@ -257,15 +310,15 @@ export type DataTypeOf<T> = T extends string
   ? ObjectConstructor
   : T extends (infer M)[]
   ? M extends object
-    ? [Constructor<M>]
-    : [DataTypeOf<M>]
+  ? [Constructor<M>]
+  : [DataTypeOf<M>]
   : never;
 
 /**
  * 构造函数，即类本身
  */
 export type Constructor<T = object> = {
-  new (...args: any): T;
+  new(...args: any): T;
 };
 
 export type EntityType = Constructor<Entity>;
@@ -273,7 +326,7 @@ export type EntityType = Constructor<Entity>;
 /******************************* Model 相关声明 *********************************/
 export type ListType<
   T extends ScalarType | EntityType = ScalarType | EntityType
-> = [T];
+  > = [T];
 
 /**
  * Metadata中的数据类型
@@ -362,3 +415,21 @@ export const DbType = {
   },
   MAX: 0,
 };
+
+/**
+ * 用于做实体主键类型
+ * 用户可自行使用 合并声明扩展
+ */
+export interface EntityKey {
+
+}
+
+/**
+ * 主键的类型
+ */
+export type EntityKeyType = EntityKey[keyof EntityKey];
+
+/**
+ * 主键字段字面量类型
+ */
+export type EntityKeyName = keyof EntityKey;

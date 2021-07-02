@@ -71,8 +71,10 @@
     "access": "public"
   },
   "dependencies": {
+    "@types/uuid": "^8.3.0",
     "colors": "^1.4.0",
     "commander": "^7.2.0",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "uuid": "^8.3.2"
   }
 }

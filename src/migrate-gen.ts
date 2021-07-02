@@ -189,11 +189,11 @@ export function generateMigrate(
       }(${genName(constraint)}))`;
   }
 
-  function genCreateIndex(table: Name, index: IndexSchema): string {
-    return `builder.createIndex(${genName(index.name)}).on(${genName(
-      table
-    )}, ${genKeyColumns(index.columns)})`;
-  }
+  // function genCreateIndex(table: Name, index: IndexSchema): string {
+  //   return `builder.createIndex(${genName(index.name)}).on(${genName(
+  //     table
+  //   )}, ${genKeyColumns(index.columns)})`;
+  // }
 
   function genAddColumn(table: Name, column: ColumnSchema): string {
     return `builder.alterTable(${genName(table)}).add(builder => ${genColumnForAdd(
@@ -268,7 +268,7 @@ export function generateMigrate(
     return `builder.dropSequence(${genName(name)})`;
   }
 
-  function genAddIndex(table: Name<string>, index: IndexSchema): string {
+  function genCreateIndex(table: Name<string>, index: IndexSchema): string {
     let sql = `builder.createIndex(${genName(index.name)}).on(${genName(
       table
     )}, ${genKeyColumns(index.columns)})`;
@@ -582,7 +582,7 @@ export function generateMigrate(
         // INDEXES
         if (tableChanges.changes?.indexes) {
           for (const index of tableChanges.changes.indexes.addeds || []) {
-            otherCodes.push(genAddIndex(tableName, index));
+            otherCodes.push(genCreateIndex(tableName, index));
             if (index.comment) {
               otherCodes.push(
                 genComment('Index', tableName, index.name, index.comment)
@@ -597,7 +597,7 @@ export function generateMigrate(
           for (const { source, target, changes } of tableChanges.changes.indexes
             .changes || []) {
             otherCodes.push(genDropIndex(tableName, target.name));
-            otherCodes.push(genAddIndex(tableName, source));
+            otherCodes.push(genCreateIndex(tableName, source));
             if (changes.comment) {
               otherCodes.push(
                 genComment(

@@ -25,6 +25,8 @@ import {
   Field,
   Update,
   Delete,
+  CreateIndex,
+  DropIndex,
 } from './ast';
 import { DbType, Name, RowObject, Scalar } from './types';
 import { isStatement } from './util';
@@ -78,6 +80,14 @@ export abstract class MigrateBuilder {
   }
   createSequence(name: Name): CreateSequence {
     return SQL.createSequence(name);
+  }
+
+  createIndex(name: string): CreateIndex {
+    return SQL.createIndex(name);
+  }
+
+  dropIndex(table: Name, name: string): DropIndex {
+    return SQL.dropIndex(table, name);
   }
 
   dropSequence(name: Name): DropSequence {

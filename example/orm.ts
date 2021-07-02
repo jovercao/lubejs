@@ -5,14 +5,24 @@ import {
   DbType,
   Entity,
   SqlBuilder as SQL,
+  EntityKey,
 } from 'lubejs';
 
 /*************************试验代码****************************/
 
+declare module 'lubejs/types' {
+  /**
+   * 主键声明接口
+   */
+  export interface EntityKey {
+    id?: number;
+  }
+}
+
 /**
  * 用户实体类
  */
-export class User extends Entity {
+export class User extends Entity implements EntityKey {
   id?: number;
   name: string;
   password: string;
@@ -23,41 +33,45 @@ export class User extends Entity {
 /**
  * 订单
  */
-export class Order extends Entity {
+export class Order extends Entity implements EntityKey {
   id?: number;
   date: Date;
-  orderNo: string;
+  // 自动生成，因此可以为空
+  orderNo?: string;
   description?: string;
-  details: OrderDetail[];
+  details?: OrderDetail[];
 }
 
-export class OrderDetail extends Entity {
+/**
+ * 订单明细
+ */
+export class OrderDetail extends Entity implements EntityKey {
   id?: number;
   product: string;
   count: number;
   price: number;
   amount: number;
-  orderId: number;
-  order: Order;
+  orderId?: number;
+  order?: Order;
 }
 
-export class Position extends Entity {
+export class Position extends Entity implements EntityKey {
   id?: number;
   name: string;
   description?: string;
   employees?: Employee[];
 }
 
-export class Employee extends Entity {
+export class Employee extends Entity implements EntityKey {
   id?: number;
   name: string;
   description?: string;
-  organization?: Organization;
+  organization: Organization;
   positions?: Position[];
   user?: User;
 }
 
-export class EmployeePosition extends Entity {
+export class EmployeePosition extends Entity implements EntityKey {
   id?: number;
   positionId: number;
   position: Position;
@@ -65,16 +79,20 @@ export class EmployeePosition extends Entity {
   employee: Employee;
 }
 
-export class Organization extends Entity {
+export class Organization extends Entity implements EntityKey {
   id?: number;
   name: string;
   description?: string;
   parentId?: number;
   parent?: Organization;
+  children?: Organization[];
   employees?: Employee[];
 }
 
 export class DB extends DbContext {
+  get Organization(): Repository<Organization> {
+    return this.getRepository(Organization);
+  };
   get Order(): Repository<Order> {
     return this.getRepository(Order);
   }
@@ -132,6 +150,8 @@ context(DB, modelBuilder => {
       .hasOne(p => p.parent, Organization)
       .withMany()
       .hasForeignKey(p => p.parentId);
+    builder.hasMany(p => p.children, Organization).withOne(p => p.parent);
+
     builder.hasData([
       { id: 0, name: '公司', description: '没啥' },
       { id: 1, name: '信息部', parentId: 0 },

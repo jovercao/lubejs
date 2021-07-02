@@ -1,6 +1,6 @@
 import { Migrate, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
 
-export class Fixbug1 implements Migrate {
+export class New2 implements Migrate {
 
   async up(
     builder: MigrateBuilder,
@@ -22,5 +22,5 @@ export class Fixbug1 implements Migrate {
 
 }
 
-export default Fixbug1;
+export default New2;
   
