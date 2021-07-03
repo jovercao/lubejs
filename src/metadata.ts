@@ -71,6 +71,21 @@ export class EntityMetadataClass {
   contextClass: DbContextConstructor;
 
   /**
+   * 主键约束名称
+   */
+  keyConstraintName: string;
+
+  /**
+   * 主键是否为非聚焦键
+   */
+  isNonclustered: boolean;
+
+  /**
+   * 主键摘要
+   */
+  keyComment: string;
+
+  /**
    * 模型名称
    */
   className: string;
@@ -195,6 +210,7 @@ export class EntityMetadataClass {
 }
 
 export interface TableEntityMetadata extends EntityMetadataClass {
+
   kind: 'TABLE';
   /**
    * 表名

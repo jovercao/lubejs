@@ -84,6 +84,7 @@ import {
   Annotation,
   CompatibleCondition,
   SqlBuilder,
+  If,
 } from './ast';
 
 import {
@@ -601,7 +602,8 @@ export function isStatement(value: any): value is Statement {
     isDropProcedure(value) ||
     isDropFunction(value) ||
     isDropSequence(value) ||
-    isAnnotation(value)
+    isAnnotation(value) ||
+    isIf(value)
   );
 }
 
@@ -995,6 +997,10 @@ export function joinConditions(
     return new BinaryLogicCondition(logic, previous, condition);
   }) as Condition;
   return SqlBuilder.group(cond);
+}
+
+export function isIf(value: any): value is If {
+  return value?.$type === SQL_SYMBOLE.IF;
 }
 
 export function outputCommand(cmd: Command): void {

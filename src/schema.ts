@@ -254,7 +254,7 @@ export interface KeyColumnSchema {
 }
 
 export interface PrimaryKeySchema {
-  name?: string;
+  name: string;
   /**
    * 是否是非聚焦索引
    */
@@ -407,8 +407,9 @@ export function generateSchema(
     const table: TableSchema = {
       name: entity.tableName,
       primaryKey: {
-        name: `PK_${entity.tableName}_${entity.keyColumn.columnName}`,
-        isNonclustered: false,
+        name: entity.keyConstraintName,
+        isNonclustered: entity.isNonclustered,
+        comment: entity.keyComment,
         columns: [
           {
             name: entity.keyColumn.columnName,

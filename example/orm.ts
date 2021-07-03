@@ -112,28 +112,30 @@ export class DB extends DbContext {
 
 context(DB, modelBuilder => {
 
-  modelBuilder.entity(User).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity();
-    builder.column(p => p.name, String);
-    builder.column(p => p.password, String).isNullable();
-    builder.column(p => p.description, String).isNullable();
-    builder
+  modelBuilder.entity(User).asTable(table => {
+    table.hasComment('职员');
+    table.column(p => p.id, Number).isIdentity().hasComment('ID');
+    table.column(p => p.name, String).hasComment('职员姓名');
+    table.column(p => p.password, String).isNullable().hasComment('密码');
+    table.column(p => p.description, String).isNullable().hasComment('摘要说明');
+    table
       .hasOne(p => p.employee, Employee)
       .withOne(p => p.user)
-      .isPrimary();
-    builder.hasKey(p => p.id);
-    builder.hasData([
+      .isPrimary().hasComment('绑定职员');
+    table.hasKey(p => p.id).hasComment('主键');
+    table.hasData([
       { id: 0, name: 'admin' }
     ])
   });
 
-  modelBuilder.entity(Position).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity().hasComment('ID');
-    builder.column(p => p.name, String).hasComment('职位名称');
-    builder.column(p => p.description, String).isNullable().hasComment('摘要说明');
-    builder.hasKey(p => p.id).hasComment('主键');
-    builder.hasMany(p => p.employees, Employee).withMany(p => p.positions).hasRelationTable(EmployeePosition);
-    builder.hasData([
+  modelBuilder.entity(Position).asTable(table => {
+    table.hasComment('职员')
+    table.column(p => p.id, Number).isIdentity().hasComment('ID');
+    table.column(p => p.name, String).hasComment('职位名称');
+    table.column(p => p.description, String).isNullable().hasComment('摘要说明');
+    table.hasKey(p => p.id).hasComment('主键');
+    table.hasMany(p => p.employees, Employee).withMany(p => p.positions).hasRelationTable(EmployeePosition);
+    table.hasData([
       { id: 1, name: '总经理', description: '无' },
       { id: 2, name: '总监', description: '无' },
       { id: 3, name: '普通职员', description: '无' },

@@ -2126,7 +2126,8 @@ export abstract class Statement extends AST {
     | SQL_SYMBOLE.STANDARD_STATEMENT
     | SQL_SYMBOLE.CREATE_SEQUENCE
     | SQL_SYMBOLE.DROP_SEQUENCE
-    | SQL_SYMBOLE.ANNOTATION;
+    | SQL_SYMBOLE.ANNOTATION
+    | SQL_SYMBOLE.IF;
 }
 
 /**
@@ -3328,6 +3329,11 @@ export class PrimaryKey extends AST {
       if (columns.length === 0) {
         throw new Error(`Primary key must have a column.`);
       }
+      if (typeof columns[0] === 'string') {
+        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+      } else {
+        this.$columns = columns as KeyColumns;
+      }
       return this;
     }
 
@@ -3384,6 +3390,11 @@ export class UniqueKey {
     if (Array.isArray(columns)) {
       if (columns.length === 0) {
         throw new Error(`Primary key must have a column.`);
+      }
+      if (typeof columns[0] === 'string') {
+        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+      } else {
+        this.$columns = columns as KeyColumns;
       }
       return this;
     }
@@ -3557,9 +3568,17 @@ export class CreateIndex extends Statement {
       throw new Error(`Table & Columns is defined.`);
     }
     this.$table = table;
+    if (this.$columns) {
+      throw new Error(`Columns is defined.`);
+    }
     if (Array.isArray(columns)) {
       if (columns.length === 0) {
         throw new Error(`Primary key must have a column.`);
+      }
+      if (typeof columns[0] === 'string') {
+        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+      } else {
+        this.$columns = columns as KeyColumns;
       }
       return this;
     }
@@ -4172,6 +4191,12 @@ export interface SqlBuilder extends Standard {
    * @returns 返回算术运算表达式
    */
   neg(expr: CompatibleExpression<number>): Expression<number>;
+
+  /**
+   * IF语句
+   * @param condition
+   */
+  if (condition: Condition): If;
 
   /**
    * 字符串连接运算
@@ -4982,6 +5007,9 @@ export interface SqlBuilder extends Standard {
 export const SqlBuilder: SqlBuilder = {
   ...Standard,
   type: DbType,
+  if(condition: Condition): If {
+    return new If(condition);
+  },
   createSequence(name: Name): CreateSequence {
     return new CreateSequence(name);
   },
@@ -5632,3 +5660,86 @@ export const SqlBuilder: SqlBuilder = {
     return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
   },
 };
+
+export class If extends Statement {
+  $type: SQL_SYMBOLE.IF = SQL_SYMBOLE.IF;
+
+  $then: Statement;
+
+  $elseif?: [Condition, Statement][];
+
+  $else?: Statement;
+
+  $condition: Condition;
+
+  constructor(condition: Condition) {
+    super();
+    this.$condition = condition;
+  }
+
+  then(statement: Statement): this
+  then(statements: Statement[]): this
+  then(...statements: Statement[]): this
+  then(...args: Statement[] | [Statement[] | Statement]): this {
+    assert(!this.$then && !this.$else, `Syntax error.`)
+    let then: Statement;
+    if (args.length === 1) {
+      if (Array.isArray(args[0])) {
+        then = SqlBuilder.block(args[0]);
+      } else {
+        then = args[0];
+      }
+    } else {
+      then = SqlBuilder.block(args as Statement[])
+    }
+    this.$then = then;
+    return this;
+  }
+
+  elseif(condition: Condition): { then(...args: Statement[] | [Statement[] | Statement]): If } {
+    assert(!this.$else && this.$then, `Syntax error`);
+    if (!this.$elseif) {
+      this.$elseif = []
+    }
+    const elseif: [Condition, Statement] = [condition, null];
+    this.$elseif.push(elseif);
+    return {
+      then: (...args: Statement[] | [Statement[] | Statement]): this => {
+        let then: Statement;
+        if (args.length === 1) {
+          if (Array.isArray(args[0])) {
+            then = SqlBuilder.block(args[0]);
+          } else {
+            then = args[0];
+          }
+        } else {
+          then = SqlBuilder.block(args as Statement[])
+        }
+        elseif[1] = then;
+        return this;
+      }
+    }
+  }
+
+  else(statement: Statement): this
+  else(statements: Statement[]): this
+  else(...statements: Statement[]): this
+  else(...args: Statement[] | [Statement[] | Statement]): this {
+    assert(this.$then && !this.$else, `Syntax error.`)
+    let _else: Statement;
+    if (args.length === 1) {
+      if (Array.isArray(args[0])) {
+        _else = SqlBuilder.block(args[0]);
+      } else {
+        _else = args[0];
+      }
+    } else {
+      _else = SqlBuilder.block(args as Statement[])
+    }
+    this.$else = _else;
+    return this;
+  }
+
+}
+
+SqlBuilder.if(SqlBuilder.literal(1).eq(1)).then(SqlBuilder.variant('abc').assign(1)).else(SqlBuilder.if())

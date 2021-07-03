@@ -28,32 +28,37 @@ const migrate = Program.command('migrate')
   )
   .description('Migration comannders.');
 
-const migrateCreate = migrate
-  .command('create <name>')
-  .description('创建一个空白的迁移文件.')
-  // .option('-o, --output-dir <outputDir>', '输出目录.')
-  .action(async (name: string) => {
-    const cli = await createMigrateCli(migrate.opts());
-    try {
-      await cli.create(name);
-    } catch (error) {
-      console.error(error.message.red);
-      console.info(error.stack);
-    } finally {
-      await cli.dispose();
-    }
-  });
+// const migrateCreate = migrate
+//   .command('create [name]')
+//   .description('创建一个空白的迁移文件.')
+//   // .option('-o, --output-dir <outputDir>', '输出目录.')
+//   .action(async (name: string) => {
+//     const cli = await createMigrateCli(migrate.opts());
+//     try {
+//       await cli.create(name);
+//     } catch (error) {
+//       console.error(error.message.red);
+//       console.info(error.stack);
+//     } finally {
+//       await cli.dispose();
+//     }
+//   });
 
-migrate
-  .command('gen <name>')
+const migrateAdd = migrate
+  .command('add [name]')
   .description('生成数据库迁移源代码.')
-  .option('-o, --output-dir <outputDir>', '输出目录.')
+  // .option('-o, --output-dir <outputDir>', '输出目录.')
   .option('-n, --not-resolver-type', '生成的代码中不转换原始数据类型到DbType.')
+  .option('-u, --update', '同时更新到数据库')
   .action(async name => {
     const opts = migrate.opts();
+    const addOpts = migrateAdd.opts();
     const cli = await createMigrateCli(opts);
     try {
-      await cli.gen(name, opts.notResolverType);
+      const migrateInfo = await cli.gen(name, addOpts.notResolverType);
+      if (addOpts.update) {
+        await cli.update(migrateInfo.id)
+      }
     } catch (error) {
       console.error(error.message.red);
       console.log(error.stack);
@@ -133,7 +138,9 @@ const migrateUpdate = migrate
 
 const migrateSync = migrate
   .command('sync')
-  .description('同步数据库架构及种子数据')
+  .description(`同步数据库架构及种子数据，本命令为方便开发测试而建立，不建议在生产环境中使用，
+因为通过Sync更新的数据库后，将不能再使用迁移版本管理命令 'lubejs migrate update <migrate>'
+进行更新，否则可能造成数据丢失！`)
   .action(async () => {
     const cli = await createMigrateCli(migrate.opts());
     try {

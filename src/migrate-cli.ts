@@ -76,6 +76,7 @@ function assertName(name: string): void {
     throw new Error(`Migrate class name '${name}' invalid.`)
   }
 }
+
 /**
  * 迁移命令行
  */
@@ -110,11 +111,12 @@ export class MigrateCli {
 
   private async getCurrentMigrate(): Promise<MigrateInfo> {
     try {
-      const items = await this.dbContext.executor.select(
+      const [ item ] = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
         { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
       );
-      const id = items?.[0]?.migrate_id;
+      if (!item) return null;
+      const id = item.migrate_id;
       return this.getMigrate(id);
     } catch {
       return null;
@@ -139,7 +141,7 @@ export class MigrateCli {
   //   }
   // }
 
-  getTimestamp(): string {
+  private getTimestamp(): string {
     const now = new Date();
     const timestamp =
       now.getFullYear().toString().padStart(4, '0') +
@@ -155,13 +157,15 @@ export class MigrateCli {
    * 创建一个空的迁移文件
    * @param name
    */
-  async create(name: string): Promise<void> {
-    assertName(name);
+  async create(name?: string): Promise<void> {
+    const timestamp = this.getTimestamp();
+    if (!name) {
+      name = 'Migrate' + timestamp
+    }
     const exists = await this.findMigrate(name);
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
     }
-    const timestamp = this.getTimestamp();
 
     const id = `${timestamp}_${name}`;
     const codes = generateMigrateClass(name);
@@ -177,8 +181,11 @@ export class MigrateCli {
    * 将数据库架构与当前架构进行对比，并生成新的迁移文件
    * @param name
    */
-  async gen(name: string, notResolverType = false): Promise<void> {
-    assertName(name);
+  async gen(name?: string, notResolverType = false): Promise<MigrateInfo> {
+    const timestamp = this.getTimestamp();
+    if (!name) {
+      name = 'Migrate' + timestamp
+    }
     const exists = await this.findMigrate(name);
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
@@ -201,11 +208,21 @@ export class MigrateCli {
         : this.dbContext.lube.provider.sqlUtil.parseRawType
     );
 
-    const timestamp = this.getTimestamp();
     const id = `${timestamp}_${name}`;
     const filePath = resolve(join(this.migrateDir, `${id}.ts`));
     await writeFile(filePath, code);
     console.log(`Generate migrate file successed, and output to file ${filePath}`.green);
+
+    const info: MigrateInfo = {
+      id,
+      name,
+      timestamp,
+      path: filePath,
+      kind: 'typescript',
+      index: (await this._list()).length
+    };
+    (await this._list()).push(info);
+    return info
   }
 
   async findMigrate(name: string): Promise<MigrateInfo> {
@@ -233,12 +250,11 @@ export class MigrateCli {
    * @param name
    */
   async update(name?: string): Promise<void> {
-    const target = await this.getMigrate(name);
-
+    const target = name ? await this.getMigrate(name) : await this.getLastMigrate();
     const source = await this.getCurrentMigrate();
     const scripts = await this._script({
-      target: name,
-      source: source?.name,
+      end: target?.name,
+      start: source?.name,
     });
     await this.dbContext.trans(async instance => {
       for (const cmd of scripts) {
@@ -251,38 +267,38 @@ export class MigrateCli {
   }
 
   async _script(options: {
-    target?: string;
-    source?: string;
+    end?: string;
+    start?: string;
     outputPath?: string;
   }): Promise<Command[]> {
-    let target: MigrateInfo;
-    if (!options?.target || options?.target === '*') {
-      target = await this.getLastMigrate();
-    } else if (options?.target === '@') {
-      target = await this.getCurrentMigrate();
+    let end: MigrateInfo;
+    if (!options?.end || options?.end === '*') {
+      end = await this.getLastMigrate();
+    } else if (options?.end === '@') {
+      end = await this.getCurrentMigrate();
     } else {
-      target = await this.getMigrate(options.target);
+      end = await this.getMigrate(options.end);
     }
     const migrates = await this._list();
-    let source: MigrateInfo;
-    if (!options?.source || options?.source === '@') {
-      source = await this.getCurrentMigrate();
-    } else if (options?.source !== '*') {
-      source = await this.getMigrate(options?.source);
+    let start: MigrateInfo;
+    if (!options?.start || options?.start === '@') {
+      start = await this.getCurrentMigrate();
+    } else if (options?.start !== '*') {
+      start = await this.getMigrate(options?.start);
     }
-    const sourceIndex = source?.index ?? -1;
-    const targetIndex = target?.index ?? -1;
+    const startIndex = start?.index ?? -1;
+    const endIndex = end?.index ?? -1;
 
-    if (sourceIndex === targetIndex) {
+    if (startIndex === endIndex) {
       console.log(`源和目标版本一致或未找到可供生成的的迁移文件。`.yellow);
       return [];
     }
-    const isUpgrade = targetIndex > sourceIndex;
-    const isDemotion = targetIndex < sourceIndex;
+    const isUpgrade = endIndex > startIndex;
+    const isDemotion = endIndex < startIndex;
 
     const statements: Statement[] = [];
     if (isUpgrade) {
-      for (let i = sourceIndex + 1; i <= targetIndex; i++) {
+      for (let i = startIndex + 1; i <= endIndex; i++) {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate up script from "${info.path}"`));
         const Migrate = await importMigrate(info);
@@ -291,7 +307,7 @@ export class MigrateCli {
       }
     }
     if (isDemotion) {
-      for (let i = sourceIndex; i > targetIndex; i--) {
+      for (let i = startIndex; i > endIndex; i--) {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate down script from "${info.path}"`));
         const Migrate = await importMigrate(info);
@@ -300,7 +316,7 @@ export class MigrateCli {
       }
     }
     // 创建表
-    if (sourceIndex < 0) {
+    if (startIndex < 0) {
       statements.push(
         SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
           builder.column('migrate_id', DbType.string(100)).primaryKey(),
@@ -308,7 +324,9 @@ export class MigrateCli {
       );
     }
     statements.push(SQL.delete(LUBE_MIGRATE_TABLE_NAME));
-    statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([target.id]));
+    if (end) {
+      statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([end.id]));
+    }
     const scripts = statements.map(statement =>
       this.dbContext.lube.sqlUtil.sqlify(statement)
     );
@@ -411,6 +429,7 @@ export class MigrateCli {
       }
     });
     console.info(`更新数据库架构完成，数据库架构已经更新到与实体一致。`)
+    console.info(`请注意，通过Sync更新的数据库，将不能再使用 'lubejs migrate update <migrate>' 命令更新，否则可能造成数据丢失！`)
   }
 }
 

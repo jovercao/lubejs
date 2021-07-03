@@ -8,6 +8,7 @@ import {
   Condition,
   SqlUtil,
   Lube,
+  Expression,
 } from 'lubejs';
 import { sp_rename } from './build-in';
 import { MssqlProvider } from './provider';
@@ -16,6 +17,10 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
+  existsTable(name: Name<string>): Expression<Scalar> {
+    return
+  }
+
   private readonly lube: Lube;
   private readonly sqlUtil: SqlUtil;
   constructor(private readonly provider: MssqlProvider) {
@@ -158,6 +163,7 @@ END
 
   commentProcedure(name: Name, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Proc VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Proc = o.name
@@ -179,6 +185,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentFunction(name: Name, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentFunction(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Func VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Func = o.name
@@ -200,6 +207,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentSequence(name: Name, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentSequence(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Sequence VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Sequence = o.name
@@ -219,8 +227,13 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
+  if(condition: Condition, statements: Statement[], elseStatements: Statement[]) {
+
+  }
+
   commentTable(name: Name, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentTable(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
@@ -242,6 +255,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentColumn(table: Name, name: string, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Column VARCHAR(100)
 
 SET @Column = ${name}
@@ -268,6 +282,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentIndex(table: Name, name: string, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Index VARCHAR(100)
 
 SET @Index = ${name}
@@ -294,6 +309,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentConstraint(table: Name<string>, name: string, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
 
 SET @Constraint = ${name}
@@ -305,17 +321,23 @@ WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
 IF EXISTS(
   SELECT 1
   FROM sys.extended_properties p INNER JOIN
-  sys.check_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
-  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+  sys.check_constraints c ON p.major_id = c.object_id AND p.minor_id = 0
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint AND p.class = 1
   UNION ALL
   SELECT 1
   FROM sys.extended_properties p INNER JOIN
-  sys.default_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
-  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+  sys.default_constraints c ON p.major_id = c.object_id AND p.minor_id = 0
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint AND p.class = 1
+  UNION ALL
   SELECT 1
   FROM sys.extended_properties p INNER JOIN
-  sys.key_constraints c ON p.major_id = c.parent_object_id AND p.minor_id = c.object_id
-  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint
+  sys.key_constraints c ON p.major_id = c.object_id AND p.minor_id = 0
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint AND p.class = 1
+  UNION ALL
+  SELECT 1
+  FROM sys.extended_properties p INNER JOIN
+  sys.foreign_keys c ON p.major_id = c.object_id AND p.minor_id = 0
+  WHERE c.parent_object_id = @ObjectId AND c.name = @Constraint AND p.class = 1
 )
 BEGIN
   EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', @Constraint
@@ -332,6 +354,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   commentSchema(name: string, comment?: string): Statement {
     let sql = formatSql`
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(name)}, ${comment});
 IF EXISTS(
   SELECT 1 FROM sys.extended_properties p
   WHERE p.name = ${COMMENT_EXTEND_PROPERTY_NAME} AND p.major_id = SCHEMA_ID(${name}) AND p.class = 7 AND p.minor_id = 0

@@ -8,6 +8,7 @@ import {
   TableColumnForAdd,
   TableColumnForAlter,
   DropTable,
+  KeyColumn,
 } from './ast';
 import { DbContextMetadata } from './metadata';
 import { MigrateBuilder } from './migrate-builder';
@@ -49,7 +50,7 @@ export function generateUpdateStatements(
         index.columns.map(col => ({
           name: col.name,
           sort: col.isAscending ? 'ASC' : 'DESC',
-        }))
+        }) as KeyColumn)
       )
     );
   }
@@ -128,7 +129,7 @@ export function generateUpdateStatements(
           table.primaryKey.columns.map(c => ({
             name: c.name,
             sort: c.isAscending ? 'ASC' : 'DESC',
-          }))
+          }) as KeyColumn)
         ),
       ])
     );
@@ -212,8 +213,8 @@ export function generateUpdateStatements(
         primaryKey(pk.name).on(
           pk.columns.map(col => ({
             name: col.name,
-            sort: col.isAscending ? 'ASC' : 'DESC',
-          }))
+            sort: (col.isAscending ? 'ASC' : 'DESC'),
+          }) as KeyColumn)
         )
       )
     );
@@ -235,8 +236,8 @@ export function generateUpdateStatements(
             return g.uniqueKey(constraint.name).on(
               constraint.columns.map(col => ({
                 name: col.name,
-                sort: col.isAscending ? 'ASC' : 'DESC',
-              }))
+                sort: (col.isAscending ? 'ASC' : 'DESC'),
+              }) as KeyColumn)
             );
         }
       })
@@ -331,11 +332,17 @@ export function generateUpdateStatements(
           }
 
           if (tableChanges.changes?.primaryKey.changes) {
-            dropPrimaryKey(
-              tableName,
-              tableChanges.changes.primaryKey.target.name
-            );
-            addPrimaryKey(tableName, tableChanges.changes.primaryKey.source);
+            if (!(tableChanges.changes?.primaryKey.changes.comment && Object.keys(tableChanges.changes?.primaryKey.changes).length === 1)) {
+              dropPrimaryKey(
+                tableName,
+                tableChanges.changes.primaryKey.target.name
+              );
+              addPrimaryKey(tableName, tableChanges.changes.primaryKey.source);
+            }
+
+            if (tableChanges.changes?.primaryKey.changes.comment) {
+              commentConstraint(tableName, tableChanges.changes?.primaryKey.source.name, tableChanges.changes?.primaryKey.changes.comment.source);
+            }
           }
         }
 

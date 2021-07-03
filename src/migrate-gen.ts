@@ -13,7 +13,7 @@ import {
   TableSchema,
   UniqueConstraintSchema,
   SchemaDifference,
-  compareSchema
+  compareSchema,
 } from './schema';
 import { DbType, Name } from './types';
 import { isNameEquals } from './util';
@@ -52,8 +52,9 @@ export function generateMigrate(
     switch (dbType.name) {
       case 'BINARY':
       case 'STRING':
-        return `DbType.${dbType.name.toLowerCase()}(${dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
-          })`;
+        return `DbType.${dbType.name.toLowerCase()}(${
+          dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
+        })`;
       case 'NUMERIC':
         return `DbType.numeric(${dbType.precision}, ${dbType.digit})`;
       default:
@@ -87,7 +88,7 @@ export function generateMigrate(
       sql += `.default(${JSON.stringify(column.defaultValue)})`;
     }
     if (column.isCalculate) {
-      sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`
+      sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`;
     }
     return sql;
   }
@@ -106,11 +107,12 @@ export function generateMigrate(
   }
 
   function genPrimaryKey(key: PrimaryKeySchema): string {
-    let sql = `builder.primaryKey(${key.name ? genName(key.name) : ''
-      }).on({ ${key.columns.map(
-        ({ name, isAscending }) =>
-          `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
-      )} })`;
+    let sql = `builder.primaryKey(${
+      key.name ? genName(key.name) : ''
+    }).on({ ${key.columns.map(
+      ({ name, isAscending }) =>
+        `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+    )} })`;
     if (key.isNonclustered) {
       sql += '.withNoclustered()';
     }
@@ -121,8 +123,8 @@ export function generateMigrate(
     let code = `builder.foreignKey(${genName(fk.name)}).on(${fk.columns
       .map(column => genName(column))
       .join(', ')}).reference(${genName(
-        fk.referenceTable
-      )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
+      fk.referenceTable
+    )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
 
     if (fk.isCascade) {
       code += 'deleteCascade()';
@@ -184,12 +186,13 @@ export function generateMigrate(
     kind: 'CHECK' | 'UNIQUE' | 'PRIMARY_KEY',
     constraint: string
   ): string {
-    return `builder.alterTable(${genName(table)}).drop(builder => builder.${{
+    return `builder.alterTable(${genName(table)}).drop(builder => builder.${
+      {
         CHECK: 'check',
         UNIQUE: 'uniqueKey',
         PRIMARY_KEY: 'primaryKey',
       }[kind]
-      }(${genName(constraint)}))`;
+    }(${genName(constraint)}))`;
   }
 
   // function genCreateIndex(table: Name, index: IndexSchema): string {
@@ -199,9 +202,9 @@ export function generateMigrate(
   // }
 
   function genAddColumn(table: Name, column: ColumnSchema): string {
-    return `builder.alterTable(${genName(table)}).add(builder => ${genColumnForAdd(
-      column
-    )})`;
+    return `builder.alterTable(${genName(
+      table
+    )}).add(builder => ${genColumnForAdd(column)})`;
   }
 
   function genAlterColumn(table: Name, column: ColumnSchema): string {
@@ -210,17 +213,29 @@ export function generateMigrate(
     )}).alterColumn(column => ${genColumnForAlter(column, '')})`;
   }
 
-  function genSetDefault(table: Name, column: string, defaultValue: string): string {
-    return `builder.setDefaultValue(${genName(table)}, ${genName(column)}, SQL.raw(${JSON.stringify(defaultValue)}))`;
+  function genSetDefault(
+    table: Name,
+    column: string,
+    defaultValue: string
+  ): string {
+    return `builder.setDefaultValue(${genName(table)}, ${genName(
+      column
+    )}, SQL.raw(${JSON.stringify(defaultValue)}))`;
   }
 
   function genDropDefault(table: Name, column: string): string {
     return `builder.dropDefaultValue(${genName(table)}, ${genName(column)})`;
   }
 
-
-  function genSetIdentity(table: Name, column: string, startValue: number, increment: number): string {
-    return `builder.setIdentity(${genName(table)}, ${genName(column)}, ${startValue}, ${increment})`;
+  function genSetIdentity(
+    table: Name,
+    column: string,
+    startValue: number,
+    increment: number
+  ): string {
+    return `builder.setIdentity(${genName(table)}, ${genName(
+      column
+    )}, ${startValue}, ${increment})`;
   }
 
   function genDropIdentity(table: Name, column: string): string {
@@ -243,8 +258,9 @@ export function generateMigrate(
     if (constaint.kind === 'CHECK') {
       return `builder.alterTable(${genName(
         table
-      )}).add(({ check }) => check(${genName(constaint.name)}, SQL.raw(${constaint.sql
-        }))`;
+      )}).add(({ check }) => check(${genName(constaint.name)}, SQL.raw(${
+        constaint.sql
+      }))`;
     }
     return `builder.alterTable(${genName(
       table
@@ -320,9 +336,10 @@ export function generateMigrate(
       member = args[0];
       comment = args[1];
     }
-    const code = `builder.comment${type}(${genName(object)}${member ? `, ${genName(member)}` : ''
-      }, ${genName(comment)})`;
-    return code
+    const code = `builder.comment${type}(${genName(object)}${
+      member ? `, ${genName(member)}` : ''
+    }, ${genName(comment)})`;
+    return code;
   }
 
   function genSeedData(table: TableSchema, data: any[]): string {
@@ -361,7 +378,7 @@ export function generateMigrate(
         // );
 
         // 删除表之前本表外键，以免多表删除时造成依赖问题
-        table.foreignKeys.forEach((fk) => {
+        table.foreignKeys.forEach(fk => {
           dropFkCodes.push(genDropForeignKey(table.name, fk.name));
         });
         otherCodes.push(genDropTable(table.name));
@@ -437,16 +454,38 @@ export function generateMigrate(
           }
 
           if (tableChanges.changes?.primaryKey.changes) {
-            otherCodes.push(
-              genDropConstraint(
-                tableName,
-                'PRIMARY_KEY',
-                tableChanges.changes.primaryKey.target.name
+            if (
+              !(
+                tableChanges.changes?.primaryKey.changes.comment &&
+                Object.keys(tableChanges.changes?.primaryKey.changes).length ===
+                  1
               )
-            );
-            otherCodes.push(
-              genAddPrimaryKey(tableName, tableChanges.changes.primaryKey.source)
-            );
+            ) {
+              otherCodes.push(
+                genDropConstraint(
+                  tableName,
+                  'PRIMARY_KEY',
+                  tableChanges.changes.primaryKey.target.name
+                )
+              );
+              otherCodes.push(
+                genAddPrimaryKey(
+                  tableName,
+                  tableChanges.changes.primaryKey.source
+                )
+              );
+            }
+
+            if (tableChanges.changes?.primaryKey.changes.comment) {
+              otherCodes.push(
+                genComment(
+                  'Constraint',
+                  tableName,
+                  tableChanges.changes?.primaryKey.source.name,
+                  tableChanges.changes?.primaryKey.changes.comment.source
+                )
+              );
+            }
           }
         }
 
@@ -467,7 +506,6 @@ export function generateMigrate(
 
           for (const { target, source, changes } of tableChanges.changes.columns
             .changes || []) {
-
             // 如果类型或者是否可空变化
             if (changes.type || changes.isNullable) {
               otherCodes.push(genAlterColumn(tableName, source));
@@ -475,20 +513,41 @@ export function generateMigrate(
 
             if (changes.defaultValue) {
               if (!changes.defaultValue.source) {
-                otherCodes.push(genDropDefault(tableName, target.name))
+                otherCodes.push(genDropDefault(tableName, target.name));
               } else {
-                otherCodes.push(genSetDefault(tableName, source.name, changes.defaultValue.source))
+                otherCodes.push(
+                  genSetDefault(
+                    tableName,
+                    source.name,
+                    changes.defaultValue.source
+                  )
+                );
               }
             }
 
-            if (changes.isIdentity || changes.identityIncrement || changes.identityIncrement) {
+            if (
+              changes.isIdentity ||
+              changes.identityIncrement ||
+              changes.identityIncrement
+            ) {
               console.debug(source, target);
               if (!source.isIdentity) {
-                otherCodes.push('// 敬告：因为需要重建表，在mssql中尚未实现该功能。');
-                otherCodes.push(genDropIdentity(tableName, target.name))
+                otherCodes.push(
+                  '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
+                );
+                otherCodes.push(genDropIdentity(tableName, target.name));
               } else {
-                otherCodes.push('// 敬告：因为需要重建表，在mssql中尚未实现该功能。');
-                otherCodes.push(genSetIdentity(tableName, source.name, source.identityStartValue, source.identityIncrement))
+                otherCodes.push(
+                  '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
+                );
+                otherCodes.push(
+                  genSetIdentity(
+                    tableName,
+                    source.name,
+                    source.identityStartValue,
+                    source.identityIncrement
+                  )
+                );
               }
             }
 
@@ -651,19 +710,23 @@ export function generateMigrate(
 
   // const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
 
-  const findTargetForeignKey = (finder: (table: Name, fk: ForeignKeySchema) => boolean): { table: Name, foreignKey: ForeignKeySchema } => {
-    let result: { table: Name, foreignKey: ForeignKeySchema };
-    target.tables.find(({ name: table, foreignKeys }) => foreignKeys.find(fk => {
-      if (finder(table, fk)) {
-        result = {
-          table,
-          foreignKey: fk
-        };
-        return true
-      }
-    }));
+  const findTargetForeignKey = (
+    finder: (table: Name, fk: ForeignKeySchema) => boolean
+  ): { table: Name; foreignKey: ForeignKeySchema } => {
+    let result: { table: Name; foreignKey: ForeignKeySchema };
+    target.tables.find(({ name: table, foreignKeys }) =>
+      foreignKeys.find(fk => {
+        if (finder(table, fk)) {
+          result = {
+            table,
+            foreignKey: fk,
+          };
+          return true;
+        }
+      })
+    );
     return result;
-  }
+  };
 
   return generateMigrateClass(name, upCodes, downCodes);
 }

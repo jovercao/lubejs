@@ -27,6 +27,7 @@ import {
   Delete,
   CreateIndex,
   DropIndex,
+  Expression,
 } from './ast';
 import { DbType, Name, RowObject, Scalar } from './types';
 import { isStatement } from './util';
@@ -140,6 +141,8 @@ export abstract class MigrateBuilder {
   abstract commentSequence(name: Name, comment?: string): Statement;
   abstract commentProcedure(name: Name, comment?: string): Statement;
   abstract commentFunction(name: Name, comment?: string): Statement;
+
+  abstract existsTable(name: Name): Expression;
   // 为列添加或修改默认值
   abstract setDefaultValue(
     table: Name,
