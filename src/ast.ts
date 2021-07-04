@@ -43,10 +43,18 @@ import {
   SQL_SYMBOLE_EXPRESSION,
   SQL_SYMBOLE_TABLE_MEMBER,
 } from './constants';
-import { DbType, TsTypeOf, DbTypeOf, RowObject, Name, Constructor, Entity } from './types';
+import {
+  DbType,
+  TsTypeOf,
+  DbTypeOf,
+  RowObject,
+  Name,
+  Constructor,
+  Entity,
+} from './types';
 import { Scalar } from './types';
 import { TableSchema } from './schema';
-import { Standard } from './std'
+import { Standard } from './std';
 import { makeRowset, metadataStore } from './metadata';
 
 // /**
@@ -91,8 +99,8 @@ export type DefaultInputObject = Record<string, Scalar>;
  */
 export type WhereObject<T extends RowObject = DefaultInputObject> = {
   [K in FieldsOf<T>]?:
-  | CompatibleExpression<FieldTypeOf<T, K>>
-  | CompatibleExpression<FieldTypeOf<T, K>>[];
+    | CompatibleExpression<FieldTypeOf<T, K>>
+    | CompatibleExpression<FieldTypeOf<T, K>>[];
 };
 
 /**
@@ -121,24 +129,24 @@ export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @ty
   ? {}
   : T extends Field<infer V, infer N>
   ? {
-    [K in N]: V;
-  }
+      [K in N]: V;
+    }
   : T extends SelectColumn<infer V, infer N>
   ? {
-    [K in N]: V;
-  }
+      [K in N]: V;
+    }
   : T extends Star<infer M>
   ? {
-    [P in FieldsOf<M>]: M[P];
-  }
+      [P in FieldsOf<M>]: M[P];
+    }
   : T extends InputObject
   ? {
-    [K in keyof T]: TypeOf<T[K]>;
-  }
+      [K in keyof T]: TypeOf<T[K]>;
+    }
   : T extends Record<string, RowObject>
   ? {
-    [K in FieldsOf<T>]: TypeOf<T[K]>;
-  } // eslint-disable-next-line @typescript-eslint/ban-types
+      [K in FieldsOf<T>]: TypeOf<T[K]>;
+    } // eslint-disable-next-line @typescript-eslint/ban-types
   : {};
 
 /**
@@ -176,7 +184,7 @@ export type RowTypeByColumns<
   X = unknown,
   Y = unknown,
   Z = unknown
-  > = RowTypeFrom<A> &
+> = RowTypeFrom<A> &
   RowTypeFrom<B> &
   RowTypeFrom<C> &
   RowTypeFrom<D> &
@@ -245,10 +253,10 @@ export type Proxied<T> = T extends
   | TableFuncInvoke<infer M>
   | TableVariant<infer M>
   ? T &
-  {
-    // 排除AST自有属性
-    [P in FieldsOf<M>]: Field<M[P], P>;
-  }
+      {
+        // 排除AST自有属性
+        [P in FieldsOf<M>]: Field<M[P], P>;
+      }
   : never;
 
 /**
@@ -256,9 +264,9 @@ export type Proxied<T> = T extends
  */
 export type ProxiedTable<T extends RowObject, N extends string = string> =
   Table<T, N> &
-  {
-    [P in FieldsOf<T>]: Field<T[P], P>;
-  };
+    {
+      [P in FieldsOf<T>]: Field<T[P], P>;
+    };
 
 /**
  * 代理后的行集
@@ -270,9 +278,9 @@ export type ProxiedRowset<T extends RowObject> = Rowset<T> &
 
 export type ProxiedNamedSelect<T extends RowObject, N extends string = string> =
   NamedSelect<T, N> &
-  {
-    [P in FieldsOf<T>]: Field<T[P], P>;
-  };
+    {
+      [P in FieldsOf<T>]: Field<T[P], P>;
+    };
 
 /**
  * AST 基类
@@ -536,7 +544,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   asc(): SortInfo {
-    return new SortInfo(this, SORT_DIRECTION.ASC);
+    return new SortInfo(this, 'ASC');
   }
 
   /**
@@ -544,7 +552,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @returns 返回对比条件表达式
    */
   desc(): SortInfo {
-    return new SortInfo(this, SORT_DIRECTION.DESC);
+    return new SortInfo(this, 'DESC');
   }
 
   /**
@@ -818,7 +826,7 @@ export class Alias<N extends string> extends Identifier<N> {
 export class Func<
   N extends string = string
   // K extends FUNCTION_TYPE = FUNCTION_TYPE.SCALAR
-  > extends Identifier<N> {
+> extends Identifier<N> {
   $kind: IDENTOFIER_KIND.FUNCTION = IDENTOFIER_KIND.FUNCTION;
 
   // /**
@@ -959,13 +967,13 @@ export type CompatibleTable<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-  > = Name | Table<T, N> | ProxiedTable<T>;
+> = Name | Table<T, N> | ProxiedTable<T>;
 
 export type CompatibleNamedSelect<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-  > = NamedSelect<T, N> | ProxiedNamedSelect<T, N>;
+> = NamedSelect<T, N> | ProxiedNamedSelect<T, N>;
 
 /**
  * 所有可兼容的行集参数
@@ -974,7 +982,7 @@ export type CompatibleRowset<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-  > =
+> =
   | CompatibleTable<T, N>
   | Rowset<T>
   | NamedSelect<T, N>
@@ -986,8 +994,8 @@ export type CompatibleRowset<
   | Proxied<TableVariant<T, N>>;
 
 export class Table<
-  T extends RowObject = DefaultRowObject,
-  N extends string = string
+    T extends RowObject = DefaultRowObject,
+    N extends string = string
   >
   extends Rowset<T>
   implements Identifier<N>
@@ -1071,7 +1079,7 @@ export class TableVariant<T extends RowObject = any, N extends string = string>
 export class SelectColumn<
   T extends Scalar = Scalar,
   N extends string = string
-  > extends Identifier<N> {
+> extends Identifier<N> {
   /**
    * 列名称
    */
@@ -1123,7 +1131,7 @@ export type SelectAction = {
     B extends SelectCloumn,
     C extends SelectCloumn,
     D extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1135,7 +1143,7 @@ export type SelectAction = {
     C extends SelectCloumn,
     D extends SelectCloumn,
     E extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1149,7 +1157,7 @@ export type SelectAction = {
     D extends SelectCloumn,
     E extends SelectCloumn,
     F extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1165,7 +1173,7 @@ export type SelectAction = {
     E extends SelectCloumn,
     F extends SelectCloumn,
     G extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1183,7 +1191,7 @@ export type SelectAction = {
     F extends SelectCloumn,
     G extends SelectCloumn,
     H extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1203,7 +1211,7 @@ export type SelectAction = {
     G extends SelectCloumn,
     H extends SelectCloumn,
     I extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1225,7 +1233,7 @@ export type SelectAction = {
     H extends SelectCloumn,
     I extends SelectCloumn,
     J extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1249,7 +1257,7 @@ export type SelectAction = {
     I extends SelectCloumn,
     J extends SelectCloumn,
     K extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1275,7 +1283,7 @@ export type SelectAction = {
     J extends SelectCloumn,
     K extends SelectCloumn,
     L extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1303,7 +1311,7 @@ export type SelectAction = {
     K extends SelectCloumn,
     L extends SelectCloumn,
     M extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1333,7 +1341,7 @@ export type SelectAction = {
     L extends SelectCloumn,
     M extends SelectCloumn,
     N extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1365,7 +1373,7 @@ export type SelectAction = {
     M extends SelectCloumn,
     N extends SelectCloumn,
     O extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1399,7 +1407,7 @@ export type SelectAction = {
     N extends SelectCloumn,
     O extends SelectCloumn,
     P extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1435,7 +1443,7 @@ export type SelectAction = {
     O extends SelectCloumn,
     P extends SelectCloumn,
     Q extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1475,7 +1483,7 @@ export type SelectAction = {
     P extends SelectCloumn,
     Q extends SelectCloumn,
     R extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1517,7 +1525,7 @@ export type SelectAction = {
     Q extends SelectCloumn,
     R extends SelectCloumn,
     S extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1561,7 +1569,7 @@ export type SelectAction = {
     R extends SelectCloumn,
     S extends SelectCloumn,
     T extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1607,7 +1615,7 @@ export type SelectAction = {
     S extends SelectCloumn,
     T extends SelectCloumn,
     U extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1677,7 +1685,7 @@ export type SelectAction = {
     T extends SelectCloumn,
     U extends SelectCloumn,
     V extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1750,7 +1758,7 @@ export type SelectAction = {
     U extends SelectCloumn,
     V extends SelectCloumn,
     W extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1826,7 +1834,7 @@ export type SelectAction = {
     V extends SelectCloumn,
     W extends SelectCloumn,
     X extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1905,7 +1913,7 @@ export type SelectAction = {
     W extends SelectCloumn,
     X extends SelectCloumn,
     Y extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -1987,7 +1995,7 @@ export type SelectAction = {
     X extends SelectCloumn,
     Y extends SelectCloumn,
     Z extends SelectCloumn
-    >(
+  >(
     a: A,
     b: B,
     c: C,
@@ -2055,7 +2063,7 @@ export type SelectAction = {
  */
 export class ScalarFuncInvoke<
   TReturn extends Scalar = any
-  > extends Expression<TReturn> {
+> extends Expression<TReturn> {
   $func: Func<string>;
   $args: (Expression<Scalar> | BuiltIn<string> | Star)[];
   readonly $type: SQL_SYMBOLE.SCALAR_FUNCTION_INVOKE =
@@ -2077,7 +2085,7 @@ export class ScalarFuncInvoke<
 
 export class TableFuncInvoke<
   TReturn extends RowObject = any
-  > extends Rowset<TReturn> {
+> extends Rowset<TReturn> {
   readonly $func: Func<string>;
   readonly $args: (Expression<Scalar> | Star | BuiltIn)[];
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
@@ -2127,7 +2135,10 @@ export abstract class Statement extends AST {
     | SQL_SYMBOLE.CREATE_SEQUENCE
     | SQL_SYMBOLE.DROP_SEQUENCE
     | SQL_SYMBOLE.ANNOTATION
-    | SQL_SYMBOLE.IF;
+    | SQL_SYMBOLE.IF
+    | SQL_SYMBOLE.WHILE
+    | SQL_SYMBOLE.BREAK
+    | SQL_SYMBOLE.CONTINUE;
 }
 
 /**
@@ -2239,9 +2250,7 @@ export class GroupCondition extends Condition {
 /**
  * 括号表达式
  */
-export class GroupExpression<
-  T extends Scalar = Scalar
-  > extends Expression<T> {
+export class GroupExpression<T extends Scalar = Scalar> extends Expression<T> {
   $type: SQL_SYMBOLE.BRACKET_EXPRESSION = SQL_SYMBOLE.BRACKET_EXPRESSION;
   $inner: Expression<T>;
   constructor(inner: CompatibleExpression<T>) {
@@ -2255,7 +2264,7 @@ export class GroupExpression<
  */
 export abstract class Operation<
   T extends Scalar = Scalar
-  > extends Expression<T> {
+> extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
   readonly $kind: OPERATION_KIND;
   $operator: OPERATION_OPERATOR;
@@ -2502,10 +2511,10 @@ export class Select<T extends RowObject = any> extends Fromable {
     sorts:
       | SortObject<T>
       | (
-        | SortInfo
-        | CompatibleExpression<Scalar>
-        | [CompatibleExpression, SORT_DIRECTION]
-      )[]
+          | SortInfo
+          | CompatibleExpression<Scalar>
+          | [CompatibleExpression, SORT_DIRECTION]
+        )[]
   ): this;
   orderBy(
     ...sorts: (
@@ -2540,8 +2549,8 @@ export class Select<T extends RowObject = any> extends Fromable {
       isSortInfo(item)
         ? item
         : isScalar(item) || isExpression(item)
-          ? new SortInfo(item as CompatibleExpression<Scalar>)
-          : new SortInfo(item[0], item[1])
+        ? new SortInfo(item as CompatibleExpression<Scalar>)
+        : new SortInfo(item[0], item[1])
     );
     return this;
   }
@@ -2866,7 +2875,7 @@ export class Procedure<
   P10 extends Scalar = never,
   P11 extends Scalar = never,
   P12 extends Scalar = never
-  > extends Identifier<N> {
+> extends Identifier<N> {
   $kind: IDENTOFIER_KIND.PROCEDURE = IDENTOFIER_KIND.PROCEDURE;
 
   execute(...params: [CompatibleExpression<P1>]): Execute<R>;
@@ -2904,7 +2913,7 @@ export class Procedure<
 export class Execute<
   R extends Scalar = any,
   O extends RowObject[] = []
-  > extends Statement {
+> extends Statement {
   readonly $proc: Procedure<R, O, string>;
   readonly $args: Expression<Scalar>[];
   // | NamedArgument<JsConstant, string>[];
@@ -3134,7 +3143,7 @@ export class Raw extends AST {
 export class NamedSelect<
   T extends RowObject = any,
   A extends string = string
-  > extends Rowset<T> {
+> extends Rowset<T> {
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
   $inWith: boolean;
   $select: Select<T>;
@@ -3330,7 +3339,10 @@ export class PrimaryKey extends AST {
         throw new Error(`Primary key must have a column.`);
       }
       if (typeof columns[0] === 'string') {
-        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+        this.$columns = (columns as string[]).map(name => ({
+          name,
+          sort: 'ASC',
+        }));
       } else {
         this.$columns = columns as KeyColumns;
       }
@@ -3392,7 +3404,10 @@ export class UniqueKey {
         throw new Error(`Primary key must have a column.`);
       }
       if (typeof columns[0] === 'string') {
-        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+        this.$columns = (columns as string[]).map(name => ({
+          name,
+          sort: 'ASC',
+        }));
       } else {
         this.$columns = columns as KeyColumns;
       }
@@ -3457,7 +3472,11 @@ export interface TableVariantMemberBuilder {
   uniqueKey(name?: string): UniqueKey;
 }
 
-export type TableVariantMember = PrimaryKey | CheckConstraint | UniqueKey | TableColumnForAdd;
+export type TableVariantMember =
+  | PrimaryKey
+  | CheckConstraint
+  | UniqueKey
+  | TableColumnForAdd;
 
 export const TableVariantMemberBuilder: TableVariantMemberBuilder = {
   primaryKey(name?: string): PrimaryKey {
@@ -3481,7 +3500,7 @@ export const TableVariantMemberBuilder: TableVariantMemberBuilder = {
   uniqueKey(name?: string): UniqueKey {
     return new UniqueKey(name);
   },
-}
+};
 
 export interface CreateTableMemberBuilder {
   column<N extends string, T extends DbType>(
@@ -3576,7 +3595,10 @@ export class CreateIndex extends Statement {
         throw new Error(`Primary key must have a column.`);
       }
       if (typeof columns[0] === 'string') {
-        this.$columns = (columns as string[]).map(name => ({ name, sort: 'ASC' }))
+        this.$columns = (columns as string[]).map(name => ({
+          name,
+          sort: 'ASC',
+        }));
       } else {
         this.$columns = columns as KeyColumns;
       }
@@ -3707,11 +3729,19 @@ export class AlterTable<N extends string = string> extends Statement {
     this.$name = name;
   }
 
-  add(build: (builder: AlterTableAddBuilder) => AlterTableAddMember | AlterTableAddMember[]): this;
+  add(
+    build: (
+      builder: AlterTableAddBuilder
+    ) => AlterTableAddMember | AlterTableAddMember[]
+  ): this;
   add(...members: AlterTableAddMember[]): this;
   add(
     ...members:
-      | [(builder: AlterTableAddBuilder) => AlterTableAddMember[] | AlterTableAddMember]
+      | [
+          (
+            builder: AlterTableAddBuilder
+          ) => AlterTableAddMember[] | AlterTableAddMember
+        ]
       | AlterTableAddMember[]
   ): this {
     if (this.$drops || this.$alterColumn) {
@@ -3719,7 +3749,7 @@ export class AlterTable<N extends string = string> extends Statement {
     }
     if (typeof members[0] === 'function') {
       const ret = members[0](AlterTableAddBuilder);
-      members = Array.isArray(ret) ? ret : [ret]
+      members = Array.isArray(ret) ? ret : [ret];
       this.add(...members);
       return this;
     }
@@ -3731,10 +3761,18 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 
   drop(...members: AlterTableDropMember[]): this;
-  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember[] | AlterTableDropMember): this;
+  drop(
+    build: (
+      builder: AlterTableDropBuilder
+    ) => AlterTableDropMember[] | AlterTableDropMember
+  ): this;
   drop(
     ...members:
-      | [(builder: AlterTableDropBuilder) => AlterTableDropMember[] | AlterTableDropMember]
+      | [
+          (
+            builder: AlterTableDropBuilder
+          ) => AlterTableDropMember[] | AlterTableDropMember
+        ]
       | AlterTableDropMember[]
   ): this {
     if (this.$adds || this.$alterColumn) {
@@ -3745,7 +3783,7 @@ export class AlterTable<N extends string = string> extends Statement {
     }
     if (typeof members[0] === 'function') {
       const ret = members[0](AlterTableDropBuilder);
-      members = Array.isArray(ret) ? ret : [ret]
+      members = Array.isArray(ret) ? ret : [ret];
       this.drop(...members);
       return this;
     }
@@ -3757,8 +3795,8 @@ export class AlterTable<N extends string = string> extends Statement {
     buildColumn:
       | TableColumnForAlter
       | ((
-        builder: (name: string, type: DbType) => TableColumnForAlter
-      ) => TableColumnForAlter)
+          builder: (name: string, type: DbType) => TableColumnForAlter
+        ) => TableColumnForAlter)
   ): this {
     if (this.$adds || this.$drops || this.$alterColumn) {
       throw new Error(
@@ -3766,7 +3804,9 @@ export class AlterTable<N extends string = string> extends Statement {
       );
     }
     if (typeof buildColumn === 'function') {
-      this.$alterColumn = buildColumn((name: string, type: DbType) => new TableColumnForAlter(name, type));
+      this.$alterColumn = buildColumn(
+        (name: string, type: DbType) => new TableColumnForAlter(name, type)
+      );
     } else {
       this.$alterColumn = buildColumn;
     }
@@ -3774,7 +3814,10 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 }
 
-abstract class TableColumn<N extends string = string, T extends DbType = DbType> extends AST {
+abstract class TableColumn<
+  N extends string = string,
+  T extends DbType = DbType
+> extends AST {
   $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $name: N;
   $nullable: boolean;
@@ -3822,14 +3865,17 @@ abstract class TableColumn<N extends string = string, T extends DbType = DbType>
   }
 }
 
-export class TableColumnForAlter<N extends string = string, T extends DbType = DbType> extends TableColumn<N, T> {
+export class TableColumnForAlter<
+  N extends string = string,
+  T extends DbType = DbType
+> extends TableColumn<N, T> {
   $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN = SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
 export class CreateView<
   T extends RowObject = any,
   N extends string = string
-  > extends Statement {
+> extends Statement {
   $type: SQL_SYMBOLE.CREATE_VIEW = SQL_SYMBOLE.CREATE_VIEW;
   $name: Name<N>;
   $body: Select<T>;
@@ -3846,7 +3892,7 @@ export class CreateView<
 export class AlterView<
   T extends RowObject = any,
   N extends string = string
-  > extends Statement {
+> extends Statement {
   $type: SQL_SYMBOLE.ALTER_VIEW = SQL_SYMBOLE.ALTER_VIEW;
   $name: Name<N>;
   $body: Select<T>;
@@ -3868,8 +3914,9 @@ export type CreateTableMember =
   | UniqueKey;
 
 export class TableColumnForAdd<
-  N extends string = string, T extends DbType = DbType
-  > extends TableColumn<N, T> {
+  N extends string = string,
+  T extends DbType = DbType
+> extends TableColumn<N, T> {
   $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $default?: Expression<TsTypeOf<T>>;
 
@@ -3901,7 +3948,7 @@ export class Block extends Statement {
 
   append(...statements: Statement[]) {
     if (!this.$statements) {
-      this.$statements = []
+      this.$statements = [];
     }
     this.$statements.push(...statements);
   }
@@ -3964,8 +4011,8 @@ export class CreateFunction extends Statement {
     this.$name = name;
   }
 
-  params(params: VariantDeclare[]):this
-  params(...params: VariantDeclare[]): this
+  params(params: VariantDeclare[]): this;
+  params(...params: VariantDeclare[]): this;
   params(...params: VariantDeclare[] | [VariantDeclare[]]): this {
     if (params.length === 1 && Array.isArray(params)) {
       params = params[0] as VariantDeclare[];
@@ -4063,7 +4110,7 @@ export class DropIndex<N extends string = string> extends Statement {
 export class CreateSequence<
   T extends Scalar = any,
   N extends string = string
-  > extends Statement {
+> extends Statement {
   $type: SQL_SYMBOLE.CREATE_SEQUENCE = SQL_SYMBOLE.CREATE_SEQUENCE;
   $name: Name<N>;
   $startValue: Literal<number>;
@@ -4136,7 +4183,7 @@ export class Annotation extends Statement {
  */
 export class StandardExpression<
   T extends Scalar = Scalar
-  > extends Expression<T> {
+> extends Expression<T> {
   constructor(kind: string, datas: any[]) {
     super();
     this.$kind = kind;
@@ -4164,11 +4211,129 @@ export type CreateTableHandler = {
   <N extends string>(name: Name<N>): CreateTable<N>;
 } & CreateTableMemberBuilder;
 
+
+
+export class If extends Statement {
+  $type: SQL_SYMBOLE.IF = SQL_SYMBOLE.IF;
+
+  $then: Statement;
+
+  $elseif?: [Condition, Statement][];
+
+  $else?: Statement;
+
+  $condition: Condition;
+
+  constructor(condition: Condition) {
+    super();
+    this.$condition = condition;
+  }
+
+  then(statement: Statement): this;
+  then(statements: Statement[]): this;
+  then(...statements: Statement[]): this;
+  then(...args: Statement[] | [Statement[] | Statement]): this {
+    assert(!this.$then && !this.$else, `Syntax error.`);
+    let then: Statement;
+    if (args.length === 1) {
+      if (Array.isArray(args[0])) {
+        then = SqlBuilder.block(args[0]);
+      } else {
+        then = args[0];
+      }
+    } else {
+      then = SqlBuilder.block(args as Statement[]);
+    }
+    this.$then = then;
+    return this;
+  }
+
+  elseif(condition: Condition): {
+    then(...args: Statement[] | [Statement[] | Statement]): If;
+  } {
+    assert(!this.$else && this.$then, `Syntax error`);
+    if (!this.$elseif) {
+      this.$elseif = [];
+    }
+    const elseif: [Condition, Statement] = [condition, null];
+    this.$elseif.push(elseif);
+    return {
+      then: (...args: Statement[] | [Statement[] | Statement]): this => {
+        let then: Statement;
+        if (args.length === 1) {
+          if (Array.isArray(args[0])) {
+            then = SqlBuilder.block(args[0]);
+          } else {
+            then = args[0];
+          }
+        } else {
+          then = SqlBuilder.block(args as Statement[]);
+        }
+        elseif[1] = then;
+        return this;
+      },
+    };
+  }
+
+  else(statement: Statement): this;
+  else(statements: Statement[]): this;
+  else(...statements: Statement[]): this;
+  else(...args: Statement[] | [Statement[] | Statement]): this {
+    assert(this.$then && !this.$else, `Syntax error.`);
+    let _else: Statement;
+    if (args.length === 1) {
+      if (Array.isArray(args[0])) {
+        _else = SqlBuilder.block(args[0]);
+      } else {
+        _else = args[0];
+      }
+    } else {
+      _else = SqlBuilder.block(args as Statement[]);
+    }
+    this.$else = _else;
+    return this;
+  }
+}
+
+export class While extends Statement {
+  $type: SQL_SYMBOLE.WHILE = SQL_SYMBOLE.WHILE;
+  $condition: Condition;
+  $statement: Statement;
+
+  constructor(condition: Condition) {
+    super();
+    this.$condition = condition;
+  }
+
+  do(...statements: Statement[] | [Statement | Statement[]]) {
+    if (statements.length === 1 && Array.isArray(statements[0])) {
+      statements = statements[0];
+    }
+    if (statements.length > 0) {
+      this.$statement = SqlBuilder.block(statements as Statement[]);
+    } else {
+      this.$statement = statements[0] as Statement;
+    }
+  }
+}
+
+export class Break extends Statement {
+  $type: SQL_SYMBOLE.BREAK = SQL_SYMBOLE.BREAK;
+}
+
+export class Continue extends Statement {
+  $type: SQL_SYMBOLE.CONTINUE = SQL_SYMBOLE.CONTINUE;
+}
+
 export interface SqlBuilder extends Standard {
   createSequence(name: Name<string>): CreateSequence;
   dropSequence(name: Name<string>): DropSequence;
 
-  type: typeof DbType,
+  type: typeof DbType;
+
+  readonly break: Break;
+
+  readonly continue: Continue;
   /**
    * 创建一个SQL文档
    * @param statements 文档代码
@@ -4196,13 +4361,17 @@ export interface SqlBuilder extends Standard {
    * IF语句
    * @param condition
    */
-  if (condition: Condition): If;
+  if(condition: Condition): If;
 
   /**
    * 字符串连接运算
    */
   concat(
-    ...strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
+    ...strs: [
+      CompatibleExpression<string>,
+      CompatibleExpression<string>,
+      ...CompatibleExpression<string>[]
+    ]
   ): Expression<string>;
 
   /**
@@ -4573,6 +4742,8 @@ export interface SqlBuilder extends Standard {
 
   raw(sql: string): any;
 
+  while(condition: Condition): While;
+
   block(...statements: Statement[]): Block;
   block(statements: Statement[]): Block;
 
@@ -4822,9 +4993,13 @@ export interface SqlBuilder extends Standard {
   with(...rowsets: CompatibleNamedSelect[]): With;
   with(rowsets: Record<string, Select>): With;
 
-  union<T extends RowObject = any>(...selects: [Select<T>, Select<T>, ...Select<T>[]]): Select<T>;
+  union<T extends RowObject = any>(
+    ...selects: [Select<T>, Select<T>, ...Select<T>[]]
+  ): Select<T>;
 
-  unionAll<T extends RowObject = any>(...selects: [Select<T>, Select<T>, ...Select<T>[]]): Select<T>;
+  unionAll<T extends RowObject = any>(
+    ...selects: [Select<T>, Select<T>, ...Select<T>[]]
+  ): Select<T>;
 
   invoke<T extends RowObject>(
     type: 'table',
@@ -5010,6 +5185,15 @@ export const SqlBuilder: SqlBuilder = {
   if(condition: Condition): If {
     return new If(condition);
   },
+  while(condition: Condition): While {
+    return new While(condition);
+  },
+  get break(): Break {
+    return new Break();
+  },
+  get continue(): Continue {
+    return new Continue();
+  },
   createSequence(name: Name): CreateSequence {
     return new CreateSequence(name);
   },
@@ -5036,11 +5220,15 @@ export const SqlBuilder: SqlBuilder = {
    * 字符串连接运算
    */
   concat(
-    ...strs: [CompatibleExpression<string>, CompatibleExpression<string>, ...CompatibleExpression<string>[]]
+    ...strs: [
+      CompatibleExpression<string>,
+      CompatibleExpression<string>,
+      ...CompatibleExpression<string>[]
+    ]
   ): Expression<string> {
     let exp = strs[0];
     for (let i = 1; i < strs.length; i++) {
-      exp = new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, exp, strs[i])
+      exp = new BinaryOperation(BINARY_OPERATION_OPERATOR.CONCAT, exp, strs[i]);
     }
     return exp as Expression<string>;
   },
@@ -5361,9 +5549,7 @@ export const SqlBuilder: SqlBuilder = {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NOT_NULL, expr);
   },
 
-  table(
-    nameOrModel: Name | Constructor<Entity>
-  ): any {
+  table(nameOrModel: Name | Constructor<Entity>): any {
     if (typeof nameOrModel === 'function') {
       return makeRowset(nameOrModel);
     }
@@ -5582,13 +5768,10 @@ export const SqlBuilder: SqlBuilder = {
     }
     throw new Error('invalid arg value of `type`');
   },
-  createTable: Object.assign(
-    (name: any) => {
-      const table = new CreateTable(name);
-      return table;
-    },
-    CreateTableMemberBuilder
-  ),
+  createTable: Object.assign((name: any) => {
+    const table = new CreateTable(name);
+    return table;
+  }, CreateTableMemberBuilder),
 
   alterTable<N extends string>(name: Name<N>): AlterTable<N> {
     return new AlterTable(name);
@@ -5660,86 +5843,3 @@ export const SqlBuilder: SqlBuilder = {
     return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
   },
 };
-
-export class If extends Statement {
-  $type: SQL_SYMBOLE.IF = SQL_SYMBOLE.IF;
-
-  $then: Statement;
-
-  $elseif?: [Condition, Statement][];
-
-  $else?: Statement;
-
-  $condition: Condition;
-
-  constructor(condition: Condition) {
-    super();
-    this.$condition = condition;
-  }
-
-  then(statement: Statement): this
-  then(statements: Statement[]): this
-  then(...statements: Statement[]): this
-  then(...args: Statement[] | [Statement[] | Statement]): this {
-    assert(!this.$then && !this.$else, `Syntax error.`)
-    let then: Statement;
-    if (args.length === 1) {
-      if (Array.isArray(args[0])) {
-        then = SqlBuilder.block(args[0]);
-      } else {
-        then = args[0];
-      }
-    } else {
-      then = SqlBuilder.block(args as Statement[])
-    }
-    this.$then = then;
-    return this;
-  }
-
-  elseif(condition: Condition): { then(...args: Statement[] | [Statement[] | Statement]): If } {
-    assert(!this.$else && this.$then, `Syntax error`);
-    if (!this.$elseif) {
-      this.$elseif = []
-    }
-    const elseif: [Condition, Statement] = [condition, null];
-    this.$elseif.push(elseif);
-    return {
-      then: (...args: Statement[] | [Statement[] | Statement]): this => {
-        let then: Statement;
-        if (args.length === 1) {
-          if (Array.isArray(args[0])) {
-            then = SqlBuilder.block(args[0]);
-          } else {
-            then = args[0];
-          }
-        } else {
-          then = SqlBuilder.block(args as Statement[])
-        }
-        elseif[1] = then;
-        return this;
-      }
-    }
-  }
-
-  else(statement: Statement): this
-  else(statements: Statement[]): this
-  else(...statements: Statement[]): this
-  else(...args: Statement[] | [Statement[] | Statement]): this {
-    assert(this.$then && !this.$else, `Syntax error.`)
-    let _else: Statement;
-    if (args.length === 1) {
-      if (Array.isArray(args[0])) {
-        _else = SqlBuilder.block(args[0]);
-      } else {
-        _else = args[0];
-      }
-    } else {
-      _else = SqlBuilder.block(args as Statement[])
-    }
-    this.$else = _else;
-    return this;
-  }
-
-}
-
-SqlBuilder.if(SqlBuilder.literal(1).eq(1)).then(SqlBuilder.variant('abc').assign(1)).else(SqlBuilder.if())

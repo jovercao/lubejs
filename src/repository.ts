@@ -2,7 +2,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
 import { FieldsOf, ProxiedRowset, ProxiedTable } from './ast';
-import { Executor } from './execute';
 import { Queryable } from './queryable';
 import {
   ColumnMetadata,
@@ -21,16 +20,14 @@ import {
   Constructor,
   Entity,
   isStringType,
-  EntityKey,
   EntityKeyType,
-  Scalar,
   DbEvents,
   RepositoryEventHandler,
 } from './types';
 import { Condition, SqlBuilder } from './ast';
 import { isScalar } from './util';
 import { EventEmitter } from 'stream';
-import { DbContext, DbInstance } from './db-context';
+import { DbInstance } from './db-context';
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 

@@ -249,7 +249,7 @@ export type TsTypeOf<T extends DbType> = T extends
   ? number
   : T extends STRING | UUID
   ? string
-  : T extends DATE | DATETIME
+  : T extends DATE | DATETIME | DATETIMEOFFSET
   ? Date
   : T extends BOOLEAN
   ? boolean
@@ -427,9 +427,9 @@ export interface EntityKey {
 /**
  * 主键的类型
  */
-export type EntityKeyType = EntityKey[keyof EntityKey];
+export type EntityKeyType = EntityKey[keyof EntityKey] extends never ? number : EntityKey[keyof EntityKey];
 
 /**
  * 主键字段字面量类型
  */
-export type EntityKeyName = keyof EntityKey;
+export type EntityKeyName = (keyof EntityKey) extends never ? 'id' : (keyof EntityKey);

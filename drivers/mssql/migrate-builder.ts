@@ -17,9 +17,9 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
-  existsTable(name: Name<string>): Expression<Scalar> {
-    return
-  }
+  // existsTable(name: Name<string>): Expression<Scalar> {
+  //   return
+  // }
 
   private readonly lube: Lube;
   private readonly sqlUtil: SqlUtil;

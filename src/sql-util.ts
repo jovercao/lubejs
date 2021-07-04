@@ -64,6 +64,10 @@ import {
   Annotation,
   SqlBuilder as SQL,
   TableFuncInvoke,
+  If,
+  While,
+  Break,
+  Continue,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
@@ -128,6 +132,10 @@ import {
   isCreateSequence,
   isDropSequence,
   isAnnotation,
+  isIf,
+  isWhile,
+  isBreak,
+  isContinue,
 } from './util';
 import { Standard } from './std';
 
@@ -457,12 +465,24 @@ export abstract class SqlUtil {
       sql = this.sqlifyBlock(statement);
     } else if (isStandardStatement(statement)) {
       sql = this.sqlifyStatement(this.translationStandardOperation(statement));
+    } else if (isIf(statement)) {
+      return this.sqlifyIf(statement, params);
+    } else if (isWhile(statement)) {
+      return this.sqlifyWhile(statement, params) ;
+    } else if (isBreak(statement)) {
+      sql = this.sqlifyBreak(statement);
+    } else if (isContinue(statement)) {
+      sql = this.sqlifyContinue(statement);
     }
     if (sql !== undefined) {
       return sql + this.options.statementEnd;
     }
     invalidAST('statement', statement);
   }
+  abstract sqlifyContinue(statement: Continue): string;
+  abstract sqlifyBreak(statement: Break): string;
+  abstract sqlifyWhile(statement: While, params: Set<Parameter<Scalar, string>>): string;
+  abstract sqlifyIf(statement: If, params?: Set<Parameter<Scalar, string>>,): string;
 
   protected sqlifyStatements(
     statements: Statement[],

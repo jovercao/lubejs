@@ -221,44 +221,45 @@ export async function connect(
       throw new Error(`Default lubejs options not found in configure.`);
     }
     options = config.configures[config.default];
-  }
-  if (typeof optionOrUrlOrConfigname === 'string') {
-    if (optionOrUrlOrConfigname.indexOf(':') < 0) {
-      const config = await loadConfig();
-      options = config?.configures?.[optionOrUrlOrConfigname];
-      if (!options) {
-        throw new Error(
-          `Lubejs options ${optionOrUrlOrConfigname} not found in configure.`
-        );
-      }
-    } else {
-      const url = new URL(optionOrUrlOrConfigname);
-      const params = url.searchParams;
-      const urlOptions: Record<string, string> = {};
-      for (const [key, value] of params.entries()) {
-        if (value !== undefined) {
-          urlOptions[key] = value;
+  } else {
+    if (typeof optionOrUrlOrConfigname === 'string') {
+      if (optionOrUrlOrConfigname.indexOf(':') < 0) {
+        const config = await loadConfig();
+        options = config?.configures?.[optionOrUrlOrConfigname];
+        if (!options) {
+          throw new Error(
+            `Lubejs options ${optionOrUrlOrConfigname} not found in configure.`
+          );
+        }
+      } else {
+        const url = new URL(optionOrUrlOrConfigname);
+        const params = url.searchParams;
+        const urlOptions: Record<string, string> = {};
+        for (const [key, value] of params.entries()) {
+          if (value !== undefined) {
+            urlOptions[key] = value;
+          }
+        }
+        const dialect = url.protocol
+          .substr(0, url.protocol.length - 1)
+          .toLowerCase();
+        try {
+          options = {
+            dialect,
+            host: url.host,
+            port: url.port && parseInt(url.port),
+            user: url.username,
+            password: url.password,
+            database: url.pathname.split('|')[0],
+            ...urlOptions,
+          };
+        } catch (error) {
+          throw new Error('Unregister or uninstalled dialect: ' + dialect);
         }
       }
-      const dialect = url.protocol
-        .substr(0, url.protocol.length - 1)
-        .toLowerCase();
-      try {
-        options = {
-          dialect,
-          host: url.host,
-          port: url.port && parseInt(url.port),
-          user: url.username,
-          password: url.password,
-          database: url.pathname.split('|')[0],
-          ...urlOptions,
-        };
-      } catch (error) {
-        throw new Error('Unregister or uninstalled dialect: ' + dialect);
-      }
+    } else {
+      options = optionOrUrlOrConfigname;
     }
-  } else {
-    options = optionOrUrlOrConfigname;
   }
 
   options = Object.assign({}, defaultConnectOptions, options);

@@ -85,6 +85,9 @@ import {
   CompatibleCondition,
   SqlBuilder,
   If,
+  While,
+  Continue,
+  Break,
 } from './ast';
 
 import {
@@ -279,7 +282,6 @@ export function makeProxiedRowset<T extends RowObject>(
   const keys = Object.getOwnPropertyNames(rowset);
   return new Proxy(rowset, {
     get(target: any, key: string | symbol | number): any {
-
       const v = target[key];
 
       if (v !== undefined) return v;
@@ -603,7 +605,10 @@ export function isStatement(value: any): value is Statement {
     isDropFunction(value) ||
     isDropSequence(value) ||
     isAnnotation(value) ||
-    isIf(value)
+    isIf(value) ||
+    isWhile(value) ||
+    isBreak(value) ||
+    isContinue(value)
   );
 }
 
@@ -1003,8 +1008,20 @@ export function isIf(value: any): value is If {
   return value?.$type === SQL_SYMBOLE.IF;
 }
 
+export function isWhile(value: any): value is While {
+  return value?.$type === SQL_SYMBOLE.WHILE;
+}
+
+export function isContinue(value: any): value is Continue {
+  return value?.$type === SQL_SYMBOLE.CONDITION;
+}
+
+export function isBreak(value: any): value is Break {
+  return value?.$type === SQL_SYMBOLE.BREAK;
+}
+
 export function outputCommand(cmd: Command): void {
-  console.debug('sql:', cmd.sql);
+  console.debug('sql:'.bgBlack, cmd.sql);
   if (cmd.params && cmd.params.length > 0) {
     console.debug(
       'params: {\n',

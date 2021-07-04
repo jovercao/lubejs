@@ -142,7 +142,7 @@ export abstract class MigrateBuilder {
   abstract commentProcedure(name: Name, comment?: string): Statement;
   abstract commentFunction(name: Name, comment?: string): Statement;
 
-  abstract existsTable(name: Name): Expression;
+  // abstract existsTable(name: Name): Expression;
   // 为列添加或修改默认值
   abstract setDefaultValue(
     table: Name,

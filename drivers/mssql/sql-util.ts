@@ -82,6 +82,10 @@ import {
   DropSequence,
   Annotation,
   Name,
+  Break,
+  Continue,
+  If,
+  While,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -605,6 +609,41 @@ export class MssqlStandardTranslator implements StandardTranslator {
 }
 
 export class MssqlSqlUtil extends SqlUtil {
+  sqlifyContinue(statement: Continue): string {
+    return 'CONTINUE';
+  }
+  sqlifyBreak(statement: Break): string {
+    return 'BREAK';
+  }
+  sqlifyWhile(
+    statement: While,
+    params?: Set<Parameter<Scalar, string>>
+  ): string {
+    let sql = `WHILE (${this.sqlifyCondition(statement.$condition)}) `;
+    sql += this.sqlifyStatement(statement.$statement, params);
+    return sql;
+  }
+  sqlifyIf(statement: If, params?: Set<Parameter<Scalar, string>>): string {
+    let sql = `IF (${this.sqlifyCondition(
+      statement.$condition,
+      params
+    )})\n  ${this.sqlifyStatement(statement.$then, params)}\n  `;
+    if (statement.$elseif && statement.$elseif.length > 0) {
+      sql += statement.$elseif
+        .map(
+          ([condition, statement]) =>
+            `ELSE IF (${this.sqlifyCondition(
+              condition
+            )}) ${this.sqlifyStatement(statement)}`
+        )
+        .join('\n  ');
+    }
+    if (statement.$else) {
+      sql += 'ELSE ';
+      sql += this.sqlifyStatement(statement.$else);
+    }
+    return sql;
+  }
   constructor(
     options: MssqlSqlOptions,
     public readonly translator: MssqlStandardTranslator
@@ -675,16 +714,16 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyCreateIndex(statement: CreateIndex): string {
-    let sql = 'CREATE '
+    let sql = 'CREATE ';
     if (statement.$unique) {
       sql += 'UNIQUE ';
     }
     if (statement.$clustered) {
-      sql += 'CLUSTERED '
+      sql += 'CLUSTERED ';
     }
-    sql += `INDEX ${this.sqlifyName(
-      statement.$name
-    )} ON ${this.sqlifyName(statement.$table)}(${statement.$columns
+    sql += `INDEX ${this.sqlifyName(statement.$name)} ON ${this.sqlifyName(
+      statement.$table
+    )}(${statement.$columns
       .map(col => `${this.quoted(col.name)} ${col.sort}`)
       .join(', ')})`;
     return sql;
@@ -760,7 +799,11 @@ export class MssqlSqlUtil extends SqlUtil {
         .join(',\n  ');
     }
     if (statement.$alterColumn) {
-      sql += ` ALTER COLUMN ${this.quoted(statement.$alterColumn.$name)} ${this.sqlifyType(statement.$alterColumn.$dbType)} ${statement.$alterColumn.$nullable ? 'NULL' : 'NOT NULL'}`; // + this.sqlifyTableMember(statement.$alterColumn)
+      sql += ` ALTER COLUMN ${this.quoted(
+        statement.$alterColumn.$name
+      )} ${this.sqlifyType(statement.$alterColumn.$dbType)} ${
+        statement.$alterColumn.$nullable ? 'NULL' : 'NOT NULL'
+      }`; // + this.sqlifyTableMember(statement.$alterColumn)
     }
     return sql;
   }
@@ -786,7 +829,7 @@ export class MssqlSqlUtil extends SqlUtil {
         sql += ` AS (${this.sqlifyExpression(member.$calculate)})`;
       }
       if (member.$default) {
-        sql += ` DEFAULT (${this.sqlifyExpression(member.$default)})`
+        sql += ` DEFAULT (${this.sqlifyExpression(member.$default)})`;
       }
       if (member.$check) {
         sql += ` CHECK(${this.sqlifyCondition(member.$check)})`;

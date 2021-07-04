@@ -1,10 +1,12 @@
 /**
  * 排序方向
  */
-export enum SORT_DIRECTION {
-  ASC = 'ASC',
-  DESC = 'DESC'
-}
+export type SORT_DIRECTION = 'ASC' | 'DESC';
+
+// {
+//   ASC = 'ASC',
+//   DESC = 'DESC'
+// }
 
 /**
  * 参数方向
@@ -155,7 +157,10 @@ export enum SQL_SYMBOLE {
   CREATE_SEQUENCE = "CREATE_SEQUENCE",
   DROP_SEQUENCE = "DROP_SEQUENCE",
   ANNOTATION = "ANNOTATION",
-  IF = "IF"
+  IF = "IF",
+  WHILE = "WHILE",
+  CONTINUE = "CONTINUE",
+  BREAK = "BREAK"
 }
 
 export enum SQL_SYMBOLE_TABLE_MEMBER {
