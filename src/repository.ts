@@ -588,7 +588,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     // 取中间表快照
     const relationSnapshots: any[] = await this.fetchRelation(
       item,
-      relation
+      relation.relationRelation
     ) as any;
     await subRepo._submit(subItems, [relation.referenceRelation]);
 
@@ -619,7 +619,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     const removedRelationItems = relationSnapshots.filter(relationItem => {
       const subKey = Reflect.get(
         relationItem,
-        relation.relationRelation.referenceRelation.foreignProperty
+        relation.referenceRelation.relationRelation.referenceRelation.foreignProperty
       );
       return !itemsMap[subKey];
     })

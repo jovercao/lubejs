@@ -4,6 +4,7 @@
 import {
   CompatibleExpression,
   Expression,
+  Field,
   ProxiedRowset,
   Rowset,
   Select,
@@ -24,7 +25,7 @@ import {
   UUID,
   UuidConstructor,
 } from './types';
-import { isClass } from './util';
+import { isClass, isProxiedRowset } from './util';
 
 export interface IndexMetadata {
   name: string;
@@ -1427,6 +1428,59 @@ export class MetadataStore {
  */
 export const metadataStore = new MetadataStore();
 
+export function aroundRowset<T extends Entity = any>(
+  rowset: Rowset<any>,
+  metadata: EntityMetadata
+): ProxiedRowset<T> {
+  if (isProxiedRowset(rowset)) {
+    rowset = Reflect.get(rowset, $ROWSET_INSTANCE);
+  }
+  const keys = Object.getOwnPropertyNames(rowset);
+  const field = function (property: string) {
+    const column = metadata.getColumn(property);
+    if (!column) {
+      throw new Error(`Entity ${metadata.className} property ${property} is not found.`)
+    }
+    return rowset.field(column.columnName);
+  };
+  return new Proxy(rowset, {
+    get(target: any, key: string | symbol | number): any {
+      if (key === 'field') {
+        return field;
+      }
+
+      const v = target[key];
+      if (v !== undefined) return v;
+
+      /**
+       * 标记为Proxy
+       */
+      if (key === $IsProxy) {
+        return true;
+      }
+      // 获取被代理前的对象
+      if (key === $ROWSET_INSTANCE) {
+        return target;
+      }
+
+      if (keys.includes(key as string)) return v;
+
+      if (typeof key !== 'string') {
+        return v;
+      }
+
+
+      // const value = Reflect.get(target, prop);
+      // if (value !== undefined) return value;
+      if (key.startsWith('$')) {
+        key = key.substring(1);
+      }
+
+      return field(key);
+    },
+  });
+}
+
 /**
  * 从
  * @param entity
@@ -1447,49 +1501,7 @@ export function makeRowset<T extends Entity = any>(
     rowset = new Table(metadata.viewName);
     // rowset = SQL.table(metadata.viewName);
   }
-
-  return new Proxy(rowset, {
-    get(target: any, key: string | symbol | number): any {
-      /**
-       * 标记为Proxy
-       */
-      if (key === $IsProxy) {
-        return true;
-      }
-      // 获取被代理前的对象
-      if (key === $ROWSET_INSTANCE) {
-        return target;
-      }
-
-      // metadata 通过field函数访问
-      if (metadata && key === 'field') {
-        if (!target._field) {
-          target._field = function (name: string) {
-            const column = metadata.getColumn(name);
-            return target.field(column.columnName);
-          };
-        }
-        return target._field;
-      }
-
-      const v = target[key];
-      if (
-        typeof key !== 'string' ||
-        // === null 也返回，例如 $alias
-        v !== undefined
-      ) {
-        return v;
-      }
-
-      // const value = Reflect.get(target, prop);
-      // if (value !== undefined) return value;
-      if (key.startsWith('$')) {
-        key = key.substring(1);
-      }
-
-      return this.field(key);
-    },
-  });
+  return aroundRowset(rowset, metadata);
 }
 
 /**

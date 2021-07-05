@@ -292,7 +292,7 @@ export abstract class SqlUtil {
   protected translationStandardOperation<T extends Scalar>(
     operation: StandardExpression<T> | StandardStatement
   ): Expression<T> | Statement {
-    const transFn = Reflect.get(this.translator, operation.$kind);
+    const transFn = Reflect.get(this.translator, operation.$name);
     return transFn.call(this.translator, ...operation.$datas);
   }
 
@@ -397,7 +397,7 @@ export abstract class SqlUtil {
     /**
      * AST
      */
-    statement: Statement,
+    statement: Statement | Raw,
     /**
      * 参数容器
      */

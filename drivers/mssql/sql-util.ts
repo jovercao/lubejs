@@ -656,7 +656,7 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyAnnotation(statement: Annotation): string {
-    if (statement.$kind === 'LINE') {
+    if (statement.$style === 'LINE') {
       return statement.$text
         .split(/\n|\r\n/g)
         .map(line => '-- ' + line)
@@ -734,13 +734,11 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyAlterFunction(statement: AlterFunction): string {
-    if (statement.$kind === 'SCALAR') {
-      return `ALTER FUNCTION ${this.sqlifyName(
-        statement.$name
-      )}(${statement.$params
-        .map(param => this.sqlifyVariantDeclare(param))
-        .join(', ')}) `;
-    }
+    return `ALTER FUNCTION ${this.sqlifyName(
+      statement.$name
+    )}(${statement.$params
+      .map(param => this.sqlifyVariantDeclare(param))
+      .join(', ')}) `;
   }
 
   protected sqlifyCreateFunction(statement: CreateFunction): string {

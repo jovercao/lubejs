@@ -61,7 +61,7 @@ function makeMigrateBuilder(
               return ret
             });
           } else if (isStatement(ret) || isRaw(ret)) {
-            statements.push(ret);
+            statements.push(ret as any);
           }
           return ret;
         };

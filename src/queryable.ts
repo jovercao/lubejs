@@ -29,10 +29,11 @@ import {
   isPrimaryOneToOne,
   ColumnMetadata,
   RelationMetadata,
+  aroundRowset,
 } from './metadata';
 import { FetchRelations, RelationKeyOf, Repository } from './repository';
 import { Constructor, Entity, isStringType, RowObject } from './types';
-import { ensureCondition, isNamedSelect } from './util';
+import { ensureCondition, isNamedSelect, mergeFetchRelations } from './util';
 // import { getMetadata } from 'typeorm'
 
 const { and, select } = SQL;
@@ -128,9 +129,10 @@ export class Queryable<T extends Entity | RowObject>
   //  * 克隆当前对象用于添加信息，以免污染当前对象
   //  */
   private fork(rowset: ProxiedRowset<T>): Queryable<T> {
-    const queryable = this.create(rowset);
+    const queryable = this.create(aroundRowset(rowset, this.metadata));
     queryable._withDetail = this._withDetail;
     queryable._includes = this._includes;
+    queryable.metadata = this.metadata;
     return queryable;
   }
 
@@ -156,7 +158,7 @@ export class Queryable<T extends Entity | RowObject>
     const queryable = this.fork(
       select(this.rowset.star)
         .from(this.rowset)
-        .where(condition)
+        .where(condition(this.rowset))
         .as(ROWSET_ALIAS)
     );
     return queryable;
@@ -253,8 +255,8 @@ export class Queryable<T extends Entity | RowObject>
 
   getSql(): Select<T> {
     return isNamedSelect(this.rowset)
-      ? this.rowset.$select.limit(1)
-      : select(this.rowset.star).from(this.rowset).limit(1);
+      ? this.rowset.$select
+      : select(this.rowset.star).from(this.rowset);
   }
 
   /**
@@ -285,18 +287,25 @@ export class Queryable<T extends Entity | RowObject>
    * 执行查询，并获取第一行记录
    */
   async fetchFirst(): Promise<T> {
-    const sql = this.getSql();
+    const sql = this.getSql().limit(1);
     const { rows } = await this.context.executor.query(sql);
     if (!this.metadata) {
       return rows[0];
     }
     if (!rows[0]) return null;
     const item = this.toEntity(rows[0]);
-    if (this._withDetail) {
-      await this.loadRelation(item, this.metadata.getDetailIncludes());
-    }
+    let includes: FetchRelations<T>;
     if (this._includes) {
-      await this.loadRelation(item, this._includes);
+      includes = this._includes;
+    }
+    if (this._withDetail) {
+      const detailIncludes = this.metadata.getDetailIncludes();
+      if (detailIncludes) {
+        includes = includes ? (mergeFetchRelations({}, includes, detailIncludes)) : this._includes;
+      }
+    }
+    if (includes) {
+      await this.loadRelation(item, includes);
     }
     return item;
   }
@@ -336,29 +345,23 @@ export class Queryable<T extends Entity | RowObject>
 
     if (isPrimaryOneToOne(relation)) {
       const key = Reflect.get(item, this.metadata.keyProperty);
-      const relationItem = await relationRepository.get(key);
-      return relationItem;
+      return await relationRepository.find(r => r[relation.referenceRelation.foreignProperty].eq(key)).fetchFirst();
       // 本表为次表
     } else if (isForeignOneToOne(relation)) {
-      const refValue = Reflect.get(item, relation.foreignColumn.property);
-      const relationItem = await relationRepository
-        .find(rowset =>
-          rowset.field(relation.referenceEntity.keyColumn.property).eq(refValue)
-        )
-        .fetchFirst();
-      return relationItem;
+      const refKey = Reflect.get(item, relation.foreignProperty);
+      return await relationRepository.get(refKey);
     } else if (isOneToMany(relation)) {
       const key = Reflect.get(item, this.metadata.keyProperty);
       const relationItems = await relationRepository
         .filter(rowset =>
           rowset
-            .field(relation.referenceRelation.foreignColumn.property)
+            .field(relation.referenceRelation.foreignProperty)
             .eq(key)
         )
         .fetchAll();
       return relationItems as any;
     } else if (isManyToOne(relation)) {
-      const refValue = Reflect.get(item, relation.foreignColumn.property);
+      const refValue = Reflect.get(item, relation.foreignProperty);
       const relationItem = await relationRepository
         .find(rowset =>
           rowset.field(relation.referenceEntity.keyColumn.property).eq(refValue)

@@ -40,8 +40,10 @@ import {
   UNARY_COMPARE_OPERATOR,
   CONDITION_KIND,
   OPERATION_KIND,
-  SQL_SYMBOLE_EXPRESSION,
   SQL_SYMBOLE_TABLE_MEMBER,
+  STATEMENT_KIND,
+  $IsProxy,
+  $ROWSET_INSTANCE,
 } from './constants';
 import {
   DbType,
@@ -303,7 +305,7 @@ export abstract class AST {
  * 可以直接使用 instanceof 来判断是否为expression
  */
 export abstract class Expression<T extends Scalar = Scalar> extends AST {
-  $type: SQL_SYMBOLE_EXPRESSION;
+  $tag: SQL_SYMBOLE.EXPRESSION = SQL_SYMBOLE.EXPRESSION;
   /**
    * 字符串连接运算
    */
@@ -2107,38 +2109,8 @@ export class TableFuncInvoke<
  * SQL 语句
  */
 export abstract class Statement extends AST {
-  $type:
-    | SQL_SYMBOLE.RAW
-    | SQL_SYMBOLE.SELECT
-    | SQL_SYMBOLE.UPDATE
-    | SQL_SYMBOLE.INSERT
-    | SQL_SYMBOLE.EXECUTE
-    | SQL_SYMBOLE.DELETE
-    | SQL_SYMBOLE.DECLARE
-    | SQL_SYMBOLE.ASSIGNMENT
-    | SQL_SYMBOLE.CREATE_TABLE
-    | SQL_SYMBOLE.CREATE_PROCEDURE
-    | SQL_SYMBOLE.CREATE_FUNCTION
-    | SQL_SYMBOLE.CREATE_INDEX
-    | SQL_SYMBOLE.CREATE_VIEW
-    | SQL_SYMBOLE.ALTER_PROCEDURE
-    | SQL_SYMBOLE.ALTER_VIEW
-    | SQL_SYMBOLE.ALTER_FUNCTION
-    | SQL_SYMBOLE.ALTER_TABLE
-    | SQL_SYMBOLE.DROP_VIEW
-    | SQL_SYMBOLE.DROP_FUNCETION
-    | SQL_SYMBOLE.DROP_PROCEDURE
-    | SQL_SYMBOLE.DROP_TABLE
-    | SQL_SYMBOLE.DROP_INDEX
-    | SQL_SYMBOLE.BLOCK
-    | SQL_SYMBOLE.STANDARD_STATEMENT
-    | SQL_SYMBOLE.CREATE_SEQUENCE
-    | SQL_SYMBOLE.DROP_SEQUENCE
-    | SQL_SYMBOLE.ANNOTATION
-    | SQL_SYMBOLE.IF
-    | SQL_SYMBOLE.WHILE
-    | SQL_SYMBOLE.BREAK
-    | SQL_SYMBOLE.CONTINUE;
+  $type: SQL_SYMBOLE.STATEMENT = SQL_SYMBOLE.STATEMENT;
+  $kind: STATEMENT_KIND;
 }
 
 /**
@@ -2451,7 +2423,7 @@ export class Select<T extends RowObject = any> extends Fromable {
   $having?: Condition;
   $union?: Union<T>;
 
-  readonly $type: SQL_SYMBOLE.SELECT = SQL_SYMBOLE.SELECT;
+  readonly $kind: STATEMENT_KIND.SELECT = STATEMENT_KIND.SELECT;
 
   constructor(results?: InputObject<T>);
   constructor(
@@ -2657,7 +2629,7 @@ export class Insert<T extends RowObject = any> extends Statement {
   $identityInsert: boolean = false;
   $with: With;
 
-  readonly $type: SQL_SYMBOLE.INSERT = SQL_SYMBOLE.INSERT;
+  readonly $kind: STATEMENT_KIND.INSERT = STATEMENT_KIND.INSERT;
 
   /**
    * 在插入数据时开启标识列插入，即IdentityInsert On
@@ -2785,7 +2757,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T, string>;
   $sets: Assignment<Scalar>[];
 
-  readonly $type: SQL_SYMBOLE.UPDATE = SQL_SYMBOLE.UPDATE;
+  readonly $kind: STATEMENT_KIND.UPDATE = STATEMENT_KIND.UPDATE;
 
   constructor(table: CompatibleTable<T, string>) {
     super();
@@ -2828,7 +2800,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
 
 export class Delete<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T, string>;
-  $type: SQL_SYMBOLE.DELETE = SQL_SYMBOLE.DELETE;
+  $kind: STATEMENT_KIND.DELETE = STATEMENT_KIND.DELETE;
 
   constructor(table?: CompatibleTable<T, string>) {
     super();
@@ -2917,7 +2889,7 @@ export class Execute<
   readonly $proc: Procedure<R, O, string>;
   readonly $args: Expression<Scalar>[];
   // | NamedArgument<JsConstant, string>[];
-  readonly $type: SQL_SYMBOLE.EXECUTE = SQL_SYMBOLE.EXECUTE;
+  readonly $kind: STATEMENT_KIND.EXECUTE = STATEMENT_KIND.EXECUTE;
 
   // constructor(proc: Name | Procedure<T, string>, params?: InputObject);
   constructor(
@@ -2947,7 +2919,7 @@ export class Execute<
 export class Assignment<T extends Scalar = Scalar> extends Statement {
   left: Assignable<T>;
   right: Expression<T>;
-  $type: SQL_SYMBOLE.ASSIGNMENT = SQL_SYMBOLE.ASSIGNMENT;
+  $kind: STATEMENT_KIND.ASSIGNMENT = STATEMENT_KIND.ASSIGNMENT;
 
   constructor(left: Assignable<T>, right: CompatibleExpression<T>) {
     super();
@@ -3052,7 +3024,7 @@ export const DeclareBuilder: DeclareBuilder = {
  */
 export class Declare extends Statement {
   $declares: (VariantDeclare | TableVariantDeclare)[] = [];
-  readonly $type: SQL_SYMBOLE.DECLARE = SQL_SYMBOLE.DECLARE;
+  $kind: STATEMENT_KIND.DECLARE = STATEMENT_KIND.DECLARE;
   constructor(
     build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
   ) {
@@ -3526,7 +3498,7 @@ export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
 };
 
 export class CreateTable<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.CREATE_TABLE = SQL_SYMBOLE.CREATE_TABLE;
+  $kind: STATEMENT_KIND.CREATE_TABLE;
   $members: CreateTableMember[];
   $name: Name<N>;
 
@@ -3560,7 +3532,7 @@ export class CreateTable<N extends string = string> extends Statement {
 }
 
 export class CreateIndex extends Statement {
-  $type: SQL_SYMBOLE.CREATE_INDEX = SQL_SYMBOLE.CREATE_INDEX;
+  $kind: STATEMENT_KIND.CREATE_INDEX = STATEMENT_KIND.CREATE_INDEX;
   $name?: string;
   $table: Name;
   $columns: KeyColumns;
@@ -3715,7 +3687,7 @@ export const AlterTableAddBuilder: AlterTableAddBuilder = {
 };
 
 export class AlterTable<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.ALTER_TABLE = SQL_SYMBOLE.ALTER_TABLE;
+  $kind: STATEMENT_KIND.ALTER_TABLE = STATEMENT_KIND.ALTER_TABLE;
   $name: Name<N>;
 
   $adds?: AlterTableAddMember[];
@@ -3876,7 +3848,7 @@ export class CreateView<
   T extends RowObject = any,
   N extends string = string
 > extends Statement {
-  $type: SQL_SYMBOLE.CREATE_VIEW = SQL_SYMBOLE.CREATE_VIEW;
+  $kind: STATEMENT_KIND.CREATE_VIEW = STATEMENT_KIND.CREATE_VIEW;
   $name: Name<N>;
   $body: Select<T>;
   constructor(name: Name<N>) {
@@ -3893,7 +3865,7 @@ export class AlterView<
   T extends RowObject = any,
   N extends string = string
 > extends Statement {
-  $type: SQL_SYMBOLE.ALTER_VIEW = SQL_SYMBOLE.ALTER_VIEW;
+  $kind: STATEMENT_KIND.ALTER_VIEW = STATEMENT_KIND.ALTER_VIEW;
   $name: Name<N>;
   $body: Select<T>;
   constructor(name: Name<N>) {
@@ -3938,7 +3910,7 @@ export class TableColumnForAdd<
 }
 
 export class Block extends Statement {
-  $type: SQL_SYMBOLE.BLOCK = SQL_SYMBOLE.BLOCK;
+  $kind: STATEMENT_KIND.BLOCK = STATEMENT_KIND.BLOCK;
   $statements: Statement[];
 
   constructor(statements: Statement[]) {
@@ -3955,7 +3927,7 @@ export class Block extends Statement {
 }
 
 export class CreateProcedure extends Statement {
-  $type: SQL_SYMBOLE.CREATE_PROCEDURE = SQL_SYMBOLE.CREATE_PROCEDURE;
+  $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
   $name: Name;
   $params: ProcedureParameter[];
   $body: Statement[];
@@ -3977,7 +3949,7 @@ export class CreateProcedure extends Statement {
 }
 
 export class AlterProcedure extends Statement {
-  $type: SQL_SYMBOLE.ALTER_PROCEDURE = SQL_SYMBOLE.ALTER_PROCEDURE;
+  $kind: STATEMENT_KIND.ALTER_PROCEDURE = STATEMENT_KIND.ALTER_PROCEDURE;
   $name: Name;
   $params: ProcedureParameter[]; // TODO: 声明不正确
   $body: Statement[];
@@ -4000,7 +3972,7 @@ export class AlterProcedure extends Statement {
 
 export type FunctinKind = 'SCALAR' | 'TABLE';
 export class CreateFunction extends Statement {
-  $type: SQL_SYMBOLE.CREATE_FUNCTION = SQL_SYMBOLE.CREATE_FUNCTION;
+  $kind: STATEMENT_KIND.CREATE_FUNCTION = STATEMENT_KIND.CREATE_FUNCTION;
   $name: Name;
   $params: VariantDeclare[];
   $body: Statement[];
@@ -4032,16 +4004,14 @@ export class CreateFunction extends Statement {
 }
 
 export class AlterFunction extends Statement {
-  $type: SQL_SYMBOLE.ALTER_FUNCTION = SQL_SYMBOLE.ALTER_FUNCTION;
+  $kind: STATEMENT_KIND.ALTER_FUNCTION = STATEMENT_KIND.ALTER_FUNCTION;
   $name: Name;
   $params: VariantDeclare[];
   $body: Statement[];
-  $kind: FunctinKind;
 
   constructor(name: Name, kind: FunctinKind) {
     super();
     this.$name = name;
-    this.$kind = kind;
   }
 
   params(params: VariantDeclare[]) {
@@ -4056,7 +4026,7 @@ export class AlterFunction extends Statement {
 }
 
 export class DropTable<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_TABLE = SQL_SYMBOLE.DROP_TABLE;
+  $kind: STATEMENT_KIND.DROP_TABLE = STATEMENT_KIND.DROP_TABLE;
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -4066,7 +4036,7 @@ export class DropTable<N extends string = string> extends Statement {
 }
 
 export class DropView<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_VIEW = SQL_SYMBOLE.DROP_VIEW;
+  $kind: STATEMENT_KIND.DROP_VIEW = STATEMENT_KIND.DROP_VIEW;
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -4076,7 +4046,7 @@ export class DropView<N extends string = string> extends Statement {
 }
 
 export class DropProcedure<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_PROCEDURE = SQL_SYMBOLE.DROP_PROCEDURE;
+  $kind: STATEMENT_KIND.DROP_PROCEDURE = STATEMENT_KIND.DROP_PROCEDURE;
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -4086,7 +4056,7 @@ export class DropProcedure<N extends string = string> extends Statement {
 }
 
 export class DropFunction<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_FUNCETION = SQL_SYMBOLE.DROP_FUNCETION;
+  $kind: STATEMENT_KIND.DROP_FUNCETION = STATEMENT_KIND.DROP_FUNCETION;
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -4096,7 +4066,7 @@ export class DropFunction<N extends string = string> extends Statement {
 }
 
 export class DropIndex<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_INDEX = SQL_SYMBOLE.DROP_INDEX;
+  $kind: STATEMENT_KIND.DROP_INDEX = STATEMENT_KIND.DROP_INDEX;
   $table: Name;
   $name: N;
 
@@ -4111,7 +4081,7 @@ export class CreateSequence<
   T extends Scalar = any,
   N extends string = string
 > extends Statement {
-  $type: SQL_SYMBOLE.CREATE_SEQUENCE = SQL_SYMBOLE.CREATE_SEQUENCE;
+  $kind: STATEMENT_KIND.CREATE_SEQUENCE = STATEMENT_KIND.CREATE_SEQUENCE;
   $name: Name<N>;
   $startValue: Literal<number>;
   $increment: Literal<number>;
@@ -4138,7 +4108,7 @@ export class CreateSequence<
 }
 
 export class DropSequence<N extends string = string> extends Statement {
-  $type: SQL_SYMBOLE.DROP_SEQUENCE = SQL_SYMBOLE.DROP_SEQUENCE;
+  $kind: STATEMENT_KIND.DROP_SEQUENCE = STATEMENT_KIND.DROP_SEQUENCE;
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -4148,12 +4118,12 @@ export class DropSequence<N extends string = string> extends Statement {
 }
 
 export class StandardStatement extends Statement {
-  $type: SQL_SYMBOLE.STANDARD_STATEMENT = SQL_SYMBOLE.STANDARD_STATEMENT;
-  $kind: string;
+  $kind: STATEMENT_KIND.STANDARD_STATEMENT = STATEMENT_KIND.STANDARD_STATEMENT;
+  $name: string;
   $datas: any[];
   constructor(kind: string, datas: any[]) {
     super();
-    this.$kind = kind;
+    this.$name = kind;
     this.$datas = datas;
   }
 
@@ -4164,14 +4134,14 @@ export class StandardStatement extends Statement {
 
 export type AnnotationKind = 'LINE' | 'BLOCK';
 export class Annotation extends Statement {
-  $type: SQL_SYMBOLE.ANNOTATION = SQL_SYMBOLE.ANNOTATION;
-  $kind: AnnotationKind;
+  $kind: STATEMENT_KIND.ANNOTATION = STATEMENT_KIND.ANNOTATION;
+  $style: AnnotationKind;
   $text: string;
 
   constructor(kind: AnnotationKind, text: string) {
     super();
 
-    this.$kind = kind;
+    this.$style = kind;
     this.$text = text;
   }
 }
@@ -4186,14 +4156,14 @@ export class StandardExpression<
 > extends Expression<T> {
   constructor(kind: string, datas: any[]) {
     super();
-    this.$kind = kind;
+    this.$name = kind;
     this.$datas = datas;
   }
 
   readonly $type: SQL_SYMBOLE.STANDARD_EXPRESSION =
     SQL_SYMBOLE.STANDARD_EXPRESSION;
 
-  readonly $kind: string;
+  readonly $name: string;
 
   readonly $datas: any[];
 
@@ -4211,10 +4181,8 @@ export type CreateTableHandler = {
   <N extends string>(name: Name<N>): CreateTable<N>;
 } & CreateTableMemberBuilder;
 
-
-
 export class If extends Statement {
-  $type: SQL_SYMBOLE.IF = SQL_SYMBOLE.IF;
+  $kind: STATEMENT_KIND.IF = STATEMENT_KIND.IF;
 
   $then: Statement;
 
@@ -4296,7 +4264,7 @@ export class If extends Statement {
 }
 
 export class While extends Statement {
-  $type: SQL_SYMBOLE.WHILE = SQL_SYMBOLE.WHILE;
+  $kind: STATEMENT_KIND.WHILE = STATEMENT_KIND.WHILE;
   $condition: Condition;
   $statement: Statement;
 
@@ -4318,11 +4286,11 @@ export class While extends Statement {
 }
 
 export class Break extends Statement {
-  $type: SQL_SYMBOLE.BREAK = SQL_SYMBOLE.BREAK;
+  $kind: STATEMENT_KIND.BREAK = STATEMENT_KIND.BREAK;
 }
 
 export class Continue extends Statement {
-  $type: SQL_SYMBOLE.CONTINUE = SQL_SYMBOLE.CONTINUE;
+  $kind: STATEMENT_KIND.CONTINUE = STATEMENT_KIND.CONTINUE;
 }
 
 export interface SqlBuilder extends Standard {
