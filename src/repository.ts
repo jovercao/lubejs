@@ -254,7 +254,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       this.toEntity(updated, item);
 
       if (withoutRelations !== true) {
-        // 保存引用项
+        // 保存子项
         await this.saveSubordinate(item, withoutRelations);
       }
     }
@@ -515,16 +515,19 @@ export class Repository<T extends Entity> extends Queryable<T> {
       return await repo._submit(subItems, [relation.referenceRelation]);
     }
 
+    const subSnapshots: any[] = (await this.fetchRelation(
+      item,
+      relation
+    )) as any;
+
+    const itemsMap: any = {};
+    const snapshotMap: any = {};
+
     subItems.forEach((subItem: any) => {
       itemsMap[Reflect.get(subItem, relation.referenceEntity.keyProperty)] =
         subItem;
     });
-    const itemsMap: any = {};
-    const subSnapshots: any[] = (await this.fetchRelation(
-      item,
-      relation.property as RelationKeyOf<T>
-    )) as any;
-    const snapshotMap: any = {};
+
     subSnapshots.forEach((subItem: any) => {
       snapshotMap[Reflect.get(subItem, relation.referenceEntity.keyProperty)] =
         subItem;
@@ -585,7 +588,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     // 取中间表快照
     const relationSnapshots: any[] = await this.fetchRelation(
       item,
-      relation.property as RelationKeyOf<T>
+      relation
     ) as any;
     await subRepo._submit(subItems, [relation.referenceRelation]);
 

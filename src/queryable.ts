@@ -12,10 +12,11 @@ import {
   Condition,
   Select,
   CompatibleSortInfo,
-  SqlBuilder as SQL
+  SqlBuilder as SQL,
+  Rowset,
 } from './ast';
 import { ROWSET_ALIAS } from './constants';
-import { DbContext, DbInstance } from './db-context';
+import { DbContext, DbInstance, EntityConstructor } from './db-context';
 import { Executor } from './execute';
 import {
   EntityMetadata,
@@ -27,10 +28,11 @@ import {
   isForeignOneToOne,
   isPrimaryOneToOne,
   ColumnMetadata,
+  RelationMetadata,
 } from './metadata';
-import { FetchRelations, RelationKeyOf } from './repository';
+import { FetchRelations, RelationKeyOf, Repository } from './repository';
 import { Constructor, Entity, isStringType, RowObject } from './types';
-import { ensureCondition } from './util';
+import { ensureCondition, isNamedSelect } from './util';
 // import { getMetadata } from 'typeorm'
 
 const { and, select } = SQL;
@@ -45,41 +47,40 @@ const { and, select } = SQL;
  * }
  * ```
  */
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 export class Queryable<T extends Entity | RowObject>
   implements AsyncIterable<T>
 {
-  protected rowset: ProxiedRowset<T>;
-  protected readonly metadata?: EntityMetadata;
-  private _where: CompatibleCondition;
-  private _sorts: CompatibleSortInfo;
-  private _includes: FetchRelations<T>;
-  protected get executor(): Executor {
-    return this.context.executor;
-  };
-  /**
-   * 默认使用缓存
-   */
-  private _nocache: boolean = false;
-  private _withDetail: boolean = false;
-
   constructor(
     protected context: DbInstance,
-    Entity: Constructor<T> // constructor(
+    Entity: EntityConstructor<T> // constructor(
   ) {
     this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
     if (!this.metadata) {
       throw new Error(`Only allow register entity constructor.`);
     }
     this.rowset = makeRowset<any>(Entity) as ProxiedRowset<T>;
+    // this.sql = select(this.rowset.star).from(this.rowset);
   }
 
-  private _appendWhere(where: CompatibleCondition<T>): this {
-    if (!this._where) {
-      this._where = where;
-    }
-    this._where = and(this._where, ensureCondition(where, this.rowset));
-    return this;
+  protected rowset: ProxiedRowset<T>;
+  // protected sql: Select<any>;
+  protected metadata?: EntityMetadata;
+  private _includes: FetchRelations<T>;
+  private _nocache: boolean = false;
+  private _withDetail: boolean = false;
+
+  // private _appendWhere(where: CompatibleCondition<T>): this {
+  //   if (!this._where) {
+  //     this._where = ensureCondition(where, this.rowset);
+  //   }
+  //   this._where = and(this._where, ensureCondition(where, this.rowset));
+  //   return this;
+  // }
+
+  protected get executor(): Executor {
+    return this.context.executor;
   }
 
   /**
@@ -103,34 +104,33 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   take(count: number, skip = 0): Queryable<T> {
-    // if (this._take !== undefined) {
-    //   this._take = lines;
-    //   this._skip = skip;
-    //   return this;
-    // }
-    const sql = this._buildSelectSql().offset(skip).limit(count);
-    return this.create(sql.as(ROWSET_ALIAS));
+    const sql = select(this.rowset.star)
+      .from(this.rowset)
+      .offset(skip)
+      .limit(count);
+    return this.fork(sql.as(ROWSET_ALIAS));
   }
 
-  private _buildSelectSql(): Select<any>;
-  private _buildSelectSql<G extends InputObject>(
-    results: G
-  ): Select<RowTypeFrom<G>>;
-  private _buildSelectSql<G extends InputObject>(
-    results?: (p: ProxiedRowset<T>) => G
-  ): Select {
-    const sql = select(results ? results : this.rowset._).from(this.rowset);
-    if (this._where) sql.where(this._where);
-    if (this._sorts) sql.orderBy(this._sorts);
-    return sql;
-  }
+  // private _buildSelectSql(): Select<T>;
+  // private _buildSelectSql<G extends InputObject>(
+  //   results: G
+  // ): Select<RowTypeFrom<G>>;
+  // private _buildSelectSql<G extends InputObject>(
+  //   results?: (p: ProxiedRowset<T>) => G
+  // ): Select {
+  //   const sql = select(results ? results : this.rowset._).from(this.rowset);
+  //   if (this._where) sql.where(this._where);
+  //   if (this._sorts) sql.orderBy(this._sorts);
+  //   return sql;
+  // }
 
-  /**
-   * 克隆当前对象用于添加信息，以免污染当前对象
-   */
-  private fork(): Queryable<T> {
-    const queryable: Queryable<T> = Object.create(Queryable.prototype);
-    Object.assign(queryable, this);
+  // /**
+  //  * 克隆当前对象用于添加信息，以免污染当前对象
+  //  */
+  private fork(rowset: ProxiedRowset<T>): Queryable<T> {
+    const queryable = this.create(rowset);
+    queryable._withDetail = this._withDetail;
+    queryable._includes = this._includes;
     return queryable;
   }
 
@@ -143,6 +143,7 @@ export class Queryable<T extends Entity | RowObject>
     const queryable: Queryable<T> = Object.create(Queryable.prototype);
     queryable.context = this.context;
     queryable.rowset = rowset;
+    queryable._nocache = true;
     return queryable;
   }
 
@@ -152,8 +153,12 @@ export class Queryable<T extends Entity | RowObject>
   filter(
     condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
   ): Queryable<T> {
-    const queryable = this.fork();
-    queryable._appendWhere(condition(queryable.rowset));
+    const queryable = this.fork(
+      select(this.rowset.star)
+        .from(this.rowset)
+        .where(condition)
+        .as(ROWSET_ALIAS)
+    );
     return queryable;
   }
 
@@ -163,16 +168,19 @@ export class Queryable<T extends Entity | RowObject>
   map<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G
   ): Queryable<RowTypeFrom<G>> {
-    const sql = this._buildSelectSql(results(this.rowset));
+    const sql = select(results(this.rowset)).from(this.rowset);
     return this.create(sql.as(ROWSET_ALIAS));
   }
 
   sort(
     sorts: (p: ProxiedRowset<T>) => SortInfo[] | SortObject<T>
   ): Queryable<T> {
-    const queryable = this.fork();
-    queryable._sorts = sorts(this.rowset);
-    return queryable;
+    return this.fork(
+      select(this.rowset.star)
+        .from(this.rowset)
+        .orderBy(sorts(this.rowset))
+        .as(ROWSET_ALIAS)
+    );
   }
 
   /**
@@ -190,18 +198,16 @@ export class Queryable<T extends Entity | RowObject>
     if (where) {
       this.filter(where);
     }
-    const sql = this._buildSelectSql(results(this.rowset)).groupBy(
-      ...groups(this.rowset)
-    );
+    const sql = select(results(this.rowset)).groupBy(...groups(this.rowset));
     return this.create(sql.as(ROWSET_ALIAS));
   }
 
   union(...sets: Queryable<T>[]): Queryable<T> {
-    const sql = this._buildSelectSql();
+    const sql = select(this.rowset.star).from(this.rowset);
     sets.forEach(query => {
-      sql.unionAll(query._buildSelectSql());
+      sql.unionAll(select(query.rowset.star).from(query.rowset));
     });
-    return this.create(sql.as(ROWSET_ALIAS));
+    return this.fork(sql.as(ROWSET_ALIAS));
   }
 
   join<J extends Entity, G extends InputObject>(
@@ -210,7 +216,8 @@ export class Queryable<T extends Entity | RowObject>
     results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G
   ): Queryable<RowTypeFrom<G>> {
     const rightRowset = makeRowset(entity);
-    const newRowset = this._buildSelectSql(results(this.rowset, rightRowset))
+    const newRowset = select(results(this.rowset, rightRowset))
+      .from(this.rowset)
       .join(rightRowset, on(this.rowset, rightRowset), true)
       .as(ROWSET_ALIAS);
     return this.create(newRowset);
@@ -226,30 +233,36 @@ export class Queryable<T extends Entity | RowObject>
    */
   include(props: FetchRelations<T>): Queryable<T> {
     this.assertMetdata();
-    const queryable = this.fork();
+    const queryable = this.fork(this.rowset);
     queryable._includes = props;
     return queryable;
   }
 
   withDetail(): Queryable<T> {
     this.assertMetdata();
-    const queryable = this.fork();
+    const queryable = this.fork(this.rowset);
     queryable._withDetail = true;
     return queryable;
   }
 
   withNocache(): Queryable<T> {
-    const query = this.fork();
+    const query = this.fork(this.rowset);
     query._nocache = true;
     return query;
+  }
+
+  getSql(): Select<T> {
+    return isNamedSelect(this.rowset)
+      ? this.rowset.$select.limit(1)
+      : select(this.rowset.star).from(this.rowset).limit(1);
   }
 
   /**
    * 执行查询并将结果转换为数组，并获取所有数据返回一个数组
    */
   async fetchAll(): Promise<T[]> {
-    const sql = this._buildSelectSql();
-    const { rows } = await this.executor.query(sql);
+    const sql = this.getSql();
+    const { rows } = await this.context.executor.query(sql);
 
     if (!this.metadata) return rows;
 
@@ -272,8 +285,8 @@ export class Queryable<T extends Entity | RowObject>
    * 执行查询，并获取第一行记录
    */
   async fetchFirst(): Promise<T> {
-    const sql = this._buildSelectSql().limit(1);
-    const { rows } = await this.executor.query(sql);
+    const sql = this.getSql();
+    const { rows } = await this.context.executor.query(sql);
     if (!this.metadata) {
       return rows[0];
     }
@@ -298,90 +311,83 @@ export class Queryable<T extends Entity | RowObject>
       let subIncludes = Reflect.get(relations, relationName);
       if (subIncludes === true) subIncludes = null;
 
-      const relationQueryable = new Queryable<any>(
-        this.context,
-        relation.referenceEntity.class as Constructor<any>
-      );
-      if (subIncludes) {
-        relationQueryable._includes = subIncludes;
-      }
-      // 复制当前选项
-      relationQueryable._withDetail = this._withDetail;
-
-      if (isPrimaryOneToOne(relation)) {
-        const idValue = Reflect.get(item, this.metadata.keyColumn.property);
-        const relationItem = await relationQueryable
-          .filter(rowset =>
-            rowset[relation.referenceRelation.foreignColumn.property].eq(
-              idValue
-            )
-          )
-          .fetchFirst();
-        Reflect.set(item, relation.property, relationItem);
-        // 本表为次表
-      } else if (isForeignOneToOne(relation)) {
-        const refValue = Reflect.get(item, relation.foreignColumn.property);
-        const relationItem = await relationQueryable
-          .find(rowset =>
-            rowset
-              .field(relation.referenceEntity.keyColumn.property)
-              .eq(refValue)
-          )
-          .fetchFirst();
-        Reflect.set(item, relation.property, relationItem);
-      } else if (isOneToMany(relation)) {
-        const idValue = Reflect.get(item, this.metadata.keyColumn.property);
-        const relationItems = await relationQueryable
-          .filter(rowset =>
-            rowset
-              .field(relation.referenceRelation.foreignColumn.property)
-              .eq(idValue)
-          )
-          .fetchAll();
-        Reflect.set(item, relation.property, relationItems);
-      } else if (isManyToOne(relation)) {
-        const refValue = Reflect.get(item, relation.foreignColumn.property);
-        const relationItem = await relationQueryable
-          .find(rowset =>
-            rowset
-              .field(relation.referenceEntity.keyColumn.property)
-              .eq(refValue)
-          )
-          .fetchFirst();
-        Reflect.set(item, relation.property, relationItem);
-      } else if (isManyToMany(relation)) {
-        const idValue = Reflect.get(item, this.metadata.keyColumn.property);
-        // 本表为字段1关联
-        const rt = makeRowset<any>(relation.relationEntity.class);
-        // 当前外键列
-        const thisForeignColumn =
-          relation.relationRelation.referenceRelation.foreignColumn;
-        // 关联外键列
-        const relationForeignColumn =
-          relation.referenceRelation.relationRelation.referenceRelation
-            .foreignColumn;
-        const relationIdsSelect = select(
-          rt.field(relationForeignColumn.property)
-        )
-          .from(rt)
-          .where(rt.field(thisForeignColumn.property).eq(idValue));
-        const subItems = relationQueryable
-          .filter(rowset =>
-            rowset
-              .field(relation.referenceEntity.keyColumn.property)
-              .in(relationIdsSelect)
-          )
-          .fetchAll();
-        Reflect.set(item, relation.property, subItems);
-      }
+      const data = await this.fetchRelation(item, relation, {
+        _withDetail: this._withDetail,
+        _includes: subIncludes,
+      });
+      Reflect.set(item, relation.property, data);
     }
   }
 
-  async fetchRelation<R extends RelationKeyOf<T>>(
+  protected async fetchRelation<R extends RelationKeyOf<T>>(
     item: T,
-    relation: R
+    relation: RelationMetadata,
+    options?: {
+      _withDetail: boolean;
+      _includes: FetchRelations<T[R]>;
+    }
   ): Promise<T[R]> {
-    throw new Error(`尚未实现！`);
+    this.assertMetdata();
+    const relationRepository: Repository<any> = this.context.getRepository(
+      relation.referenceClass
+    );
+    relationRepository._withDetail = options?._withDetail;
+    relationRepository._includes = options?._includes;
+
+    if (isPrimaryOneToOne(relation)) {
+      const key = Reflect.get(item, this.metadata.keyProperty);
+      const relationItem = await relationRepository.get(key);
+      return relationItem;
+      // 本表为次表
+    } else if (isForeignOneToOne(relation)) {
+      const refValue = Reflect.get(item, relation.foreignColumn.property);
+      const relationItem = await relationRepository
+        .find(rowset =>
+          rowset.field(relation.referenceEntity.keyColumn.property).eq(refValue)
+        )
+        .fetchFirst();
+      return relationItem;
+    } else if (isOneToMany(relation)) {
+      const key = Reflect.get(item, this.metadata.keyProperty);
+      const relationItems = await relationRepository
+        .filter(rowset =>
+          rowset
+            .field(relation.referenceRelation.foreignColumn.property)
+            .eq(key)
+        )
+        .fetchAll();
+      return relationItems as any;
+    } else if (isManyToOne(relation)) {
+      const refValue = Reflect.get(item, relation.foreignColumn.property);
+      const relationItem = await relationRepository
+        .find(rowset =>
+          rowset.field(relation.referenceEntity.keyColumn.property).eq(refValue)
+        )
+        .fetchFirst();
+      return relationItem;
+    } else if (isManyToMany(relation)) {
+      const key = Reflect.get(item, this.metadata.keyProperty);
+      // 本表为字段1关联
+      const rt = makeRowset<any>(relation.relationEntity.class);
+      // 当前外键列
+      const thisForeignColumn =
+        relation.relationRelation.referenceRelation.foreignColumn;
+      // 关联外键列
+      const relationForeignColumn =
+        relation.referenceRelation.relationRelation.referenceRelation
+          .foreignColumn;
+      const relationIdsSelect = select(rt.field(relationForeignColumn.property))
+        .from(rt)
+        .where(rt.field(thisForeignColumn.property).eq(key));
+      const subItems = await relationRepository
+        .filter(rowset =>
+          rowset
+            .field(relation.referenceEntity.keyColumn.property)
+            .in(relationIdsSelect)
+        )
+        .fetchAll();
+      return subItems as any;
+    }
   }
 
   protected toEntityValue(datarow: any, column: ColumnMetadata): any {

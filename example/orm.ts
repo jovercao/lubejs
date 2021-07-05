@@ -51,6 +51,7 @@ export class OrderDetail extends Entity implements EntityKey {
   count: number;
   price: number;
   amount: number;
+  description?: string;
   orderId?: number;
   order?: Order;
 }
@@ -66,7 +67,7 @@ export class Employee extends Entity implements EntityKey {
   id?: number;
   name: string;
   description?: string;
-  organization: Organization;
+  organization?: Organization;
   positions?: Position[];
   user?: User;
 }
@@ -201,6 +202,7 @@ context(DB, modelBuilder => {
     builder.column(p => p.price, Number).hasType(DbType.numeric(18, 6));
     builder.column(p => p.amount, Number).hasType(DbType.numeric(18, 2));
     builder.column(p => p.orderId, Number);
+    builder.column(p => p.description, String).isNullable();
     builder
       .hasOne(p => p.order, Order)
       .withMany(p => p.details)

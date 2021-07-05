@@ -3,7 +3,9 @@ import '../../orm';
 import { User, DB, OrderDetail } from '../../orm';
 import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
-describe('Repository: insert', function () {
+const { star, count } = SQL;
+
+describe.skip('Repository: insert', function () {
   this.timeout(0);
   let db: DB;
   before(async () => {
@@ -15,7 +17,9 @@ describe('Repository: insert', function () {
   });
 
   it('单条记录插入 - User', async () => {
-    const { count: beforeCount } = await db.User.map(p => ({ count: SQL.count(p.star) })).fetchFirst();
+    const { count: beforeCount } = await db.User.map(p => ({
+      count: count(star),
+    })).fetchFirst();
     const user: User = User.create({
       name: 'user1',
       password: '123456',
@@ -23,9 +27,11 @@ describe('Repository: insert', function () {
     });
     await db.User.insert(user);
 
-    const { count: afterCount } = await db.User.map(p => ({ count: SQL.count(p.star) })).fetchFirst();
+    const { count: afterCount } = await db.User.map(p => ({
+      count: count(star),
+    })).fetchFirst();
 
-    assert(afterCount - beforeCount === 1, '插用户入数量不正确')
+    assert(afterCount - beforeCount === 1, '插用户入数量不正确');
     const newUser = await db.User.get(user.id);
     assert.deepStrictEqual(user, newUser);
   });
