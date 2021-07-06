@@ -1,5 +1,12 @@
 import '../../orm';
-import { DB, Employee, Order, OrderDetail, User } from '../../orm';
+import {
+  DB,
+  Employee,
+  EmployeePosition,
+  Order,
+  OrderDetail,
+  User,
+} from '../../orm';
 import assert from 'assert';
 import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
@@ -45,7 +52,7 @@ describe.only('Repository: delete', function () {
     assert(!deletedEmployee);
   });
 
-  it.only('一对多关系删除 - Order <- OrderDetail', async () => {
+  it('一对多关系删除 - Order <- OrderDetail', async () => {
     const order = Order.create({
       orderNo: '订单号',
       date: new Date(),
@@ -76,13 +83,16 @@ describe.only('Repository: delete', function () {
       includes: { details: true },
     });
 
-    const deletedDetails = await db.getQueryable(OrderDetail).filter(p => p.orderId.eq(newOrder.id)).fetchAll();
+    const deletedDetails = await db
+      .getQueryable(OrderDetail)
+      .filter(p => p.orderId.eq(newOrder.id))
+      .fetchAll();
 
     assert(!deleted);
     assert(deletedDetails.length == 0);
   });
 
-  it('ManyToMany 子项增删除改测试', async () => {
+  it.only('ManyToMany 子项增删除改测试', async () => {
     const employee: Employee = {
       user: {
         name: 'abcx',
@@ -103,24 +113,18 @@ describe.only('Repository: delete', function () {
 
     await db.Employee.save(employee);
 
-    employee.positions[1].description = '职位2更新内容';
+    const newEmp = await db.Employee.get(employee.id, { withDetail: true });
+    assert(newEmp.positions.length === 2);
 
-    employee.positions.push({
-      name: 'ManyToMany职位3',
-    });
-    employee.positions.splice(0, 1);
+    await db.Employee.delete(employee, { withDetail: true });
 
-    await db.Employee.save(employee);
+    const deleted = await db.Employee.get(employee.id, { withDetail: true });
 
-    const updated = await db.Employee.get(employee.id, {
-      includes: { positions: true },
-    });
-    assert(updated?.description === '职员更新内容', '职员更新失败');
-    assert(updated.positions.length === 2, '关联表数目不正确');
-    assert(
-      updated.positions[0].name === 'ManyToMany职位2' &&
-        updated.positions[0].description === '职位2更新内容'
-    );
-    assert((updated.positions[1].name = 'ManyToMany职位3'));
+    const relationDetails = await db
+      .getQueryable(EmployeePosition)
+      .filter(p => p.employeeId.eq(employee.id))
+      .fetchAll();
+    assert(!deleted);
+    assert(relationDetails.length === 0);
   });
 });

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import Decimal from 'decimal.js';
 import { isString } from 'util';
 import {
   Condition,
@@ -341,6 +342,7 @@ export function isScalar(value: any): value is Scalar {
     value === undefined ||
     value instanceof Date ||
     value instanceof Uuid ||
+    value instanceof Decimal ||
     isBinary(value)
   );
 }
@@ -951,12 +953,12 @@ export function isClass(func: Function): boolean {
   return func.toString().startsWith('class ');
 }
 
-/**
- * 是否标量类型
- */
-export function isScalarType(type: any): type is ScalarType {
-  return typeof type === 'bigint';
-}
+// /**
+//  * 是否标量类型
+//  */
+// export function isScalarType(type: any): type is ScalarType {
+//   return typeof type === 'bigint';
+// }
 
 export function deepthEqual(left: any, right: any): boolean {
   const type = typeof left;

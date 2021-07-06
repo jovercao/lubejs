@@ -1,10 +1,12 @@
-import { IResult, ISqlType, Request } from 'mssql';
+import { IRecordSet, IResult, ISqlType, Request } from 'mssql';
 import {
   SqlOptions,
   Parameter,
   PARAMETER_DIRECTION,
   QueryResult,
   Scalar,
+  Decimal,
+  Uuid
 } from 'lubejs';
 import { toMssqlType } from './types';
 
@@ -52,6 +54,7 @@ export async function doQuery(
     await request.cancel();
     throw ex;
   }
+  res.recordsets.forEach(recordset => normalDatas(recordset));
   const result: QueryResult<any, any, any> = {
     rows: res.recordset,
     rowsAffected: res.rowsAffected[0],
@@ -69,4 +72,38 @@ export async function doQuery(
     result.rowsets = res.recordsets;
   }
   return result;
+}
+
+/**
+ * mssql 的类型不足，在此处转换
+ */
+function normalDatas(datas: IRecordSet<any>): any[] {
+  for (const [column, { type }] of Object.entries(datas.columns)) {
+    // HACK 使用mssql私有属性 SqlType declaration
+    const declare = Reflect.get(type, 'declaration');
+    if (declare === 'bigint') {
+      for (const row of datas) {
+        const value = row[column] as string;
+        if (value !== undefined && value !== null) {
+          row[column] = BigInt(row[column]);
+        }
+      }
+    } else if (declare === 'decimal') {
+      for (const row of datas) {
+        const value = row[column] as string;
+        if (value !== undefined && value !== null) {
+          row[column] = new Decimal(row[column]);
+        }
+      }
+    } else if (declare === 'uniqueidentifier') {
+      for (const row of datas) {
+        const value = row[column] as string;
+        if (value !== undefined && value !== null) {
+          row[column] = new Uuid(row[column]);
+        }
+      }
+    }
+  }
+  delete datas.columns;
+  return datas;
 }

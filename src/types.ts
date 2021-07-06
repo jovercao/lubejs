@@ -12,6 +12,7 @@ import { deepthEqual } from './util';
 import { parse, stringify, v4 } from 'uuid';
 import { EntityConstructor } from './db-context';
 import { metadataStore } from './metadata';
+import { Decimal } from 'decimal.js';
 
 export const EntitySymble = Symbol('LUBEJS#Entity');
 
@@ -23,11 +24,11 @@ export class Entity {
   static create<T extends EntityConstructor<any>>(
     this: T,
     data: EntityTypeOf<T>
-  ): EntityInstance<EntityTypeOf<T>>
+  ): EntityInstance<EntityTypeOf<T>>;
   static create<T extends EntityConstructor<any>>(
     this: T,
     data: EntityTypeOf<T>[]
-  ): EntityInstance<EntityTypeOf<T>>[]
+  ): EntityInstance<EntityTypeOf<T>>[];
   static create<T extends EntityConstructor<any>>(
     this: T,
     data: EntityTypeOf<T> | EntityTypeOf<T>[]
@@ -42,7 +43,7 @@ export class Entity {
         }
       }
       return data;
-    }
+    };
     if (Array.isArray(data)) {
       for (const item of data) {
         init(item);
@@ -55,8 +56,8 @@ export class Entity {
 }
 
 export type EntityInstance<T extends Entity> = T & {
-  constructor: EntityConstructor<T>
-}
+  constructor: EntityConstructor<T>;
+};
 
 export type EntityTypeOf<C extends EntityConstructor<any>> =
   C extends EntityConstructor<infer T> ? T : never;
@@ -96,15 +97,17 @@ export type Scalar =
   // | null
   | number
   | bigint
+  | Decimal
   | Date
   | Binary
-  | Uuid;
+  | Uuid
+  | Decimal;
 // TODO: 适配 JSON 和 ARRAY数据类型
 // | RowObject
 // | Array<ScalarType>
 
 export class Uuid {
-  private constructor(strOrBuffer?: string | ArrayLike<number>) {
+  constructor(strOrBuffer?: string | ArrayLike<number>) {
     if (typeof strOrBuffer === 'string') {
       this._buffer = Array.from(parse(strOrBuffer));
     } else if (strOrBuffer) {
@@ -128,10 +131,6 @@ export class Uuid {
     return uuid;
   }
 
-  static from(strOrBuffer: string | ArrayLike<number>): Uuid {
-    return new Uuid(strOrBuffer);
-  }
-
   static readonly empty = new Uuid();
 
   static equals(left: Uuid, right: Uuid): boolean {
@@ -144,13 +143,39 @@ export class Uuid {
   }
 }
 
+export { Decimal } from 'decimal.js';
+
+// export interface Decimal {
+//   readonly source: string;
+//   toString(): string;
+//   add(value: Decimal) {
+
+//   }
+// }
+
+// export function Decimal(value: string | number | bigint): Decimal {
+//   let stringValue: string;
+//   if (typeof value === 'bigint' || typeof value === 'number') {
+//     stringValue = value.toString();
+//   } else {
+//     stringValue = value
+//   }
+//   const data = Object(stringValue);
+//   data.valueOf = () =>
+//   data.source = value;
+//   data.toString = () => value
+//   return data as Decimal;
+// }
+
 export type UuidConstructor = typeof Uuid;
+export type DecimalConstructor = typeof Decimal;
 
 export type ScalarType =
   | StringConstructor
   | DateConstructor
   | BooleanConstructor
   | NumberConstructor
+  | DecimalConstructor
   | BigIntConstructor
   | ArrayBufferConstructor
   | typeof Buffer
@@ -286,11 +311,13 @@ export type TsTypeOf<T extends DbType> = T extends
   | INT8
   | INT16
   | INT32
-  | INT64
-  | Number
   | FLOAT
   | DOUBLE
   ? number
+  : T extends NUMERIC
+  ? Decimal
+  : T extends INT64
+  ? bigint
   : T extends STRING | UUID
   ? string
   : T extends DATE | DATETIME | DATETIMEOFFSET

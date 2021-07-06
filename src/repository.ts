@@ -298,11 +298,11 @@ export class Repository<T extends Entity> extends Queryable<T> {
     if (!Array.isArray(items)) {
       items = [items];
     }
-
-    this._emit('delete', items, this.context);
     if (items.length === 0) {
       throw new Error('Items must have more than or equals one of record.');
     }
+
+    this._emit('delete', items, this.context);
 
     for (const item of items) {
       if (options?.withDetail) {

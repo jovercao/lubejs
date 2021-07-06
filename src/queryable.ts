@@ -409,6 +409,8 @@ export class Queryable<T extends Entity | RowObject>
       isStringType(column.dbType)
     ) {
       return JSON.parse(Reflect.get(datarow, column.columnName));
+    // } if (column.type === BigInt) {
+    //   return new BigInt(Reflect.get(datarow, column.columnName));
     } else {
       return Reflect.get(datarow, column.columnName);
     }
