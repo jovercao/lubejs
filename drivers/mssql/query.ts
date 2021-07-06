@@ -88,7 +88,7 @@ function normalDatas(datas: IRecordSet<any>): any[] {
           row[column] = BigInt(row[column]);
         }
       }
-    } else if (declare === 'decimal') {
+    } else if (declare === 'decimal' || declare === 'numeric') {
       for (const row of datas) {
         const value = row[column] as string;
         if (value !== undefined && value !== null) {

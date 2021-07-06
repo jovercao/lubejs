@@ -1,4 +1,4 @@
-import { Scalar, isBinary } from 'lubejs';
+import { Scalar, isBinary, Uuid, Decimal } from 'lubejs';
 
 // export function quoted(name: string): string {
 //   return `[${name.replace(/\]/g, "]]")}]`;
@@ -96,6 +96,14 @@ export function sqlifyLiteral(value: Scalar): string {
 
   if (value instanceof Date) {
     return `CONVERT(DATETIMEOFFSET(7), '${value.toISOString()}')`;
+  }
+
+  if (value instanceof Uuid) {
+    return `CONVERT(UNIQUEIDENTIFIER, '${value.toString()}')`;
+  }
+
+  if (value instanceof Decimal) {
+    return value.toString();
   }
 
   if (isBinary(value)) {

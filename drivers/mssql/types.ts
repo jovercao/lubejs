@@ -80,8 +80,8 @@ export function toMssqlType(type: DbType): mssql.ISqlType {
       return mssql.Int();
     case 'INT64':
       return mssql.BigInt();
-    case 'NUMERIC':
-      return mssql.Numeric(type.precision, type.digit);
+    case 'DECIMAL':
+      return mssql.Decimal(type.precision, type.digit);
     case 'STRING':
       return mssql.VarChar(type.length);
     case 'UUID':
@@ -137,7 +137,7 @@ export function dbTypeToRaw(type: DbType): string {
       return 'REAL';
     case 'DOUBLE':
       return 'FLOAT(53)';
-    case 'NUMERIC':
+    case 'DECIMAL':
       return `DECIMAL(${type.precision}, ${type.digit})`;
     case 'UUID':
       return 'UNIQUEIDENTIFIER';

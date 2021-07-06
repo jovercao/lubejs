@@ -201,8 +201,8 @@ export type INT8 = {
   readonly name: 'INT8';
 };
 
-export type NUMERIC = {
-  readonly name: 'NUMERIC';
+export type DECIMAL = {
+  readonly name: 'DECIMAL';
   readonly precision: number;
   readonly digit?: number;
 };
@@ -290,7 +290,7 @@ export type DbType =
   | INT16
   | INT32
   | INT64
-  | NUMERIC
+  | DECIMAL
   | FLOAT
   | DOUBLE
   | STRING
@@ -314,7 +314,7 @@ export type TsTypeOf<T extends DbType> = T extends
   | FLOAT
   | DOUBLE
   ? number
-  : T extends NUMERIC
+  : T extends DECIMAL
   ? Decimal
   : T extends INT64
   ? bigint
@@ -351,13 +351,19 @@ export type Name<T extends string = string> = T | PathedName<T>;
 export type DbTypeOf<T> = T extends string
   ? STRING
   : T extends number
-  ? NUMERIC | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
+  ? DECIMAL | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
   : T extends Date
   ? DATETIME | DATE
   : T extends boolean
   ? BOOLEAN
   : T extends Binary
   ? BINARY
+  : T extends bigint
+  ? INT64
+  : T extends Uuid
+  ? UUID
+  : T extends Decimal
+  ? DECIMAL
   : // : T extends Array<infer M>
   // ? LIST<DbTypeOf<M>>
   T extends RowObject
@@ -432,9 +438,9 @@ export const DbType = {
   int16: { name: 'INT16' } as INT16,
   int32: { name: 'INT32' } as INT32,
   int64: { name: 'INT64' } as INT64,
-  numeric(precision: number, digit?: number): NUMERIC {
+  numeric(precision: number, digit?: number): DECIMAL {
     return {
-      name: 'NUMERIC',
+      name: 'DECIMAL',
       precision,
       digit,
     };

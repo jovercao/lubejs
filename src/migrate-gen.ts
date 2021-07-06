@@ -55,7 +55,7 @@ export function generateMigrate(
         return `DbType.${dbType.name.toLowerCase()}(${
           dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
         })`;
-      case 'NUMERIC':
+      case 'DECIMAL':
         return `DbType.numeric(${dbType.precision}, ${dbType.digit})`;
       default:
         return 'DbType.' + dbType.name.toLowerCase();
