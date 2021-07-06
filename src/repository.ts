@@ -23,11 +23,12 @@ import {
   EntityKeyType,
   DbEvents,
   RepositoryEventHandler,
+  EntityInstance,
 } from './types';
 import { Condition, SqlBuilder } from './ast';
 import { isScalar } from './util';
-import { EventEmitter } from 'stream';
-import { DbInstance } from './db-context';
+import { AsyncEventEmitter } from './async-event';
+import { DbContext, DbInstance, EntityConstructor } from './db-context';
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 
@@ -65,30 +66,30 @@ export type FetchOptions<T> = {
   withDetail?: boolean;
 };
 
-export type ChangeOptions = {
+export type SaveOptions<T> = {
   /**
-   * 是否重新加载被保存的项,默认为false
+   * 保存时不保存关系属性，仅保存自身
    */
-  withoutReload?: boolean;
+  withoutRelations?: boolean | RelationKeyOf<T>[];
+};
 
+/**
+ * 删除选项
+ */
+export type DeleteOptions = {
   /**
-   * 保存时不同时保存依赖项，即外键引用的项
+   * 连同明细项一并删除，无论是否声明
    */
-  withoutDependents?: boolean;
-
-  /**
-   * 保存时不同时更新引用项，即被引用的子项
-   */
-  withoutReferences?: boolean;
+  withDetail?: boolean;
 };
 
 export class Repository<T extends Entity> extends Queryable<T> {
   protected metadata: TableEntityMetadata;
   protected rowset: ProxiedTable<T>;
-  private _emitter: EventEmitter = new EventEmitter();
+  private _emitter: AsyncEventEmitter = new AsyncEventEmitter();
 
   constructor(context: DbInstance, public ctr: Constructor<T>) {
-    super(context, ctr);
+    super(context, ctr as any);
     if (!this.metadata || this.metadata.readonly) {
       throw new Error(`Repository must instance of table entity`);
     }
@@ -97,7 +98,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
   /**
    * 通过主键查询一个项
    */
-  async get(key: EntityKeyType, options?: FetchOptions<T>): Promise<T> {
+  async get(
+    key: EntityKeyType,
+    options?: FetchOptions<T>
+  ): Promise<EntityInstance<T>> {
     let query = this.filter(rowset =>
       rowset
         .field(this.metadata.keyColumn.columnName as FieldsOf<T>)
@@ -106,24 +110,30 @@ export class Repository<T extends Entity> extends Queryable<T> {
     if (options?.includes) {
       query = query.include(options.includes);
     }
+    if (options?.withDetail) {
+      query = query.withDetail();
+    }
     return query.fetchFirst();
   }
 
-  async insert(items: T | T[]): Promise<void> {
-    await this._insert(items);
+  async insert(items: T | T[], options?: SaveOptions<T>): Promise<void> {
+    await this._insert(items, options);
   }
 
   private async _insert(
     items: T | T[],
-    withoutRelations?: RelationMetadata[] | true
+    options?: SaveOptions<T>
   ): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items];
     }
-    this._emit('insert', items);
+    this._emit('insert', items, this.context);
     for (const item of items) {
-      if (withoutRelations !== true) {
-        await this.saveDependents(item, withoutRelations);
+      if (options?.withoutRelations !== true) {
+        await this.saveSuperiors(
+          item,
+          options?.withoutRelations === false ? null : options?.withoutRelations
+        );
       }
       const row: any = Object.create(null);
       for (const column of this.metadata.columns) {
@@ -161,11 +171,17 @@ export class Repository<T extends Entity> extends Queryable<T> {
         this.rowset.field(this.metadata.keyProperty as any).eq(key)
       );
       this.toEntity(added, item);
-      if (withoutRelations !== true) {
-        await this.saveSubordinate(item, withoutRelations, true);
+      if (options?.withoutRelations !== true) {
+        await this.saveSubordinates(
+          item,
+          options?.withoutRelations === false
+            ? null
+            : options?.withoutRelations,
+          true
+        );
       }
     }
-    this._emit('inserted', items);
+    this._emit('inserted', items, this.context);
   }
 
   /**
@@ -173,7 +189,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
    * @param item
    * @returns
    */
-  protected getPositionCondition(item: T): Condition {
+  protected getWhere(item: T): Condition {
     const keyValue = Reflect.get(item, this.metadata.keyProperty);
     if (keyValue === undefined) {
       throw new Error(
@@ -213,8 +229,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
   }
 
-  public async update(items: T | T[]): Promise<void> {
-    await this._update(items);
+  public async update(items: T | T[], options?: SaveOptions<T>): Promise<void> {
+    await this._update(items, options);
   }
 
   /**
@@ -224,16 +240,19 @@ export class Repository<T extends Entity> extends Queryable<T> {
    */
   protected async _update(
     items: T | T[],
-    withoutRelations?: RelationMetadata[] | true
+    options?: SaveOptions<T>
   ): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items];
     }
-    await this._emit('update', items);
+    await this._emit('update', items, this.context);
     for (const item of items) {
-      if (withoutRelations !== true) {
+      if (options?.withoutRelations !== true) {
         // 保存父表项
-        await this.saveDependents(item, withoutRelations);
+        await this.saveSuperiors(
+          item,
+          options?.withoutRelations === false ? null : options?.withoutRelations
+        );
       }
       const changes: any = {};
       for (const column of this.metadata.columns) {
@@ -242,7 +261,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         if (column.isImplicit && !Reflect.has(item, column.property)) continue;
         changes[column.columnName] = this.toDbValue(item, column);
       }
-      const where = this.getPositionCondition(item);
+      const where = this.getWhere(item);
       const lines = await this.executor.update(this.rowset, changes, where);
       if (lines === 0) {
         throw new Error(
@@ -253,15 +272,21 @@ export class Repository<T extends Entity> extends Queryable<T> {
       const updated = await this.executor.find(this.rowset, where);
       this.toEntity(updated, item);
 
-      if (withoutRelations !== true) {
+      if (options?.withoutRelations !== true) {
         // 保存子项
-        await this.saveSubordinate(item, withoutRelations);
+        await this.saveSubordinates(
+          item,
+          options?.withoutRelations === false ? null : options?.withoutRelations
+        );
       }
     }
-    await this._emit('updated', items);
+    await this._emit('updated', items, this.context);
   }
 
-  private async _delete(items: EntityKeyType | T | T[]): Promise<void> {
+  private async _delete(
+    items: EntityKeyType | T | T[],
+    options?: DeleteOptions
+  ): Promise<void> {
     if (isScalar(items)) {
       items = await this.get(items);
       if (items === undefined || items === null)
@@ -274,13 +299,16 @@ export class Repository<T extends Entity> extends Queryable<T> {
       items = [items];
     }
 
-    this._emit('delete', items);
-    if (items.length == 0) {
+    this._emit('delete', items, this.context);
+    if (items.length === 0) {
       throw new Error('Items must have more than or equals one of record.');
     }
 
     for (const item of items) {
-      const where = this.getPositionCondition(item);
+      if (options?.withDetail) {
+        await this._deleteDetail(item);
+      }
+      const where = this.getWhere(item);
       const lines = await this.executor.delete(this.rowset, where);
       if (lines !== 1) {
         throw new Error(
@@ -288,14 +316,53 @@ export class Repository<T extends Entity> extends Queryable<T> {
         );
       }
     }
-    this._emit('deleted', items);
+    this._emit('deleted', items, this.context);
   }
 
   /**
    * 删除指定数据项
    */
-  async delete(items: EntityKeyType | T | T[]): Promise<void> {
-    return this._delete(items);
+  async delete(
+    items: EntityKeyType | T | T[],
+    options?: DeleteOptions
+  ): Promise<void> {
+    return this._delete(items, options);
+  }
+
+  private async _deleteDetail(item: T) {
+    for (const relation of this.metadata.relations) {
+      if (isPrimaryOneToOne(relation)) {
+        if (!relation.isDetail) continue;
+        const detail: any = await this.fetchRelation(item, relation);
+        if (detail) {
+          await this.context
+            .getRepository(relation.referenceClass)
+            .delete(detail, { withDetail: true });
+        }
+      } else if (isOneToMany(relation)) {
+        if (!relation.isDetail) continue;
+        const details: any[] = (await this.fetchRelation(
+          item,
+          relation
+        )) as any;
+        if (details?.length > 0) {
+          await this.context
+            .getRepository(relation.referenceClass)
+            .delete(details, { withDetail: true });
+        }
+      } else if (isManyToMany(relation)) {
+        // 多对多关系仅中间表
+        const middles: any[] = (await this.fetchRelation(
+          item,
+          relation.relationRelation
+        )) as any;
+        if (middles?.length > 0) {
+          await this.context
+            .getRepository(relation.relationRelation.referenceClass)
+            .delete(middles, { withDetail: true });
+        }
+      }
+    }
   }
 
   /**
@@ -303,23 +370,23 @@ export class Repository<T extends Entity> extends Queryable<T> {
    * 如果存在ROWFLAG字段，则在提交之前会进行核对
    * 保存完后，进行保存的数据会被更新为最新数据
    */
-  async submit(items: T | T[]): Promise<void> {
+  async save(items: T | T[], options?: SaveOptions<T>): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items];
     }
-    this._emit('submit', items);
-    await this._submit(items);
-    this._emit('submited', items);
+    await this._emit('save', items, this.context);
+    await this._save(items);
+    await this._emit('saved', items, this.context);
   }
 
   /**
    * 数据提交事件
    */
-  public on(event: 'submit', handler: RepositoryEventHandler<T>): this;
+  public on(event: 'save', handler: RepositoryEventHandler<T>): this;
   public on(event: 'insert', handler: RepositoryEventHandler<T>): this;
   public on(event: 'update', handler: RepositoryEventHandler<T>): this;
   public on(event: 'delete', handler: RepositoryEventHandler<T>): this;
-  public on(event: 'submited', handler: RepositoryEventHandler<T>): this;
+  public on(event: 'saved', handler: RepositoryEventHandler<T>): this;
   public on(event: 'inserted', handler: RepositoryEventHandler<T>): this;
   public on(event: 'updated', handler: RepositoryEventHandler<T>): this;
   public on(event: 'deleted', handler: RepositoryEventHandler<T>): this;
@@ -329,16 +396,20 @@ export class Repository<T extends Entity> extends Queryable<T> {
     return this;
   }
 
-  private _emit(event: DbEvents, items: T[]): void {
-    this._emitter.emit(event, items);
-    this._emitter.emit('all', items);
+  private async _emit(
+    event: DbEvents,
+    items: T[],
+    context: DbInstance
+  ): Promise<void> {
+    await this._emitter.emit(event, items);
+    await this._emitter.emit('all', items);
   }
 
-  public off(event: 'submit', handler?: RepositoryEventHandler<T>): this;
+  public off(event: 'save', handler?: RepositoryEventHandler<T>): this;
   public off(event: 'insert', handler?: RepositoryEventHandler<T>): this;
   public off(event: 'update', handler?: RepositoryEventHandler<T>): this;
   public off(event: 'delete', handler?: RepositoryEventHandler<T>): this;
-  public off(event: 'submited', handler: RepositoryEventHandler<T>): this;
+  public off(event: 'saved', handler: RepositoryEventHandler<T>): this;
   public off(event: 'inserted', handler: RepositoryEventHandler<T>): this;
   public off(event: 'updated', handler: RepositoryEventHandler<T>): this;
   public off(event: 'deleted', handler: RepositoryEventHandler<T>): this;
@@ -347,28 +418,21 @@ export class Repository<T extends Entity> extends Queryable<T> {
     handler: (event: DbEvents, items: T[]) => void
   ): this;
   public off(event: string, handler?: (...args: any) => void): this {
-    if (!handler) {
-      this._emitter.removeAllListeners(event);
-    } else {
-      this._emitter.off(event, handler);
-    }
+    this._emitter.off(event, handler);
     return this;
   }
 
-  private async _submit(
-    items: T | T[],
-    withoutRelations?: RelationMetadata[] | true
-  ): Promise<void> {
+  private async _save(items: T | T[], options?: SaveOptions<T>): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items];
     }
     for (const item of items) {
       if (!Reflect.has(item, this.metadata.keyProperty)) {
         // 如果存在主键，则表示更新数据
-        await this._insert(item, withoutRelations);
+        await this._insert(item, options);
       } else {
         // 否则为修改数据
-        await this._update(item, withoutRelations);
+        await this._update(item, options);
       }
     }
   }
@@ -427,16 +491,17 @@ export class Repository<T extends Entity> extends Queryable<T> {
   }
 
   /**
-   * 保存依赖项
+   * 保存引用的依赖项
    * @param item
    */
-  private async saveDependents(
+  protected async saveSuperiors(
     item: T,
-    withoutRelations?: RelationMetadata[]
+    withoutRelations?: RelationKeyOf<T>[]
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes(relation)) continue;
-      if (!Reflect.has(item, relation.property)) continue;
+      if (withoutRelations?.includes(relation.property as RelationKeyOf<T>))
+        continue;
+      if (Reflect.get(item, relation.property) === undefined) continue;
       if (isForeignOneToOne(relation) || isManyToOne(relation)) {
         const dependent = Reflect.get(item, relation.property);
 
@@ -447,8 +512,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
         }
 
         await this.context
-          .getRepository(relation.referenceClass)
-          ._submit(dependent, [relation.referenceRelation]);
+          .getRepository(relation.referenceClass as EntityConstructor<any>)
+          ._save(dependent, {
+            withoutRelations: [relation.referenceRelation.property],
+          });
         const foreignKey = Reflect.get(
           dependent,
           relation.referenceEntity.keyProperty
@@ -459,16 +526,17 @@ export class Repository<T extends Entity> extends Queryable<T> {
   }
 
   /**
-   * 保存下属关系
+   * 保存外键关系
    */
-  protected async saveSubordinate(
+  protected async saveSubordinates(
     item: T,
-    withoutRelations?: RelationMetadata[],
+    withoutRelations?: RelationKeyOf<T>[],
     skipCompare: boolean = false
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes(relation)) continue;
-      if (!Reflect.has(item, relation.property)) continue;
+      if (withoutRelations?.includes(relation.property as RelationKeyOf<T>))
+        continue;
+      if (Reflect.get(item, relation.property) === undefined) continue;
 
       if (isOneToMany(relation)) {
         await this._saveOneToManyRelation(item, relation, skipCompare);
@@ -486,13 +554,17 @@ export class Repository<T extends Entity> extends Queryable<T> {
   ): Promise<void> {
     let subItem: any = Reflect.get(item, relation.property);
     const itemKey = Reflect.get(item, this.metadata.keyProperty);
-    const repo = this.context.getRepository(relation.referenceClass);
+    const repo = this.context.getRepository(
+      relation.referenceClass as EntityConstructor<any>
+    );
     repo._setProperty(
       subItem,
       relation.referenceRelation.foreignColumn,
       itemKey
     );
-    await repo._submit(subItem, [relation.referenceRelation]);
+    await repo._save(subItem, {
+      withoutRelations: [relation.referenceRelation.property],
+    });
   }
 
   private async _saveOneToManyRelation(
@@ -502,7 +574,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
   ): Promise<void> {
     let subItems: any[] = Reflect.get(item, relation.property) || [];
     const itemKey = Reflect.get(item, this.metadata.keyProperty);
-    const repo = this.context.getRepository(relation.referenceClass);
+    const repo = this.context.getRepository(
+      relation.referenceClass as EntityConstructor<any>
+    );
     // 设置主键
     for (const subItem of subItems) {
       repo._setProperty(
@@ -512,7 +586,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
       );
     }
     if (skipCompare) {
-      return await repo._submit(subItems, [relation.referenceRelation]);
+      return await repo._save(subItems, {
+        withoutRelations: [relation.referenceRelation.property],
+      });
     }
 
     const subSnapshots: any[] = (await this.fetchRelation(
@@ -534,7 +610,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
     });
 
     // 保存(新增或者修改)子项,跳过父属性
-    await repo._submit(subItems, [relation.referenceRelation]);
+    await repo._save(subItems, {
+      withoutRelations: [relation.referenceRelation.property],
+    });
 
     // 删除多余的子项
     for (const subItem of subSnapshots) {
@@ -545,7 +623,6 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
   }
 
-
   private async _saveManyToManyRelation(
     item: T,
     relation: ManyToManyMetadata,
@@ -554,9 +631,11 @@ export class Repository<T extends Entity> extends Queryable<T> {
     // 多对多关系仅会删除中间关系表，并不会删除引用表
     // 获取一对多关系中间表快照
     // 先存储引用表
-    const subRepo = this.context.getRepository(relation.referenceClass);
+    const subRepo = this.context.getRepository(
+      relation.referenceClass as EntityConstructor<any>
+    );
     const relationRepo = this.context.getRepository(
-      relation.relationRelation.referenceClass
+      relation.relationRelation.referenceClass as EntityConstructor<any>
     );
     const itemKey = Reflect.get(item, this.metadata.keyProperty);
     const subItems: any[] = Reflect.get(item, relation.property);
@@ -576,21 +655,29 @@ export class Repository<T extends Entity> extends Queryable<T> {
         subKey
       );
       return relationItem;
-    }
+    };
 
     if (skipCompare) {
-      await subRepo._submit(subItems, [relation.referenceRelation]);
-      const relationItems = subItems.map((subItem: any) => makeRelationItem(subItem));
-      await relationRepo._insert(relationItems, [relation.relationRelation]);
+      await subRepo._save(subItems, {
+        withoutRelations: [relation.referenceRelation.property],
+      });
+      const relationItems = subItems.map((subItem: any) =>
+        makeRelationItem(subItem)
+      );
+      await relationRepo._insert(relationItems, {
+        withoutRelations: [relation.relationRelation.property],
+      });
       return;
     }
 
     // 取中间表快照
-    const relationSnapshots: any[] = await this.fetchRelation(
+    const relationSnapshots: any[] = (await this.fetchRelation(
       item,
       relation.relationRelation
-    ) as any;
-    await subRepo._submit(subItems, [relation.referenceRelation]);
+    )) as any;
+    await subRepo._save(subItems, {
+      withoutRelations: [relation.referenceRelation.property],
+    });
 
     const snapshotMap: any = {};
     relationSnapshots.forEach((subItem: any) => {
@@ -610,19 +697,22 @@ export class Repository<T extends Entity> extends Queryable<T> {
     const newSubItems: any[] = subItems.filter((subItem: any) => {
       const subKey = Reflect.get(subItem, relation.referenceEntity.keyProperty);
       return !snapshotMap[subKey];
-    })
+    });
 
-    const newRelationItems = newSubItems.map((newSubItem: any) => makeRelationItem(newSubItem));
+    const newRelationItems = newSubItems.map((newSubItem: any) =>
+      makeRelationItem(newSubItem)
+    );
     // 新增未关联的关系
     await relationRepo._insert(newRelationItems);
 
     const removedRelationItems = relationSnapshots.filter(relationItem => {
       const subKey = Reflect.get(
         relationItem,
-        relation.referenceRelation.relationRelation.referenceRelation.foreignProperty
+        relation.referenceRelation.relationRelation.referenceRelation
+          .foreignProperty
       );
       return !itemsMap[subKey];
-    })
+    });
 
     // 删除多余的关联关
     await relationRepo._delete(removedRelationItems);

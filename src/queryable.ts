@@ -32,7 +32,7 @@ import {
   aroundRowset,
 } from './metadata';
 import { FetchRelations, RelationKeyOf, Repository } from './repository';
-import { Constructor, Entity, isStringType, RowObject } from './types';
+import { Constructor, Entity, EntityInstance, isStringType, RowObject } from './types';
 import { ensureCondition, isNamedSelect, mergeFetchRelations } from './util';
 // import { getMetadata } from 'typeorm'
 
@@ -55,11 +55,13 @@ export class Queryable<T extends Entity | RowObject>
 {
   constructor(
     protected context: DbInstance,
-    Entity: EntityConstructor<T> // constructor(
+    Entity?: EntityConstructor<T> // constructor(
   ) {
-    this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
-    if (!this.metadata) {
-      throw new Error(`Only allow register entity constructor.`);
+    if (Entity) {
+      this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
+      if (!this.metadata) {
+        throw new Error(`Only allow register entity constructor.`);
+      }
     }
     this.rowset = makeRowset<any>(Entity) as ProxiedRowset<T>;
     // this.sql = select(this.rowset.star).from(this.rowset);
@@ -262,35 +264,44 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 执行查询并将结果转换为数组，并获取所有数据返回一个数组
    */
-  async fetchAll(): Promise<T[]> {
+  async fetchAll(): Promise<EntityInstance<T>[]> {
     const sql = this.getSql();
     const { rows } = await this.context.executor.query(sql);
 
-    if (!this.metadata) return rows;
+    if (!this.metadata) {
+      return rows as EntityInstance<T>[];
+    }
 
     const items: T[] = [];
+
+    let includes: FetchRelations<T>;
+    if (this._withDetail) {
+      const detailIncludes = this.metadata.getDetailIncludes();
+      includes = detailIncludes;
+    }
+    if (this._includes) {
+      includes = mergeFetchRelations(includes, this._includes);
+    }
+
     for (const row of rows) {
       const item = this.toEntity(row);
       items.push(item);
       // TODO: 添加避免重复加载代码
-      if (this._withDetail) {
-        await this.loadRelation(item, this.metadata.getDetailIncludes());
-      }
-      if (this._includes) {
+      if (includes) {
         await this.loadRelation(item, this._includes);
       }
     }
-    return items;
+    return items as EntityInstance<T>[];
   }
 
   /**
    * 执行查询，并获取第一行记录
    */
-  async fetchFirst(): Promise<T> {
+  async fetchFirst(): Promise<EntityInstance<T>> {
     const sql = this.getSql().limit(1);
     const { rows } = await this.context.executor.query(sql);
     if (!this.metadata) {
-      return rows[0];
+      return rows[0] as EntityInstance<T>;
     }
     if (!rows[0]) return null;
     const item = this.toEntity(rows[0]);
@@ -300,14 +311,12 @@ export class Queryable<T extends Entity | RowObject>
     }
     if (this._withDetail) {
       const detailIncludes = this.metadata.getDetailIncludes();
-      if (detailIncludes) {
-        includes = includes ? (mergeFetchRelations({}, includes, detailIncludes)) : this._includes;
-      }
+      includes = mergeFetchRelations({}, includes, detailIncludes)
     }
     if (includes) {
       await this.loadRelation(item, includes);
     }
-    return item;
+    return item as EntityInstance<T>;
   }
 
   // TODO: 使用DataLoader优化加载性能
@@ -345,7 +354,8 @@ export class Queryable<T extends Entity | RowObject>
 
     if (isPrimaryOneToOne(relation)) {
       const key = Reflect.get(item, this.metadata.keyProperty);
-      return await relationRepository.find(r => r[relation.referenceRelation.foreignProperty].eq(key)).fetchFirst();
+      const subItem = await relationRepository.find(r => r[relation.referenceRelation.foreignProperty].eq(key)).fetchFirst();
+      return subItem;
       // 本表为次表
     } else if (isForeignOneToOne(relation)) {
       const refKey = Reflect.get(item, relation.foreignProperty);

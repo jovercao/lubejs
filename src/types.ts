@@ -7,32 +7,77 @@
 //    direction?: ParameterDirection
 // }
 
-import { Raw } from './ast'
-import { deepthEqual } from "./util";
+import { Raw } from './ast';
+import { deepthEqual } from './util';
 import { parse, stringify, v4 } from 'uuid';
+import { EntityConstructor } from './db-context';
+import { metadataStore } from './metadata';
 
-export const EntitySymble = Symbol("LUBEJS#Entity");
+export const EntitySymble = Symbol('LUBEJS#Entity');
 
 /**
  * 实体类基类,仅为了typescript区分类型
  * 不一定非得从此继承
  */
 export class Entity {
-  static create<T extends Entity>(data: T): T {
-    Object.setPrototypeOf(data, this.prototype);
-    return data;
-    // const item = Object.create(this);
-    // Object.assign(item, data);
-    // return item;
+  static create<T extends EntityConstructor<any>>(
+    this: T,
+    data: EntityTypeOf<T>
+  ): EntityInstance<EntityTypeOf<T>>
+  static create<T extends EntityConstructor<any>>(
+    this: T,
+    data: EntityTypeOf<T>[]
+  ): EntityInstance<EntityTypeOf<T>>[]
+  static create<T extends EntityConstructor<any>>(
+    this: T,
+    data: EntityTypeOf<T> | EntityTypeOf<T>[]
+  ): EntityInstance<EntityTypeOf<T>> | EntityInstance<EntityTypeOf<T>>[] {
+    const metadata = metadataStore.getEntity(this);
+    const init = (data: T) => {
+      Object.setPrototypeOf(data, this.prototype);
+      for (const relation of metadata.relations) {
+        const propData: any = Reflect.get(data, relation.property);
+        if (propData) {
+          Entity.create.call(relation.referenceClass, propData);
+        }
+      }
+      return data;
+    }
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        init(item);
+      }
+    } else {
+      init(data);
+    }
+    return data as any;
   }
 }
 
-export type DbEvents = 'submit' | 'insert' | 'update' | 'delete' | 'submited' | 'inserted' | 'updated' | 'deleted';
+export type EntityInstance<T extends Entity> = T & {
+  constructor: EntityConstructor<T>
+}
+
+export type EntityTypeOf<C extends EntityConstructor<any>> =
+  C extends EntityConstructor<infer T> ? T : never;
+
+export type DbEvents =
+  | 'save'
+  | 'insert'
+  | 'update'
+  | 'delete'
+  | 'saved'
+  | 'inserted'
+  | 'updated'
+  | 'deleted';
 
 export type RepositoryEventHandler<T> = (items: T[]) => void;
 
-export type DbContextEventHandler = (event: DbEvents, Entity: Entity, items: Entity[]) => void;
-
+export type DbContextEventHandler = (
+  event: DbEvents,
+  Entity: Entity,
+  items: Entity[]
+) => void;
 
 // **********************************类型声明******************************************
 
@@ -75,7 +120,7 @@ export class Uuid {
     return stringify(this._buffer || Uuid.DEFAULT);
   }
 
-  private static DEFAULT = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  private static DEFAULT = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
   static new(): Uuid {
     const uuid = new Uuid();
@@ -87,7 +132,7 @@ export class Uuid {
     return new Uuid(strOrBuffer);
   }
 
-  static readonly empty = new Uuid;
+  static readonly empty = new Uuid();
 
   static equals(left: Uuid, right: Uuid): boolean {
     for (let i = 0; i < 16; i++) {
@@ -115,38 +160,38 @@ export type ScalarType =
   | UuidConstructor;
 
 export type INT64 = {
-  readonly name: "INT64";
+  readonly name: 'INT64';
 };
 
 export type INT32 = {
-  readonly name: "INT32";
+  readonly name: 'INT32';
   readonly length?: 8 | 16 | 32 | 64;
 };
 
 export type INT16 = {
-  readonly name: "INT16";
+  readonly name: 'INT16';
 };
 
 export type INT8 = {
-  readonly name: "INT8";
+  readonly name: 'INT8';
 };
 
 export type NUMERIC = {
-  readonly name: "NUMERIC";
+  readonly name: 'NUMERIC';
   readonly precision: number;
   readonly digit?: number;
 };
 
 export type FLOAT = {
-  readonly name: "FLOAT";
+  readonly name: 'FLOAT';
 };
 
 export type DOUBLE = {
-  readonly name: "DOUBLE";
+  readonly name: 'DOUBLE';
 };
 
 export type STRING = {
-  readonly name: "STRING";
+  readonly name: 'STRING';
   /**
    * 为0时表示无限大
    */
@@ -154,54 +199,53 @@ export type STRING = {
 };
 
 export type DATE = {
-  readonly name: "DATE";
+  readonly name: 'DATE';
 };
 
 export type DATETIME = {
-  readonly name: "DATETIME";
+  readonly name: 'DATETIME';
 };
 
 export type DATETIMEOFFSET = {
-  readonly name: "DATETIMEOFFSET";
+  readonly name: 'DATETIMEOFFSET';
 };
 
-
 export type BINARY = {
-  readonly name: "BINARY";
+  readonly name: 'BINARY';
   readonly length: number;
 };
 
 export type BOOLEAN = {
-  readonly name: "BOOLEAN";
+  readonly name: 'BOOLEAN';
 };
 
 export type UUID = {
-  readonly name: "UUID";
+  readonly name: 'UUID';
 };
 
 /**
  * 行标识列，如sqlserver的timestamp
  */
 export type ROWFLAG = {
-  readonly name: "ROWFLAG";
+  readonly name: 'ROWFLAG';
 };
 
 /**
  * 对象类型,不使用JSON，是因为冲突
  */
 export type OBJECT<T extends object = any> = {
-  readonly name: "OBJECT";
+  readonly name: 'OBJECT';
 };
 
 const DEFAULT_OBJECT: OBJECT<any> = {
-  name: "OBJECT",
+  name: 'OBJECT',
 };
 
 /**
  * 列表类型，即数组，不使用ARRAY，亦是因为命名冲突
  */
 export type ARRAY<T extends DbType> = {
-  readonly name: "ARRAY";
+  readonly name: 'ARRAY';
   /**
    * 元素类型
    */
@@ -213,7 +257,7 @@ export function isSameDbType(type1: DbType, type2: DbType) {
 }
 
 export function isStringType(type: any): type is STRING {
-  return type?.name === 'STRING'
+  return type?.name === 'STRING';
 }
 
 export type DbType =
@@ -310,23 +354,23 @@ export type DataTypeOf<T> = T extends string
   ? ObjectConstructor
   : T extends (infer M)[]
   ? M extends object
-  ? [Constructor<M>]
-  : [DataTypeOf<M>]
+    ? [Constructor<M>]
+    : [DataTypeOf<M>]
   : never;
 
 /**
  * 构造函数，即类本身
  */
 export type Constructor<T = object> = {
-  new(...args: any): T;
+  new (...args: any): T;
 };
 
-export type EntityType = Constructor<Entity>;
+export type EntityType = EntityConstructor<Entity>;
 
 /******************************* Model 相关声明 *********************************/
 export type ListType<
   T extends ScalarType | EntityType = ScalarType | EntityType
-  > = [T];
+> = [T];
 
 /**
  * Metadata中的数据类型
@@ -356,57 +400,57 @@ export type DataType = ScalarType | EntityType | ListType | JSON;
  */
 export const DbType = {
   int8: {
-    name: "INT8",
+    name: 'INT8',
   } as INT8,
-  int16: { name: "INT16" } as INT16,
-  int32: { name: "INT32" } as INT32,
-  int64: { name: "INT64" } as INT64,
+  int16: { name: 'INT16' } as INT16,
+  int32: { name: 'INT32' } as INT32,
+  int64: { name: 'INT64' } as INT64,
   numeric(precision: number, digit?: number): NUMERIC {
     return {
-      name: "NUMERIC",
+      name: 'NUMERIC',
       precision,
       digit,
     };
   },
   float: {
-    name: "FLOAT",
+    name: 'FLOAT',
   } as FLOAT,
   double: {
-    name: "DOUBLE",
+    name: 'DOUBLE',
   } as DOUBLE,
   string(length: number): STRING {
     return {
-      name: "STRING",
+      name: 'STRING',
       length,
     };
   },
   date: {
-    name: "DATE",
+    name: 'DATE',
   } as DATE,
   datetime: {
-    name: "DATETIME",
+    name: 'DATETIME',
   } as DATETIME,
   datetimeoffset: {
-    name: 'DATETIMEOFFSET'
+    name: 'DATETIMEOFFSET',
   } as DATETIMEOFFSET,
   binary(length: number): BINARY {
     return {
-      name: "BINARY",
+      name: 'BINARY',
       length,
     };
   },
   boolean: {
-    name: "BOOLEAN",
+    name: 'BOOLEAN',
   } as BOOLEAN,
   uuid: {
-    name: "UUID",
+    name: 'UUID',
   } as UUID,
   object: <T extends object = any>(): OBJECT<T> => {
     return DEFAULT_OBJECT;
   },
   array<T extends DbType>(type: T): ARRAY<T> {
     return {
-      name: "ARRAY",
+      name: 'ARRAY',
       type,
     };
   },
@@ -420,16 +464,18 @@ export const DbType = {
  * 用于做实体主键类型
  * 用户可自行使用 合并声明扩展
  */
-export interface EntityKey {
-
-}
+export interface EntityKey {}
 
 /**
  * 主键的类型
  */
-export type EntityKeyType = EntityKey[keyof EntityKey] extends never ? number : EntityKey[keyof EntityKey];
+export type EntityKeyType = EntityKey[keyof EntityKey] extends never
+  ? number
+  : EntityKey[keyof EntityKey];
 
 /**
  * 主键字段字面量类型
  */
-export type EntityKeyName = (keyof EntityKey) extends never ? 'id' : (keyof EntityKey);
+export type EntityKeyName = keyof EntityKey extends never
+  ? 'id'
+  : keyof EntityKey;

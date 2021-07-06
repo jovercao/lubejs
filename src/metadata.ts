@@ -9,7 +9,7 @@ import {
   Rowset,
   Select,
   SqlBuilder as SQL,
-  Table
+  Table,
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
 import { DbContext, DbContextConstructor } from './db-context';
@@ -30,7 +30,7 @@ import { isClass, isProxiedRowset } from './util';
 export interface IndexMetadata {
   name: string;
   properties: string[];
-  columns: { column: ColumnMetadata, isAscending: boolean }[];
+  columns: { column: ColumnMetadata; isAscending: boolean }[];
 
   /**
    * 是否唯一
@@ -136,7 +136,7 @@ export class EntityMetadataClass {
 
   addIndex(index: IndexMetadata): this {
     if (this._indexMap[index.name]) {
-      throw new Error(`Index ${index.name} is exists in Entity.`)
+      throw new Error(`Index ${index.name} is exists in Entity.`);
     }
     this._indexes.push(index);
     this._indexMap[index.name] = index;
@@ -188,9 +188,14 @@ export class EntityMetadataClass {
   }
 
   private _detailIncludes: FetchRelations<any>;
-  getDetailIncludes() {
+
+  getDetailIncludes(): FetchRelations<any> {
     if (this._detailIncludes === undefined) {
-      const detailRelations = this.relations.filter(r => r.isDetail);
+      const detailRelations = this.relations.filter(
+        r =>
+          (isPrimaryOneToOne(r) || isOneToMany(r) || isManyToMany(r)) &&
+          r.isDetail
+      );
       if (detailRelations.length === 0) {
         this._detailIncludes = null;
       } else {
@@ -199,9 +204,31 @@ export class EntityMetadataClass {
           detailIncludes[relation.property] =
             relation.referenceEntity.getDetailIncludes() || true;
         });
+        this._detailIncludes = detailIncludes
       }
     }
     return this._detailIncludes;
+  }
+
+  getDetailRelations(): SubordinateRelation[] {
+    const detailRelations = this.relations.filter(
+      relation =>
+        (isPrimaryOneToOne(relation) || isOneToMany(relation) || isManyToMany(relation)) &&
+        relation.isDetail
+    );
+    return detailRelations as SubordinateRelation[];
+  }
+
+  getSubordinateRelations(): SubordinateRelation[] {
+    return this.relations.filter(
+      relation => isPrimaryOneToOne(relation) || isOneToMany(relation) || isManyToMany(relation)
+    ) as SubordinateRelation[];
+  }
+
+  getSuperiorRelations(): SuperiorRelation[] {
+    return this.relations.filter(
+      relation => isForeignOneToOne(relation) || isManyToOne(relation)
+    ) as SuperiorRelation[];
   }
 
   /**
@@ -211,7 +238,6 @@ export class EntityMetadataClass {
 }
 
 export interface TableEntityMetadata extends EntityMetadataClass {
-
   kind: 'TABLE';
   /**
    * 表名
@@ -301,7 +327,11 @@ export class DbContextMetadata {
    * 全局主键字段名称
    */
   globalKeyName: string;
-  globalKeyType: NumberConstructor | StringConstructor | BigIntConstructor | UuidConstructor;
+  globalKeyType:
+    | NumberConstructor
+    | StringConstructor
+    | BigIntConstructor
+    | UuidConstructor;
   private _entitiyMap: Map<Constructor<Entity>, EntityMetadata> = new Map();
   private _entities: EntityMetadata[] = [];
   get entities(): ReadonlyArray<EntityMetadata> {
@@ -324,7 +354,9 @@ export class DbContextMetadata {
    *
    */
   findTableEntityByName(tableName: string): EntityMetadata {
-    return this.entities.find(entity => isTableEntity(entity) && entity.tableName === tableName);
+    return this.entities.find(
+      entity => isTableEntity(entity) && entity.tableName === tableName
+    );
   }
 
   addEntity(entity: EntityMetadata): this {
@@ -418,7 +450,10 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
   /**
    * 自动生成表达式（程序）
    */
-  generator?: (rowset: ProxiedRowset<any>, item: any) => CompatibleExpression<T>;
+  generator?: (
+    rowset: ProxiedRowset<any>,
+    item: any
+  ) => CompatibleExpression<T>;
 }
 
 /**
@@ -429,6 +464,10 @@ export type RelationMetadata =
   | OneToManyMetadata
   | ManyToManyMetadata
   | ManyToOneMetadata;
+
+export type SuperiorRelation = ForeignOneToOneMetadata | ManyToOneMetadata;
+
+export type SubordinateRelation = PrimaryOneToOneMetadata | OneToManyMetadata | ManyToManyMetadata;
 
 // /**
 //  * 一对一引用属性
@@ -651,10 +690,10 @@ export interface ForeignOneToOneMetadata {
    * 外键列
    */
   foreignColumn: ColumnMetadata;
-  /**
-   * 不可将父表声明为明细表
-   */
-  isDetail?: false;
+  // /**
+  //  * 不可将父表声明为明细表
+  //  */
+  // isDetail?: boolean;
   /**
    * 摘要描述
    */
@@ -725,7 +764,7 @@ export interface OneToManyMetadata {
    * 而指定了isDetail后，系统将会删除数据库中已存在但在提交项中不存在的明细项
    * 并且，在Querable的任意查询中，只需指定withDetail，而无须调用includes，即可递归获取该属性
    */
-  isDetail?: boolean;
+  isDetail: boolean;
 }
 /**
  * 一对多引用属性
@@ -785,11 +824,6 @@ export interface ManyToOneMetadata {
    * 是否可空
    */
   isRequired: boolean;
-
-  /**
-   * 永远不可能
-   */
-  isDetail?: false;
 
   /**
    * 摘要描述
@@ -1365,8 +1399,7 @@ export interface ManyToManyMetadata {
 /**********************************装饰器声明*************************************/
 export class MetadataStore {
   private entityMap: Map<EntityType, EntityMetadata> = new Map();
-  private contextMap: Map<DbContextConstructor, DbContextMetadata> =
-    new Map();
+  private contextMap: Map<DbContextConstructor, DbContextMetadata> = new Map();
   private _defaultContext: DbContextMetadata;
 
   /**
@@ -1379,7 +1412,6 @@ export class MetadataStore {
    * 可以通过实体构造函数/实体名称 获取已注册的元数据
    */
   getEntity(entityClass: EntityType): EntityMetadata {
-
     return this.entityMap.get(entityClass);
   }
   /**
@@ -1395,12 +1427,14 @@ export class MetadataStore {
   /**
    * 获取上下文无数据
    */
-  getContext(name: string): DbContextMetadata
-  getContext(contextClass: DbContextConstructor): DbContextMetadata
-  getContext(nameOrClass: DbContextConstructor | string): DbContextMetadata
+  getContext(name: string): DbContextMetadata;
+  getContext(contextClass: DbContextConstructor): DbContextMetadata;
+  getContext(nameOrClass: DbContextConstructor | string): DbContextMetadata;
   getContext(contextClass: DbContextConstructor | string): DbContextMetadata {
     if (typeof contextClass === 'string') {
-      return Array.from(this.contextMap.values()).find(metadata => metadata.class.name === contextClass);
+      return Array.from(this.contextMap.values()).find(
+        metadata => metadata.class.name === contextClass
+      );
     }
     return this.contextMap.get(contextClass);
   }
@@ -1439,7 +1473,9 @@ export function aroundRowset<T extends Entity = any>(
   const field = function (property: string) {
     const column = metadata.getColumn(property);
     if (!column) {
-      throw new Error(`Entity ${metadata.className} property ${property} is not found.`)
+      throw new Error(
+        `Entity ${metadata.className} property ${property} is not found.`
+      );
     }
     return rowset.field(column.columnName);
   };
@@ -1468,7 +1504,6 @@ export function aroundRowset<T extends Entity = any>(
       if (typeof key !== 'string') {
         return v;
       }
-
 
       // const value = Reflect.get(target, prop);
       // if (value !== undefined) return value;

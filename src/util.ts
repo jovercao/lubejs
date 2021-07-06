@@ -754,13 +754,15 @@ export function invalidAST(type: string, value: any) {
 
 export function mergeFetchRelations<T extends RowObject>(...includes: [FetchRelations<T>, FetchRelations<T>, ...FetchRelations<T>[]]): FetchRelations<T> {
   const merge = (dest: Record<string, any>, include: Record<string, any>) => {
+    if (!dest) return include;
+    if (!include) return dest;
     Object.entries(include).forEach(([key, value]) => {
       if (!value) return;
 
       const exists = dest[key];
       if (!exists) {
-        if (value !== true) {
-          dest[key] = value;
+        if (typeof value === 'boolean') {
+          dest[key] = value
         } else {
           dest[key] = merge({}, value);
         }
@@ -779,12 +781,12 @@ export function mergeFetchRelations<T extends RowObject>(...includes: [FetchRela
     });
     return dest;
   }
-  const dest = includes[0];
+  let result: any = includes[0];
   for (let i = 1; i < includes.length; i++) {
     const include = includes[i];
-    merge(dest, include);
+    result = merge(result, include);
   }
-  return dest;
+  return result;
 }
 
 export function clone<T>(value: T): T {

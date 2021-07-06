@@ -1671,6 +1671,16 @@ export class PrimaryOneToOneBuilder<
   D extends Entity
 > extends OneToOneBuilder<S, D> {
   public readonly metadata: PrimaryOneToOneMetadata;
+
+  /**
+   * 声明为明细项
+   * 获取或查询时传递withDetail选项，将自动附带
+   * 删除时亦将同步删除，默认为联动删除
+   */
+  isDetail(): Omit<this, 'isDetail'> {
+    this.metadata.isDetail = true;
+    return this;
+  }
 }
 
 export class ForeignOneToOneBuilder<
@@ -1688,9 +1698,19 @@ export class ForeignOneToOneBuilder<
     this.metadata.isRequired = true;
     return this;
   }
+
+  isCascade(): Omit<this, 'isCascade'> {
+    this.metadata.isCascade = true;
+    return this;
+  }
 }
 
 export class OneToManyBuilder<S extends Entity, D extends Entity> {
+  isDetail(): this {
+    this.metadata.isDetail = true;
+    return this;
+  }
+
   constructor(
     private readonly modelBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
@@ -1730,6 +1750,11 @@ export class ManyToOneBuilder<S extends Entity, D extends Entity> {
 
   isRequired(): this {
     this.metadata.isRequired = true;
+    return this;
+  }
+
+  isCascade(): Omit<this, 'isCascade'> {
+    this.metadata.isCascade = true;
     return this;
   }
 
@@ -1791,6 +1816,11 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
       }
     }
     return builder;
+  }
+
+  isDetail(): this {
+    this.metadata.isDetail = true;
+    return this;
   }
 
   /**

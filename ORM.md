@@ -10,6 +10,28 @@ Lubejs所追求的是精而美，它不能适用于所有开发者，但是在�
 2. 表主键必须为单一字段
 3. 外键只能引用表的主键
 
+## undefined 和 null 的使用
+
+约定，null 对应数据库里的 DbNull，undefined则表示未定义项，将不会对数据库进行操作
+如：  lube.update('table', { a: undefined, b: null });
+输出的sql为 update table set b = DbNull
+
+***注意：使用ORM时，Repository默认情况下会update所有字段，以避免类型或其它问题***
+
+此情况在ORM关系属性当中亦适用，如：
+
+```ts
+db.save(Employee, {
+  id: 100,
+  name: 'username',
+  user: undefined,
+  position: null
+});
+```
+
+此语句会将position的引用关系删除，
+但不会删除user的引用关系
+
 ## 默认类型映射(由数据库驱动决定)
 
 从JS类型到中间类型

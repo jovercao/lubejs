@@ -5,7 +5,7 @@ import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
-describe('Repository: update', function () {
+describe.only('Repository: delete', function () {
   this.timeout(0);
   let db: DB;
   let outputSql: boolean = true;
@@ -20,50 +20,33 @@ describe('Repository: update', function () {
     await db.lube.close();
   });
 
-  it('一对一(主）关系更新 - User <- Employee', async () => {
-    const user: User = {
+  it('一对一(主）关系删除 - User <- Employee', async () => {
+    const employee = Employee.create({
+      name: '一对一（主）关系更新测试 - 职员',
+      organization: await db.Organization.get(0),
+    });
+
+    const user = User.create({
       name: '一对一（主）关系更新测试 - 用户',
       password: '嘿咻',
-      employee: {
-        name: '一对一（主）关系更新测试 - 职员',
-        organization: await db.Organization.get(0),
-      },
-    };
-    await db.User.save(user);
+      employee,
+    });
+
+    await db.save(user);
 
     user.description = '更新后的用户';
     user.employee.description = '更新后的职员';
 
-    await db.User.save(user);
+    await db.User.delete(user, { withDetail: true });
 
-    const updated = await db.User.get(user.id, { includes: { employee: true } });
-    assert(updated.description === '更新后的用户');
-    assert(updated?.employee?.description === '更新后的职员');
+    const deletedUser = await db.User.get(user.id);
+    const deletedEmployee = await db.Employee.get(employee.id);
+    assert(!deletedUser);
+    assert(!deletedEmployee);
   });
 
-  it('一对一(从）关系更新 - Employee -> User', async () => {
-    const employee: Employee = {
-      name: '一对一（从）关系更新测试 - 职员',
-      organization: await db.Organization.get(0),
-      user: {
-        name: '一对一（从）关系更新测试 - 用户',
-        password: '嘿咻'
-      }
-    };
-    await db.Employee.save(employee);
-
-    employee.description = '更新后的职员';
-    employee.user.description = '更新后的用户';
-
-    await db.Employee.save(employee);
-
-    const updated = await db.Employee.get(employee.id, { includes: { user: true } });
-    assert(updated.description === '更新后的职员');
-    assert(updated?.user?.description === '更新后的用户');
-  });
-
-  it('一对多关系更新 - Order <- OrderDetail', async () => {
-    const order: Order = {
+  it.only('一对多关系删除 - Order <- OrderDetail', async () => {
+    const order = Order.create({
       orderNo: '订单号',
       date: new Date(),
       details: [
@@ -80,33 +63,23 @@ describe('Repository: update', function () {
           amount: 200,
         },
       ],
-    };
-    await db.Order.insert(order);
-
-    order.description = '更新后的订单';
-
-    order.details[1].description = '修改产品2';
-
-    order.details.push({
-      product: '产品3',
-      count: 3,
-      price: 100,
-      amount: 300,
-      description: '新增产品3',
     });
+    await db.insert(order);
 
-    // 删除第一个
-    order.details.splice(0, 1);
+    const newOrder = await db.get(Order, order.id, { withDetail: true });
 
-    await db.Order.save(order);
+    assert(newOrder.details.length === 2);
 
-    const updated = await db.Order.get(order.id, {
+    await db.Order.delete(newOrder, { withDetail: true });
+
+    const deleted = await db.get(Order, order.id, {
       includes: { details: true },
     });
-    assert(updated.description === '更新后的订单', '订单更新失败');
-    assert(updated.details.length === 2, '更新后的子项数量不正确');
-    assert(updated.details[0].description === '修改产品2', '更新子项失败');
-    assert(updated.details[1].description === '新增产品3', '新增子项失败');
+
+    const deletedDetails = await db.getQueryable(OrderDetail).filter(p => p.orderId.eq(newOrder.id)).fetchAll();
+
+    assert(!deleted);
+    assert(deletedDetails.length == 0);
   });
 
   it('ManyToMany 子项增删除改测试', async () => {
