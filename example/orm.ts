@@ -219,8 +219,8 @@ context(DB, modelBuilder => {
     builder.column(p => p.id, Number).isIdentity();
     builder.column(p => p.product, String);
     builder.column(p => p.count, Number);
-    builder.column(p => p.price, Number).hasType(DbType.numeric(18, 6));
-    builder.column(p => p.amount, Number).hasType(DbType.numeric(18, 2));
+    builder.column(p => p.price, Number).hasType(DbType.decimal(18, 6));
+    builder.column(p => p.amount, Number).hasType(DbType.decimal(18, 2));
     builder.column(p => p.orderId, Number);
     builder.column(p => p.description, String).isNullable();
     builder

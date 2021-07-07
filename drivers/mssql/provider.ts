@@ -24,9 +24,9 @@ export class MssqlProvider implements DbProvider {
     translator.sqlUtil = this.sqlUtil;
   }
 
-  readonly lube: Lube;
+  lube!: Lube;
   readonly sqlUtil: MssqlSqlUtil;
-  private _migrateBuilder: MssqlMigrateBuilder;
+  private _migrateBuilder?: MssqlMigrateBuilder;
   get migrateBuilder(): MigrateBuilder {
     if (!this._migrateBuilder) {
       this._migrateBuilder = new MssqlMigrateBuilder(this);
@@ -46,7 +46,7 @@ export class MssqlProvider implements DbProvider {
   }
 
   async beginTrans(
-    isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
+    isolationLevel: ISOLATION_LEVEL = 'READ_COMMIT'
   ): Promise<Transaction> {
     const trans = this._pool.transaction();
     let rolledBack = false;

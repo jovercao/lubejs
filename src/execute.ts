@@ -89,6 +89,25 @@ export interface QueryResult<
     ? [O1[], O2[]]
     : [T[]];
 }
+
+export interface SelectQueryResult<
+T extends RowObject = never,
+R extends Scalar = never,
+O extends [T, ...RowObject[]] = [T]
+> extends QueryResult<T, R, O> {
+  rows: T[];
+  rowsets: never extends O
+    ? any[]
+    : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
+    ? [O1[], O2[], O3[], O4[], O5[]]
+    : O extends [infer O1, infer O2, infer O3, infer O4]
+    ? [O1[], O2[], O3[], O4[]]
+    : O extends [infer O1, infer O2, infer O3]
+    ? [O1[], O2[], O3[]]
+    : O extends [infer O1, infer O2]
+    ? [O1[], O2[]]
+    : [T[]];
+}
 export interface SelectOptions<T extends RowObject = any> {
   where?:
     | WhereObject<T>
@@ -218,9 +237,9 @@ export class Executor {
     try {
       const res = await this.doQuery(command.sql, command.params);
       // 如果有输出参数
-      if (res.output) {
+      if (command.params && res.output) {
         Object.entries(res.output).forEach(([name, value]) => {
-          const p = command.params.find(p => p.$name === name);
+          const p = command.params!.find(p => p.$name === name)!;
           p.value = value;
           if (p.$name === this.sqlUtil.options.returnParameterName) {
             res.returnValue = value;
@@ -244,7 +263,7 @@ export class Executor {
   ): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: Select<T>
-  ): Promise<QueryResult<T>>;
+  ): Promise<SelectQueryResult<T>>;
   /**
    * 执行一个存储过程执行代码
    */
@@ -288,10 +307,9 @@ export class Executor {
     ...params: any[]
   ): Promise<T>;
   async queryScalar(...args: any[]): Promise<any> {
-    const {
-      rows: [row],
-    } = await this._internalQuery(...args);
-    return row ? Object.values(row)[0] : null;
+    const rows = (await this._internalQuery(...args)).rows!;
+    if (rows.length === 0) return null;
+    return Object.values(rows[0])[0]
   }
 
   /**
@@ -299,19 +317,19 @@ export class Executor {
    */
   async insert<T extends RowObject = any>(
     table: Name | Table<T, string>,
-    values?: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
+    values: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
   ): Promise<number>;
   /**
    * 插入数据
    */
   async insert<T extends RowObject = any>(
     table: Name | Table<T, string>,
-    values?: T | T[]
+    values: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
     table: Name | Table<T, string>,
     fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
-    value?:
+    value:
       | InputObject<T>
       | InputObject<T>[]
       | CompatibleExpression[]
@@ -320,7 +338,7 @@ export class Executor {
   async insert<T extends RowObject = any>(
     table: Name | Table<T, string>,
     fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
-    value?: T | T[]
+    value: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
     table: Name | Table<T, string>,
@@ -338,12 +356,12 @@ export class Executor {
       | CompatibleExpression[]
       | undefined
   ): Promise<number> {
-    let fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[];
+    let fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[] | undefined;
     let values:
       | InputObject<T>
       | InputObject<T>[]
       | CompatibleExpression
-      | CompatibleExpression[];
+      | CompatibleExpression[] | undefined;
 
     if (arguments.length <= 2) {
       values = arg2;
@@ -395,7 +413,7 @@ export class Executor {
       | WhereObject<T>
       | ((table: ProxiedRowset<T>) => Condition),
     fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
-  ): Promise<T> {
+  ): Promise<T | null> {
     let columns: any[];
     const t = ensureRowset(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
@@ -407,9 +425,9 @@ export class Executor {
       .top(1)
       .from(t)
       .where(typeof where === 'function' ? where(t) : where);
-    const res = await this.query<T>(sql);
-    if (res.rows && res.rows.length > 0) {
-      return res.rows[0];
+    const rows = (await this.query<T>(sql)).rows!;
+    if (rows.length > 0) {
+      return rows[0];
     }
     return null;
   }
@@ -434,8 +452,8 @@ export class Executor {
     arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
-    let options: SelectOptions;
-    let results: (rowset: Readonly<Rowset>) => any;
+    let options: SelectOptions | undefined;
+    let results: undefined | ((rowset: Readonly<Rowset>) => any);
     if (typeof arg2 === 'function') {
       results = arg2;
       options = arg3;
@@ -470,7 +488,7 @@ export class Executor {
       sql.limit(limit);
     }
     const res = await this.query(sql);
-    return res.rows;
+    return res.rows as any;
   }
 
   /**
@@ -588,64 +606,64 @@ export class Executor {
     return res;
   }
 
-  /**
-   * 保存数据，必须指定主键后才允许使用
-   * 通过自动对比与数据库中现有的数据差异而进行提交
-   * 遵守不存在的则插入、已存在的则更新的原则；
-   */
-  async save<T extends RowObject = any>(
-    table: Table<T, string> | Name,
-    keyFields: FieldsOf<T>[],
-    items: T[] | T
-  ): Promise<number> {
-    if (keyFields.length === 0) {
-      throw new Error('KeyFields must be specified.');
-    }
+  // /**
+  //  * 保存数据，必须指定主键后才允许使用
+  //  * 通过自动对比与数据库中现有的数据差异而进行提交
+  //  * 遵守不存在的则插入、已存在的则更新的原则；
+  //  */
+  // async save<T extends RowObject = any>(
+  //   table: Table<T, string> | Name,
+  //   keyFields: FieldsOf<T>[],
+  //   items: T[] | T
+  // ): Promise<number> {
+  //   if (keyFields.length === 0) {
+  //     throw new Error('KeyFields must be specified.');
+  //   }
 
-    if (!Array.isArray(items)) {
-      items = [items];
-    }
-    const hasKeyItems = items.filter(
-      item =>
-        !keyFields.find(
-          field => item[field] === undefined || item[field] === null
-        )
-    );
-    const keygen = (item: T) => keyFields.map(field => item[field]).join('#');
-    const itemsMap: Map<any, any> = new Map();
-    hasKeyItems.forEach(item => {
-      if (
-        keyFields.find(
-          field => item[field] === undefined || item[field] === null
-        )
-      )
-        return;
-      const key = keygen(item);
-      itemsMap.set(key, item);
-    });
+  //   if (!Array.isArray(items)) {
+  //     items = [items];
+  //   }
+  //   const hasKeyItems = items.filter(
+  //     item =>
+  //       !keyFields.find(
+  //         field => item[field] === undefined || item[field] === null
+  //       )
+  //   );
+  //   const keygen = (item: T) => keyFields.map(field => item[field]).join('#');
+  //   const itemsMap: Map<any, any> = new Map();
+  //   hasKeyItems.forEach(item => {
+  //     if (
+  //       keyFields.find(
+  //         field => item[field] === undefined || item[field] === null
+  //       )
+  //     )
+  //       return;
+  //     const key = keygen(item);
+  //     itemsMap.set(key, item);
+  //   });
 
-    const t = ensureRowset(table);
+  //   const t = ensureRowset(table);
 
-    const existsItems = await this.select(t, {
-      where: or(
-        hasKeyItems.map(item =>
-          and(keyFields.map(field => t[field].eq(item[field])))
-        )
-      ),
-    });
-    const existsMap: Map<any, any> = new Map();
-    existsItems.forEach(item => {
-      const keyValue = keygen(item);
-      existsMap.set(keyValue, item);
-    });
+  //   const existsItems = await this.select(t, {
+  //     where: or(
+  //       hasKeyItems.map(item =>
+  //         and(keyFields.map(field => t[field].eq(item[field])))
+  //       )
+  //     ),
+  //   });
+  //   const existsMap: Map<any, any> = new Map();
+  //   existsItems.forEach(item => {
+  //     const keyValue = keygen(item);
+  //     existsMap.set(keyValue, item);
+  //   });
 
-    const addeds = items.filter(item => !existsMap.has(keygen(item)));
-    await this.insert(t, addeds);
-    const updateds = items.filter(item => existsMap.has(keygen(item)));
-    // for (const item of updateds) {
-    //   await this.executor.update(this.table, item, this.table[this.primaryKey].eq(item[this.primaryKey]))
-    // }
-    await this.update(t, updateds, keyFields);
-    return addeds.length + updateds.length;
-  }
+  //   const addeds = items.filter(item => !existsMap.has(keygen(item)));
+  //   await this.insert(t, addeds);
+  //   const updateds = items.filter(item => existsMap.has(keygen(item)));
+  //   // for (const item of updateds) {
+  //   //   await this.executor.update(this.table, item, this.table[this.primaryKey].eq(item[this.primaryKey]))
+  //   // }
+  //   await this.update(t, updateds, keyFields);
+  //   return addeds.length + updateds.length;
+  // }
 }

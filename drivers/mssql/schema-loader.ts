@@ -12,6 +12,7 @@ import {
   TableSchema,
   UniqueConstraintSchema,
   ViewSchema,
+  InputObject,
 } from 'lubejs';
 import { isNull } from './build-in';
 import { fullType } from './types';
@@ -90,7 +91,7 @@ export async function load(
             .and(rc.column_id.eq(fkc.referenced_column_id))
         )
         .where(fkc.constraint_object_id.eq(foreignKeyId));
-      const { rows } = await provider.lube.query(colSql);
+      const rows = (await provider.lube.query(colSql)).rows!;
       foreignKey.columns = rows.map(p => p.fcolumn);
       foreignKey.referenceColumns = rows.map(p => p.rcolumn);
     }
@@ -160,14 +161,14 @@ export async function load(
     const views: ViewSchema[] = (await provider.lube.query(sql)).rows;
 
     for (const view of views) {
-      const cmd = provider.sqlUtil.sqlify(execute('sp_helptext', [view.name]));
+      // const cmd = provider.sqlUtil.sqlify(execute('sp_helptext', [view.name]));
       // const code = (await provider.query(cmd.sql, cmd.params)).rows.join('\n');
 
       const rows = (
         await provider.lube.execute<number, [{ Text: string }]>('sp_helptext', [
           view.name,
         ])
-      ).rows;
+      ).rows!;
       const key = Object.keys(rows[0])[0];
       const code = rows.map(row => Reflect.get(row, key)).join('\n');
       const matched = new RegExp(
@@ -288,7 +289,7 @@ export async function load(
         and(p.class.eq(1), p.major_id.eq(k.object_id), p.minor_id.eq(0))
       )
       .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
-    const { rows } = await provider.query(provider.sqlUtil.sqlify(sql).sql);
+    const rows = (await provider.lube.query(sql)).rows;
     const pk: PrimaryKeySchema = rows[0];
 
     if (pk) {
@@ -308,9 +309,7 @@ export async function load(
         .join(i, and(ic.object_id.eq(i.object_id), ic.index_id.eq(i.index_id)))
         .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
 
-      const { rows: colRows } = await provider.query(
-        provider.sqlUtil.sqlify(colSql).sql
-      );
+      const { rows: colRows } = await provider.lube.query(colSql);
       pk.columns = colRows.map(p => ({ name: p.name, isAscending: !p.isDesc }));
     }
     return pk;
@@ -347,7 +346,7 @@ export async function load(
       name: p.name,
       indexName: p.indexName,
       comment: p.comment,
-      columns: null,
+      columns: []
     }));
     const ic = table(['index_columns', 'sys']).as('ic');
     // const ik = table('sysindexkeys').as('ik')

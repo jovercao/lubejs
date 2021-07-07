@@ -86,6 +86,7 @@ import {
   Continue,
   If,
   While,
+  Execute,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -609,6 +610,27 @@ export class MssqlStandardTranslator implements StandardTranslator {
 }
 
 export class MssqlSqlUtil extends SqlUtil {
+
+  protected sqlifyExecute(
+    exec: Execute,
+    params: Set<Parameter<Scalar, string>>,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    parent?: AST
+  ): string {
+    const returnParam = SQL.output(
+      this.options.returnParameterName!,
+      DbType.int32
+    );
+    return (
+      'EXECUTE ' +
+      this.sqlifyParameter(returnParam, params) +
+      ' = ' +
+      this.sqlifyIdentifier(exec.$proc) +
+      ' ' +
+      this.sqlifyExecuteArgumentList(exec.$args, params, exec)
+    );
+  }
+
   sqlifyContinue(statement: Continue): string {
     return 'CONTINUE';
   }

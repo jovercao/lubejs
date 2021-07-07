@@ -99,7 +99,7 @@ export function sqlifyLiteral(value: Scalar): string {
   }
 
   if (value instanceof Uuid) {
-    return `CONVERT(UNIQUEIDENTIFIER, '${value.toString()}')`;
+    return '0x' + Buffer.from(value).toString('hex');
   }
 
   if (value instanceof Decimal) {

@@ -22,9 +22,9 @@ export type ScalarDifference<T extends ScalarType> = {
 export type ObjectDifference<T extends object> = {
   source: T;
   target: T;
-  added: T;
-  removed: T;
-  changes: {
+  added?: T;
+  removed?: T;
+  changes?: {
     [P in keyof T]?: T[P] extends ScalarType | ScalarType[]
       ? ScalarDifference<T[P]>
       : T[P] extends (infer M)[]
@@ -86,7 +86,7 @@ export function getType(value: any): ValueType {
  * @param value2
  * @returns
  */
-export function isChanged<T extends ScalarType>(value1: T, value2: T): boolean {
+export function isChanged<T extends ScalarType>(value1: T | null | undefined, value2: T | null | undefined): boolean {
   if (value1 === undefined) value1 = null;
   if (value2 === undefined) value2 = null;
   if (value1 === value2) return false;
@@ -119,13 +119,14 @@ export function isChanged<T extends ScalarType>(value1: T, value2: T): boolean {
 export function compareScalar<T extends ScalarType>(
   source: any,
   target: any
-): ScalarDifference<T> {
+): ScalarDifference<T> | null {
   if (isChanged(source, target)) {
     return {
       source,
       target,
     };
   }
+  return null
 }
 
 export function compareObject<T extends object>(
@@ -134,28 +135,24 @@ export function compareObject<T extends object>(
   isSameObject?: EqulsCompartor,
   // 对比的路径
   path: string = ''
-): ObjectDifference<T> {
-  if (source === target) return;
+): ObjectDifference<T> | null {
+  if (source === target) return null;
   if (!source && !target) {
-    return;
+    return null;
   }
 
   if (source && !target) {
     return {
       source,
       target,
-      added: source,
-      removed: undefined,
-      changes: undefined,
+      added: source
     };
   }
   if (!source && target) {
     return {
       source,
       target,
-      removed: target,
-      added: undefined,
-      changes: undefined,
+      removed: target
     };
   }
 
@@ -210,8 +207,6 @@ export function compareObject<T extends object>(
       source,
       target,
       changes,
-      added: null,
-      removed: null,
     };
   }
 
@@ -221,7 +216,7 @@ export function compareObject<T extends object>(
 /**
  * 用于确定是否同一对象
  */
-export type EqulsCompartor = (left: object, right: object, path: string) => boolean;
+export type EqulsCompartor = (left: any, right: any, path: string) => boolean;
 
 export function compareList<T extends object>(
   source: T[],
@@ -232,7 +227,7 @@ export function compareList<T extends object>(
   isSameObject: EqulsCompartor,
   // 对比的路径
   path: string = ''
-): ListDifference<T> {
+): ListDifference<T> | null {
   // const sourceMap = map(source, keyer);
   // const targetMap = map(target, keyer);
   const addeds: T[] = source.filter(left =>
@@ -272,16 +267,19 @@ export type CompareResult<T> = T extends ScalarType ? ScalarDifference<T>
   : T extends object ? ObjectDifference<T>
   : never;
 
-export function compare<T extends ScalarType>(source: T, target: T): ScalarDifference<T>;
-export function compare<T extends ListType>(source: T, target: T, isSameObject: EqulsCompartor): ListDifference<T>
-export function compare<T extends ObjectType>(source: T, target: T, isSameObject: EqulsCompartor): ObjectDifference<T>
-export function compare(source: any, target: any, isSameObject?: EqulsCompartor): ScalarDifference<any> | ListDifference<any> | ObjectDifference<any> {
+export function compare<T extends ScalarType>(source: T, target: T): ScalarDifference<T> | null;
+export function compare<T extends ListType>(source: T, target: T, isSameObject: EqulsCompartor): ListDifference<T> | null;
+export function compare<T extends ObjectType>(source: T, target: T, isSameObject: EqulsCompartor): ObjectDifference<T> | null;
+export function compare(source: any, target: any, isSameObject?: EqulsCompartor): ScalarDifference<any> | ListDifference<any> | ObjectDifference<any> | null {
   const type = Math.max(getType(source), getType(target));
   if (type === ValueType.scalar) {
     return compareScalar(source, target);
   }
   if (type === ValueType.list) {
-    return compareList(source, target, isSameObject);
+    if (!isSameObject) {
+      throw new Error(`Compare list must provide argument: 'isSanmeObject'`);
+    }
+    return compareList(source, target, isSameObject!);
   }
   return compareObject(source, target, isSameObject);
 }

@@ -84,8 +84,8 @@ export type DeleteOptions = {
 };
 
 export class Repository<T extends Entity> extends Queryable<T> {
-  protected metadata: TableEntityMetadata;
-  protected rowset: ProxiedTable<T>;
+  protected metadata!: TableEntityMetadata;
+  protected rowset!: ProxiedTable<T>;
   private _emitter: AsyncEventEmitter = new AsyncEventEmitter();
 
   constructor(context: DbInstance, public ctr: Constructor<T>) {
@@ -101,7 +101,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
   async get(
     key: EntityKeyType,
     options?: FetchOptions<T>
-  ): Promise<EntityInstance<T>> {
+  ): Promise<EntityInstance<T> | null> {
     let query = this.filter(rowset =>
       rowset
         .field(this.metadata.keyColumn.columnName as FieldsOf<T>)
@@ -132,7 +132,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       if (options?.withoutRelations !== true) {
         await this.saveSuperiors(
           item,
-          options?.withoutRelations === false ? null : options?.withoutRelations
+          options?.withoutRelations === false ? undefined : options?.withoutRelations
         );
       }
       const row: any = Object.create(null);
@@ -175,7 +175,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         await this.saveSubordinates(
           item,
           options?.withoutRelations === false
-            ? null
+            ? undefined
             : options?.withoutRelations,
           true
         );
@@ -251,7 +251,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         // 保存父表项
         await this.saveSuperiors(
           item,
-          options?.withoutRelations === false ? null : options?.withoutRelations
+          options?.withoutRelations === false ? undefined : options?.withoutRelations
         );
       }
       const changes: any = {};
@@ -276,7 +276,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         // 保存子项
         await this.saveSubordinates(
           item,
-          options?.withoutRelations === false ? null : options?.withoutRelations
+          options?.withoutRelations === false ? undefined : options?.withoutRelations
         );
       }
     }
@@ -284,19 +284,24 @@ export class Repository<T extends Entity> extends Queryable<T> {
   }
 
   private async _delete(
-    items: EntityKeyType | T | T[],
+    data: EntityKeyType | T | T[],
     options?: DeleteOptions
   ): Promise<void> {
-    if (isScalar(items)) {
-      items = await this.get(items);
-      if (items === undefined || items === null)
+    let items: T[];
+    if (isScalar(data)) {
+      const item = await this.get(data);
+      if (!item) {
         throw new Error(
-          `Entity ${this.metadata.className} key ${items} not found for delete.`
+          `Entity ${this.metadata.className} key ${data} not found for delete.`
         );
-    }
-
-    if (!Array.isArray(items)) {
-      items = [items];
+      }
+      items = [item];
+    } else {
+      if (!Array.isArray(data)) {
+        items = [data!];
+      } else {
+        items = data;
+      }
     }
     if (items.length === 0) {
       throw new Error('Items must have more than or equals one of record.');
@@ -499,7 +504,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     withoutRelations?: RelationKeyOf<T>[]
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes(relation.property as RelationKeyOf<T>))
+      if (withoutRelations?.includes?.(relation.property as RelationKeyOf<T>))
         continue;
       if (Reflect.get(item, relation.property) === undefined) continue;
       if (isForeignOneToOne(relation) || isManyToOne(relation)) {
@@ -534,7 +539,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     skipCompare: boolean = false
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes(relation.property as RelationKeyOf<T>))
+      if (withoutRelations?.includes?.(relation.property as RelationKeyOf<T>))
         continue;
       if (Reflect.get(item, relation.property) === undefined) continue;
 

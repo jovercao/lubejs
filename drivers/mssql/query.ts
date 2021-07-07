@@ -17,25 +17,25 @@ export type IDriver = {
 export async function doQuery(
   driver: IDriver,
   sql: string,
-  params: Parameter<Scalar, string>[] = [],
+  params: Parameter<Scalar, string>[] | undefined,
   options: SqlOptions
 ) {
   const request = await driver.request();
-  params &&
+  if (params) {
     params.forEach(
-      ({ name, value, type, direction = PARAMETER_DIRECTION.INPUT }) => {
+      ({ name, value, type, direction = 'INPUT' }) => {
         let mssqlType: ISqlType;
         // 优先使用dbType
 
         mssqlType = toMssqlType(type);
 
-        if (direction === PARAMETER_DIRECTION.INPUT) {
+        if (direction === 'INPUT') {
           if (type) {
             request.input(name, mssqlType, value);
           } else {
             request.input(name, value);
           }
-        } else if (direction === PARAMETER_DIRECTION.OUTPUT) {
+        } else if (direction === 'OUTPUT') {
           if (!type) {
             throw new Error('输出参数必须指定参数类型！');
           }
@@ -47,6 +47,7 @@ export async function doQuery(
         }
       }
     );
+  }
   let res: IResult<any>;
   try {
     res = await request.query(sql);
@@ -60,14 +61,16 @@ export async function doQuery(
     rowsAffected: res.rowsAffected[0],
     output: res.output,
   };
-  Object.entries(res.output).forEach(([name, value]) => {
-    const p = params.find(p => p.name === name);
-    // 回写输出参数
-    p.value = value as Scalar;
-    if (p.name === options.returnParameterName) {
-      result.returnValue = value;
-    }
-  });
+  if (params) {
+    Object.entries(res.output).forEach(([name, value]) => {
+      const p = params.find(p => p.name === name)!;
+      // 回写输出参数
+      p.value = value as Scalar;
+      if (p.name === options.returnParameterName) {
+        result.returnValue = value;
+      }
+    });
+  }
   if (res.recordsets) {
     result.rowsets = res.recordsets;
   }
@@ -80,7 +83,11 @@ export async function doQuery(
 function normalDatas(datas: IRecordSet<any>): any[] {
   for (const [column, { type }] of Object.entries(datas.columns)) {
     // HACK 使用mssql私有属性 SqlType declaration
-    const declare = Reflect.get(type, 'declaration');
+    const declare = Reflect.get(type, 'declaration')?.toLowerCase?.();;
+    if (!declare) {
+      throw new Error(`Declare`)
+    }
+
     if (declare === 'bigint') {
       for (const row of datas) {
         const value = row[column] as string;
@@ -104,6 +111,6 @@ function normalDatas(datas: IRecordSet<any>): any[] {
       }
     }
   }
-  delete datas.columns;
+  Reflect.deleteProperty(datas, 'columns');
   return datas;
 }

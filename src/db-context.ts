@@ -62,7 +62,7 @@ export class DbInstance {
       });
       this._repositories.set(Entity, repo);
     }
-    return this._repositories.get(Entity);
+    return this._repositories.get(Entity)!;
   }
 
   /**
@@ -76,10 +76,9 @@ export class DbInstance {
     Entity: Constructor<T>,
     key: EntityKeyType,
     options?: FetchOptions<T>
-  ): Promise<EntityInstance<T>> {
+  ): Promise<EntityInstance<T> | null> {
     return this.getRepository(Entity).get(key, options);
   }
-
 
   insert<T extends Entity>(
     Entity: Constructor<T>,

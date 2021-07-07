@@ -147,7 +147,7 @@ export function generateMigrate(
     return `builder.uniqueKey('${key.name}').on(${genKeyColumns(key.columns)})`;
   }
 
-  function genName(name: Name): string {
+  function genName(name: Name | undefined): string {
     if (name === '') return "''";
     if (!name) return '';
 
@@ -308,33 +308,27 @@ export function generateMigrate(
   function genComment(
     type: 'Table' | 'Procedure' | 'Function' | 'Schema',
     object: Name<string>,
-    comment: string
+    comment?: string
   ): string;
   function genComment(
     type: 'Column' | 'Constraint' | 'Index',
     table: Name<string>,
     member: string,
-    comment: string
+    comment?: string
   ): string;
   function genComment(
-    type:
-      | 'Table'
-      | 'Column'
-      | 'Constraint'
-      | 'Procedure'
-      | 'Index'
-      | 'Function'
-      | 'Schema',
-    object: string,
-    ...args: string[]
+    type: string,
+    object: Name<string>,
+    memberOrComment?: string,
+    _comment?: string
   ): string {
-    let member: string;
-    let comment: string;
+    let member: string | undefined;
+    let comment: string | undefined;
     if (['Table', 'Procedure', 'Function', 'Schema'].includes(type)) {
-      comment = args[0];
+      comment = memberOrComment;
     } else {
-      member = args[0];
-      comment = args[1];
+      member = memberOrComment;
+      comment = _comment;
     }
     const code = `builder.comment${type}(${genName(object)}${
       member ? `, ${genName(member)}` : ''
@@ -391,7 +385,7 @@ export function generateMigrate(
             typeof table.name === 'string' ? table.name : table.name[0]
           );
           // 如果有种子数据
-          if (entity?.data?.length > 0) {
+          if (entity?.data?.length) {
             seedDataCodes.push(genSeedData(table, entity.data));
           }
         }
@@ -481,8 +475,8 @@ export function generateMigrate(
                 genComment(
                   'Constraint',
                   tableName,
-                  tableChanges.changes?.primaryKey.source.name,
-                  tableChanges.changes?.primaryKey.changes.comment.source
+                  tableChanges.changes.primaryKey.source.name,
+                  tableChanges.changes.primaryKey.source.comment
                 )
               );
             }
@@ -506,6 +500,7 @@ export function generateMigrate(
 
           for (const { target, source, changes } of tableChanges.changes.columns
             .changes || []) {
+            if (!changes) continue;
             // 如果类型或者是否可空变化
             if (changes.type || changes.isNullable) {
               otherCodes.push(genAlterColumn(tableName, source));
@@ -544,8 +539,8 @@ export function generateMigrate(
                   genSetIdentity(
                     tableName,
                     source.name,
-                    source.identityStartValue,
-                    source.identityIncrement
+                    source.identityStartValue!,
+                    source.identityIncrement!
                   )
                 );
               }
@@ -584,7 +579,7 @@ export function generateMigrate(
             ?.foreignKeys?.changes || []) {
             dropFkCodes.push(genDropForeignKey(tableName, target.name));
             addFkCodes.push(genAddForeignKey(tableName, source));
-            if (changes.comment) {
+            if (changes?.comment) {
               otherCodes.push(
                 genComment(
                   'Constraint',
@@ -628,7 +623,7 @@ export function generateMigrate(
               genDropConstraint(tableName, target.kind, target.name)
             );
             otherCodes.push(genAddConstraint(tableName, source));
-            if (changes.comment) {
+            if (changes?.comment) {
               otherCodes.push(
                 genComment(
                   'Constraint',
@@ -660,7 +655,7 @@ export function generateMigrate(
             .changes || []) {
             otherCodes.push(genDropIndex(tableName, target.name));
             otherCodes.push(genCreateIndex(tableName, source));
-            if (changes.comment) {
+            if (changes?.comment) {
               otherCodes.push(
                 genComment(
                   'Index',
@@ -673,7 +668,7 @@ export function generateMigrate(
           }
         }
 
-        if (tableChanges.changes.comment) {
+        if (tableChanges.changes?.comment) {
           otherCodes.push(
             genComment('Table', tableName, tableChanges.changes.comment.source)
           );
@@ -703,30 +698,31 @@ export function generateMigrate(
   }
   const upDiff = compareSchema(source, target);
   // 升级需要带上种子数据
-  const upCodes = genCodes(upDiff, metadata);
+  const upCodes = upDiff ? genCodes(upDiff, metadata) : [];
 
   const downDiff = compareSchema(target, source);
-  const downCodes = genCodes(downDiff);
+  const downCodes = downDiff ? genCodes(downDiff) : [];
 
   // const allTargetForeignKeys: ForeignKeySchema[] = [].concat(...target.tables.map(table => table.foreignKeys));
 
-  const findTargetForeignKey = (
-    finder: (table: Name, fk: ForeignKeySchema) => boolean
-  ): { table: Name; foreignKey: ForeignKeySchema } => {
-    let result: { table: Name; foreignKey: ForeignKeySchema };
-    target.tables.find(({ name: table, foreignKeys }) =>
-      foreignKeys.find(fk => {
-        if (finder(table, fk)) {
-          result = {
-            table,
-            foreignKey: fk,
-          };
-          return true;
-        }
-      })
-    );
-    return result;
-  };
+  // 勿删，此代码另有用处
+  // const findTargetForeignKey = (
+  //   finder: (table: Name, fk: ForeignKeySchema) => boolean
+  // ): { table: Name; foreignKey: ForeignKeySchema } => {
+  //   let result: { table: Name; foreignKey: ForeignKeySchema };
+  //   target.tables.find(({ name: table, foreignKeys }) =>
+  //     foreignKeys.find(fk => {
+  //       if (finder(table, fk)) {
+  //         result = {
+  //           table,
+  //           foreignKey: fk,
+  //         };
+  //         return true;
+  //       }
+  //     })
+  //   );
+  //   return result;
+  // };
 
   return generateMigrateClass(name, upCodes, downCodes);
 }

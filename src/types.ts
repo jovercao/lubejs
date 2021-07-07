@@ -34,6 +34,9 @@ export class Entity {
     data: EntityTypeOf<T> | EntityTypeOf<T>[]
   ): EntityInstance<EntityTypeOf<T>> | EntityInstance<EntityTypeOf<T>>[] {
     const metadata = metadataStore.getEntity(this);
+    if (!metadata) {
+      throw new Error(`Entity ${this.name} not register.`)
+    }
     const init = (data: T) => {
       Object.setPrototypeOf(data, this.prototype);
       for (const relation of metadata.relations) {
@@ -94,14 +97,14 @@ export type RowObject = object;
 export type Scalar =
   | string
   | boolean
-  // | null
   | number
   | bigint
   | Decimal
   | Date
   | Binary
   | Uuid
-  | Decimal;
+  | Decimal
+  | null;
 // TODO: 适配 JSON 和 ARRAY数据类型
 // | RowObject
 // | Array<ScalarType>
@@ -112,15 +115,16 @@ export class Uuid {
       this._buffer = Array.from(parse(strOrBuffer));
     } else if (strOrBuffer) {
       this._buffer = Array.from(strOrBuffer);
+    } else {
+      this._buffer = Uuid.DEFAULT;
     }
   }
 
   readonly [n: number]: number;
-  length: number;
-  private _buffer: number[];
+  private readonly _buffer: number[];
 
   toString(): string {
-    return stringify(this._buffer || Uuid.DEFAULT);
+    return stringify(this._buffer);
   }
 
   private static DEFAULT = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
@@ -131,7 +135,11 @@ export class Uuid {
     return uuid;
   }
 
-  static readonly empty = new Uuid();
+  static readonly empty = new Uuid(Uuid.DEFAULT);
+
+  valueOf() {
+    return this._buffer || Uuid.DEFAULT;
+  }
 
   static equals(left: Uuid, right: Uuid): boolean {
     for (let i = 0; i < 16; i++) {
@@ -438,7 +446,7 @@ export const DbType = {
   int16: { name: 'INT16' } as INT16,
   int32: { name: 'INT32' } as INT32,
   int64: { name: 'INT64' } as INT64,
-  numeric(precision: number, digit?: number): DECIMAL {
+  decimal(precision: number, digit?: number): DECIMAL {
     return {
       name: 'DECIMAL',
       precision,
@@ -504,7 +512,7 @@ export interface EntityKey {}
  */
 export type EntityKeyType = EntityKey[keyof EntityKey] extends never
   ? number
-  : EntityKey[keyof EntityKey];
+  : NonNullable<EntityKey[keyof EntityKey]>;
 
 /**
  * 主键字段字面量类型

@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Decimal from 'decimal.js';
+import { clearScreenDown } from 'readline';
+import { URL } from 'url';
 import { isString } from 'util';
 import {
   Condition,
@@ -749,13 +751,15 @@ export function isDocument(value: any): value is Document {
   return value?.$type === SQL_SYMBOLE.DOCUMENT;
 }
 
-export function invalidAST(type: string, value: any) {
+export function invalidAST(type: string, value: any): Error {
   console.debug(`Invalid ${type} AST：`, value);
-  throw new Error(`Invalid ${type} AST.`);
+  return new Error(`Invalid ${type} AST.`);
 }
 
-export function mergeFetchRelations<T extends RowObject>(...includes: [FetchRelations<T>, FetchRelations<T>, ...FetchRelations<T>[]]): FetchRelations<T> {
-  const merge = (dest: Record<string, any>, include: Record<string, any>) => {
+export function mergeFetchRelations<T extends RowObject>(
+  ...includes: (FetchRelations<T> | undefined)[]
+): FetchRelations<T> {
+  const merge = (dest: Record<string, any> | undefined, include: Record<string, any> | undefined) => {
     if (!dest) return include;
     if (!include) return dest;
     Object.entries(include).forEach(([key, value]) => {
@@ -1037,9 +1041,9 @@ export function outputCommand(cmd: Command): void {
 }
 
 export function isNameEquals(name1: Name, name2: Name): boolean {
-  let schema1: string;
+  let schema1: string | undefined;
   let table1: string;
-  let schema2: string;
+  let schema2: string | undefined;
   let table2: string;
 
   if (Array.isArray(name1)) {
@@ -1052,7 +1056,24 @@ export function isNameEquals(name1: Name, name2: Name): boolean {
   if (Array.isArray(name2)) {
     schema2 = name2[1];
     table2 = name2[0];
+  } else {
+    table2 = name2;
   }
 
   return schema1 === schema2 && table1 === table2;
+}
+
+export function isUrl(str: string): boolean {
+  try {
+    new URL(str);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function assertAstNonempty(value: object | undefined, message: string = 'AST syntax error.'): asserts value {
+  if (!value) {
+    throw new Error('AST syntax error:' + message);
+  }
 }

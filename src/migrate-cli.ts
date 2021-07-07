@@ -109,17 +109,17 @@ export class MigrateCli {
     return this.dbContext.lube.provider.getSchema();
   }
 
-  private async getCurrentMigrate(): Promise<MigrateInfo> {
+  private async getCurrentMigrate(): Promise<MigrateInfo | undefined> {
     try {
       const [ item ] = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
         { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
       );
-      if (!item) return null;
+      if (!item) return;
       const id = item.migrate_id;
       return this.getMigrate(id);
     } catch {
-      return null;
+      return;
     }
   }
 
@@ -225,7 +225,7 @@ export class MigrateCli {
     return info
   }
 
-  async findMigrate(name: string): Promise<MigrateInfo> {
+  async findMigrate(name: string): Promise<MigrateInfo | undefined> {
     const items = await this._list();
     const item = items.find(
       item => item.name === name || item.id === name || item.timestamp === name
@@ -271,7 +271,7 @@ export class MigrateCli {
     start?: string;
     outputPath?: string;
   }): Promise<Command[]> {
-    let end: MigrateInfo;
+    let end: MigrateInfo | undefined;
     if (!options?.end || options?.end === '*') {
       end = await this.getLastMigrate();
     } else if (options?.end === '@') {
@@ -280,7 +280,7 @@ export class MigrateCli {
       end = await this.getMigrate(options.end);
     }
     const migrates = await this._list();
-    let start: MigrateInfo;
+    let start: MigrateInfo | undefined;
     if (!options?.start || options?.start === '@') {
       start = await this.getCurrentMigrate();
     } else if (options?.start !== '*') {
@@ -358,7 +358,7 @@ export class MigrateCli {
     }
   }
 
-  private _migrateList: MigrateInfo[];
+  private _migrateList?: MigrateInfo[];
 
   /**
    * 列出当前所有迁移
@@ -407,7 +407,6 @@ export class MigrateCli {
     const metadata = metadataStore.getContext(
       this.dbContext.constructor as Constructor<DbContext>
     );
-
     const metadataSchema = generateSchema(
       this.dbContext.executor.sqlUtil,
       metadata

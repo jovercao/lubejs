@@ -30,7 +30,7 @@ import {
 } from './metadata';
 import { DataType, DbType, RowObject, Scalar, DataTypeOf, Name } from './types';
 import { map } from './util';
-import { compareObject, isChanged, ObjectDifference } from './util/compare';
+import { compareObject, EqulsCompartor, isChanged, ObjectDifference } from './util/compare';
 
 /**
  * 外键架构
@@ -236,14 +236,14 @@ export interface SequenceSchema {
 
 export interface CheckConstraintSchema {
   kind: 'CHECK';
-  name?: string;
+  name: string;
   sql: string;
   comment?: string;
 }
 
 export interface UniqueConstraintSchema {
   kind: 'UNIQUE';
-  name?: string;
+  name: string;
   columns: KeyColumnSchema[];
   comment?: string;
 }
@@ -437,11 +437,11 @@ export function generateSchema(
       isCalculate: column.isCalculate,
       calculateExpression:
         column.calculateExpression &&
-        sqlUtil.sqlifyExpression(column.calculateExpression, null),
+        sqlUtil.sqlifyExpression(column.calculateExpression),
       comment: column.comment,
       defaultValue:
         column.defaultValue &&
-        sqlUtil.sqlifyExpression(column.defaultValue, null),
+        sqlUtil.sqlifyExpression(column.defaultValue),
     };
     return col;
   }
@@ -467,7 +467,7 @@ export function generateSchema(
       isClustered: index.isClustered,
       columns: index.columns.map(cm => ({
         name: cm.column.columnName,
-        isAscending: cm.isAscending,
+        isAscending: cm.sort === 'ASC',
       })),
       comment: index.comment,
     };
@@ -510,13 +510,13 @@ export type ObjectSchema = TableSchema | ViewSchema | ProcedureSchema | Function
 
 export type SchemaDifference = ObjectDifference<DatabaseSchema>;
 
-export const isSameSchemaObject = (left: SchemaObject, right: SchemaObject, path: string) => {
+export const isSameSchemaObject: EqulsCompartor = (left: SchemaObject, right: SchemaObject, path: string): boolean => {
   return !isChanged(left.name, right.name)
 };
 
 export function compareSchema(
   source: DatabaseSchema,
   target: DatabaseSchema
-): SchemaDifference {
+): SchemaDifference | null {
   return compareObject(source, target, isSameSchemaObject);
 }

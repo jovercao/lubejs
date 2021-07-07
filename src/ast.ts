@@ -288,7 +288,7 @@ export type ProxiedNamedSelect<T extends RowObject, N extends string = string> =
  * AST 基类
  */
 export abstract class AST {
-  readonly $type: SQL_SYMBOLE;
+  abstract readonly $type: SQL_SYMBOLE;
   /**
    * 克隆自身
    */
@@ -594,7 +594,7 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
  */
 export abstract class Condition extends AST {
   readonly $type: SQL_SYMBOLE.CONDITION = SQL_SYMBOLE.CONDITION;
-  readonly $kind: CONDITION_KIND;
+  abstract readonly $kind: CONDITION_KIND;
   /**
    * and连接
    * @param condition 下一个查询条件
@@ -802,24 +802,24 @@ export abstract class Identifier<N extends string = string> extends AST {
   /**
    * 标识符类别
    */
-  readonly $kind: IDENTOFIER_KIND;
+  readonly $kind!: IDENTOFIER_KIND;
 }
 
 /**
  * SQL系统内建关键字，如MSSQL DATEPART: DAY / M / MM 等
  */
 export class BuiltIn<N extends string = string> extends Identifier<N> {
-  $name: N;
+  $name!: N;
   $kind: IDENTOFIER_KIND.BUILT_IN = IDENTOFIER_KIND.BUILT_IN;
-  readonly $builtin: true;
+  readonly $builtin!: true;
   constructor(name: N) {
     super(name, true);
   }
 }
 
 export class Alias<N extends string> extends Identifier<N> {
-  $name: N;
-  $kind: IDENTOFIER_KIND.ALIAS;
+  $name!: N;
+  $kind!: IDENTOFIER_KIND.ALIAS;
   constructor(name: N) {
     super(name, false);
   }
@@ -898,7 +898,7 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
   /**
    * 别名
    */
-  $alias?: Alias<string> = null;
+  $alias?: Alias<string>;
 
   /**
    * 为当前表添加别名
@@ -1032,7 +1032,7 @@ export class Table<
     return new Star(this.$name);
   }
 
-  as: <N extends string>(alias: N) => this;
+  as!: <N extends string>(alias: N) => this;
 }
 
 // applyMixins(Table, [Identifier]);
@@ -1050,7 +1050,7 @@ export class Variant<T extends Scalar = any, N extends string = string>
     super();
     this.$name = name;
   }
-  $builtin: boolean;
+  $builtin!: boolean;
   $name: N;
 }
 
@@ -1064,7 +1064,7 @@ export class TableVariant<T extends RowObject = any, N extends string = string>
   implements Identifier<N>
 {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
-  $builtin: boolean;
+  $builtin!: boolean;
   $kind: IDENTOFIER_KIND.TABLE_VARIANT = IDENTOFIER_KIND.TABLE_VARIANT;
   $name: N;
   constructor(name: N) {
@@ -1085,7 +1085,7 @@ export class SelectColumn<
   /**
    * 列名称
    */
-  $name: N;
+  $name!: N;
 
   /**
    * 表达式
@@ -1112,952 +1112,952 @@ export type SelectAction = {
   /**
    * 选择列
    */
-  <T extends RowObject = any>(a: Star<T>): Select<T>;
+  // <T extends RowObject = any>(a: Star<T>): Select<T>;
   <A extends SelectCloumn>(a: A): Select<RowTypeByColumns<A>>;
-  <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>;
-  <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>;
   <T extends RowObject>(results: InputObject<T>): Select<T>;
+  <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>;
   <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
     '*no name': T;
   }>;
-  <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
-    RowTypeByColumns<A, B>
-  >;
-  <A extends SelectCloumn, B extends SelectCloumn, C extends SelectCloumn>(
-    a: A,
-    b?: B,
-    d?: C
-  ): Select<RowTypeByColumns<A, B, C>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D
-  ): Select<RowTypeByColumns<A, B, C, D>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E
-  ): Select<RowTypeByColumns<A, B, C, D, E>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F
-  ): Select<RowTypeByColumns<A, B, C, D, E, F>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P
-  ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>>;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q
-  ): Select<
-    RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R
-  ): Select<
-    RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S
-  ): Select<
-    RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T
-  ): Select<
-    RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U
-    >
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn,
-    V extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U,
-    v: V
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U,
-      V
-    >
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn,
-    V extends SelectCloumn,
-    W extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U,
-    v: V,
-    w: W
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U,
-      V,
-      W
-    >
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn,
-    V extends SelectCloumn,
-    W extends SelectCloumn,
-    X extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U,
-    v: V,
-    w: W,
-    x: X
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U,
-      V,
-      W,
-      X
-    >
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn,
-    V extends SelectCloumn,
-    W extends SelectCloumn,
-    X extends SelectCloumn,
-    Y extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U,
-    v: V,
-    w: W,
-    x: X,
-    y: Y
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U,
-      V,
-      W,
-      X,
-      Y
-    >
-  >;
-  <
-    A extends SelectCloumn,
-    B extends SelectCloumn,
-    C extends SelectCloumn,
-    D extends SelectCloumn,
-    E extends SelectCloumn,
-    F extends SelectCloumn,
-    G extends SelectCloumn,
-    H extends SelectCloumn,
-    I extends SelectCloumn,
-    J extends SelectCloumn,
-    K extends SelectCloumn,
-    L extends SelectCloumn,
-    M extends SelectCloumn,
-    N extends SelectCloumn,
-    O extends SelectCloumn,
-    P extends SelectCloumn,
-    Q extends SelectCloumn,
-    R extends SelectCloumn,
-    S extends SelectCloumn,
-    T extends SelectCloumn,
-    U extends SelectCloumn,
-    V extends SelectCloumn,
-    W extends SelectCloumn,
-    X extends SelectCloumn,
-    Y extends SelectCloumn,
-    Z extends SelectCloumn
-  >(
-    a: A,
-    b: B,
-    c: C,
-    d: D,
-    e: E,
-    f: F,
-    g: G,
-    h: H,
-    i: I,
-    j: J,
-    k: K,
-    l: L,
-    m: M,
-    n: N,
-    o: O,
-    p: P,
-    q: Q,
-    r: R,
-    s: S,
-    t: T,
-    u: U,
-    v: V,
-    w: W,
-    x: X,
-    y: Y,
-    z: Z
-  ): Select<
-    RowTypeByColumns<
-      A,
-      B,
-      C,
-      D,
-      E,
-      F,
-      G,
-      H,
-      I,
-      J,
-      K,
-      L,
-      M,
-      N,
-      O,
-      P,
-      Q,
-      R,
-      S,
-      T,
-      U,
-      V,
-      W,
-      X,
-      Y,
-      Z
-    >
-  >;
-  (...exprs: CompatibleExpression[]): Select<any>;
   <T extends RowObject>(
     ...columns: (SelectColumn | CompatibleExpression | Star<any>)[]
   ): Select<T>;
+  (...exprs: CompatibleExpression[]): Select<any>;
+  // <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>;
+  // <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
+  //   RowTypeByColumns<A, B>
+  // >;
+  // <A extends SelectCloumn, B extends SelectCloumn, C extends SelectCloumn>(
+  //   a: A,
+  //   b?: B,
+  //   d?: C
+  // ): Select<RowTypeByColumns<A, B, C>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D
+  // ): Select<RowTypeByColumns<A, B, C, D>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E
+  // ): Select<RowTypeByColumns<A, B, C, D, E>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P
+  // ): Select<RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P>>;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q
+  // ): Select<
+  //   RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q>
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R
+  // ): Select<
+  //   RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R>
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S
+  // ): Select<
+  //   RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S>
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T
+  // ): Select<
+  //   RowTypeByColumns<A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T>
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U
+  //   >
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn,
+  //   V extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V
+  //   >
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn,
+  //   V extends SelectCloumn,
+  //   W extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V,
+  //   w: W
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V,
+  //     W
+  //   >
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn,
+  //   V extends SelectCloumn,
+  //   W extends SelectCloumn,
+  //   X extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V,
+  //   w: W,
+  //   x: X
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V,
+  //     W,
+  //     X
+  //   >
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn,
+  //   V extends SelectCloumn,
+  //   W extends SelectCloumn,
+  //   X extends SelectCloumn,
+  //   Y extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V,
+  //   w: W,
+  //   x: X,
+  //   y: Y
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V,
+  //     W,
+  //     X,
+  //     Y
+  //   >
+  // >;
+  // <
+  //   A extends SelectCloumn,
+  //   B extends SelectCloumn,
+  //   C extends SelectCloumn,
+  //   D extends SelectCloumn,
+  //   E extends SelectCloumn,
+  //   F extends SelectCloumn,
+  //   G extends SelectCloumn,
+  //   H extends SelectCloumn,
+  //   I extends SelectCloumn,
+  //   J extends SelectCloumn,
+  //   K extends SelectCloumn,
+  //   L extends SelectCloumn,
+  //   M extends SelectCloumn,
+  //   N extends SelectCloumn,
+  //   O extends SelectCloumn,
+  //   P extends SelectCloumn,
+  //   Q extends SelectCloumn,
+  //   R extends SelectCloumn,
+  //   S extends SelectCloumn,
+  //   T extends SelectCloumn,
+  //   U extends SelectCloumn,
+  //   V extends SelectCloumn,
+  //   W extends SelectCloumn,
+  //   X extends SelectCloumn,
+  //   Y extends SelectCloumn,
+  //   Z extends SelectCloumn
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V,
+  //   w: W,
+  //   x: X,
+  //   y: Y,
+  //   z: Z
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V,
+  //     W,
+  //     X,
+  //     Y,
+  //     Z
+  //   >
+  // >;
 };
 
 /**
@@ -2109,8 +2109,8 @@ export class TableFuncInvoke<
  * SQL 语句
  */
 export abstract class Statement extends AST {
-  $type: SQL_SYMBOLE.STATEMENT = SQL_SYMBOLE.STATEMENT;
-  $kind: STATEMENT_KIND;
+  readonly $type: SQL_SYMBOLE.STATEMENT = SQL_SYMBOLE.STATEMENT;
+  abstract readonly $kind: STATEMENT_KIND;
 }
 
 /**
@@ -2147,7 +2147,7 @@ export class When<T extends Scalar = any> extends AST {
  * CASE表达式
  */
 export class Case<T extends Scalar = any> extends Expression<T> {
-  $expr: Expression<any>;
+  $expr?: Expression<any>;
   $whens: When<T>[];
   $default?: Expression<T>;
   $type: SQL_SYMBOLE.CASE = SQL_SYMBOLE.CASE;
@@ -2238,8 +2238,8 @@ export abstract class Operation<
   T extends Scalar = Scalar
 > extends Expression<T> {
   readonly $type: SQL_SYMBOLE.OPERATION = SQL_SYMBOLE.OPERATION;
-  readonly $kind: OPERATION_KIND;
-  $operator: OPERATION_OPERATOR;
+  abstract readonly $kind: OPERATION_KIND;
+  abstract readonly $operator: OPERATION_OPERATOR;
 }
 
 /**
@@ -2298,7 +2298,7 @@ export class Union<T extends RowObject = any> extends AST {
   $select: Select<T>;
   $all: boolean;
   $type: SQL_SYMBOLE.UNION = SQL_SYMBOLE.UNION;
-  $isRecurse: boolean;
+  // $isRecurse: boolean;
 
   /**
    *
@@ -2323,7 +2323,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
   $froms?: Rowset<any>[];
   $joins?: Join[];
   $where?: Condition;
-  $with: With;
+  $with?: With;
 
   /**
    * 从表中查询，可以查询多表
@@ -2442,8 +2442,8 @@ export class Select<T extends RowObject = any> extends Fromable {
     if (columns.length === 1 && isPlainObject(columns[0])) {
       const results = columns[0];
       this.$columns = Object.entries(results as InputObject<T>).map(
-        ([name, expr]: [string, CompatibleExpression]) => {
-          return new SelectColumn(name, ensureExpression(expr));
+        ([name, expr]: [string, unknown]) => {
+          return new SelectColumn(name, ensureExpression(expr as CompatibleExpression));
         }
       );
       return;
@@ -2625,9 +2625,9 @@ export class ValuedSelect<T extends Scalar = Scalar> extends Expression<T> {
 export class Insert<T extends RowObject = any> extends Statement {
   $table: Table<T, string>;
   $fields?: Field[];
-  $values: Expression<Scalar>[][] | Select<T>;
+  $values?: Expression<Scalar>[][] | Select<T>;
   $identityInsert: boolean = false;
-  $with: With;
+  $with?: With;
 
   readonly $kind: STATEMENT_KIND.INSERT = STATEMENT_KIND.INSERT;
 
@@ -2755,7 +2755,7 @@ export class Insert<T extends RowObject = any> extends Statement {
  */
 export class Update<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T, string>;
-  $sets: Assignment<Scalar>[];
+  $sets?: Assignment<Scalar>[];
 
   readonly $kind: STATEMENT_KIND.UPDATE = STATEMENT_KIND.UPDATE;
 
@@ -2785,21 +2785,22 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
       } else {
         const item = sets[0] as InputObject<T>;
         this.$sets = Object.entries(item).map(
-          ([key, value]: [string, CompatibleExpression]) =>
+          ([key, value]: [string, unknown]) =>
             new Assignment(
               this.$table.field(key as any),
-              ensureExpression(value)
+              ensureExpression(value as CompatibleExpression)
             )
         );
         return this;
       }
     }
     this.$sets = sets as Assignment<Scalar>[];
+    return this;
   }
 }
 
 export class Delete<T extends RowObject = any> extends Fromable<T> {
-  $table: Table<T, string>;
+  $table?: Table<T, string>;
   $kind: STATEMENT_KIND.DELETE = STATEMENT_KIND.DELETE;
 
   constructor(table?: CompatibleTable<T, string>) {
@@ -2945,10 +2946,11 @@ export class ProcedureParameter extends AST {
   readonly $type: SQL_SYMBOLE.PROCEDURE_PARAMETER =
     SQL_SYMBOLE.PROCEDURE_PARAMETER;
 
-  constructor(name: string, dataType: DbType) {
+  constructor(name: string, dataType: DbType, direct: PARAMETER_DIRECTION = 'INPUT') {
     super();
     this.$name = name;
     this.$dbType = dataType;
+    this.$direct = direct;
   }
 
   $name: string;
@@ -2973,7 +2975,7 @@ export class ProcedureParameter extends AST {
 
 export class TableVariantDeclare<N extends string = string> extends AST {
   $type: SQL_SYMBOLE.TABLE_VARIANT_DECLARE = SQL_SYMBOLE.TABLE_VARIANT_DECLARE;
-  $members: CreateTableMember[];
+  $members?: CreateTableMember[];
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -3049,7 +3051,7 @@ export class Parameter<T extends Scalar = any, N extends string = string>
   }
   direction: PARAMETER_DIRECTION;
   type: DbType;
-  value: T;
+  value?: T;
 
   // constructor (name: N, value?: T)
   // constructor (
@@ -3062,16 +3064,19 @@ export class Parameter<T extends Scalar = any, N extends string = string>
     name: N,
     type?: DbType,
     value?: T,
-    direction: PARAMETER_DIRECTION = PARAMETER_DIRECTION.INPUT
+    direction: PARAMETER_DIRECTION = 'INPUT'
   ) {
     super();
-    if (!type && (value === null || value === undefined)) {
-      throw new Error('Parameter must assign one of `value` or `type`.');
+    if (type) {
+      this.type = type
+    } else {
+      if (value === undefined) {
+        throw new Error('Parameter must assign one of `value` or `type`.');
+      }
+      this.type = parseValueType(value);
     }
-
-    this.type = type ? type : parseValueType(value);
     this.$name = name;
-    this.value = value; // ensureConstant(value)
+    this.value = value;
     this.direction = direction;
   }
 }
@@ -3119,7 +3124,7 @@ export class NamedSelect<
   readonly $type = SQL_SYMBOLE.NAMED_SELECT;
   $inWith: boolean;
   $select: Select<T>;
-  $alias: Alias<A>;
+  $alias!: Alias<A>;
 
   constructor(statement: Select<T>, alias: A, inWith = false) {
     super();
@@ -3186,8 +3191,8 @@ export class With extends AST {
   /**
    * select查询
    */
-  select: SelectAction = (...args: any[]) => {
-    const sql = SqlBuilder.select.call(Statement, ...args);
+  select: SelectAction = (...args: any[]): any => {
+    const sql = SqlBuilder.select(...args);
     sql.$with = this;
     return sql;
   };
@@ -3230,49 +3235,6 @@ export class With extends AST {
     return sql;
   }
 }
-
-// /**
-//  * 类型转换运算符
-//  */
-// export class ConvertOperation<T extends Scalar = Scalar> extends Operation<T> {
-//   $kind: OPERATION_KIND.CONVERT = OPERATION_KIND.CONVERT;
-//   /**
-//    * 转换到类型
-//    */
-//   $to: DbType;
-//   $expr: Expression<Scalar>;
-//   constructor(expr: CompatibleExpression<Scalar>, to: DbType) {
-//     super();
-//     this.$to = to;
-//     this.$expr = ensureExpression(expr);
-//   }
-// }
-
-// /**
-//  * 标量类型名到类型的映射
-//  */
-// export type ScalarTypeNamesMap = {
-//   string: string;
-//   number: number;
-//   float: number;
-//   double: number;
-//   integer: number;
-//   long: number;
-//   decimal: string;
-//   date: Date;
-//   datetime: Date;
-//   boolean: boolean;
-//   bigint: bigint;
-//   binary: Binary;
-// };
-
-// /**
-//  * 标量类型的字面量表达
-//  */
-// export type ScalarTypeNames = keyof ScalarTypeNamesMap;
-
-// export type ScalarTypeByName<N extends ScalarTypeNames> = ScalarTypeNamesMap[N];
-
 export interface KeyColumn {
   name: string;
   sort: 'ASC' | 'DESC';
@@ -3288,8 +3250,8 @@ export class PrimaryKey extends AST {
   /**
    * 声明为非聚焦主键
    */
-  $nonclustered: boolean;
-  $columns: KeyColumns;
+  $nonclustered: boolean = false;
+  $columns?: KeyColumns;
 
   constructor(
     name?: string,
@@ -3355,7 +3317,7 @@ export class CheckConstraint extends AST {
 export class UniqueKey {
   $type: SQL_SYMBOLE.UNIQUE_KEY = SQL_SYMBOLE.UNIQUE_KEY;
   $name?: string;
-  $columns: KeyColumns;
+  $columns?: KeyColumns;
 
   constructor(
     name?: string,
@@ -3405,10 +3367,10 @@ export class ForeignKey extends AST {
 
   $type: SQL_SYMBOLE.FOREIGN_KEY = SQL_SYMBOLE.FOREIGN_KEY;
   $name?: string;
-  $columns: string[];
-  $referenceColumns: string[];
-  $referenceTable: Name;
-  $deleteCascade: boolean;
+  $columns?: string[];
+  $referenceColumns?: string[];
+  $referenceTable?: Name;
+  $deleteCascade?: boolean;
 
   on(...columns: string[] | [string[]]): this {
     if (columns.length === 1 && Array.isArray(columns[0])) {
@@ -3460,10 +3422,12 @@ export const TableVariantMemberBuilder: TableVariantMemberBuilder = {
   ): TableColumnForAdd<N> {
     return new TableColumnForAdd(name, type);
   },
-  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
-    let name: string;
+  check(nameOrSql: string | Condition, _sql?: Condition): CheckConstraint {
+    let name: string | undefined;
+    let sql: Condition;
     if (typeof nameOrSql === 'string') {
       name = nameOrSql;
+      sql = _sql!;
     } else {
       sql = nameOrSql;
     }
@@ -3498,8 +3462,8 @@ export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
 };
 
 export class CreateTable<N extends string = string> extends Statement {
-  $kind: STATEMENT_KIND.CREATE_TABLE;
-  $members: CreateTableMember[];
+  readonly $kind: STATEMENT_KIND.CREATE_TABLE = STATEMENT_KIND.CREATE_TABLE;
+  $members?: CreateTableMember[];
   $name: Name<N>;
 
   constructor(name: Name<N>) {
@@ -3534,8 +3498,8 @@ export class CreateTable<N extends string = string> extends Statement {
 export class CreateIndex extends Statement {
   $kind: STATEMENT_KIND.CREATE_INDEX = STATEMENT_KIND.CREATE_INDEX;
   $name?: string;
-  $table: Name;
-  $columns: KeyColumns;
+  $table?: Name;
+  $columns?: KeyColumns;
   $clustered: boolean = false;
   $unique: boolean = false;
 
@@ -3673,10 +3637,14 @@ export const AlterTableAddBuilder: AlterTableAddBuilder = {
     return new ForeignKey(name);
   },
 
-  check(nameOrSql: string | Condition, sql?: Condition): CheckConstraint {
-    let name: string;
+  check(nameOrSql: string | Condition, _sql?: Condition): CheckConstraint {
+    let name: string | undefined;
+    let sql: Condition;
     if (typeof nameOrSql === 'string') {
       name = nameOrSql;
+      sql = _sql!;
+    } else {
+      sql = nameOrSql;
     }
     return new CheckConstraint(sql, name);
   },
@@ -3790,11 +3758,11 @@ abstract class TableColumn<
   N extends string = string,
   T extends DbType = DbType
 > extends AST {
-  $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  abstract $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $name: N;
-  $nullable: boolean;
+  $nullable?: boolean;
   $dbType: T;
-  $calculate: Expression<TsTypeOf<T>>;
+  $calculate?: Expression<TsTypeOf<T>>;
   $identity?: {
     startValue: number;
     increment: number;
@@ -3850,7 +3818,7 @@ export class CreateView<
 > extends Statement {
   $kind: STATEMENT_KIND.CREATE_VIEW = STATEMENT_KIND.CREATE_VIEW;
   $name: Name<N>;
-  $body: Select<T>;
+  $body?: Select<T>;
   constructor(name: Name<N>) {
     super();
     this.$name = name;
@@ -3867,7 +3835,7 @@ export class AlterView<
 > extends Statement {
   $kind: STATEMENT_KIND.ALTER_VIEW = STATEMENT_KIND.ALTER_VIEW;
   $name: Name<N>;
-  $body: Select<T>;
+  $body?: Select<T>;
   constructor(name: Name<N>) {
     super();
     this.$name = name;
@@ -3929,8 +3897,8 @@ export class Block extends Statement {
 export class CreateProcedure extends Statement {
   $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
   $name: Name;
-  $params: ProcedureParameter[];
-  $body: Statement[];
+  $params?: ProcedureParameter[];
+  $body?: Statement[];
 
   constructor(name: Name) {
     super();
@@ -3951,8 +3919,8 @@ export class CreateProcedure extends Statement {
 export class AlterProcedure extends Statement {
   $kind: STATEMENT_KIND.ALTER_PROCEDURE = STATEMENT_KIND.ALTER_PROCEDURE;
   $name: Name;
-  $params: ProcedureParameter[]; // TODO: 声明不正确
-  $body: Statement[];
+  $params?: ProcedureParameter[]; // TODO: 声明不正确
+  $body?: Statement[];
 
   constructor(name: Name) {
     super();
@@ -3974,9 +3942,9 @@ export type FunctinKind = 'SCALAR' | 'TABLE';
 export class CreateFunction extends Statement {
   $kind: STATEMENT_KIND.CREATE_FUNCTION = STATEMENT_KIND.CREATE_FUNCTION;
   $name: Name;
-  $params: VariantDeclare[];
-  $body: Statement[];
-  $returns: VariantDeclare | TableVariantDeclare | DbType;
+  $params?: VariantDeclare[];
+  $body?: Statement[];
+  $returns?: VariantDeclare | TableVariantDeclare | DbType;
 
   constructor(name: Name) {
     super();
@@ -4006,8 +3974,8 @@ export class CreateFunction extends Statement {
 export class AlterFunction extends Statement {
   $kind: STATEMENT_KIND.ALTER_FUNCTION = STATEMENT_KIND.ALTER_FUNCTION;
   $name: Name;
-  $params: VariantDeclare[];
-  $body: Statement[];
+  $params?: VariantDeclare[];
+  $body?: Statement[];
 
   constructor(name: Name, kind: FunctinKind) {
     super();
@@ -4083,9 +4051,9 @@ export class CreateSequence<
 > extends Statement {
   $kind: STATEMENT_KIND.CREATE_SEQUENCE = STATEMENT_KIND.CREATE_SEQUENCE;
   $name: Name<N>;
-  $startValue: Literal<number>;
-  $increment: Literal<number>;
-  $dbType: DbType;
+  $startValue: Literal<number> = SqlBuilder.literal(0);
+  $increment: Literal<number> = SqlBuilder.literal(1);
+  $dbType?: DbType;
   constructor(name: Name<N>) {
     super();
     this.$name = name;
@@ -4184,9 +4152,9 @@ export type CreateTableHandler = {
 export class If extends Statement {
   $kind: STATEMENT_KIND.IF = STATEMENT_KIND.IF;
 
-  $then: Statement;
+  $then?: Statement;
 
-  $elseif?: [Condition, Statement][];
+  $elseif?: [Condition, Statement | undefined][];
 
   $else?: Statement;
 
@@ -4223,7 +4191,7 @@ export class If extends Statement {
     if (!this.$elseif) {
       this.$elseif = [];
     }
-    const elseif: [Condition, Statement] = [condition, null];
+    const elseif: [Condition, Statement | undefined] = [condition, undefined];
     this.$elseif.push(elseif);
     return {
       then: (...args: Statement[] | [Statement[] | Statement]): this => {
@@ -4266,7 +4234,7 @@ export class If extends Statement {
 export class While extends Statement {
   $kind: STATEMENT_KIND.WHILE = STATEMENT_KIND.WHILE;
   $condition: Condition;
-  $statement: Statement;
+  $statement?: Statement;
 
   constructor(condition: Condition) {
     super();
@@ -4950,7 +4918,7 @@ export interface SqlBuilder extends Standard {
    */
   when<T extends Scalar>(
     expr: CompatibleExpression<Scalar>,
-    value?: CompatibleExpression<T>
+    value: CompatibleExpression<T>
   ): When<T>;
 
   case<T extends Scalar>(expr?: CompatibleExpression): Case<T>;
@@ -5686,7 +5654,7 @@ export const SqlBuilder: SqlBuilder = {
    */
   when<T extends Scalar>(
     expr: CompatibleExpression<Scalar>,
-    value?: CompatibleExpression<T>
+    value: CompatibleExpression<T>
   ): When<T> {
     return new When(expr, value);
   },
@@ -5798,7 +5766,7 @@ export const SqlBuilder: SqlBuilder = {
     value: T,
     type?: DbTypeOf<T>
   ): Parameter<T, N> {
-    return new Parameter(name, type, value, PARAMETER_DIRECTION.INPUT);
+    return new Parameter(name, type, value, 'INPUT');
   },
   /**
    * output参数
@@ -5808,6 +5776,6 @@ export const SqlBuilder: SqlBuilder = {
     type: T,
     value?: TsTypeOf<T>
   ): Parameter<TsTypeOf<T>, N> {
-    return new Parameter(name, type, value, PARAMETER_DIRECTION.OUTPUT);
+    return new Parameter(name, type, value, 'OUTPUT');
   },
 };

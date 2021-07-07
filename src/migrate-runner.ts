@@ -271,7 +271,7 @@ export function generateUpdateStatements(
       col.identity(schema.identityStartValue, schema.identityIncrement);
     }
     if (schema.isCalculate) {
-      col.as(SQL.raw(schema.calculateExpression));
+      col.as(SQL.raw(schema.calculateExpression!));
     }
     return col;
   }
@@ -290,12 +290,13 @@ export function generateUpdateStatements(
       col.identity(schema.identityStartValue, schema.identityIncrement);
     }
     if (schema.isCalculate) {
-      col.as(SQL.raw(schema.calculateExpression));
+      col.as(SQL.raw(schema.calculateExpression!));
     }
     return col;
   }
 
   function updateSchema() {
+    if (!differences) return [];
     if (differences.changes?.tables) {
       for (const table of differences.changes.tables.removeds) {
         // 删表前删除外键以免造成依赖问题, 注释掉的原因是因为表的变化本身就会记录需要删除的外键，除非整表删除
@@ -361,6 +362,7 @@ export function generateUpdateStatements(
 
           for (const { target, source, changes } of tableChanges.changes.columns
             .changes || []) {
+            if (!changes) continue;
             // 如果类型或者是否可空变化
             if (changes.type || changes.isNullable) {
               alterColumn(tableName, source);
@@ -396,8 +398,8 @@ export function generateUpdateStatements(
                 setIdentity(
                   tableName,
                   source.name,
-                  source.identityStartValue,
-                  source.identityIncrement
+                  source.identityStartValue!,
+                  source.identityIncrement!
                 );
               }
             }
@@ -426,7 +428,7 @@ export function generateUpdateStatements(
             ?.foreignKeys?.changes || []) {
             dropForeignKey(tableName, target.name);
             addForeignKey(tableName, source);
-            if (changes.comment) {
+            if (changes?.comment) {
               commentConstraint(tableName, target.name, changes.comment.source);
             }
           }
@@ -452,7 +454,7 @@ export function generateUpdateStatements(
             .constraints.changes || []) {
             dropConstraint(tableName, target);
             addConstraint(tableName, source);
-            if (changes.comment) {
+            if (changes?.comment) {
               commentConstraint(tableName, target.name, changes.comment.source);
             }
           }
@@ -475,13 +477,13 @@ export function generateUpdateStatements(
             .changes || []) {
             dropIndex(tableName, target.name);
             createIndex(tableName, source);
-            if (changes.comment) {
+            if (changes?.comment) {
               commentIndex(tableName, source.name, changes.comment.source);
             }
           }
         }
 
-        if (tableChanges.changes.comment) {
+        if (tableChanges.changes?.comment) {
           commentTable(tableName, tableChanges.changes.comment.source)
         }
 

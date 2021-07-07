@@ -55,7 +55,7 @@ export class Queryable<T extends Entity | RowObject>
 {
   constructor(
     protected context: DbInstance,
-    Entity?: EntityConstructor<T> // constructor(
+    Entity: EntityConstructor<T> // constructor(
   ) {
     if (Entity) {
       this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
@@ -70,7 +70,7 @@ export class Queryable<T extends Entity | RowObject>
   protected rowset: ProxiedRowset<T>;
   // protected sql: Select<any>;
   protected metadata?: EntityMetadata;
-  private _includes: FetchRelations<T>;
+  private _includes?: FetchRelations<T>;
   private _nocache: boolean = false;
   private _withDetail: boolean = false;
 
@@ -131,7 +131,10 @@ export class Queryable<T extends Entity | RowObject>
   //  * 克隆当前对象用于添加信息，以免污染当前对象
   //  */
   private fork(rowset: ProxiedRowset<T>): Queryable<T> {
-    const queryable = this.create(aroundRowset(rowset, this.metadata));
+    if (this.metadata) {
+      rowset = aroundRowset(rowset, this.metadata);
+    }
+    const queryable = this.create(rowset);
     queryable._withDetail = this._withDetail;
     queryable._includes = this._includes;
     queryable.metadata = this.metadata;
@@ -227,7 +230,7 @@ export class Queryable<T extends Entity | RowObject>
     return this.create(newRowset);
   }
 
-  private assertMetdata() {
+  private assertMetdata(metadata?: EntityMetadata): asserts metadata {
     if (!this.metadata) {
       throw new Error('Not allow this operation when has no netadata.');
     }
@@ -236,14 +239,14 @@ export class Queryable<T extends Entity | RowObject>
    * 查询关联属性
    */
   include(props: FetchRelations<T>): Queryable<T> {
-    this.assertMetdata();
+    this.assertMetdata(this.metadata);
     const queryable = this.fork(this.rowset);
     queryable._includes = props;
     return queryable;
   }
 
   withDetail(): Queryable<T> {
-    this.assertMetdata();
+    this.assertMetdata(this.metadata);
     const queryable = this.fork(this.rowset);
     queryable._withDetail = true;
     return queryable;
@@ -268,27 +271,27 @@ export class Queryable<T extends Entity | RowObject>
     const sql = this.getSql();
     const { rows } = await this.context.executor.query(sql);
 
-    if (!this.metadata) {
+    if (this.metadata) {
       return rows as EntityInstance<T>[];
     }
 
     const items: T[] = [];
 
-    let includes: FetchRelations<T>;
+    let includes: FetchRelations<T> | undefined;
     if (this._withDetail) {
-      const detailIncludes = this.metadata.getDetailIncludes();
+      const detailIncludes = this.metadata!.getDetailIncludes();
       includes = detailIncludes;
     }
     if (this._includes) {
       includes = mergeFetchRelations(includes, this._includes);
     }
 
-    for (const row of rows) {
+    for (const row of rows!) {
       const item = this.toEntity(row);
       items.push(item);
       // TODO: 添加避免重复加载代码
       if (includes) {
-        await this.loadRelation(item, this._includes);
+        await this.loadRelation(item, includes);
       }
     }
     return items as EntityInstance<T>[];
@@ -297,15 +300,15 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 执行查询，并获取第一行记录
    */
-  async fetchFirst(): Promise<EntityInstance<T>> {
+  async fetchFirst(): Promise<EntityInstance<T> | null> {
     const sql = this.getSql().limit(1);
-    const { rows } = await this.context.executor.query(sql);
+    const rows = (await this.context.executor.query(sql)).rows!;
     if (!this.metadata) {
-      return rows[0] as EntityInstance<T>;
+      return (rows[0] ?? null) as EntityInstance<T> | null;
     }
     if (!rows[0]) return null;
     const item = this.toEntity(rows[0]);
-    let includes: FetchRelations<T>;
+    let includes: FetchRelations<T> | undefined;
     if (this._includes) {
       includes = this._includes;
     }
@@ -321,6 +324,7 @@ export class Queryable<T extends Entity | RowObject>
 
   // TODO: 使用DataLoader优化加载性能
   async loadRelation(item: T, relations: FetchRelations<T>): Promise<void> {
+    this.assertMetdata(this.metadata);
     for (const relationName of Object.keys(relations)) {
       const relation = this.metadata.getRelation(relationName);
       if (!relation) {
@@ -344,12 +348,12 @@ export class Queryable<T extends Entity | RowObject>
       _withDetail: boolean;
       _includes: FetchRelations<T[R]>;
     }
-  ): Promise<T[R]> {
-    this.assertMetdata();
+  ): Promise<T[R] | null> {
+    this.assertMetdata(this.metadata);
     const relationRepository: Repository<any> = this.context.getRepository(
       relation.referenceClass
     );
-    relationRepository._withDetail = options?._withDetail;
+    relationRepository._withDetail = options?._withDetail ?? false;
     relationRepository._includes = options?._includes;
 
     if (isPrimaryOneToOne(relation)) {
@@ -401,6 +405,7 @@ export class Queryable<T extends Entity | RowObject>
         .fetchAll();
       return subItems as any;
     }
+    return null;
   }
 
   protected toEntityValue(datarow: any, column: ColumnMetadata): any {
@@ -420,6 +425,7 @@ export class Queryable<T extends Entity | RowObject>
    * 将数据库记录转换为实体
    */
   protected toEntity(datarow: any, item?: T): T {
+    this.assertMetdata(this.metadata);
     if (!item) {
       item = new this.metadata.class() as any;
     }
@@ -427,15 +433,15 @@ export class Queryable<T extends Entity | RowObject>
       const itemValue = this.toEntityValue(datarow, column);
       // 如果是隐式属性，则声明为不可见属性
       if (column.isImplicit) {
-        Reflect.defineProperty(item, column.property, {
+        Reflect.defineProperty(item!, column.property, {
           enumerable: false,
           value: itemValue,
           writable: true,
         });
       } else {
-        Reflect.set(item, column.property, itemValue);
+        Reflect.set(item!, column.property, itemValue);
       }
     }
-    return item;
+    return item!;
   }
 }

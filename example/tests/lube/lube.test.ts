@@ -485,7 +485,7 @@ describe.skip('MSSQL TESTS', function () {
       strToDate: value(date.toISOString()).to(DbType.datetimeoffset),
       strToint32: value(str).to(DbType.int32),
       int32ToStr: value(number).to(DbType.string(100)),
-      strToNumbice: value(str).to(DbType.numeric(18, 2)),
+      strToNumbice: value(str).to(DbType.decimal(18, 2)),
       boolean: value(true).to(DbType.boolean),
       binary: value(bin),
     });

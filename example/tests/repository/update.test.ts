@@ -10,7 +10,7 @@ describe('Repository: update', function () {
   let db: DB;
   let outputSql: boolean = true;
   before(async () => {
-    db = await createContext<DB>();
+    db = await createContext(DB);
     if (outputSql) {
       db.lube.on('command', outputCommand);
     }
@@ -26,25 +26,25 @@ describe('Repository: update', function () {
       password: '嘿咻',
       employee: {
         name: '一对一（主）关系更新测试 - 职员',
-        organization: await db.Organization.get(0),
+        organization: (await db.Organization.get(0))!,
       },
     };
     await db.User.save(user);
 
     user.description = '更新后的用户';
-    user.employee.description = '更新后的职员';
+    user.employee!.description = '更新后的职员';
 
     await db.User.save(user);
 
-    const updated = await db.User.get(user.id, { includes: { employee: true } });
-    assert(updated.description === '更新后的用户');
+    const updated = await db.User.get(user.id!, { includes: { employee: true } });
+    assert(updated?.description === '更新后的用户');
     assert(updated?.employee?.description === '更新后的职员');
   });
 
   it('一对一(从）关系更新 - Employee -> User', async () => {
     const employee: Employee = {
       name: '一对一（从）关系更新测试 - 职员',
-      organization: await db.Organization.get(0),
+      organization: (await db.Organization.get(0))!,
       user: {
         name: '一对一（从）关系更新测试 - 用户',
         password: '嘿咻'
@@ -53,12 +53,12 @@ describe('Repository: update', function () {
     await db.Employee.save(employee);
 
     employee.description = '更新后的职员';
-    employee.user.description = '更新后的用户';
+    employee.user!.description = '更新后的用户';
 
     await db.Employee.save(employee);
 
-    const updated = await db.Employee.get(employee.id, { includes: { user: true } });
-    assert(updated.description === '更新后的职员');
+    const updated = await db.Employee.get(employee.id!, { includes: { user: true } });
+    assert(updated?.description === '更新后的职员');
     assert(updated?.user?.description === '更新后的用户');
   });
 
@@ -85,9 +85,9 @@ describe('Repository: update', function () {
 
     order.description = '更新后的订单';
 
-    order.details[1].description = '修改产品2';
+    order.details![1].description = '修改产品2';
 
-    order.details.push({
+    order.details!.push({
       product: '产品3',
       count: 3,
       price: 100,
@@ -96,17 +96,17 @@ describe('Repository: update', function () {
     });
 
     // 删除第一个
-    order.details.splice(0, 1);
+    order.details!.splice(0, 1);
 
     await db.Order.save(order);
 
-    const updated = await db.Order.get(order.id, {
+    const updated = await db.Order.get(order.id!, {
       includes: { details: true },
     });
-    assert(updated.description === '更新后的订单', '订单更新失败');
-    assert(updated.details.length === 2, '更新后的子项数量不正确');
-    assert(updated.details[0].description === '修改产品2', '更新子项失败');
-    assert(updated.details[1].description === '新增产品3', '新增子项失败');
+    assert(updated?.description === '更新后的订单', '订单更新失败');
+    assert(updated?.details?.length === 2, '更新后的子项数量不正确');
+    assert(updated?.details?.[0]?.description === '修改产品2', '更新子项失败');
+    assert(updated?.details?.[1]?.description === '新增产品3', '新增子项失败');
   });
 
   it('ManyToMany 子项增删除改测试', async () => {
@@ -116,7 +116,7 @@ describe('Repository: update', function () {
         password: 'hehe',
       },
       name: 'repository.update ManyToMany1',
-      organization: await db.User.get(0),
+      organization: (await db.User.get(0))!,
       positions: [
         {
           name: 'ManyToMany职位1',
@@ -130,24 +130,24 @@ describe('Repository: update', function () {
 
     await db.Employee.save(employee);
 
-    employee.positions[1].description = '职位2更新内容';
+    employee.positions![1].description = '职位2更新内容';
 
-    employee.positions.push({
+    employee.positions!.push({
       name: 'ManyToMany职位3',
     });
-    employee.positions.splice(0, 1);
+    employee.positions!.splice(0, 1);
 
     await db.Employee.save(employee);
 
-    const updated = await db.Employee.get(employee.id, {
+    const updated = await db.Employee.get(employee.id!, {
       includes: { positions: true },
     });
     assert(updated?.description === '职员更新内容', '职员更新失败');
-    assert(updated.positions.length === 2, '关联表数目不正确');
+    assert(updated.positions!.length === 2, '关联表数目不正确');
     assert(
-      updated.positions[0].name === 'ManyToMany职位2' &&
-        updated.positions[0].description === '职位2更新内容'
+      updated.positions![0].name === 'ManyToMany职位2' &&
+        updated.positions![0].description === '职位2更新内容'
     );
-    assert((updated.positions[1].name = 'ManyToMany职位3'));
+    assert((updated.positions![1].name = 'ManyToMany职位3'));
   });
 });

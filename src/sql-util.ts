@@ -136,6 +136,7 @@ import {
   isWhile,
   isBreak,
   isContinue,
+  assertAstNonempty,
 } from './util';
 import { Standard } from './std';
 
@@ -156,11 +157,11 @@ export interface SqlOptions {
   /**
    * 标识符引用，左
    */
-  quotedLeft?: string;
+  quotedLeft: string;
   /**
    * 标识符引用，右
    */
-  quotedRight?: string;
+  quotedRight: string;
 
   /**
    * 参数前缀
@@ -170,7 +171,7 @@ export interface SqlOptions {
   /**
    * 变量前缀
    */
-  variantPrefix?: string;
+  variantPrefix: string;
 
   /**
    * 返回参数名称
@@ -220,7 +221,7 @@ const DEFAULT_COMPILE_OPTIONS: SqlOptions = {
   /**
    * 变量前缀
    */
-  variantPrefix: '@',
+  variantPrefix: '',
   /**
    * 返回参数名称
    */
@@ -332,6 +333,9 @@ export abstract class SqlUtil {
     param: Parameter<Scalar, string>,
     params: Set<Parameter<Scalar, string>>
   ): string {
+    if (!params) {
+      throw new Error(`Params must provide when use parameter`);
+    }
     params.add(param);
     return this.sqlifyParameterName(param);
   }
@@ -340,7 +344,7 @@ export abstract class SqlUtil {
     return this.options.parameterPrefix + (p.$name || '');
   }
 
-  protected sqlifyVariantName(name: Name): string {
+  protected sqlifyVariantName(name: string): string {
     return this.options.variantPrefix + name;
   }
 
@@ -407,7 +411,6 @@ export abstract class SqlUtil {
      */
     parent?: AST
   ): string {
-    let sql: string;
     if (isRaw(statement)) {
       return statement.$sql;
     }
@@ -416,72 +419,70 @@ export abstract class SqlUtil {
     }
 
     if (isSelect(statement)) {
-      sql = this.sqlifySelect(statement, params, parent);
+      return this.sqlifySelect(statement, params, parent);
     } else if (isUpdate(statement)) {
-      sql = this.sqlifyUpdate(statement, params, parent);
+      return this.sqlifyUpdate(statement, params, parent);
     } else if (isInsert(statement)) {
-      sql = this.sqlifyInsert(statement, params, parent);
+      return this.sqlifyInsert(statement, params, parent);
     } else if (isDelete(statement)) {
-      sql = this.sqlifyDelete(statement, params, parent);
+      return this.sqlifyDelete(statement, params, parent);
     } else if (isDeclare(statement)) {
-      sql = this.sqlifyDeclare(statement);
+      return this.sqlifyDeclare(statement);
     } else if (isExecute(statement)) {
-      sql = this.sqlifyExecute(statement, params, parent);
+      return this.sqlifyExecute(statement, params!, parent);
     } else if (isAssignment(statement)) {
-      sql = this.sqlifyAssignment(statement, params, parent);
+      return this.sqlifyAssignment(statement, params, parent);
     } else if (isCreateTable(statement)) {
-      sql = this.sqlifyCreateTable(statement);
+      return this.sqlifyCreateTable(statement);
     } else if (isAlterTable(statement)) {
-      sql = this.sqlifyAlterTable(statement);
+      return this.sqlifyAlterTable(statement);
     } else if (isDropTable(statement)) {
-      sql = this.sqlifyDropTable(statement.$name);
+      return this.sqlifyDropTable(statement.$name);
     } else if (isCreateView(statement)) {
-      sql = this.sqlifyCreateView(statement);
+      return this.sqlifyCreateView(statement);
     } else if (isAlterView(statement)) {
-      sql = this.sqlifyAlterView(statement);
+      return this.sqlifyAlterView(statement);
     } else if (isDropView(statement)) {
-      sql = this.sqlifyDropView(statement.$name);
+      return this.sqlifyDropView(statement.$name);
     } else if (isCreateProcedure(statement)) {
-      sql = this.sqlifyCreateProcedure(statement);
+      return this.sqlifyCreateProcedure(statement);
     } else if (isAlterProcedure(statement)) {
-      sql = this.sqlifyAlterProcedure(statement);
+      return this.sqlifyAlterProcedure(statement);
     } else if (isDropProcedure(statement)) {
-      sql = this.sqlifyDropProcedure(statement.$name);
+      return this.sqlifyDropProcedure(statement.$name);
     } else if (isCreateFunction(statement)) {
-      sql = this.sqlifyCreateFunction(statement);
+      return this.sqlifyCreateFunction(statement);
     } else if (isAlterFunction(statement)) {
-      sql = this.sqlifyAlterFunction(statement);
+      return this.sqlifyAlterFunction(statement);
     } else if (isDropFunction(statement)) {
-      sql = this.sqlifyDropFunction(statement.$name);
+      return this.sqlifyDropFunction(statement.$name);
     } else if (isCreateIndex(statement)) {
-      sql = this.sqlifyCreateIndex(statement);
+      return this.sqlifyCreateIndex(statement);
     } else if (isDropIndex(statement)) {
-      sql = this.sqlifyDropIndex(statement.$table, statement.$name);
+      return this.sqlifyDropIndex(statement.$table, statement.$name);
     } else if (isCreateSequence(statement)) {
-      sql = this.sqlifyCreateSequence(statement);
+      return this.sqlifyCreateSequence(statement);
     } else if (isDropSequence(statement)) {
-      sql = this.sqlifyDropSequence(statement);
+      return this.sqlifyDropSequence(statement);
     } else if (isBlock(statement)) {
-      sql = this.sqlifyBlock(statement);
+      return this.sqlifyBlock(statement);
     } else if (isStandardStatement(statement)) {
-      sql = this.sqlifyStatement(this.translationStandardOperation(statement));
+      return this.sqlifyStatement(this.translationStandardOperation(statement));
     } else if (isIf(statement)) {
       return this.sqlifyIf(statement, params);
     } else if (isWhile(statement)) {
-      return this.sqlifyWhile(statement, params) ;
+      return this.sqlifyWhile(statement, params);
     } else if (isBreak(statement)) {
-      sql = this.sqlifyBreak(statement);
+      return this.sqlifyBreak(statement);
     } else if (isContinue(statement)) {
-      sql = this.sqlifyContinue(statement);
+      return this.sqlifyContinue(statement);
     }
-    if (sql !== undefined) {
-      return sql + this.options.statementEnd;
-    }
-    invalidAST('statement', statement);
+    throw invalidAST('statement', statement);
   }
+
   abstract sqlifyContinue(statement: Continue): string;
   abstract sqlifyBreak(statement: Break): string;
-  abstract sqlifyWhile(statement: While, params: Set<Parameter<Scalar, string>>): string;
+  abstract sqlifyWhile(statement: While, params?: Set<Parameter<Scalar, string>>): string;
   abstract sqlifyIf(statement: If, params?: Set<Parameter<Scalar, string>>,): string;
 
   protected sqlifyStatements(
@@ -521,6 +522,7 @@ export abstract class SqlUtil {
   protected abstract sqlifyCreateProcedure(statement: CreateProcedure): string;
 
   protected sqlifyAlterView(statement: AlterView<any, string>): string {
+    assertAstNonempty(statement.$body, 'AlterView has no body statement.')
     return `ALTER VIEW ${this.sqlifyName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
@@ -531,6 +533,7 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyCreateView(statement: CreateView<any, string>): string {
+    assertAstNonempty(statement.$body, 'CreateView statement has no statements body.');
     return `CREATE VIEW ${this.sqlifyName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
@@ -582,7 +585,7 @@ export abstract class SqlUtil {
       return this.sqlifyBinaryOperation(operation, params);
     }
 
-    invalidAST('operation', operation);
+    throw invalidAST('operation', operation);
   }
 
   protected sqlifyUnaryOperation(
@@ -683,25 +686,12 @@ export abstract class SqlUtil {
       .join('\n');
   }
 
-  protected sqlifyExecute(
+  protected abstract sqlifyExecute(
     exec: Execute,
-    params?: Set<Parameter<Scalar, string>>,
+    params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
-  ): string {
-    const returnParam = SQL.output(
-      this.options.returnParameterName,
-      DbType.int32
-    );
-    return (
-      'EXECUTE ' +
-      this.sqlifyParameter(returnParam, params) +
-      ' = ' +
-      this.sqlifyIdentifier(exec.$proc) +
-      ' ' +
-      this.sqlifyExecuteArgumentList(exec.$args, params, exec)
-    );
-  }
+  ): string;
 
   protected sqlifyInvokeArgumentList(
     args: Expression<Scalar>[],
@@ -724,7 +714,7 @@ export abstract class SqlUtil {
         if (
           isParameter(ast) &&
           (ast as Parameter<Scalar, string>).direction ===
-            PARAMETER_DIRECTION.OUTPUT
+            'OUTPUT'
         ) {
           sql += ' OUTPUT';
         }
@@ -897,7 +887,7 @@ export abstract class SqlUtil {
     }
 
     if (isParameter(expr)) {
-      return this.sqlifyParameter(expr, params);
+      return this.sqlifyParameter(expr, params!);
     }
 
     if (isScalarFuncInvoke(expr)) {
@@ -907,12 +897,12 @@ export abstract class SqlUtil {
     if (isCase(expr)) {
       return this.sqlifyCase(expr, params, parent);
     }
-    invalidAST('expression', expr);
+    throw invalidAST('expression', expr);
   }
 
   protected sqlifyScalarInvokeArgs(
     arg: Expression | Star | BuiltIn,
-    params: Set<Parameter>,
+    params?: Set<Parameter>,
     parent?: AST
   ): string {
     if (isStar(arg)) return this.sqlifyStar(arg);
@@ -1068,6 +1058,9 @@ export abstract class SqlUtil {
       }
     }
     if (isTableFuncInvoke(table)) {
+      if (!table.$alias) {
+        return this.sqlifyFuncInvoke(table);
+      }
       return (
         this.sqlifyFuncInvoke(table) +
         ' AS ' +
@@ -1117,7 +1110,7 @@ export abstract class SqlUtil {
         params
       );
     }
-    invalidAST('condition', condition);
+    throw invalidAST('condition', condition);
   }
 
   protected sqlifyInsert(
@@ -1143,6 +1136,7 @@ export abstract class SqlUtil {
         ')';
     }
 
+    assertAstNonempty($values)
     if (Array.isArray($values)) {
       sql += ' VALUES';
       sql += $values

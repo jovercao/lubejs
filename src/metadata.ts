@@ -12,7 +12,7 @@ import {
   Table,
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
-import { DbContext, DbContextConstructor } from './db-context';
+import { DbContext, DbContextConstructor, EntityConstructor } from './db-context';
 import { FetchRelations } from './repository';
 import {
   Constructor,
@@ -30,7 +30,7 @@ import { isClass, isProxiedRowset } from './util';
 export interface IndexMetadata {
   name: string;
   properties: string[];
-  columns: { column: ColumnMetadata; isAscending: boolean }[];
+  columns: { column: ColumnMetadata; sort: 'ASC' | 'DESC' }[];
 
   /**
    * 是否唯一
@@ -48,10 +48,7 @@ export interface IndexMetadata {
   comment?: string;
 }
 
-/**
- * 表格实体元数据
- */
-export class EntityMetadataClass {
+interface InternalEntityMetadata {
   /**
    * 是否隐式生成的
    */
@@ -94,12 +91,12 @@ export class EntityMetadataClass {
   /**
    * 主键属性名称
    */
-  keyProperty?: string;
+  keyProperty: string;
 
   /**
    * 主键列名
    */
-  keyColumn?: ColumnMetadata;
+  keyColumn: ColumnMetadata;
 
   /**
    * 是否只读
@@ -120,6 +117,32 @@ export class EntityMetadataClass {
    * 摘要描述
    */
   comment?: string;
+
+  /**
+   * 数据
+   */
+  data?: any[];
+}
+
+/**
+ * 表格实体元数据
+ */
+export class EntityMetadataClass implements InternalEntityMetadata {
+  isImplicit!: boolean;
+  kind!: 'TABLE' | 'VIEW' | 'QUERY';
+  class!: Constructor<Entity>;
+  contextClass!: DbContextConstructor<DbContext>;
+  keyConstraintName!: string;
+  isNonclustered!: boolean;
+  keyComment!: string;
+  className!: string;
+  keyProperty!: string;
+  keyColumn!: ColumnMetadata<Scalar>;
+  readonly!: boolean;
+  identityColumn?: ColumnMetadata<Scalar> | undefined;
+  rowflagColumn?: ColumnMetadata<Scalar> | undefined;
+  comment?: string | undefined;
+  data?: any[] | undefined;
 
   private _members: EntityMemberMetadata[] = [];
   private _memberMap: Record<string, EntityMemberMetadata> = {};
@@ -163,7 +186,7 @@ export class EntityMetadataClass {
     return this._members;
   }
 
-  getMember(name: string): EntityMemberMetadata {
+  getMember(name: string): EntityMemberMetadata | undefined {
     return this._memberMap[name];
   }
 
@@ -171,7 +194,7 @@ export class EntityMetadataClass {
     return this._columns;
   }
 
-  getColumn(name: string): ColumnMetadata {
+  getColumn(name: string): ColumnMetadata | undefined {
     return this._columnMap[name];
   }
 
@@ -179,17 +202,17 @@ export class EntityMetadataClass {
     return this._reations;
   }
 
-  getRelation(name: string): RelationMetadata {
+  getRelation(name: string): RelationMetadata | undefined {
     return this._relationMap[name];
   }
 
-  getIndex(name: string): IndexMetadata {
+  getIndex(name: string): IndexMetadata | undefined {
     return this._indexMap[name];
   }
 
-  private _detailIncludes: FetchRelations<any>;
+  private _detailIncludes?: FetchRelations<any>;
 
-  getDetailIncludes(): FetchRelations<any> {
+  getDetailIncludes(): FetchRelations<any> | undefined {
     if (this._detailIncludes === undefined) {
       const detailRelations = this.relations.filter(
         r =>
@@ -197,7 +220,7 @@ export class EntityMetadataClass {
           r.isDetail
       );
       if (detailRelations.length === 0) {
-        this._detailIncludes = null;
+        this._detailIncludes = undefined;
       } else {
         const detailIncludes: FetchRelations<any> = {};
         detailRelations.forEach(relation => {
@@ -230,11 +253,6 @@ export class EntityMetadataClass {
       relation => isForeignOneToOne(relation) || isManyToOne(relation)
     ) as SuperiorRelation[];
   }
-
-  /**
-   * 数据
-   */
-  data?: any[];
 }
 
 export interface TableEntityMetadata extends EntityMetadataClass {
@@ -321,13 +339,13 @@ export class DbContextMetadata {
   }
 
   class: DbContextConstructor;
-  database: string;
-  className: string;
+  database!: string;
+  className!: string;
   /**
    * 全局主键字段名称
    */
-  globalKeyName: string;
-  globalKeyType:
+  globalKeyName!: string;
+  globalKeyType!:
     | NumberConstructor
     | StringConstructor
     | BigIntConstructor
@@ -346,14 +364,14 @@ export class DbContextMetadata {
    * 获取实体元数据
    * @param ctr 实体构造函数
    */
-  getEntity(ctr: Constructor<Entity>): EntityMetadata {
+  getEntity(ctr: Constructor<Entity>): EntityMetadata | undefined {
     return this._entitiyMap.get(ctr);
   }
 
   /**
    *
    */
-  findTableEntityByName(tableName: string): EntityMetadata {
+  findTableEntityByName(tableName: string): EntityMetadata | undefined {
     return this.entities.find(
       entity => isTableEntity(entity) && entity.tableName === tableName
     );
@@ -452,7 +470,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
    */
   generator?: (
     rowset: ProxiedRowset<any>,
-    item: any
+    item: object
   ) => CompatibleExpression<T>;
 }
 
@@ -681,7 +699,7 @@ export interface ForeignOneToOneMetadata {
   /**
    * 对方的引用声明
    */
-  referenceRelation?: PrimaryOneToOneMetadata;
+  referenceRelation: PrimaryOneToOneMetadata;
   /**
    * 外键属性
    */
@@ -808,17 +826,17 @@ export interface ManyToOneMetadata {
   /**
    * 对方引用属性
    */
-  referenceProperty?: string;
+  referenceProperty: string;
 
   /**
    * 对方的引用声明
    */
-  referenceRelation?: OneToManyMetadata;
+  referenceRelation: OneToManyMetadata;
 
   /**
    * 约束名称
    */
-  constraintName?: string;
+  constraintName: string;
 
   /**
    * 是否可空
@@ -865,12 +883,12 @@ export interface ManyToManyMetadata {
   /**
    * 对向引用属性
    */
-  referenceProperty?: string;
+  referenceProperty: string;
 
   /**
    * 对方的引用声明
    */
-  referenceRelation?: ManyToManyMetadata;
+  referenceRelation: ManyToManyMetadata;
 
   /**
    * 关系表实体类
@@ -1400,19 +1418,26 @@ export interface ManyToManyMetadata {
 export class MetadataStore {
   private entityMap: Map<EntityType, EntityMetadata> = new Map();
   private contextMap: Map<DbContextConstructor, DbContextMetadata> = new Map();
-  private _defaultContext: DbContextMetadata;
+  private _defaultContext?: DbContextMetadata;
 
   /**
    * 默认DbContext元数据
    */
   get defaultContext(): DbContextMetadata {
+    if (!this._defaultContext) {
+      throw new Error(`No DbContext is registered.`)
+    };
     return this._defaultContext;
   }
   /**
    * 可以通过实体构造函数/实体名称 获取已注册的元数据
    */
   getEntity(entityClass: EntityType): EntityMetadata {
-    return this.entityMap.get(entityClass);
+    const entity = this.entityMap.get(entityClass);
+    if (!entity) {
+      throw new Error(`Entity ${entityClass.name} is not reigster.`);
+    }
+    return entity;
   }
   /**
    * 注册一个实体
@@ -1431,12 +1456,18 @@ export class MetadataStore {
   getContext(contextClass: DbContextConstructor): DbContextMetadata;
   getContext(nameOrClass: DbContextConstructor | string): DbContextMetadata;
   getContext(contextClass: DbContextConstructor | string): DbContextMetadata {
+    let metadata: DbContextMetadata | undefined;
     if (typeof contextClass === 'string') {
-      return Array.from(this.contextMap.values()).find(
+      metadata =  Array.from(this.contextMap.values()).find(
         metadata => metadata.class.name === contextClass
       );
+    } else {
+      metadata = this.contextMap.get(contextClass);
     }
-    return this.contextMap.get(contextClass);
+    if (!metadata) {
+      throw new Error(`DbContext ${typeof contextClass === 'string' ? contextClass : contextClass.name} not register`)
+    }
+    return metadata;
   }
 
   /**
@@ -1522,7 +1553,7 @@ export function aroundRowset<T extends Entity = any>(
  * @returns
  */
 export function makeRowset<T extends Entity = any>(
-  entity: Constructor<T>
+  entity: EntityConstructor<T>
 ): ProxiedRowset<T> {
   const metadata = metadataStore.getEntity(entity);
   if (!metadata) throw new Error(`No metadata found ${entity}`);

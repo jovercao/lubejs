@@ -12,6 +12,7 @@ import { join } from 'path';
 import { DbContext, DbContextConstructor, LubeConfig } from './orm';
 import { Constructor } from './types';
 import { metadataStore } from './metadata';
+import { isUrl } from './util';
 
 export type ConnectOptions = {
   /**
@@ -140,7 +141,7 @@ export interface Driver {
  * 数据库事务
  */
 export interface Transaction {
-  query(sql: string, params: Parameter[]): Promise<QueryResult<any, any, any>>;
+  query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   commit(): Promise<void>;
   rollback(): Promise<void>;
 }
@@ -162,7 +163,7 @@ export class Lube extends Executor {
    */
   async trans<T>(
     handler: TransactionHandler<T>,
-    isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
+    isolationLevel: ISOLATION_LEVEL = 'READ_COMMIT'
   ): Promise<T> {
     if (this.isTrans) {
       throw new Error('is in transaction now');
@@ -206,84 +207,20 @@ export class Lube extends Executor {
  * 连接数据库并返回一个连接池
  * @param {*} config
  */
-export async function connect(url: string): Promise<Lube>;
+export async function connect(cfgOrUrl?: string): Promise<Lube>;
 export async function connect(options: ConnectOptions): Promise<Lube>;
 export async function connect(
-  optionOrUrlOrConfigname?: ConnectOptions | string
+  optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube>;
 export async function connect(
-  optionOrUrlOrConfigname?: ConnectOptions | string
+  optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube> {
   let options: ConnectOptions;
-  if (!optionOrUrlOrConfigname) {
-    const config = await loadConfig();
-    if (!config?.default || !config?.configures?.[config.default]) {
-      throw new Error(`Default lubejs options not found in configure.`);
-    }
-    options = config.configures[config.default];
-  } else {
-    if (typeof optionOrUrlOrConfigname === 'string') {
-      if (optionOrUrlOrConfigname.indexOf(':') < 0) {
-        const config = await loadConfig();
-        options = config?.configures?.[optionOrUrlOrConfigname];
-        if (!options) {
-          throw new Error(
-            `Lubejs options ${optionOrUrlOrConfigname} not found in configure.`
-          );
-        }
-      } else {
-        const url = new URL(optionOrUrlOrConfigname);
-        const params = url.searchParams;
-        const urlOptions: Record<string, string> = {};
-        for (const [key, value] of params.entries()) {
-          if (value !== undefined) {
-            urlOptions[key] = value;
-          }
-        }
-        const dialect = url.protocol
-          .substr(0, url.protocol.length - 1)
-          .toLowerCase();
-        try {
-          options = {
-            dialect,
-            host: url.host,
-            port: url.port && parseInt(url.port),
-            user: url.username,
-            password: url.password,
-            database: url.pathname.split('|')[0],
-            ...urlOptions,
-          };
-        } catch (error) {
-          throw new Error('Unregister or uninstalled dialect: ' + dialect);
-        }
-      }
-    } else {
-      options = optionOrUrlOrConfigname;
-    }
-  }
-
-  options = Object.assign({}, defaultConnectOptions, options);
-
-  assert(
-    options.driver || options.dialect,
-    'One of the dialect and driver must be specified.'
-  );
-
-  if (!options.driver) {
-    try {
-      const driver = dialects[options.dialect];
-      if (typeof driver === 'string') {
-        options.driver = require(driver);
-      } else {
-        options.driver = driver;
-      }
-    } catch (err) {
-      throw new Error('Unsupported dialect or driver not installed.' + err);
-    }
-  }
-
-  const provider: DbProvider = await options.driver(options);
-  return new Lube(provider);
+  options = await parseOptions(optOrUrlOrCfg);
+  const provider: DbProvider = await options.driver!(options);
+  const lube = new Lube(provider);
+  provider.lube = lube;
+  return lube;
 }
 
 const OPTIONS_FILE = '.lubejs';
@@ -295,82 +232,133 @@ async function loadConfig(): Promise<LubeConfig> {
   } else if (existsSync(configFile + '.ts')) {
     configFile = configFile + '.ts';
   } else {
-    console.error(
-      `Configure file '.lubejs(.ts|.js)' not found in dir ${process.cwd()}.`
-        .red,
-      'Please use options or url to connect.'
-    );
-    return;
+    throw new Error(`Configure file '.lubejs(.ts|.js)' not found in dir ${process.cwd()}.`)
   }
   let config: LubeConfig;
   try {
     const imported = await import(configFile);
     config = imported?.default ?? imported;
   } catch (error) {
-    console.error(`Occur error at load configure ${configFile}`, error);
-    return;
+    throw new Error(`Occur error at load configure ${configFile}, error info: ${error}`);
   }
   return config;
+}
+
+async function parseOptions(opt?: ConnectOptions | string): Promise<ConnectOptions> {
+  let options: ConnectOptions;
+  if (typeof opt === 'object') {
+    options = opt;
+  } else if (opt && isUrl(opt)) {
+    const url = new URL(opt);
+    const params = url.searchParams;
+    const urlOptions: Record<string, string> = {};
+    for (const [key, value] of params.entries()) {
+      if (value !== undefined) {
+        urlOptions[key] = value;
+      }
+    }
+    const dialect = url.protocol
+      .substr(0, url.protocol.length - 1)
+      .toLowerCase();
+    options = {
+      dialect,
+      host: url.host,
+      port: url.port ? parseInt(url.port) : undefined,
+      user: url.username,
+      password: url.password,
+      database: url.pathname.split('|')[0],
+      ...urlOptions,
+    };
+  } else {
+    const config = await loadConfig();
+    if (!config) {
+      throw new Error(`Configure file '.lubejs.ts' or '.lubejs.js' not found.`);
+    }
+    if (!opt) {
+      options = config.configures[config.default];
+      if (!options) {
+        throw new Error(`Default options not found in configure file`);
+      }
+    } else {
+      options = config.configures[opt];
+      if (!options) {
+        throw new Error(`Option ${opt} not found in configure file.`);
+      }
+    }
+  }
+
+  if (!options.driver) {
+    if(!options.dialect) {
+      throw new Error('ConnectOptions must provide one of dialect or dirver');
+    }
+    const driver = dialects[options.dialect];
+    if (!driver) {
+      throw new Error(`Unregister dialect ${options.dialect}.`);
+    }
+    options.driver = driver;
+  }
+  return options;
 }
 
 /**
  * 使用全局Lube创建，适用于一个Lube对象，多个DbContext的情况
  */
-export async function createContext<T extends DbContext>(
-  configName?: string
-): Promise<T>;
+
+/**
+ * 创建默认DbContext，其值为已注册的默认context类实例
+ * 如未有注册Context则抛出异常
+ */
+export async function createContext(): Promise<DbContext>
+/**
+ * 通过配置创建一个DbContext，其值为已注册的默认context类实例
+ * 如未有注册Context则抛出异常
+ */
+export async function createContext(
+  optOrCfgOrUrlOrLube?: ConnectOptions | string | Lube
+): Promise<DbContext>;
+
 export async function createContext<T extends DbContext>(
   Ctr: DbContextConstructor<T>,
-  lube: Lube
+  optOrCfgOrUrlOrLube?: Lube | ConnectOptions | string
 ): Promise<T>;
-export async function createContext<T extends DbContext>(
-  Ctr: DbContextConstructor<T>,
-  optOrUrlOrName?: ConnectOptions | string
-): Promise<T>;
-export async function createContext<T extends DbContext>(
-  nameOrCtr?: DbContextConstructor<T> | string,
-  optOrUrlOrLube?: ConnectOptions | string | Lube
-): Promise<T> {
+
+export async function createContext(
+  optOrCfgOrUrlOrLubeOrCtr?: DbContextConstructor | ConnectOptions | string | Lube,
+  optOrCfgOrUrlOrLube?: ConnectOptions | string | Lube
+): Promise<DbContext> {
   // if (typeof Ctr === 'function' && optOrUrlOrLube instanceof Lube) return Ctr(optOrUrlOrLube);
-  let config: LubeConfig;
-  let error: Error;
-  try {
-    config = await loadConfig();
-  } catch (err) {
-    error = err;
-  }
-
-  let Ctr: DbContextConstructor<T>;
-  if (!nameOrCtr) {
-    if (!config) throw error;
-    Ctr = metadataStore.defaultContext?.class as DbContextConstructor<T>;
-  } else if (typeof nameOrCtr === 'string') {
-    if (!config) throw error;
-    Ctr = metadataStore.getContext(nameOrCtr)?.class as DbContextConstructor<T>;
-  }
-
-  if (!Ctr)
-    throw new Error(
-      `Context not found or DbContext no register, pls register DbContext in Front position of config file.`
-    );
-
-  if (optOrUrlOrLube instanceof Lube) {
-    return new Ctr(optOrUrlOrLube);
-  }
-
+  let Ctr: DbContextConstructor;
   let lube: Lube;
-  if (!optOrUrlOrLube && optOrUrlOrLube !== '') {
-    if (!config) throw error;
-    const options = config?.configures?.[Ctr.name];
-    if (!options) {
-      throw new Error(`DbContext ${Ctr.name} options not found.`);
-    }
+  if (!optOrCfgOrUrlOrLubeOrCtr) {
+    Ctr = metadataStore.defaultContext.class
+    const options = await parseOptions(Ctr.name);
+    // if (!options) {
+    //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`)
+    // }
     lube = await connect(options);
+  } else if (typeof optOrCfgOrUrlOrLubeOrCtr === 'function') {
+    Ctr = optOrCfgOrUrlOrLubeOrCtr;
+    if (!optOrCfgOrUrlOrLube) {
+      const options = await parseOptions(Ctr.name);
+      // if (!options) {
+      //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`);
+      // }
+      lube = await connect(options);
+    } else if (optOrCfgOrUrlOrLube instanceof Lube) {
+      lube = optOrCfgOrUrlOrLube
+    } else {
+      const options = await parseOptions(optOrCfgOrUrlOrLube);
+      lube = await connect(options);
+    }
+  } else if (optOrCfgOrUrlOrLubeOrCtr instanceof Lube) {
+    Ctr = metadataStore.defaultContext.class;
+    lube = optOrCfgOrUrlOrLubeOrCtr;
   } else {
-    if (optOrUrlOrLube === '')
-      throw new Error(`Configure name or url is not allow empty string.`);
-    lube = await connect(optOrUrlOrLube);
+    Ctr = metadataStore.defaultContext.class;
+    const options = await parseOptions(optOrCfgOrUrlOrLubeOrCtr)
+    lube = await connect(options);
   }
+
   return new Ctr(lube);
 }
 
@@ -380,7 +368,7 @@ export async function createContext<T extends DbContext>(
  */
 export async function register(
   name: string,
-  driver: Driver | string
+  driver: Driver
 ): Promise<void> {
   if (dialects[name]) {
     throw new Error(`Driver ${name} is exists.`);
@@ -388,6 +376,6 @@ export async function register(
   dialects[name] = driver;
 }
 
-export const dialects: Record<string, Driver | string> = {
-  mssql: 'lubejs-mssql',
+export const dialects: Record<string, Driver> = {
+
 };

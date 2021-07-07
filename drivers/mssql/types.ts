@@ -9,15 +9,16 @@ Object.entries(mssql.TYPES).forEach(([name, dbType]) => {
 const typeReg =
   /^\s*(?<type>\w+)\s*(?:\(\s*((?<max>max)|((?<p1>\d+)(\s*,\s*(?<p2>\d+))?))\s*\))?\s*$/i;
 
-export function parseRawType(type: string): ISqlType {
+export function parseRawTypeToMssqlType(type: string): ISqlType {
   const matched = typeReg.exec(type);
   if (!matched) {
     throw new Error('Error mssql datat type: ' + type);
   }
   const sqlType = strTypeMapps[matched.groups.type.toUpperCase()];
   if (!sqlType) {
-    throw new Error('Unspport mssql datat type:' + type);
+    throw new Error('Unspport mssql data type:' + type);
   }
+
   if (matched.groups.max) {
     return sqlType(mssql.MAX);
   }
@@ -57,7 +58,7 @@ export function fullType(
 
 export function toMssqlType(type: DbType): mssql.ISqlType {
   if (isRaw(type)) {
-    return parseRawType(type.$sql);
+    return parseRawTypeToMssqlType(type.$sql);
   }
   switch (type.name) {
     case 'BINARY':
@@ -162,16 +163,18 @@ const raw2DbTypeMap: Record<string, keyof typeof DbType> = {
   VARCHAR: 'string',
   CHAR: 'string',
   TEXT: 'string',
+  NTEXT: 'string',
   INT: 'int32',
   BIGINT: 'int64',
   SMALLINT: 'int16',
   TINYINT: 'int8',
-  DECIMAL: 'numeric',
-  NUMERIC: 'numeric',
+  DECIMAL: 'decimal',
+  NUMERIC: 'decimal',
   FLOAT: 'float',
   REAL: 'double',
   DATE: 'date',
   DATETIME: 'datetime',
+  DATETIME2: 'datetime',
   DATETIMEOFFSET: 'datetimeoffset',
   BIT: 'boolean',
   UNIQUEIDENTIFIER: 'uuid',
@@ -187,8 +190,9 @@ export function rawToDbType(type: string): DbType {
   }
   const dbTypeKey = raw2DbTypeMap[matched.groups.type.toUpperCase()];
   if (!dbTypeKey) {
-    throw new Error('Unknown mssql datat type:' + type);
+    throw new Error('Unknown or unspport mssql data type:' + type);
   }
+
   const dbTypeFactory = DbType[dbTypeKey];
   if (typeof dbTypeFactory === 'object') {
     return dbTypeFactory as DbType;
