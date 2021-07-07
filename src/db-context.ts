@@ -76,7 +76,7 @@ export class DbInstance {
     Entity: Constructor<T>,
     key: EntityKeyType,
     options?: FetchOptions<T>
-  ): Promise<EntityInstance<T> | null> {
+  ): Promise<EntityInstance<T> | undefined> {
     return this.getRepository(Entity).get(key, options);
   }
 

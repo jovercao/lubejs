@@ -4,7 +4,7 @@
 import {
   CompatibleCondition,
   CompatibleExpression,
-  RowTypeFrom,
+  RowObjectFrom,
   ProxiedRowset,
   InputObject,
   SortInfo,
@@ -14,6 +14,8 @@ import {
   CompatibleSortInfo,
   SqlBuilder as SQL,
   Rowset,
+  CompatibleRowset,
+  XRowset,
 } from './ast';
 import { ROWSET_ALIAS } from './constants';
 import { DbContext, DbInstance, EntityConstructor } from './db-context';
@@ -32,7 +34,13 @@ import {
   aroundRowset,
 } from './metadata';
 import { FetchRelations, RelationKeyOf, Repository } from './repository';
-import { Constructor, Entity, EntityInstance, isStringType, RowObject } from './types';
+import {
+  Constructor,
+  Entity,
+  EntityInstance,
+  isStringType,
+  RowObject,
+} from './types';
 import { ensureCondition, isNamedSelect, mergeFetchRelations } from './util';
 // import { getMetadata } from 'typeorm'
 
@@ -157,9 +165,7 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 过滤数据并返回一个新的Queryable
    */
-  filter(
-    condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
-  ): Queryable<T> {
+  filter(condition: (p: XRowset<T>) => CompatibleCondition<T>): Queryable<T> {
     const queryable = this.fork(
       select(this.rowset.star)
         .from(this.rowset)
@@ -173,15 +179,13 @@ export class Queryable<T extends Entity | RowObject>
    * 返回一个新的类型
    */
   map<G extends InputObject>(
-    results: (p: ProxiedRowset<T>) => G
-  ): Queryable<RowTypeFrom<G>> {
+    results: (p: XRowset<T>) => G
+  ): Queryable<RowObjectFrom<G>> {
     const sql = select(results(this.rowset)).from(this.rowset);
     return this.create(sql.as(ROWSET_ALIAS));
   }
 
-  sort(
-    sorts: (p: ProxiedRowset<T>) => SortInfo[] | SortObject<T>
-  ): Queryable<T> {
+  sort(sorts: (p: XRowset<T>) => SortInfo[] | SortObject<T>): Queryable<T> {
     return this.fork(
       select(this.rowset.star)
         .from(this.rowset)
@@ -193,15 +197,15 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 添加过滤条件，并限定返回头一条记录
    */
-  find(filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
+  find(filter: (p: XRowset<T>) => CompatibleCondition<T>): Queryable<T> {
     return this.filter(filter).take(1);
   }
 
   groupBy<G extends InputObject>(
-    results: (p: ProxiedRowset<T>) => G,
-    groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
-    where?: (p: ProxiedRowset<T>) => Condition
-  ): Queryable<RowTypeFrom<G>> {
+    results: (p: XRowset<T>) => G,
+    groups: (p: XRowset<T>) => CompatibleExpression[],
+    where?: (p: XRowset<T>) => Condition
+  ): Queryable<RowObjectFrom<G>> {
     if (where) {
       this.filter(where);
     }
@@ -219,9 +223,9 @@ export class Queryable<T extends Entity | RowObject>
 
   join<J extends Entity, G extends InputObject>(
     entity: Constructor<J>,
-    on: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => Condition,
-    results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G
-  ): Queryable<RowTypeFrom<G>> {
+    on: (left: XRowset<T>, right: XRowset<J>) => Condition,
+    results: (left: XRowset<T>, right: XRowset<J>) => G
+  ): Queryable<RowObjectFrom<G>> {
     const rightRowset = makeRowset(entity);
     const newRowset = select(results(this.rowset, rightRowset))
       .from(this.rowset)
@@ -300,13 +304,13 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 执行查询，并获取第一行记录
    */
-  async fetchFirst(): Promise<EntityInstance<T> | null> {
+  async fetchFirst(): Promise<EntityInstance<T> | undefined> {
     const sql = this.getSql().limit(1);
     const rows = (await this.context.executor.query(sql)).rows!;
     if (!this.metadata) {
-      return (rows[0] ?? null) as EntityInstance<T> | null;
+      return rows[0] as EntityInstance<T> | undefined;
     }
-    if (!rows[0]) return null;
+    if (!rows[0]) return;
     const item = this.toEntity(rows[0]);
     let includes: FetchRelations<T> | undefined;
     if (this._includes) {
@@ -314,7 +318,7 @@ export class Queryable<T extends Entity | RowObject>
     }
     if (this._withDetail) {
       const detailIncludes = this.metadata.getDetailIncludes();
-      includes = mergeFetchRelations({}, includes, detailIncludes)
+      includes = mergeFetchRelations({}, includes, detailIncludes);
     }
     if (includes) {
       await this.loadRelation(item, includes);
@@ -358,7 +362,9 @@ export class Queryable<T extends Entity | RowObject>
 
     if (isPrimaryOneToOne(relation)) {
       const key = Reflect.get(item, this.metadata.keyProperty);
-      const subItem = await relationRepository.find(r => r[relation.referenceRelation.foreignProperty].eq(key)).fetchFirst();
+      const subItem = await relationRepository
+        .find(r => r[relation.referenceRelation.foreignProperty].eq(key))
+        .fetchFirst();
       return subItem;
       // 本表为次表
     } else if (isForeignOneToOne(relation)) {
@@ -368,9 +374,7 @@ export class Queryable<T extends Entity | RowObject>
       const key = Reflect.get(item, this.metadata.keyProperty);
       const relationItems = await relationRepository
         .filter(rowset =>
-          rowset
-            .field(relation.referenceRelation.foreignProperty)
-            .eq(key)
+          rowset[relation.referenceRelation.foreignProperty].eq(key)
         )
         .fetchAll();
       return relationItems as any;
@@ -378,7 +382,7 @@ export class Queryable<T extends Entity | RowObject>
       const refValue = Reflect.get(item, relation.foreignProperty);
       const relationItem = await relationRepository
         .find(rowset =>
-          rowset.field(relation.referenceEntity.keyColumn.property).eq(refValue)
+          rowset[relation.referenceEntity.keyColumn.property].eq(refValue)
         )
         .fetchFirst();
       return relationItem;
@@ -398,9 +402,9 @@ export class Queryable<T extends Entity | RowObject>
         .where(rt.field(thisForeignColumn.property).eq(key));
       const subItems = await relationRepository
         .filter(rowset =>
-          rowset
-            .field(relation.referenceEntity.keyColumn.property)
-            .in(relationIdsSelect)
+          rowset[relation.referenceEntity.keyColumn.property].in(
+            relationIdsSelect
+          )
         )
         .fetchAll();
       return subItems as any;
@@ -414,8 +418,8 @@ export class Queryable<T extends Entity | RowObject>
       isStringType(column.dbType)
     ) {
       return JSON.parse(Reflect.get(datarow, column.columnName));
-    // } if (column.type === BigInt) {
-    //   return new BigInt(Reflect.get(datarow, column.columnName));
+      // } if (column.type === BigInt) {
+      //   return new BigInt(Reflect.get(datarow, column.columnName));
     } else {
       return Reflect.get(datarow, column.columnName);
     }

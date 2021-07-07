@@ -268,7 +268,7 @@ export interface Standard {
   random(): Expression<number>;
   round(
     value: CompatibleExpression<number>,
-    s?: CompatibleExpression<number>
+    s: CompatibleExpression<number>
   ): Expression<number>;
   sign(value: CompatibleExpression<number>): Expression<number>;
   sqrt(value: CompatibleExpression<number>): Expression<number>;
@@ -697,7 +697,7 @@ export const Standard: Standard = {
   },
   cot(value: CompatibleExpression<number>): Expression<number> {
     return StandardExpression.create(Standard.cot.name, [value]);
-  }
+  },
 };
 /********************************************扩展 Expression.to方法**********************************************/
 // declare module lubejs {

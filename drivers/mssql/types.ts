@@ -14,21 +14,21 @@ export function parseRawTypeToMssqlType(type: string): ISqlType {
   if (!matched) {
     throw new Error('Error mssql datat type: ' + type);
   }
-  const sqlType = strTypeMapps[matched.groups.type.toUpperCase()];
+  const sqlType = strTypeMapps[matched.groups!.type.toUpperCase()];
   if (!sqlType) {
     throw new Error('Unspport mssql data type:' + type);
   }
 
-  if (matched.groups.max) {
+  if (matched.groups!.max) {
     return sqlType(mssql.MAX);
   }
-  if (matched.groups.p2 !== undefined) {
+  if (matched.groups!.p2 !== undefined) {
     return sqlType(
-      Number.parseInt(matched.groups.p1),
-      Number.parseInt(matched.groups.p2)
+      Number.parseInt(matched.groups!.p1),
+      Number.parseInt(matched.groups!.p2)
     );
   }
-  return sqlType(Number.parseInt(matched.groups.p1));
+  return sqlType(Number.parseInt(matched.groups!.p1));
 }
 
 export function fullType(
@@ -98,11 +98,11 @@ export function toMssqlType(type: DbType): mssql.ISqlType {
 }
 
 const IsolationLevelMapps = {
-  [ISOLATION_LEVEL.READ_COMMIT]: mssql.ISOLATION_LEVEL.READ_COMMITTED,
-  [ISOLATION_LEVEL.READ_UNCOMMIT]: mssql.ISOLATION_LEVEL.READ_UNCOMMITTED,
-  [ISOLATION_LEVEL.SERIALIZABLE]: mssql.ISOLATION_LEVEL.SERIALIZABLE,
-  [ISOLATION_LEVEL.REPEATABLE_READ]: mssql.ISOLATION_LEVEL.REPEATABLE_READ,
-  [ISOLATION_LEVEL.SNAPSHOT]: mssql.ISOLATION_LEVEL.SNAPSHOT,
+  READ_COMMIT: mssql.ISOLATION_LEVEL.READ_COMMITTED,
+  READ_UNCOMMIT: mssql.ISOLATION_LEVEL.READ_UNCOMMITTED,
+  SERIALIZABLE: mssql.ISOLATION_LEVEL.SERIALIZABLE,
+  REPEATABLE_READ: mssql.ISOLATION_LEVEL.REPEATABLE_READ,
+  SNAPSHOT: mssql.ISOLATION_LEVEL.SNAPSHOT,
 };
 
 export function toMssqlIsolationLevel(level: ISOLATION_LEVEL): number {
@@ -188,7 +188,7 @@ export function rawToDbType(type: string): DbType {
   if (!matched) {
     throw new Error('Error mssql datat type: ' + type);
   }
-  const dbTypeKey = raw2DbTypeMap[matched.groups.type.toUpperCase()];
+  const dbTypeKey = raw2DbTypeMap[matched.groups!.type.toUpperCase()];
   if (!dbTypeKey) {
     throw new Error('Unknown or unspport mssql data type:' + type);
   }
@@ -197,16 +197,16 @@ export function rawToDbType(type: string): DbType {
   if (typeof dbTypeFactory === 'object') {
     return dbTypeFactory as DbType;
   }
-  if (matched.groups.max) {
+  if (matched.groups!.max) {
     return Reflect.apply(dbTypeFactory as Function, DbType, [DbType.MAX]);
   }
-  if (matched.groups.p2 !== undefined) {
+  if (matched.groups!.p2 !== undefined) {
     return Reflect.apply(dbTypeFactory as Function, DbType, [
-      Number.parseInt(matched.groups.p1),
-      Number.parseInt(matched.groups.p2),
+      Number.parseInt(matched.groups!.p1),
+      Number.parseInt(matched.groups!.p2),
     ]);
   }
   return Reflect.apply(dbTypeFactory as Function, DbType, [
-    Number.parseInt(matched.groups.p1),
+    Number.parseInt(matched.groups!.p1),
   ]);
 }

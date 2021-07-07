@@ -13,6 +13,7 @@ import {
   UniqueConstraintSchema,
   ViewSchema,
   InputObject,
+  ColumnsOf,
 } from 'lubejs';
 import { isNull } from './build-in';
 import { fullType } from './types';
@@ -436,9 +437,8 @@ export async function load(
         name,
         isUnique,
         isClustered,
-        comment,
-        columns: null
-      })
+        comment
+      } as IndexSchema)
     );
 
     const ic = table(['index_columns', 'sys']).as('ic');

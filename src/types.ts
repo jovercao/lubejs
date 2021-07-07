@@ -21,6 +21,9 @@ export const EntitySymble = Symbol('LUBEJS#Entity');
  * 不一定非得从此继承
  */
 export class Entity {
+  constructor() {
+  }
+
   static create<T extends EntityConstructor<any>>(
     this: T,
     data: EntityTypeOf<T>

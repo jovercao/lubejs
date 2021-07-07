@@ -24,8 +24,8 @@ declare module 'lubejs/types' {
  */
 export class User extends Entity implements EntityKey {
   id?: number;
-  name: string;
-  password: string;
+  name!: string;
+  password!: string;
   description?: string;
   employee?: Employee;
 }
@@ -35,7 +35,7 @@ export class User extends Entity implements EntityKey {
  */
 export class Order extends Entity implements EntityKey {
   id?: number;
-  date: Date;
+  date!: Date;
   // 自动生成，因此可以为空
   orderNo?: string;
   description?: string;
@@ -47,10 +47,10 @@ export class Order extends Entity implements EntityKey {
  */
 export class OrderDetail extends Entity implements EntityKey {
   id?: number;
-  product: string;
-  count: number;
-  price: number;
-  amount: number;
+  product!: string;
+  count!: number;
+  price!: number;
+  amount!: number;
   description?: string;
   orderId?: number;
   order?: Order;
@@ -58,14 +58,14 @@ export class OrderDetail extends Entity implements EntityKey {
 
 export class Position extends Entity implements EntityKey {
   id?: number;
-  name: string;
+  name!: string;
   description?: string;
   employees?: Employee[];
 }
 
 export class Employee extends Entity implements EntityKey {
   id?: number;
-  name: string;
+  name!: string;
   description?: string;
   organization?: Organization;
   positions?: Position[];
@@ -74,15 +74,15 @@ export class Employee extends Entity implements EntityKey {
 
 export class EmployeePosition extends Entity implements EntityKey {
   id?: number;
-  positionId: number;
-  position: Position;
-  employeeId: number;
-  employee: Employee;
+  positionId!: number;
+  position?: Position;
+  employeeId!: number;
+  employee?: Employee;
 }
 
 export class Organization extends Entity implements EntityKey {
   id?: number;
-  name: string;
+  name!: string;
   description?: string;
   parentId?: number;
   parent?: Organization;

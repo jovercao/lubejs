@@ -167,7 +167,7 @@ describe.skip('MSSQL TESTS', function () {
 
   it('db.query($with(...))', async function () {
     const t = table<IItem>('Items').as('t');
-    const x = select(t._).from(t).where(t.FParentId.isNull()).as('x');
+    const x = select(t._).from(t).where(t.FParentId.isNull()).asWith('x');
     const i = table<IItem>('Items').as('i');
     const y = x.as('y');
 
@@ -178,7 +178,7 @@ describe.skip('MSSQL TESTS', function () {
   });
 
   it('db.insert(table, rows: Expression[])', async function () {
-    let err: Error;
+    let err: Error | undefined;
     try {
       const lines = await db.insert<IItem>('Items', [
         '李莉',
@@ -335,17 +335,15 @@ describe.skip('MSSQL TESTS', function () {
       .from(b)
       .as('x');
 
-    const sql = select(
-      SQL.case<string>(a.FSex).when(true, '男').else('女').as('性别'),
-      now().as('Now'),
-      makeFunc<number, number>('scalar', ['dosomething', 'dbo'])(100).as(
-        'SomeThingResult'
-      ),
+    const sql = select({
+      性别: SQL.case<string>(a.FSex).when(true, '男').else('女'),
+      Now: now(),
+      SomeThingResult: makeFunc<number, number>('scalar', ['dosomething', 'dbo'])(100),
       // 子查询
-      select(group(1)).asValue().as('field'),
-      a.FId.as('aid'),
-      b.FId.as('bid')
-    )
+      field: select(group(1)).asValue(),
+      aid: a.FId,
+      bid: b.FId
+    })
       .from(a)
       .join(b, a.FId.eq(b.FId))
       .join(x, a.FId.eq(x.FId))
@@ -365,7 +363,7 @@ describe.skip('MSSQL TESTS', function () {
     const sql2 = select(a.FId, a.FSex).from(a).distinct();
     const rows2 = (await db.query(sql2)).rows;
     console.log(rows2[0].FId);
-    const sql3 = select(count(any).as('count')).from(a);
+    const sql3 = select({ count: count(any) }).from(a);
     const rows3 = (await db.query(sql3)).rows;
     assert(rows3[0].count > 0);
   });

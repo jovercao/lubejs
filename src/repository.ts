@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { FieldsOf, ProxiedRowset, ProxiedTable } from './ast';
+import { ColumnsOf, ProxiedRowset, ProxiedTable } from './ast';
 import { Queryable } from './queryable';
 import {
   ColumnMetadata,
@@ -38,7 +38,7 @@ import { DbContext, DbInstance, EntityConstructor } from './db-context';
  * 过滤关联关系属性列表
  */
 export type RelationKeyOf<T> = {
-  [P in keyof T]: T[P] extends Entity | Entity[] ? P : never;
+  [P in keyof T]: NonNullable<T[P]> extends Entity | Entity[] ? P : never;
 }[keyof T];
 
 export type SingleReferenceKeyOf<T> = {
@@ -101,10 +101,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
   async get(
     key: EntityKeyType,
     options?: FetchOptions<T>
-  ): Promise<EntityInstance<T> | null> {
+  ): Promise<EntityInstance<T> | undefined> {
     let query = this.filter(rowset =>
-      rowset
-        .field(this.metadata.keyColumn.columnName as FieldsOf<T>)
+      rowset[this.metadata.keyColumn.columnName as ColumnsOf<T>]
         .eq(key as any)
     );
     if (options?.includes) {

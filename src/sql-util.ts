@@ -68,6 +68,7 @@ import {
   While,
   Break,
   Continue,
+  WithSelect,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
 import { Command } from './execute';
@@ -137,6 +138,7 @@ import {
   isBreak,
   isContinue,
   assertAstNonempty,
+  isWithSelect,
 } from './util';
 import { Standard } from './std';
 
@@ -599,10 +601,10 @@ export abstract class SqlUtil {
   protected sqlifyRowsetName(rowset: Rowset | Raw): string {
     if (isRaw(rowset)) return rowset.$sql;
     if (rowset.$alias) {
-      return this.sqlifyIdentifier(rowset.$alias);
+      return this.quoted(rowset.$alias);
     }
-    if (isIdentifier(rowset)) {
-      return this.sqlifyIdentifier(rowset);
+    if (rowset.$name) {
+      return this.sqlifyName(rowset.$name);
     }
     throw new Error('Rowset must have alias or name.');
   }
@@ -646,12 +648,12 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyWithSelect(
-    item: NamedSelect<any, string> | Raw,
+    item: WithSelect<any, string> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
     if (isRaw(item)) return item.$sql;
-    return `${this.quoted(item.$alias.$name)} AS (${this.sqlifySelect(
+    return `${this.quoted(item.$name)} AS (${this.sqlifySelect(
       item.$select,
       params,
       parent
@@ -1029,7 +1031,7 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyFrom(
-    table: Rowset<any> | Raw,
+    table: Rowset | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     parent?: AST
@@ -1037,35 +1039,28 @@ export abstract class SqlUtil {
     if (isRaw(table)) {
       return table.$sql;
     }
-    if (isTable(table)) {
+    if (isTable(table) || isWithSelect(table)) {
       let sql = '';
-      sql += this.sqlifyIdentifier(table);
-      if (table.$alias) sql += ' AS ' + this.sqlifyIdentifier(table.$alias);
+      sql += this.sqlifyName(table.$name);
+      if (table.$alias) sql += ' AS ' + this.quoted(table.$alias);
       return sql;
     }
     if (isTableVariant(table)) {
       let sql = '';
       sql += this.sqlifyVariantName(table.$name);
-      if (table.$alias) sql += ' AS ' + this.sqlifyIdentifier(table.$alias);
+      if (table.$alias) sql += ' AS ' + this.quoted(table.$alias);
       return sql;
     }
     // 如果是命名行集
     if (isNamedSelect(table)) {
-      if (table.$inWith) {
-        return this.sqlifyIdentifier(table.$alias);
-      } else {
-        return this.sqlifyNamedSelect(table, params);
-      }
+      return this.sqlifyNamedSelect(table, params);
     }
     if (isTableFuncInvoke(table)) {
-      if (!table.$alias) {
-        return this.sqlifyFuncInvoke(table);
+      let sql = this.sqlifyFuncInvoke(table);
+      if (table.$name) {
+        sql += ' AS ' + this.quoted(table.$name);
       }
-      return (
-        this.sqlifyFuncInvoke(table) +
-        ' AS ' +
-        this.sqlifyIdentifier(table.$alias)
-      );
+      return sql;
     }
     return this.sqlifyRowsetName(table);
   }

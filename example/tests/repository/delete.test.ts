@@ -12,12 +12,12 @@ import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
-describe.only('Repository: delete', function () {
+describe('Repository: delete', function () {
   this.timeout(0);
   let db: DB;
-  let outputSql: boolean = true;
+  let outputSql: boolean = false;
   before(async () => {
-    db = await createContext<DB>();
+    db = await createContext(DB);
     if (outputSql) {
       db.lube.on('command', outputCommand);
     }
@@ -42,12 +42,12 @@ describe.only('Repository: delete', function () {
     await db.save(user);
 
     user.description = '更新后的用户';
-    user.employee.description = '更新后的职员';
+    user.employee!.description = '更新后的职员';
 
     await db.User.delete(user, { withDetail: true });
 
-    const deletedUser = await db.User.get(user.id);
-    const deletedEmployee = await db.Employee.get(employee.id);
+    const deletedUser = await db.User.get(user.id!);
+    const deletedEmployee = await db.Employee.get(employee.id!);
     assert(!deletedUser);
     assert(!deletedEmployee);
   });
@@ -73,13 +73,13 @@ describe.only('Repository: delete', function () {
     });
     await db.insert(order);
 
-    const newOrder = await db.get(Order, order.id, { withDetail: true });
+    const newOrder = (await db.get(Order, order.id!, { withDetail: true }))!;
 
-    assert(newOrder.details.length === 2);
+    assert(newOrder.details?.length === 2);
 
     await db.Order.delete(newOrder, { withDetail: true });
 
-    const deleted = await db.get(Order, order.id, {
+    const deleted = await db.get(Order, order.id!, {
       includes: { details: true },
     });
 
@@ -92,7 +92,7 @@ describe.only('Repository: delete', function () {
     assert(deletedDetails.length == 0);
   });
 
-  it.only('ManyToMany 子项增删除改测试', async () => {
+  it('ManyToMany 子项增删除改测试', async () => {
     const employee: Employee = {
       user: {
         name: 'abcx',
@@ -113,16 +113,16 @@ describe.only('Repository: delete', function () {
 
     await db.Employee.save(employee);
 
-    const newEmp = await db.Employee.get(employee.id, { withDetail: true });
-    assert(newEmp.positions.length === 2);
+    const newEmp = await db.Employee.get(employee.id!, { withDetail: true });
+    assert(newEmp?.positions?.length === 2);
 
     await db.Employee.delete(employee, { withDetail: true });
 
-    const deleted = await db.Employee.get(employee.id, { withDetail: true });
+    const deleted = await db.Employee.get(employee.id!, { withDetail: true });
 
     const relationDetails = await db
       .getQueryable(EmployeePosition)
-      .filter(p => p.employeeId.eq(employee.id))
+      .filter(p => p.employeeId.eq(employee.id!))
       .fetchAll();
     assert(!deleted);
     assert(relationDetails.length === 0);

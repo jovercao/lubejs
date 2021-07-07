@@ -21,7 +21,6 @@ export class MssqlProvider implements DbProvider {
   constructor(private _pool: mssql.ConnectionPool, options: SqlOptions) {
     const translator = new MssqlStandardTranslator(this);
     this.sqlUtil = new MssqlSqlUtil(options, translator);
-    translator.sqlUtil = this.sqlUtil;
   }
 
   lube!: Lube;

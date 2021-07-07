@@ -72,7 +72,7 @@ export async function doQuery(
     });
   }
   if (res.recordsets) {
-    result.rowsets = res.recordsets;
+    result.rowsets = res.recordsets as any;
   }
   return result;
 }

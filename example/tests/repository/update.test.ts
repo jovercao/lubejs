@@ -8,7 +8,7 @@ const { star, count } = SQL;
 describe('Repository: update', function () {
   this.timeout(0);
   let db: DB;
-  let outputSql: boolean = true;
+  let outputSql: boolean = false;
   before(async () => {
     db = await createContext(DB);
     if (outputSql) {

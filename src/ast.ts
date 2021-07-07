@@ -6,7 +6,7 @@ import {
   ensureCondition,
   makeProxiedRowset,
   isScalar,
-  ensureRowset,
+  ensureTable,
   ensureFunction,
   ensureProcedure,
   pickName,
@@ -24,6 +24,7 @@ import {
   isCondition,
   isBinaryLogicCondition,
   joinConditions,
+  ensureRowset,
 } from './util';
 
 import {
@@ -53,6 +54,7 @@ import {
   Name,
   Constructor,
   Entity,
+  PathedName,
 } from './types';
 import { Scalar } from './types';
 import { TableSchema } from './schema';
@@ -82,12 +84,12 @@ import { makeRowset, metadataStore } from './metadata';
 /**
  * 取值结果集首个返回值类型运算
  */
-export type AsScalarType<T extends RowObject> = T[FieldsOf<T>] extends Scalar
-  ? T[FieldsOf<T>]
+export type AsScalarType<T extends RowObject> = T[ColumnsOf<T>] extends Scalar
+  ? T[ColumnsOf<T>]
   : never;
 
 export type DefaultRowObject = {
-  [P in string]: any;
+  [P in string]: Scalar;
 };
 
 export type DefaultInputObject = Record<string, Scalar>;
@@ -100,7 +102,7 @@ export type DefaultInputObject = Record<string, Scalar>;
  * 简化后的whereObject查询条件
  */
 export type WhereObject<T extends RowObject = DefaultInputObject> = {
-  [K in FieldsOf<T>]?:
+  [K in ColumnsOf<T>]?:
     | CompatibleExpression<FieldTypeOf<T, K>>
     | CompatibleExpression<FieldTypeOf<T, K>>[];
 };
@@ -109,7 +111,7 @@ export type WhereObject<T extends RowObject = DefaultInputObject> = {
  * 值列表，用于传递Select、Insert、Update、Parameters 的键值对
  */
 export type InputObject<T extends RowObject = DefaultInputObject> = {
-  [K in FieldsOf<T>]?: CompatibleExpression<T[K]>;
+  [K in ColumnsOf<T>]?: CompatibleExpression<T[K]>;
 };
 
 /**
@@ -123,95 +125,101 @@ export type TypeOf<T> = T extends Scalar
   ? T
   : never;
 
+// export type RowObjectFrom<T extends InputObject> = T extends InputObject<infer R> ? R : DefaultInputObject;
+
 /**
  * 从 SELECT(...Identitfier) 中查询的属性及类型
  * 将选择项，列、或者字段转换成Model类型
  */
-export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @typescript-eslint/ban-types
-  ? {}
-  : T extends Field<infer V, infer N>
-  ? {
-      [K in N]: V;
-    }
-  : T extends SelectColumn<infer V, infer N>
-  ? {
-      [K in N]: V;
-    }
-  : T extends Star<infer M>
-  ? {
-      [P in FieldsOf<M>]: M[P];
-    }
-  : T extends InputObject
-  ? {
-      [K in keyof T]: TypeOf<T[K]>;
-    }
-  : T extends Record<string, RowObject>
-  ? {
-      [K in FieldsOf<T>]: TypeOf<T[K]>;
-    } // eslint-disable-next-line @typescript-eslint/ban-types
-  : {};
+export type RowObjectFrom<T extends InputObject> = {
+  [P in keyof T]: TypeOf<T[P]>;
+};
+
+// export type RowTypeFrom<T> = T extends undefined // eslint-disable-next-line @typescript-eslint/ban-types
+//   ? {}
+//   : T extends Field<infer V, infer N>
+//   ? {
+//       [K in N]: V;
+//     }
+//   : T extends SelectColumn<infer V, infer N>
+//   ? {
+//       [K in N]: V;
+//     }
+//   : T extends Star<infer M>
+//   ? {
+//       [P in ColumnsOf<M>]: M[P];
+//     }
+//   : T extends InputObject
+//   ? {
+//       [K in keyof T]: TypeOf<T[K]>;
+//     }
+//   : T extends Record<string, RowObject>
+//   ? {
+//       [K in ColumnsOf<T>]: TypeOf<T[K]>;
+//     } // eslint-disable-next-line @typescript-eslint/ban-types
+//   : {};
 
 /**
  * select语句可以接收的列
  */
-export type SelectCloumn =
-  | Field<Scalar, string>
-  | SelectColumn<Scalar, string>
-  | Star<any>;
+// export type SelectCloumn =
+//   | Field<Scalar, string>
+//   | SelectColumn<Scalar, string>
+//   | Star<any>;
 
-export type RowTypeByColumns<
-  A,
-  B = unknown,
-  C = unknown,
-  D = unknown,
-  E = unknown,
-  F = unknown,
-  G = unknown,
-  H = unknown,
-  I = unknown,
-  J = unknown,
-  K = unknown,
-  L = unknown,
-  M = unknown,
-  N = unknown,
-  O = unknown,
-  P = unknown,
-  Q = unknown,
-  R = unknown,
-  S = unknown,
-  T = unknown,
-  U = unknown,
-  V = unknown,
-  W = unknown,
-  X = unknown,
-  Y = unknown,
-  Z = unknown
-> = RowTypeFrom<A> &
-  RowTypeFrom<B> &
-  RowTypeFrom<C> &
-  RowTypeFrom<D> &
-  RowTypeFrom<E> &
-  RowTypeFrom<F> &
-  RowTypeFrom<G> &
-  RowTypeFrom<H> &
-  RowTypeFrom<I> &
-  RowTypeFrom<J> &
-  RowTypeFrom<K> &
-  RowTypeFrom<L> &
-  RowTypeFrom<M> &
-  RowTypeFrom<N> &
-  RowTypeFrom<O> &
-  RowTypeFrom<P> &
-  RowTypeFrom<Q> &
-  RowTypeFrom<R> &
-  RowTypeFrom<S> &
-  RowTypeFrom<T> &
-  RowTypeFrom<U> &
-  RowTypeFrom<V> &
-  RowTypeFrom<W> &
-  RowTypeFrom<X> &
-  RowTypeFrom<Y> &
-  RowTypeFrom<Z>;
+// export type RowTypeByColumns<
+//   A,
+//   B = unknown,
+//   C = unknown,
+//   D = unknown,
+//   E = unknown,
+//   F = unknown,
+//   G = unknown,
+//   H = unknown,
+//   I = unknown,
+//   J = unknown,
+//   K = unknown,
+//   L = unknown,
+//   M = unknown,
+//   N = unknown,
+//   O = unknown,
+//   P = unknown,
+//   Q = unknown,
+//   R = unknown,
+//   S = unknown,
+//   T = unknown,
+//   U = unknown,
+//   V = unknown,
+//   W = unknown,
+//   X = unknown,
+//   Y = unknown,
+//   Z = unknown
+// > = RowTypeFrom<A> &
+//   RowTypeFrom<B> &
+//   RowTypeFrom<C> &
+//   RowTypeFrom<D> &
+//   RowTypeFrom<E> &
+//   RowTypeFrom<F> &
+//   RowTypeFrom<G> &
+//   RowTypeFrom<H> &
+//   RowTypeFrom<I> &
+//   RowTypeFrom<J> &
+//   RowTypeFrom<K> &
+//   RowTypeFrom<L> &
+//   RowTypeFrom<M> &
+//   RowTypeFrom<N> &
+//   RowTypeFrom<O> &
+//   RowTypeFrom<P> &
+//   RowTypeFrom<Q> &
+//   RowTypeFrom<R> &
+//   RowTypeFrom<S> &
+//   RowTypeFrom<T> &
+//   RowTypeFrom<U> &
+//   RowTypeFrom<V> &
+//   RowTypeFrom<W> &
+//   RowTypeFrom<X> &
+//   RowTypeFrom<Y> &
+//   RowTypeFrom<Z>;
 
 /**
  * 可兼容的表达式
@@ -234,9 +242,9 @@ export type CompatibleSortInfo<T extends RowObject = DefaultInputObject> =
  * 提取类型中的数据库有效字段，即类型为ScalarType的字段列表
  * 用于在智能提示时排除非数据库字段
  */
-export type FieldsOf<T> = Exclude<
+export type ColumnsOf<T> = Exclude<
   {
-    [P in keyof T]: T[P] extends Scalar ? P : never;
+    [P in keyof T]: NonNullable<T[P]> extends Scalar ? P : never;
   }[keyof T],
   number | symbol
 >;
@@ -245,44 +253,35 @@ export type FieldTypeOf<T, F extends keyof T> = T[F] extends Scalar
   ? T[F]
   : never;
 
-/**
- * 代理后的Rowset类型
- */
-export type Proxied<T> = T extends
-  | Rowset<infer M>
-  | NamedSelect<infer M>
-  | Table<infer M>
-  | TableFuncInvoke<infer M>
-  | TableVariant<infer M>
-  ? T &
-      {
-        // 排除AST自有属性
-        [P in FieldsOf<M>]: Field<M[P], P>;
-      }
-  : never;
+export type XRowset<T extends RowObject> = {
+  [P in ColumnsOf<T>]: Field<T[P], string>;
+};
 
 /**
  * 代理后的表
  */
-export type ProxiedTable<T extends RowObject, N extends string = string> =
-  Table<T, N> &
-    {
-      [P in FieldsOf<T>]: Field<T[P], P>;
-    };
+export type ProxiedTable<
+  T extends RowObject = RowObject,
+  N extends string = string
+> = Table<T, N> & XRowset<T>;
 
 /**
  * 代理后的行集
  */
-export type ProxiedRowset<T extends RowObject> = Rowset<T> &
-  {
-    [P in FieldsOf<T>]: Field<T[P], P>;
-  };
+export type ProxiedRowset<
+  T extends RowObject = RowObject,
+  N extends string = string
+> = Rowset<T, N> & XRowset<T>;
 
-export type ProxiedNamedSelect<T extends RowObject, N extends string = string> =
-  NamedSelect<T, N> &
-    {
-      [P in FieldsOf<T>]: Field<T[P], P>;
-    };
+export type ProxiedNamedSelect<
+  T extends RowObject = RowObject,
+  N extends string = string
+> = NamedSelect<T, N> & XRowset<T>;
+
+export type ProxiedWithSelect<
+  T extends RowObject = RowObject,
+  N extends string = string
+> = WithSelect<T, N> & XRowset<T>;
 
 /**
  * AST 基类
@@ -755,7 +754,7 @@ export class Join extends AST {
    * @param on 关联条件
    * @param left 是否左联接
    */
-  constructor(table: Name | Rowset, on: Condition, left = false) {
+  constructor(table: Name | ProxiedRowset, on: Condition, left = false) {
     super();
 
     this.$table = ensureRowset(table);
@@ -814,14 +813,6 @@ export class BuiltIn<N extends string = string> extends Identifier<N> {
   readonly $builtin!: true;
   constructor(name: N) {
     super(name, true);
-  }
-}
-
-export class Alias<N extends string> extends Identifier<N> {
-  $name!: N;
-  $kind!: IDENTOFIER_KIND.ALIAS;
-  constructor(name: N) {
-    super(name, false);
   }
 }
 
@@ -890,31 +881,30 @@ export class Field<T extends Scalar = any, N extends string = string>
 
 // applyMixins(Field, [Identifier]);
 
+// export type CompatiableRowset<T extends RowObject = DefaultRowObject> = Table<T> | Rowset<T> | ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T>;
+
 /**
  * 数据库行集，混入类型
  */
 // eslint-disable-next-line @typescript-eslint/ban-types
-export abstract class Rowset<T extends RowObject = RowObject> extends AST {
+export abstract class Rowset<
+  T extends RowObject = RowObject,
+  N extends string = string
+> extends AST {
+  $name?: Name<N> = undefined;
   /**
    * 别名
    */
-  $alias?: Alias<string>;
+  $alias?: string = undefined; // 保留此处，避免代理覆盖属性
 
   /**
    * 为当前表添加别名
    */
-  as(
-    alias: string
-  ):
-    | ProxiedRowset<T>
-    | ProxiedTable<T>
-    | Rowset<T>
-    | Table<T>
-    | NamedSelect<T> {
+  as(alias: string): ProxiedRowset<T> {
     if (this.$alias) {
-      throw new Error(`Rowset is exists alias: ${this.$alias.$name}`);
+      throw new Error(`Rowset is exists alias: ${this.$alias}`);
     }
-    this.$alias = new Alias(alias);
+    this.$alias = alias;
     if (!isProxiedRowset(this)) {
       return makeProxiedRowset(this);
     }
@@ -925,11 +915,21 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
    * 访问下一节点
    * @param name 节点名称
    */
-  field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
-    if (!this.$alias) {
+  field<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
+    if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
-    return new Field<T[P], P>([name, this.$alias.$name]);
+    const fieldName: string[] = [name];
+    if (this.$alias) {
+      fieldName.push(this.$alias as any);
+    } else {
+      if (Array.isArray(this.$name)) {
+        fieldName.push(...this.$name);
+      } else {
+        fieldName.push(this.$name);
+      }
+    }
+    return new Field<T[P], P>(fieldName as PathedName<P>);
   }
 
   /**
@@ -942,7 +942,7 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
   /**
    * 访问字段的缩写方式，等价于 field
    */
-  $<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
+  $<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
     return this.field(name);
   }
 
@@ -953,7 +953,7 @@ export abstract class Rowset<T extends RowObject = RowObject> extends AST {
     if (!this.$alias) {
       throw new Error('You must named rowset befor use field.');
     }
-    return new Star<T>(this.$alias.$name);
+    return new Star<T>(this.$alias);
   }
 
   clone(): this {
@@ -969,7 +969,7 @@ export type CompatibleTable<
   // eslint-disable-next-line
   T extends RowObject = {},
   N extends string = string
-> = Name | Table<T, N> | ProxiedTable<T>;
+> = Name | ProxiedTable<T, N>;
 
 export type CompatibleNamedSelect<
   // eslint-disable-next-line
@@ -982,45 +982,40 @@ export type CompatibleNamedSelect<
  */
 export type CompatibleRowset<
   // eslint-disable-next-line
-  T extends RowObject = {},
-  N extends string = string
+  T extends RowObject = {}
 > =
-  | CompatibleTable<T, N>
+  // | CompatibleTable<T, N>
+  | Table<T>
   | Rowset<T>
-  | NamedSelect<T, N>
+  | NamedSelect<T>
   | ProxiedRowset<T>
-  | Proxied<NamedSelect<T, N>>
   | TableFuncInvoke<T>
-  | Proxied<TableFuncInvoke<T>>
-  | TableVariant<T, N>
-  | Proxied<TableVariant<T, N>>;
+  | TableVariant<T>
+  | ProxiedNamedSelect<T>
+  | ProxiedTable<T>;
 
 export class Table<
-    T extends RowObject = DefaultRowObject,
-    N extends string = string
-  >
-  extends Rowset<T>
-  implements Identifier<N>
-{
+  T extends RowObject = DefaultRowObject,
+  N extends string = string
+> extends Rowset<T, N> {
   constructor(name: Name<N>) {
     super();
     this.$name = name;
   }
   $name: Name<N>;
   $builtin: false = false;
-  $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
-  $kind: IDENTOFIER_KIND.TABLE = IDENTOFIER_KIND.TABLE;
+  $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 
-  /**
-   * 访问字段
-   * @param name 节点名称
-   */
-  field<P extends FieldsOf<T>>(name: P): Field<T[P], P> {
-    if (this.$alias) {
-      return super.field(name);
-    }
-    return new Field<T[P], P>([name, ...pathName(this.$name)] as Name<P>);
-  }
+  // /**
+  //  * 访问字段
+  //  * @param name 节点名称
+  //  */
+  // field<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
+  //   if (this.$alias) {
+  //     return super.field(name);
+  //   }
+  //   return new Field<T[P], P>([name, ...pathName(this.$name)] as Name<P>);
+  // }
 
   /**
    * 获取所有字段
@@ -1032,7 +1027,7 @@ export class Table<
     return new Star(this.$name);
   }
 
-  as!: <N extends string>(alias: N) => this;
+  as!: <N extends string>(alias: N) => ProxiedTable<T>;
 }
 
 // applyMixins(Table, [Identifier]);
@@ -1113,16 +1108,15 @@ export type SelectAction = {
    * 选择列
    */
   // <T extends RowObject = any>(a: Star<T>): Select<T>;
-  <A extends SelectCloumn>(a: A): Select<RowTypeByColumns<A>>;
+  <T extends RowObject>(a: Star<T>): Select<T>;
+  <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
   <T extends RowObject>(results: InputObject<T>): Select<T>;
-  <T extends InputObject<T>>(results: T): Select<RowTypeFrom<T>>;
   <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
     '*no name': T;
   }>;
-  <T extends RowObject>(
+  <T extends RowObject = DefaultRowObject>(
     ...columns: (SelectColumn | CompatibleExpression | Star<any>)[]
   ): Select<T>;
-  (...exprs: CompatibleExpression[]): Select<any>;
   // <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>;
   // <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
   //   RowTypeByColumns<A, B>
@@ -2093,6 +2087,9 @@ export class TableFuncInvoke<
   readonly $type: SQL_SYMBOLE.TABLE_FUNCTION_INVOKE =
     SQL_SYMBOLE.TABLE_FUNCTION_INVOKE;
 
+  $name?: string;
+  $alias?: never;
+
   constructor(
     func: Name | Func<string>,
     args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
@@ -2200,6 +2197,10 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
    * 实际值
    */
   $value: T;
+
+  valueOf() {
+    return this.$value;
+  }
 
   constructor(value: T) {
     super();
@@ -2316,11 +2317,11 @@ export class Union<T extends RowObject = any> extends AST {
  * 排序对象
  */
 export type SortObject<T extends RowObject = any> = {
-  [K in FieldsOf<T>]?: SORT_DIRECTION;
+  [K in ColumnsOf<T>]?: SORT_DIRECTION;
 };
 
 abstract class Fromable<T extends RowObject = any> extends Statement {
-  $froms?: Rowset<any>[];
+  $froms?: ProxiedRowset[];
   $joins?: Join[];
   $where?: Condition;
   $with?: With;
@@ -2329,7 +2330,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: (Name | CompatibleRowset<any, string>)[]): this {
+  from(...tables: (Name | ProxiedRowset)[]): this {
     this.$froms = tables.map(table => ensureRowset(table));
     this.$froms.forEach(table => {
       if (!table.$alias) {
@@ -2349,7 +2350,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * @memberof Select
    */
   join<T extends RowObject = any>(
-    table: Name | CompatibleRowset<T>,
+    table: Name | ProxiedRowset<T>,
     on: Condition,
     left?: boolean
   ): this {
@@ -2367,7 +2368,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
    * @param on
    */
   leftJoin<T extends RowObject = any>(
-    table: Name | CompatibleRowset<T>,
+    table: Name | ProxiedRowset<T>,
     on: Condition
   ): this {
     return this.join(table, on, true);
@@ -2443,7 +2444,10 @@ export class Select<T extends RowObject = any> extends Fromable {
       const results = columns[0];
       this.$columns = Object.entries(results as InputObject<T>).map(
         ([name, expr]: [string, unknown]) => {
-          return new SelectColumn(name, ensureExpression(expr as CompatibleExpression));
+          return new SelectColumn(
+            name,
+            ensureExpression(expr as CompatibleExpression)
+          );
         }
       );
       return;
@@ -2591,8 +2595,12 @@ export class Select<T extends RowObject = any> extends Fromable {
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as<TAlias extends string>(alias: TAlias): Proxied<NamedSelect<T>> {
+  as<TAlias extends string>(alias: TAlias): ProxiedNamedSelect<T> {
     return makeProxiedRowset(new NamedSelect(this, alias)) as any;
+  }
+
+  asWith<N extends string>(name: N): ProxiedWithSelect<T, N> {
+    return makeProxiedRowset(new WithSelect(name, this));
   }
 
   /**
@@ -2645,21 +2653,21 @@ export class Insert<T extends RowObject = any> extends Statement {
    */
   constructor(
     table: CompatibleTable<T, string>,
-    fields?: Field<Scalar, FieldsOf<T>>[] | FieldsOf<T>[]
+    fields?: Field<Scalar, ColumnsOf<T>>[] | ColumnsOf<T>[]
   ) {
     super();
     this.$identityInsert = false;
-    this.$table = ensureRowset(table) as Table<T, string>;
+    this.$table = ensureTable(table) as Table<T, string>;
     if (this.$table.$alias) {
       throw new Error('Insert statements do not allow aliases on table.');
     }
     if (fields) {
       if (typeof fields[0] === 'string') {
-        this.$fields = (fields as FieldsOf<T>[]).map(field =>
+        this.$fields = (fields as ColumnsOf<T>[]).map(field =>
           this.$table.field(field)
         );
       } else {
-        this.$fields = fields as Field<Scalar, FieldsOf<T>>[];
+        this.$fields = fields as Field<Scalar, ColumnsOf<T>>[];
       }
     }
   }
@@ -2672,7 +2680,7 @@ export class Insert<T extends RowObject = any> extends Statement {
           if (!existsFields[field]) existsFields[field] = true;
         })
       );
-      this.$fields = (Object.keys(existsFields) as FieldsOf<T>[]).map(
+      this.$fields = (Object.keys(existsFields) as ColumnsOf<T>[]).map(
         fieldName => {
           return this.$table.field(fieldName);
         }
@@ -2759,9 +2767,9 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
 
   readonly $kind: STATEMENT_KIND.UPDATE = STATEMENT_KIND.UPDATE;
 
-  constructor(table: CompatibleTable<T, string>) {
+  constructor(table: CompatibleTable<T>) {
     super();
-    const tb = ensureRowset(table);
+    const tb = ensureTable(table);
     if (tb.$alias) {
       this.from(tb);
     }
@@ -2806,7 +2814,7 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   constructor(table?: CompatibleTable<T, string>) {
     super();
     if (table) {
-      this.$table = ensureRowset(table) as Table<T, string>;
+      this.$table = ensureTable(table) as Table<T, string>;
     }
     // if (options?.table) this.from(options.table)
     // if (options?.joins) this.$joins = options.joins
@@ -2946,7 +2954,11 @@ export class ProcedureParameter extends AST {
   readonly $type: SQL_SYMBOLE.PROCEDURE_PARAMETER =
     SQL_SYMBOLE.PROCEDURE_PARAMETER;
 
-  constructor(name: string, dataType: DbType, direct: PARAMETER_DIRECTION = 'INPUT') {
+  constructor(
+    name: string,
+    dataType: DbType,
+    direct: PARAMETER_DIRECTION = 'INPUT'
+  ) {
     super();
     this.$name = name;
     this.$dbType = dataType;
@@ -3068,7 +3080,7 @@ export class Parameter<T extends Scalar = any, N extends string = string>
   ) {
     super();
     if (type) {
-      this.type = type
+      this.type = type;
     } else {
       if (value === undefined) {
         throw new Error('Parameter must assign one of `value` or `type`.');
@@ -3121,26 +3133,38 @@ export class NamedSelect<
   T extends RowObject = any,
   A extends string = string
 > extends Rowset<T> {
-  readonly $type = SQL_SYMBOLE.NAMED_SELECT;
-  $inWith: boolean;
+  readonly $type: SQL_SYMBOLE.NAMED_SELECT = SQL_SYMBOLE.NAMED_SELECT;
   $select: Select<T>;
-  $alias!: Alias<A>;
+  $name!: A;
+  $alias?: never;
 
-  constructor(statement: Select<T>, alias: A, inWith = false) {
+  constructor(statement: Select<T>, alias: A) {
     super();
     super.as(alias);
     this.$select = statement;
-    this.$inWith = inWith;
   }
 
   /**
    * 将别名再进行别名化
    */
-  as<N extends string>(alias: N): ProxiedTable<T> {
-    // if (!this.$inWith) {
-    //   throw new Error('Not allow operation `as` without WithItem');
-    // }
-    return makeProxiedRowset(new Table<T>(this.$alias.$name).as(alias));
+  as: never;
+}
+
+export class WithSelect<
+  T extends RowObject = RowObject,
+  N extends string = string
+> extends Rowset<T> {
+  readonly $type: SQL_SYMBOLE.WITH_SELECT = SQL_SYMBOLE.WITH_SELECT;
+  $select: Select<T>;
+  $alias?: string;
+  /**
+   * WITH 声明名称
+   */
+  $name: N;
+  constructor(name: N, select: Select<T>) {
+    super();
+    this.$name = name;
+    this.$select = select;
   }
 }
 
@@ -3166,26 +3190,27 @@ export type SelectAliasObject = {
   [alias: string]: Select;
 };
 
-export class With extends AST {
+export type WithNamedSelect<T> = {
+  [P in Exclude<keyof T, number | symbol>]: WithSelect<RowObjectFrom<T[P]>, P>;
+};
+
+export class With<A extends SelectAliasObject = any> extends AST {
   $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
 
-  $rowsets: NamedSelect<any, string>[];
+  $rowsets: WithSelect[];
 
   /**
    * With结构
    */
-  constructor(items: NamedSelect<any, string>[] | SelectAliasObject) {
+  constructor(items: WithSelect<any, string>[] | SelectAliasObject) {
     super();
     if (Array.isArray(items)) {
       this.$rowsets = items;
     } else {
       this.$rowsets = Object.entries(items).map(
-        ([alias, sel]) => new NamedSelect(sel, alias)
+        ([name, sel]) => new WithSelect(name, sel)
       );
     }
-    this.$rowsets.forEach(item => {
-      item.$inWith = true;
-    });
   }
 
   /**
@@ -3204,7 +3229,7 @@ export class With extends AST {
    */
   insert<T extends RowObject = any>(
     table: Name | CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     const sql = SqlBuilder.insert(table, fields);
     sql.$with = this;
@@ -3758,7 +3783,9 @@ abstract class TableColumn<
   N extends string = string,
   T extends DbType = DbType
 > extends AST {
-  abstract $type: SQL_SYMBOLE.ALTER_TABLE_COLUMN | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  abstract $type:
+    | SQL_SYMBOLE.ALTER_TABLE_COLUMN
+    | SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $name: N;
   $nullable?: boolean;
   $dbType: T;
@@ -4276,14 +4303,15 @@ export interface SqlBuilder extends Standard {
    */
   doc(statements: Statement[]): Document;
   doc(...statements: Statement[]): Document;
-  /**
-   * 括号表达式，将表达式括起来，如优先级
-   */
-  group<T extends Scalar>(value: CompatibleExpression<T>): Expression<T>;
+
   /**
    * 括号条件运算，将条件括起来
    */
   group(condition: Condition): Condition;
+  /**
+   * 括号表达式，将表达式括起来，如优先级
+   */
+  group<T extends Scalar>(value: CompatibleExpression<T>): Expression<T>;
 
   /**
    * 算术运算 +
@@ -4606,7 +4634,13 @@ export interface SqlBuilder extends Standard {
   table<T extends Entity = any>(
     modelCtr: Constructor<T>
   ): ProxiedTable<T, string>;
-  table<T extends RowObject = DefaultRowObject, N extends string = string>(
+  table<T extends RowObject = any, N extends string = string>(
+    name: Name<N>
+  ): ProxiedTable<T, N>;
+  table<T extends Entity = any>(
+    modelCtr: Constructor<T>
+  ): ProxiedTable<T, string>;
+  table<T extends RowObject = any, N extends string = string>(
     name: Name<N>
   ): ProxiedTable<T, N>;
 
@@ -4645,7 +4679,7 @@ export interface SqlBuilder extends Standard {
    */
   insert<T extends RowObject = any>(
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T>;
 
   /**
@@ -4655,7 +4689,7 @@ export interface SqlBuilder extends Standard {
    */
   identityInsert<T extends RowObject = any>(
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T>;
 
   /**
@@ -4926,7 +4960,7 @@ export interface SqlBuilder extends Standard {
   /**
    * With语句
    */
-  with(...rowsets: CompatibleNamedSelect[]): With;
+  with(...rowsets: WithSelect[]): With;
   with(rowsets: Record<string, Select>): With;
 
   union<T extends RowObject = any>(
@@ -5528,7 +5562,7 @@ export const SqlBuilder: SqlBuilder = {
    */
   insert<T extends RowObject = any>(
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields);
   },
@@ -5539,7 +5573,7 @@ export const SqlBuilder: SqlBuilder = {
    */
   identityInsert<T extends RowObject = any>(
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields).withIdentity();
   },

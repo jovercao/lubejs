@@ -715,11 +715,11 @@ export class ContextBuilder<T extends DbContext = DbContext> {
         class: ctr,
         contextClass: this.metadata.class,
       });
-      const eb = new EntityMapBuilder(this, metadata);
+      const eb = new EntityMapBuilder<T>(this, metadata);
       this._entityMap.set(ctr, eb);
       this.metadata.addEntity(metadata as EntityMetadata);
     }
-    const builder = this._entityMap.get(ctr)!;
+    const builder = this._entityMap.get(ctr)! as EntityMapBuilder<T>;
     if (build) {
       build(builder);
       return this;
@@ -1069,11 +1069,11 @@ export abstract class EntityBuilder<T extends Entity> {
   > = new Map();
 
   column<P extends Scalar>(
-    selector: (p: T) => P,
+    selector: (p: Required<T>) => P,
     type: DataTypeOf<P>
   ): ColumnBuilder<T, P>;
   column<P extends Scalar>(
-    selector: (p: T) => P,
+    selector: (p: Required<T>) => P,
     type: DataTypeOf<P>,
     build: (builder: ColumnBuilder<T>) => void
   ): this;
@@ -1087,7 +1087,7 @@ export abstract class EntityBuilder<T extends Entity> {
     build: (builder: ColumnBuilder<T>) => void
   ): this;
   column<P extends Scalar>(
-    propertyOrselector: string | ((p: T) => P),
+    propertyOrselector: string | ((p: Required<T>) => P),
     type: DataTypeOf<P>,
     build?: (builder: ColumnBuilder<T>) => void
   ): ColumnBuilder<T, P> | this {
@@ -1181,14 +1181,14 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
   /**
    * 声明主键
    */
-  hasKey<P extends Scalar>(selector: (p: T) => P): TableKeyBuilder;
+  hasKey<P extends Scalar>(selector: (p: Required<T>) => P): TableKeyBuilder;
   hasKey<P extends Scalar>(
     constraintName: string,
-    selector: (p: T) => P
+    selector: (p: Required<T>) => P
   ): TableKeyBuilder;
   hasKey<P extends Scalar>(
-    nameOrSelector: string | ((p: T) => P),
-    selector?: (p: T) => P
+    nameOrSelector: string | ((p: Required<T>) => P),
+    selector?: (p: Required<T>) => P
   ): TableKeyBuilder {
     let constraintName: string | undefined;
     if (typeof nameOrSelector === 'function') {
@@ -1215,7 +1215,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
 
   hasIndex(
     name: string,
-    selector: (p: T) => Scalar[],
+    selector: (p: Required<T>) => Scalar[],
     isUnique: boolean = false,
     isClustered: boolean = false
   ): this {
@@ -1240,11 +1240,11 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
   //   type: Constructor<D>
   // ): HasOneBuilder<T, D>
   hasOne<D extends Entity>(
-    propertySelector: (P: T) => D,
+    propertySelector: (p: Required<T>) => D,
     type: Constructor<D>
   ): HasOneBuilder<T, D>;
   hasOne<D extends Entity>(
-    propertyOrSelector: string | ((P: T) => D),
+    propertyOrSelector: string | ((p: Required<T>) => D),
     type: Constructor<D>
   ): HasOneBuilder<T, D> {
     let property: string =
@@ -1278,7 +1278,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
    * @returns
    */
   hasMany<D extends Entity>(
-    selector: (p: T) => D[],
+    selector: (p: Required<T>) => D[],
     type: Constructor<D>
   ): HasManyBuilder<T, D> {
     let property: string = selectProperty(selector);
@@ -1457,7 +1457,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
     }
   }
 
-  withOne(selector?: (p: D) => S): OneToOneMapBuilder<S, D> {
+  withOne(selector?: (p: Required<D>) => S): OneToOneMapBuilder<S, D> {
     this.assertWith();
     this.metadata.kind = 'ONE_TO_ONE';
     if (this.metadata.referenceProperty) {
@@ -1485,7 +1485,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
     return oneToOne;
   }
 
-  withMany(selector?: (p: D) => S[]): ManyToOneBuilder<S, D> {
+  withMany(selector?: (p: Required<D>) => S[]): ManyToOneBuilder<S, D> {
     this.assertWith();
     this.metadata.kind = 'MANY_TO_ONE';
     if (selector) {
@@ -1528,7 +1528,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
     }
   }
 
-  withOne(selector?: (p: D) => S): OneToManyBuilder<S, D> {
+  withOne(selector?: (p: Required<D>) => S): OneToManyBuilder<S, D> {
     this.assertWith();
     this.metadata.kind = 'ONE_TO_MANY';
     if (selector) {
@@ -1554,7 +1554,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
     return manyToOne;
   }
 
-  withMany(selector?: (p: D) => S[]): ManyToManyBuilder<S, D> {
+  withMany(selector?: (p: Required<D>) => S[]): ManyToManyBuilder<S, D> {
     this.assertWith();
     this.metadata.kind = 'MANY_TO_MANY';
     const metadata: Partial<ManyToManyMetadata> = this
@@ -1733,7 +1733,7 @@ export class ManyToOneBuilder<S extends Entity, D extends Entity> {
    * @param selector
    * @returns
    */
-  hasForeignKey<P extends Scalar>(selector: (p: S) => P): this {
+  hasForeignKey<P extends Scalar>(selector: (p: Required<S>) => P): this {
     if (selector) {
       let property: string = selectProperty(selector);
       if (!property) throw new Error(`Please select a property.`);
@@ -1794,7 +1794,7 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     } else {
       build = nameOrBuild;
     }
-    const builder: TableEntityBuilder<any> = this.modelBuilder
+    const builder: TableEntityBuilder<T> = this.modelBuilder
       .entity(ctr)
       .asTable(name);
     if (build) {

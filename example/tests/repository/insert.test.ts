@@ -5,21 +5,24 @@ import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
-describe.skip('Repository: insert', function () {
+describe('Repository: insert', function () {
   this.timeout(0);
   let db: DB;
+  const logit: boolean = false;
   before(async () => {
-    db = await createContext<DB>();
-    db.lube.on('command', outputCommand);
+    db = await createContext(DB);
+    if (logit) {
+      db.lube.on('command', outputCommand);
+    }
   });
   after(async () => {
     db.lube.close();
   });
 
   it('单条记录插入 - User', async () => {
-    const { count: beforeCount } = await db.User.map(p => ({
+    const { count: beforeCount } = (await db.User.map(p => ({
       count: count(star),
-    })).fetchFirst();
+    })).fetchFirst())!;
     const user: User = User.create({
       name: 'user1',
       password: '123456',
@@ -27,12 +30,12 @@ describe.skip('Repository: insert', function () {
     });
     await db.User.insert(user);
 
-    const { count: afterCount } = await db.User.map(p => ({
+    const { count: afterCount } = (await db.User.map(p => ({
       count: count(star),
-    })).fetchFirst();
+    })).fetchFirst())!;
 
     assert(afterCount - beforeCount === 1, '插用户入数量不正确');
-    const newUser = await db.User.get(user.id);
+    const newUser = await db.User.get(user.id!);
     assert.deepStrictEqual(user, newUser);
   });
 

@@ -1,6 +1,6 @@
 import { LubeConfig } from 'lubejs';
 import driver from 'lubejs-mssql';
-import './orm'
+// import './orm'
 
 export const config: LubeConfig = {
   default: 'DB',

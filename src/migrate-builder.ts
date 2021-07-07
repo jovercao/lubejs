@@ -21,7 +21,7 @@ import {
   DropSequence,
   Insert,
   CompatibleTable,
-  FieldsOf,
+  ColumnsOf,
   Field,
   Update,
   Delete,
@@ -97,7 +97,7 @@ export abstract class MigrateBuilder {
 
   insert<T extends RowObject = any>(
     table: CompatibleTable<T, string>,
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return SQL.insert(table, fields);
   }

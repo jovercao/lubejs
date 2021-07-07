@@ -1,11 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-  assert,
-  ensureRowset,
-  isDocument,
-  isScalar,
-  isStatement,
-} from './util';
+import { assert, ensureTable, isDocument, isScalar, isStatement } from './util';
 import { EventEmitter } from 'events';
 import {
   Parameter,
@@ -18,19 +12,20 @@ import {
   InputObject,
   WhereObject,
   Field,
-  FieldsOf,
+  ColumnsOf,
   Procedure,
   Table,
   AsScalarType,
   CompatibleCondition,
   Document,
   Rowset,
-  RowTypeFrom,
+  RowObjectFrom,
   ProxiedRowset,
   Execute,
   CompatibleSortInfo,
   SortInfo,
   SqlBuilder as SQL,
+  ProxiedTable,
 } from './ast';
 import { SqlUtil } from './sql-util';
 import { INSERT_MAXIMUM_ROWS } from './constants';
@@ -58,7 +53,22 @@ export interface QueryResult<
   /**
    * 返回结果集
    */
-  rows?: T[];
+  rows: T extends never ? never : T[];
+
+  /**
+   * 多数据集返回，仅支持mssql
+   */
+  rowsets?: T extends never
+    ? never
+    : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
+    ? [O1[], O2[], O3[], O4[], O5[]]
+    : O extends [infer O1, infer O2, infer O3, infer O4]
+    ? [O1[], O2[], O3[], O4[]]
+    : O extends [infer O1, infer O2, infer O3]
+    ? [O1[], O2[], O3[]]
+    : O extends [infer O1, infer O2]
+    ? [O1[], O2[]]
+    : [T[]];
   /**
    * 输出参数
    */
@@ -73,41 +83,8 @@ export interface QueryResult<
    * 存储过程调用的返回值
    */
   returnValue?: R;
-
-  /**
-   * 多数据集返回，仅支持mssql
-   */
-  rowsets?: never extends O
-    ? any[]
-    : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
-    ? [O1[], O2[], O3[], O4[], O5[]]
-    : O extends [infer O1, infer O2, infer O3, infer O4]
-    ? [O1[], O2[], O3[], O4[]]
-    : O extends [infer O1, infer O2, infer O3]
-    ? [O1[], O2[], O3[]]
-    : O extends [infer O1, infer O2]
-    ? [O1[], O2[]]
-    : [T[]];
 }
 
-export interface SelectQueryResult<
-T extends RowObject = never,
-R extends Scalar = never,
-O extends [T, ...RowObject[]] = [T]
-> extends QueryResult<T, R, O> {
-  rows: T[];
-  rowsets: never extends O
-    ? any[]
-    : O extends [infer O1, infer O2, infer O3, infer O4, infer O5]
-    ? [O1[], O2[], O3[], O4[], O5[]]
-    : O extends [infer O1, infer O2, infer O3, infer O4]
-    ? [O1[], O2[], O3[], O4[]]
-    : O extends [infer O1, infer O2, infer O3]
-    ? [O1[], O2[], O3[]]
-    : O extends [infer O1, infer O2]
-    ? [O1[], O2[]]
-    : [T[]];
-}
 export interface SelectOptions<T extends RowObject = any> {
   where?:
     | WhereObject<T>
@@ -117,7 +94,7 @@ export interface SelectOptions<T extends RowObject = any> {
   offset?: number;
   limit?: number;
   distinct?: boolean;
-  sorts?: CompatibleSortInfo | ((rowset: Rowset<T>) => SortInfo[]);
+  sorts?: CompatibleSortInfo | ((rowset: ProxiedRowset<T>) => SortInfo[]);
 }
 
 export interface QueryHandler {
@@ -263,13 +240,15 @@ export class Executor {
   ): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: Select<T>
-  ): Promise<SelectQueryResult<T>>;
+  ): Promise<QueryResult<T>>;
   /**
    * 执行一个存储过程执行代码
    */
-  async query<R extends Scalar = number, T extends RowObject = never, O extends [T, ...RowObject[]] = [T]>(
-    sql: Execute<R, O>
-  ): Promise<QueryResult<O[0], R, O>>;
+  async query<
+    R extends Scalar = number,
+    T extends RowObject = never,
+    O extends [T, ...RowObject[]] = [T]
+  >(sql: Execute<R, O>): Promise<QueryResult<O[0], R, O>>;
   async query<T extends RowObject = any>(sql: string): Promise<QueryResult<T>>;
   async query<T extends RowObject = any>(
     sql: string,
@@ -309,7 +288,7 @@ export class Executor {
   async queryScalar(...args: any[]): Promise<any> {
     const rows = (await this._internalQuery(...args)).rows!;
     if (rows.length === 0) return null;
-    return Object.values(rows[0])[0]
+    return Object.values(rows[0])[0];
   }
 
   /**
@@ -323,12 +302,12 @@ export class Executor {
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: Name | Table<T, string>,
+    table: Name | ProxiedTable<T, string>,
     values: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
+    table: Name | ProxiedTable<T, string>,
+    fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value:
       | InputObject<T>
       | InputObject<T>[]
@@ -336,15 +315,15 @@ export class Executor {
       | CompatibleExpression[][]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | Table<T, string>,
-    fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[],
+    table: Name | ProxiedTable<T, string>,
+    fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | Table<T, string>,
+    table: Name | ProxiedTable<T, string>,
     arg2:
-      | FieldsOf<T>[]
-      | Field<Scalar, FieldsOf<T>>[]
+      | ColumnsOf<T>[]
+      | Field<Scalar, ColumnsOf<T>>[]
       | InputObject<T>
       | InputObject<T>[]
       | CompatibleExpression
@@ -356,19 +335,20 @@ export class Executor {
       | CompatibleExpression[]
       | undefined
   ): Promise<number> {
-    let fields: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[] | undefined;
+    let fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[] | undefined;
     let values:
       | InputObject<T>
       | InputObject<T>[]
       | CompatibleExpression
-      | CompatibleExpression[] | undefined;
+      | CompatibleExpression[]
+      | undefined;
 
     if (arguments.length <= 2) {
       values = arg2;
       fields = undefined;
     } else {
       values = arg3;
-      fields = arg2 as FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[];
+      fields = arg2 as ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[];
     }
 
     // 确保装入数组里，以便 使用
@@ -407,17 +387,17 @@ export class Executor {
   }
 
   async find<T extends RowObject = any>(
-    table: Table<T, string> | Name,
+    table: ProxiedTable<T, string> | Name,
     where:
       | Condition
       | WhereObject<T>
       | ((table: ProxiedRowset<T>) => Condition),
-    fields?: FieldsOf<T>[] | Field<Scalar, FieldsOf<T>>[]
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Promise<T | null> {
     let columns: any[];
-    const t = ensureRowset(table);
+    const t = ensureTable(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
-      columns = (fields as FieldsOf<T>[]).map(fieldName => t.field(fieldName));
+      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.field(fieldName));
     } else {
       columns = [t.star];
     }
@@ -425,7 +405,7 @@ export class Executor {
       .top(1)
       .from(t)
       .where(typeof where === 'function' ? where(t) : where);
-    const rows = (await this.query<T>(sql)).rows!;
+    const rows = (await this._internalQuery(sql)).rows;
     if (rows.length > 0) {
       return rows[0];
     }
@@ -439,16 +419,16 @@ export class Executor {
    * @param options
    */
   async select<T extends RowObject = any, G extends InputObject = InputObject>(
-    table: Name | Table<T, string>,
+    table: Name | ProxiedTable<T>,
     results: (rowset: Readonly<Rowset<T>>) => G,
     options?: SelectOptions<T>
-  ): Promise<RowTypeFrom<G>[]>;
+  ): Promise<RowObjectFrom<G>[]>;
   async select<T extends RowObject = any>(
-    table: Name | Table<T, string>,
+    table: Name | ProxiedTable<T>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
   async select(
-    table: Name | Table,
+    table: Name | ProxiedTable,
     arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
@@ -462,7 +442,7 @@ export class Executor {
     }
     const { where, sorts, offset, limit } = options || {};
     let columns: any;
-    const t = ensureRowset(table);
+    const t: ProxiedRowset<any> = ensureTable(table) as any;
     if (results) {
       columns = results(t);
     } else {
@@ -512,12 +492,12 @@ export class Executor {
      * 更新键字段列表
      */
     keyFieldsOrWhere:
-      | FieldsOf<T>[]
+      | ColumnsOf<T>[]
       | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number>;
 
   async update<T extends RowObject = any>(
-    table: string | Table<T, string>,
+    table: string | ProxiedTable<T, string>,
     setsOrItems:
       | InputObject<T>
       | InputObject<T>[]
@@ -526,14 +506,14 @@ export class Executor {
     whereOrKeys?:
       | WhereObject<T>
       | Condition
-      | FieldsOf<T>[]
+      | ColumnsOf<T>[]
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
       | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
-    const t = ensureRowset(table);
+    const t = ensureTable(table);
 
     if (Array.isArray(setsOrItems) && !(setsOrItems[0] instanceof Assignment)) {
-      let keys: FieldsOf<T>[];
+      let keys: ColumnsOf<T>[];
       let where: (item: T, table: Readonly<ProxiedRowset<T>>) => Condition;
       if (typeof whereOrKeys === 'function') {
         where = whereOrKeys as (
@@ -541,7 +521,7 @@ export class Executor {
           table: Readonly<ProxiedRowset<T>>
         ) => Condition;
       } else {
-        keys = whereOrKeys as FieldsOf<T>[];
+        keys = whereOrKeys as ColumnsOf<T>[];
       }
       const items = setsOrItems as T[];
       const docs: Document = doc(
@@ -582,13 +562,13 @@ export class Executor {
   }
 
   async delete<T extends RowObject = any>(
-    table: Table<T, string> | Name,
+    table: ProxiedTable<T> | Name,
     where?:
       | WhereObject<T>
       | Condition
-      | ((table: Readonly<ProxiedRowset<T>>) => Condition)
+      | ((table: Readonly<ProxiedTable<T>>) => Condition)
   ): Promise<number> {
-    const t = ensureRowset(table);
+    const t = ensureTable(table);
     const sql = SQL.delete(t);
     if (where) {
       sql.where(where instanceof Function ? where(t) : where);
@@ -597,13 +577,17 @@ export class Executor {
     return res.rowsAffected;
   }
 
-  async execute<R extends Scalar = number, T extends RowObject = never, O extends [T, ...RowObject[]] = [T]>(
+  async execute<
+    R extends Scalar = number,
+    T extends RowObject = never,
+    O extends [T, ...RowObject[]] = [T]
+  >(
     spName: Name | Procedure<R, O>,
     params?: CompatibleExpression[]
   ): Promise<QueryResult<O[0], R, O>> {
     const sql = SQL.execute<R, O>(spName, params);
     const res = await this.query(sql);
-    return res;
+    return res as any;
   }
 
   // /**

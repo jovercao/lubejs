@@ -225,14 +225,14 @@ export async function connect(
 
 const OPTIONS_FILE = '.lubejs';
 
-async function loadConfig(): Promise<LubeConfig> {
+export async function loadConfig(): Promise<LubeConfig> {
   let configFile = join(process.cwd(), OPTIONS_FILE);
   if (existsSync(configFile + '.js')) {
     configFile = configFile + '.js';
   } else if (existsSync(configFile + '.ts')) {
     configFile = configFile + '.ts';
   } else {
-    throw new Error(`Configure file '.lubejs(.ts|.js)' not found in dir ${process.cwd()}.`)
+    throw new Error(`Configure file '.lubejs(.ts|.js)' not found in dir ${process.cwd()}, use 'lube init' to create it.`)
   }
   let config: LubeConfig;
   try {

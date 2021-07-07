@@ -1,20 +1,32 @@
 import Program from 'commander';
-import { MigrateCli, LubeConfig } from './migrate-cli';
-import { existsSync } from 'fs';
+import { MigrateCli } from './migrate-cli';
 import 'colors';
-import { join } from 'path';
-import { createContext } from './lube';
+import { createContext, loadConfig } from './lube';
+import { resolve } from 'path'
 
 const OPTIONS_FILE = '.lubejs';
 
-async function createMigrateCli(options: {
+async function createMigrateCli(options?: {
   context?: string;
   migrateDir?: string;
+  require?: string;
 }): Promise<MigrateCli> {
-  let { context, migrateDir } = options;
+  let { context, migrateDir, require: importFile } = options || {};
+  if (importFile) {
+    const lowerPath = importFile.toLowerCase();
+    if (lowerPath.endsWith('.ts')) {
+      await import(resolve(importFile));
+    } else if (lowerPath.endsWith('.js')) {
+      await require(lowerPath);
+    } else {
+      throw new Error(`Option --require is only support .ts and .js file.`)
+    }
+  }
   if (!migrateDir) {
     migrateDir = './migrates';
   }
+  // 加载配置，以便导入ORM Metadata
+  await loadConfig();
   const db = await createContext(context);
   const cli = await new MigrateCli(db, migrateDir);
   return cli;
@@ -25,6 +37,10 @@ const migrate = Program.command('migrate')
   .option(
     '-d, --dir <dir>',
     '迁移文件路径，不传递时默认为 {pwd}/migrate/{context}/。'
+  )
+  .option(
+    '-r, --require <import>',
+    '预加载一个源文件，可以是.ts或者.js，一般用于导入ORM实体注册信息'
   )
   .description('Migration comannders.');
 

@@ -1,15 +1,12 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Decimal from 'decimal.js';
-import { clearScreenDown } from 'readline';
 import { URL } from 'url';
-import { isString } from 'util';
 import {
   Condition,
   CompatibleExpression,
   Expression,
   AST,
-  Proxied,
   Func,
   Table,
   Field,
@@ -55,7 +52,6 @@ import {
   ProxiedRowset,
   ProxiedTable,
   CompatibleRowset,
-  FieldsOf,
   ProxiedNamedSelect,
   StandardExpression,
   VariantDeclare,
@@ -91,6 +87,8 @@ import {
   While,
   Continue,
   Break,
+  WithSelect,
+  ProxiedWithSelect,
 } from './ast';
 
 import {
@@ -109,13 +107,11 @@ import { FetchRelations } from './repository'
 import {
   Binary,
   DbType,
-  EntityType,
   ListType,
   Name,
   PathedName,
   RowObject,
   Scalar,
-  ScalarType,
   Uuid,
 } from './types';
 
@@ -195,23 +191,22 @@ export function ensureTableVariant<T extends RowObject, N extends string>(
 //   return new Table(name);
 // }
 
-export function ensureRowset<T extends RowObject>(
-  name: Name | Table<T>
-): ProxiedTable<T>;
-export function ensureRowset<T extends RowObject>(
-  name: Name | Rowset<T>
-): ProxiedRowset<T>;
-export function ensureRowset<T extends RowObject>(
-  name: Name | Rowset<T> | Table<T>
-): ProxiedRowset<T> | ProxiedTable<T> {
-  if (isRowset(name)) {
-    if (isProxiedRowset(name)) {
-      return name;
-    }
-    return makeProxiedRowset(name);
+export function ensureTable<T extends RowObject>(
+  nameOrTable: Name | ProxiedTable<T>
+): ProxiedTable<T> {
+  if (isProxiedTable<T>(nameOrTable)) {
+    return nameOrTable;
   }
-  const table = new Table<T>(name); // ensureRowset<T>(name);
-  return makeProxiedRowset(table);
+  return SqlBuilder.table(nameOrTable); // ensureRowset<T>(name);
+}
+
+export function ensureRowset<T extends RowObject>(
+  nameOrRowset: Name | ProxiedRowset<T>
+): ProxiedRowset<T> {
+  if (isProxiedRowset<T>(nameOrRowset)) {
+    return nameOrRowset;
+  }
+  return SqlBuilder.table(nameOrRowset);
 }
 
 /**
@@ -276,15 +271,21 @@ export function ensureCondition<T extends RowObject>(
   return compares.length >= 2 ? SqlBuilder.and(compares) : compares[0];
 }
 
-export function makeProxiedRowset<T extends RowObject>(
-  rowset: Table<T>
-): ProxiedTable<T>;
-export function makeProxiedRowset<T extends RowObject>(
-  rowset: Rowset<T>
-): ProxiedRowset<T>;
-export function makeProxiedRowset<T extends RowObject>(
-  rowset: Table<T> | Rowset<T> | NamedSelect<T>
-): ProxiedTable<T> | ProxiedRowset<T> | ProxiedNamedSelect<T> {
+export function makeProxiedRowset<T extends RowObject, N extends string>(
+  rowset: Table<T, N>
+): ProxiedTable<T, N>;
+export function makeProxiedRowset<T extends RowObject, N extends string>(
+  rowset: WithSelect<T, N>
+): ProxiedWithSelect<T, N>;
+export function makeProxiedRowset<T extends RowObject, N extends string>(
+  rowset: NamedSelect<T, N>
+): ProxiedNamedSelect<T, N>;
+export function makeProxiedRowset<T extends RowObject, N extends string>(
+  rowset: Rowset<T, N>
+): ProxiedRowset<T, N>;
+export function makeProxiedRowset<T extends RowObject, N extends string>(
+  rowset: Table<T, N> | Rowset<T, N> | NamedSelect<T, N>
+): ProxiedTable<T, N> | ProxiedRowset<T, N> | ProxiedNamedSelect<T, N> {
   const keys = Object.getOwnPropertyNames(rowset);
   return new Proxy(rowset, {
     get(target: any, key: string | symbol | number): any {
@@ -377,7 +378,7 @@ export function isBinary(value: any): value is Binary {
 }
 
 export function isProxiedRowset<T extends RowObject>(
-  rowset: Rowset<T>
+  rowset: any
 ): rowset is ProxiedRowset<T> {
   return Reflect.get(rowset, $IsProxy) === true;
 }
@@ -603,7 +604,11 @@ export function isIdentifier(value: any): value is Identifier {
 }
 
 export function isTable(value: any): value is Table {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE;
+  return  value.$type === SQL_SYMBOLE.TABLE;
+}
+
+export function isProxiedTable<T extends RowObject>(value: any): value is ProxiedTable<T> {
+  return isTable(value) && Reflect.get(value, $IsProxy);
 }
 
 export function isField(value: any): value is Field {
@@ -618,8 +623,8 @@ export function isNamedSelect(value: any): value is NamedSelect {
   return value?.$type === SQL_SYMBOLE.NAMED_SELECT;
 }
 
-export function isWithSelect(value: any): value is NamedSelect {
-  return isNamedSelect(value) && value.$inWith;
+export function isWithSelect(value: any): value is WithSelect {
+  return value.$type === SQL_SYMBOLE.WITH_SELECT;
 }
 
 export function isWith(value: any): value is With {
@@ -652,7 +657,7 @@ export function isVariant(value: any): value is Variant {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
 }
 
-export function isRowset(value: any): value is Rowset {
+export function isRowset<T extends RowObject = {}>(value: any): value is Rowset<T> {
   return (
     isTable(value) ||
     isNamedSelect(value) ||
@@ -1072,7 +1077,7 @@ export function isUrl(str: string): boolean {
   }
 }
 
-export function assertAstNonempty(value: object | undefined, message: string = 'AST syntax error.'): asserts value {
+export function assertAstNonempty(value: any, message: string = 'AST syntax error.'): asserts value {
   if (!value) {
     throw new Error('AST syntax error:' + message);
   }

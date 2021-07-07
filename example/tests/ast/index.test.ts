@@ -33,17 +33,17 @@ describe.skip('AST测试', function () {
 
     let offset: number = 0,
       limit: number = 50,
-      providerId: number,
-      producerId: number,
-      productId: number,
-      warehouseId: number,
-      location: string,
-      qualityStatus: number = null,
-      unsalable: boolean,
+      providerId: number | null = null,
+      producerId: number | null = null,
+      productId: number | null = null,
+      warehouseId: number | null = null,
+      location: string | null = null,
+      qualityStatus: number | null = null,
+      unsalable: boolean | null = null,
       unsalableDay: number = 180,
-      nearExpire: boolean,
+      nearExpire: boolean | null = null,
       nearExpireDay: number = 180,
-      keyword: string,
+      keyword: string | null = null,
       sorts: [
         {
           column: 'quantity';
@@ -133,7 +133,7 @@ describe.skip('AST测试', function () {
           or(value(providerId).isNull(), stock.providerId.eq(providerId)),
           or(value(producerId).isNull(), product.producerId.eq(producerId)),
           or(value(warehouseId).isNull(), stock.warehouseId.eq(warehouseId)),
-          or(nvl(location, '').eq(''), stock.location.like(location)),
+          or(nvl(location, '').eq(''), stock.location.like(location!)),
           or(
             value(qualityStatus).isNull(),
             stock.qualityStatus.eq(qualityStatus)
@@ -146,8 +146,8 @@ describe.skip('AST测试', function () {
     const countSql = select(count(countView.id)).from(countView);
     const copiedCountSql = countSql.clone();
 
-    assert(countView !== copiedCountSql.$froms[0]);
-    assert.deepStrictEqual((copiedCountSql.$froms[0] as any).abc.$name, [
+    assert(countView !== copiedCountSql.$froms![0]);
+    assert.deepStrictEqual((copiedCountSql.$froms![0] as any).abc.$name, [
       'abc',
       'countView',
     ]);

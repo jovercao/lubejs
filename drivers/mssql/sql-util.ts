@@ -87,6 +87,7 @@ import {
   If,
   While,
   Execute,
+  assertAstNonempty,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -146,7 +147,9 @@ export const DefaultSqlOptions: MssqlSqlOptions = {
 };
 
 export class MssqlStandardTranslator implements StandardTranslator {
-  sqlUtil: MssqlSqlUtil;
+  get sqlUtil(): MssqlSqlUtil {
+    return this.provider.sqlUtil;
+  }
 
   constructor(private provider: MssqlProvider) {}
 
@@ -206,7 +209,7 @@ export class MssqlStandardTranslator implements StandardTranslator {
 
   round(
     value: CompatibleExpression<number>,
-    s?: CompatibleExpression<number>
+    s: CompatibleExpression<number>
   ): Expression<number> {
     return round(value, s);
   }
@@ -610,7 +613,6 @@ export class MssqlStandardTranslator implements StandardTranslator {
 }
 
 export class MssqlSqlUtil extends SqlUtil {
-
   protected sqlifyExecute(
     exec: Execute,
     params: Set<Parameter<Scalar, string>>,
@@ -641,23 +643,34 @@ export class MssqlSqlUtil extends SqlUtil {
     statement: While,
     params?: Set<Parameter<Scalar, string>>
   ): string {
+    assertAstNonempty(
+      statement.$statement,
+      'In while statement, do statement not found.'
+    );
     let sql = `WHILE (${this.sqlifyCondition(statement.$condition)}) `;
     sql += this.sqlifyStatement(statement.$statement, params);
     return sql;
   }
   sqlifyIf(statement: If, params?: Set<Parameter<Scalar, string>>): string {
+    assertAstNonempty(
+      statement.$then,
+      'In if statement, then statement not found.'
+    );
     let sql = `IF (${this.sqlifyCondition(
       statement.$condition,
       params
     )})\n  ${this.sqlifyStatement(statement.$then, params)}\n  `;
     if (statement.$elseif && statement.$elseif.length > 0) {
       sql += statement.$elseif
-        .map(
-          ([condition, statement]) =>
-            `ELSE IF (${this.sqlifyCondition(
-              condition
-            )}) ${this.sqlifyStatement(statement)}`
-        )
+        .map(([condition, statement]) => {
+          assertAstNonempty(
+            statement,
+            'In if statement, elseif then not found'
+          );
+          return `ELSE IF (${this.sqlifyCondition(
+            condition
+          )}) ${this.sqlifyStatement(statement)}`;
+        })
         .join('\n  ');
     }
     if (statement.$else) {
@@ -743,6 +756,9 @@ export class MssqlSqlUtil extends SqlUtil {
     if (statement.$clustered) {
       sql += 'CLUSTERED ';
     }
+    assertAstNonempty(statement.$name, `Index name not found.`);
+    assertAstNonempty(statement.$table, `Index on table not found.`);
+    assertAstNonempty(statement.$columns, `Index columns not found.`);
     sql += `INDEX ${this.sqlifyName(statement.$name)} ON ${this.sqlifyName(
       statement.$table
     )}(${statement.$columns
@@ -756,19 +772,31 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyAlterFunction(statement: AlterFunction): string {
-    return `ALTER FUNCTION ${this.sqlifyName(
-      statement.$name
-    )}(${statement.$params
-      .map(param => this.sqlifyVariantDeclare(param))
-      .join(', ')}) `;
+    return `ALTER FUNCTION ${this.sqlifyName(statement.$name)}(${
+      statement.$params
+        ? statement.$params
+            .map(param => this.sqlifyVariantDeclare(param))
+            .join(', ')
+        : ''
+    }) `;
   }
 
   protected sqlifyCreateFunction(statement: CreateFunction): string {
-    return `CREATE FUNCTION ${this.sqlifyName(
-      statement.$name
-    )}(${statement.$params
-      .map(param => this.sqlifyVariantDeclare(param))
-      .join(', ')}) RETURNS ${
+    assertAstNonempty(
+      statement.$body,
+      'In CreateFunction statement, as statement not found.'
+    );
+    assertAstNonempty(
+      statement.$returns,
+      'In CreateFunction statement, returns type not found.'
+    );
+    return `CREATE FUNCTION ${this.sqlifyName(statement.$name)}(${
+      statement.$params
+        ? statement.$params
+            .map(param => this.sqlifyVariantDeclare(param))
+            .join(', ')
+        : ''
+    }) RETURNS ${
       isRaw(statement.$returns)
         ? statement.$returns.$sql
         : isDbType(statement.$returns)
@@ -784,19 +812,23 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyAlterProcedure(statement: AlterProcedure): string {
-    return `ALTER PROCEDURE ${this.sqlifyName(
-      statement.$name
-    )} (${statement.$params
-      .map(param => this.sqlifyProcedureParameter(param))
-      .join(', ')})`;
+    return `ALTER PROCEDURE ${this.sqlifyName(statement.$name)} (${
+      statement.$params
+        ? statement.$params
+            .map(param => this.sqlifyProcedureParameter(param))
+            .join(', ')
+        : ''
+    })`;
   }
 
   protected sqlifyCreateProcedure(statement: CreateProcedure): string {
-    return `CREATE PROCEDURE ${this.sqlifyName(
-      statement.$name
-    )} (${statement.$params
-      .map(param => this.sqlifyProcedureParameter(param))
-      .join(', ')})`;
+    return `CREATE PROCEDURE ${this.sqlifyName(statement.$name)} (${
+      statement.$params
+        ? statement.$params
+            .map(param => this.sqlifyProcedureParameter(param))
+            .join(', ')
+        : ''
+    })`;
   }
 
   protected sqlifyAlterTable(statement: AlterTable<string>): string {
@@ -859,8 +891,8 @@ export class MssqlSqlUtil extends SqlUtil {
 
     if (isAlterTableColumn(member)) {
     }
-
     if (isPrimaryKey(member)) {
+      assertAstNonempty(member.$columns, 'Primary key columns not found.');
       return (
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         ` PRIMARY KEY(${member.$columns.map(
@@ -870,6 +902,7 @@ export class MssqlSqlUtil extends SqlUtil {
     }
 
     if (isUniqueKey(member)) {
+      assertAstNonempty(member.$columns, 'Unique key columns not found.');
       return (
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         `UNIQUE(${member.$columns.map(
@@ -879,6 +912,15 @@ export class MssqlSqlUtil extends SqlUtil {
     }
 
     if (isForeignKey(member)) {
+      assertAstNonempty(member.$columns, 'Foreign key columns not found.');
+      assertAstNonempty(
+        member.$referenceTable,
+        'Foreign key reference table not found.'
+      );
+      assertAstNonempty(
+        member.$referenceColumns,
+        'Foreign key reference columns not found.'
+      );
       return (
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         `FOREIGN KEY(${member.$columns.map(col =>
@@ -898,6 +940,10 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   sqlifyCreateTable(statement: CreateTable): string {
+    assertAstNonempty(
+      statement.$members,
+      'CreateTable statement name not found.'
+    );
     let sql = `CREATE TABLE ${this.sqlifyName(statement.$name)} (`;
     sql += statement.$members
       .map(member => this.sqlifyTableMember(member))
@@ -913,15 +959,20 @@ export class MssqlSqlUtil extends SqlUtil {
   ): string {
     const sql = super.sqlifyInsert(insert, params, parent);
     if (!insert.$identityInsert) return sql;
-    return `SET IDENTITY_INSERT ${this.sqlifyIdentifier(insert.$table)} ON
+    return `SET IDENTITY_INSERT ${this.sqlifyName(insert.$table.$name)} ON
 ${sql}
-SET IDENTITY_INSERT ${this.sqlifyIdentifier(insert.$table)} OFF
+SET IDENTITY_INSERT ${this.sqlifyName(insert.$table.$name)} OFF
 `;
   }
 
   protected sqlifyTableVariantDeclare(
     declare: TableVariantDeclare<any>
   ): string {
+    assertAstNonempty(declare.$name, 'Table Variant declare name not found.');
+    assertAstNonempty(
+      declare.$members,
+      'Table Variant declare members not found.'
+    );
     let sql = `${this.sqlifyVariantName(declare.$name)} TABLE(`;
     sql += declare.$members
       .map(member => this.sqlifyTableMember(member))

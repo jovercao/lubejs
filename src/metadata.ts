@@ -5,6 +5,7 @@ import {
   CompatibleExpression,
   Expression,
   Field,
+  NamedSelect,
   ProxiedRowset,
   Rowset,
   Select,
@@ -1494,13 +1495,15 @@ export class MetadataStore {
 export const metadataStore = new MetadataStore();
 
 export function aroundRowset<T extends Entity = any>(
-  rowset: Rowset<any>,
+  rowset: Rowset<T> | Table<T> | NamedSelect<T>,
   metadata: EntityMetadata
 ): ProxiedRowset<T> {
-  if (isProxiedRowset(rowset)) {
-    rowset = Reflect.get(rowset, $ROWSET_INSTANCE);
+  let arowset: Rowset<any> = rowset as Rowset<any>;
+  if (isProxiedRowset(arowset)) {
+    arowset = Reflect.get(arowset, $ROWSET_INSTANCE);
   }
-  const keys = Object.getOwnPropertyNames(rowset);
+
+  const keys = Object.getOwnPropertyNames(arowset);
   const field = function (property: string) {
     const column = metadata.getColumn(property);
     if (!column) {
@@ -1508,9 +1511,9 @@ export function aroundRowset<T extends Entity = any>(
         `Entity ${metadata.className} property ${property} is not found.`
       );
     }
-    return rowset.field(column.columnName);
+    return arowset.field(column.columnName);
   };
-  return new Proxy(rowset, {
+  return new Proxy(arowset, {
     get(target: any, key: string | symbol | number): any {
       if (key === 'field') {
         return field;
@@ -1557,7 +1560,7 @@ export function makeRowset<T extends Entity = any>(
 ): ProxiedRowset<T> {
   const metadata = metadataStore.getEntity(entity);
   if (!metadata) throw new Error(`No metadata found ${entity}`);
-  let rowset: Rowset<T>;
+  let rowset: Rowset<any>;
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_');
   } else if (isTableEntity(metadata)) {
@@ -1567,7 +1570,7 @@ export function makeRowset<T extends Entity = any>(
     rowset = new Table(metadata.viewName);
     // rowset = SQL.table(metadata.viewName);
   }
-  return aroundRowset(rowset, metadata);
+  return aroundRowset<T>(rowset, metadata);
 }
 
 /**
