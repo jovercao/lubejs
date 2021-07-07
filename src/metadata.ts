@@ -1511,11 +1511,11 @@ export function aroundRowset<T extends Entity = any>(
         `Entity ${metadata.className} property ${property} is not found.`
       );
     }
-    return arowset.field(column.columnName);
+    return arowset.$(column.columnName);
   };
   return new Proxy(arowset, {
     get(target: any, key: string | symbol | number): any {
-      if (key === 'field') {
+      if (key === '$') {
         return field;
       }
 

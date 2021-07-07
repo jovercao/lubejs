@@ -915,7 +915,7 @@ export abstract class Rowset<
    * 访问下一节点
    * @param name 节点名称
    */
-  field<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
+  $<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
     if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
@@ -932,28 +932,28 @@ export abstract class Rowset<
     return new Field<T[P], P>(fieldName as PathedName<P>);
   }
 
-  /**
-   * 获取star的缩写方式，等价于 field
-   */
-  get _(): Star<T> {
-    return this.star;
-  }
+  // /**
+  //  * 获取star的缩写方式，等价于 field
+  //  */
+  // get _(): Star<T> {
+  //   return this.star;
+  // }
 
-  /**
-   * 访问字段的缩写方式，等价于 field
-   */
-  $<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
-    return this.field(name);
-  }
+  // /**
+  //  * 访问字段的缩写方式，等价于 field
+  //  */
+  // $<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
+  //   return this.field(name);
+  // }
 
   /**
    * 获取所有字段
    */
-  get star(): Star<T> {
-    if (!this.$alias) {
+  get _(): Star<T> {
+    if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
-    return new Star<T>(this.$alias);
+    return new Star<T>(this.$alias || this.$alias);
   }
 
   clone(): this {
@@ -1020,9 +1020,9 @@ export class Table<
   /**
    * 获取所有字段
    */
-  get star(): Star<T> {
+  get _(): Star<T> {
     if (this.$alias) {
-      return super.star;
+      return super._;
     }
     return new Star(this.$name);
   }
@@ -2664,7 +2664,7 @@ export class Insert<T extends RowObject = any> extends Statement {
     if (fields) {
       if (typeof fields[0] === 'string') {
         this.$fields = (fields as ColumnsOf<T>[]).map(field =>
-          this.$table.field(field)
+          this.$table.$(field)
         );
       } else {
         this.$fields = fields as Field<Scalar, ColumnsOf<T>>[];
@@ -2682,7 +2682,7 @@ export class Insert<T extends RowObject = any> extends Statement {
       );
       this.$fields = (Object.keys(existsFields) as ColumnsOf<T>[]).map(
         fieldName => {
-          return this.$table.field(fieldName);
+          return this.$table.$(fieldName);
         }
       );
     }
@@ -2795,7 +2795,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
         this.$sets = Object.entries(item).map(
           ([key, value]: [string, unknown]) =>
             new Assignment(
-              this.$table.field(key as any),
+              this.$table.$(key as any),
               ensureExpression(value as CompatibleExpression)
             )
         );
@@ -3138,9 +3138,9 @@ export class NamedSelect<
   $name!: A;
   $alias?: never;
 
-  constructor(statement: Select<T>, alias: A) {
+  constructor(statement: Select<T>, name: A) {
     super();
-    super.as(alias);
+    this.$name = name;
     this.$select = statement;
   }
 

@@ -113,7 +113,7 @@ export class MigrateCli {
     try {
       const [ item ] = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
-        { offset: 0, limit: 1, sorts: t => [t.field('migrate_id').desc()] }
+        { offset: 0, limit: 1, sorts: t => [t.$('migrate_id').desc()] }
       );
       if (!item) return;
       const id = item.migrate_id;

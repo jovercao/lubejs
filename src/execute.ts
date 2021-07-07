@@ -397,9 +397,9 @@ export class Executor {
     let columns: any[];
     const t = ensureTable(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
-      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.field(fieldName));
+      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.$(fieldName));
     } else {
-      columns = [t.star];
+      columns = [t._];
     }
     const sql = SQL.select<T>(...columns)
       .top(1)
@@ -446,7 +446,7 @@ export class Executor {
     if (results) {
       columns = results(t);
     } else {
-      columns = t.star;
+      columns = t._;
     }
     const sql = SQL.select(columns).from(table);
     if (where) {

@@ -115,7 +115,7 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   take(count: number, skip = 0): Queryable<T> {
-    const sql = select(this.rowset.star)
+    const sql = select(this.rowset._)
       .from(this.rowset)
       .offset(skip)
       .limit(count);
@@ -167,7 +167,7 @@ export class Queryable<T extends Entity | RowObject>
    */
   filter(condition: (p: XRowset<T>) => CompatibleCondition<T>): Queryable<T> {
     const queryable = this.fork(
-      select(this.rowset.star)
+      select(this.rowset._)
         .from(this.rowset)
         .where(condition(this.rowset))
         .as(ROWSET_ALIAS)
@@ -187,7 +187,7 @@ export class Queryable<T extends Entity | RowObject>
 
   sort(sorts: (p: XRowset<T>) => SortInfo[] | SortObject<T>): Queryable<T> {
     return this.fork(
-      select(this.rowset.star)
+      select(this.rowset._)
         .from(this.rowset)
         .orderBy(sorts(this.rowset))
         .as(ROWSET_ALIAS)
@@ -214,9 +214,9 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   union(...sets: Queryable<T>[]): Queryable<T> {
-    const sql = select(this.rowset.star).from(this.rowset);
+    const sql = select(this.rowset._).from(this.rowset);
     sets.forEach(query => {
-      sql.unionAll(select(query.rowset.star).from(query.rowset));
+      sql.unionAll(select(query.rowset._).from(query.rowset));
     });
     return this.fork(sql.as(ROWSET_ALIAS));
   }
@@ -265,7 +265,7 @@ export class Queryable<T extends Entity | RowObject>
   getSql(): Select<T> {
     return isNamedSelect(this.rowset)
       ? this.rowset.$select
-      : select(this.rowset.star).from(this.rowset);
+      : select(this.rowset._).from(this.rowset);
   }
 
   /**
@@ -397,9 +397,9 @@ export class Queryable<T extends Entity | RowObject>
       const relationForeignColumn =
         relation.referenceRelation.relationRelation.referenceRelation
           .foreignColumn;
-      const relationIdsSelect = select(rt.field(relationForeignColumn.property))
+      const relationIdsSelect = select(rt.$(relationForeignColumn.property))
         .from(rt)
-        .where(rt.field(thisForeignColumn.property).eq(key));
+        .where(rt.$(thisForeignColumn.property).eq(key));
       const subItems = await relationRepository
         .filter(rowset =>
           rowset[relation.referenceEntity.keyColumn.property].in(

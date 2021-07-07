@@ -3,7 +3,7 @@ import mock from 'mockjs';
 import _ from 'lodash';
 import '../../orm';
 
-import { Lube, connect, SqlBuilder as SQL, SortObject } from 'lubejs';
+import { Lube, connect, SqlBuilder as SQL, SortObject, Decimal } from 'lubejs';
 
 const {
   table,
@@ -37,7 +37,7 @@ interface IItem {
   FParentId: number;
 }
 
-describe.skip('MSSQL TESTS', function () {
+describe('MSSQL TESTS', function () {
   this.timeout(0);
   let db: Lube;
   const sqlLogs = true;
@@ -172,9 +172,9 @@ describe.skip('MSSQL TESTS', function () {
     const y = x.as('y');
 
     const sql = $with(x)
-      .select(x._)
-      .from(x)
-      .unionAll(select(i._).from(i).join(x.as('y'), i.FParentId.eq(y.FId)));
+      .select(y._)
+      .from(y)
+      .unionAll(select(i._).from(i).join(y, i.FParentId.eq(y.FId)));
   });
 
   it('db.insert(table, rows: Expression[])', async function () {
@@ -380,8 +380,8 @@ describe.skip('MSSQL TESTS', function () {
     const o = table('sysobjects').as('o');
     const p = table(['extended_properties', 'sys']).as('p');
     const sql = select(
-      o.field('id'),
-      o.field('name'),
+      o.$('id'),
+      o.$('name'),
       p.value.as('desc'),
       input('inputValue', 1000).as('inputValue')
     )
@@ -492,7 +492,7 @@ describe.skip('MSSQL TESTS', function () {
     } = await db.query(sql);
     assert.strictEqual(row.strToDate.toISOString(), date.toISOString());
     assert.strictEqual(row.strToint32, number);
-    assert.strictEqual(row.strToNumbice, number);
+    assert(row.strToNumbice.eq(new Decimal(number)));
     assert.strictEqual(row.int32ToStr, str);
     assert.strictEqual(row.binary.toString(), bin.toString());
   });

@@ -102,10 +102,12 @@ import {
   $ROWSET_INSTANCE,
 } from './constants';
 import { Command } from './execute';
-import { FetchRelations } from './repository'
+import { FetchRelations } from './repository';
 
 import {
   Binary,
+  Constructor,
+  DataType,
   DbType,
   ListType,
   Name,
@@ -315,7 +317,7 @@ export function makeProxiedRowset<T extends RowObject, N extends string>(
       if (key.startsWith('$')) {
         key = key.substring(1);
       }
-      return target.field(key);
+      return target.$(key);
     },
   });
 }
@@ -380,7 +382,11 @@ export function isBinary(value: any): value is Binary {
 export function isProxiedRowset<T extends RowObject>(
   rowset: any
 ): rowset is ProxiedRowset<T> {
-  return Reflect.get(rowset, $IsProxy) === true;
+  return (
+    rowset &&
+    typeof rowset === 'object' &&
+    Reflect.get(rowset, $IsProxy) === true
+  );
 }
 
 // export type Constructor<T> = {
@@ -458,11 +464,17 @@ export function isStandardExpression(value: any): value is StandardExpression {
 }
 
 export function isStandardStatement(value: any): value is StandardStatement {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.STANDARD_STATEMENT;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.STANDARD_STATEMENT
+  );
 }
 
 export function isAnnotation(value: any): value is Annotation {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ANNOTATION;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ANNOTATION
+  );
 }
 
 export function isRaw(value: any): value is Raw {
@@ -470,71 +482,122 @@ export function isRaw(value: any): value is Raw {
 }
 
 export function isCreateTable(value: any): value is CreateTable {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_TABLE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_TABLE
+  );
 }
 
 export function isAlterTable(value: any): value is AlterTable {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ALTER_TABLE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ALTER_TABLE
+  );
 }
 
 export function isDropTable(value: any): value is DropTable {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_TABLE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_TABLE
+  );
 }
 
 export function isCreateView(value: any): value is CreateView {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_VIEW;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_VIEW
+  );
 }
 
 export function isAlterView(value: any): value is AlterView {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ALTER_VIEW;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ALTER_VIEW
+  );
 }
 
 export function isDropView(value: any): value is DropView {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_TABLE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_TABLE
+  );
 }
 
 export function isBlock(value: any): value is Block {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.BLOCK;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.BLOCK
+  );
 }
 
 export function isCreateProcedure(value: any): value is CreateProcedure {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_PROCEDURE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_PROCEDURE
+  );
 }
 
 export function isAlterProcedure(value: any): value is AlterProcedure {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ALTER_PROCEDURE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ALTER_PROCEDURE
+  );
 }
 
 export function isDropProcedure(value: any): value is DropProcedure {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_PROCEDURE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_PROCEDURE
+  );
 }
 
 export function isCreateFunction(value: any): value is CreateFunction {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_FUNCTION;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_FUNCTION
+  );
 }
 
 export function isAlterFunction(value: any): value is AlterFunction {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ALTER_FUNCTION;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ALTER_FUNCTION
+  );
 }
 
 export function isDropFunction(value: any): value is DropFunction {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_FUNCETION;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_FUNCETION
+  );
 }
 
 export function isCreateIndex(value: any): value is CreateIndex {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_INDEX;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_INDEX
+  );
 }
 
 export function isDropIndex(value: any): value is DropIndex {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_INDEX;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_INDEX
+  );
 }
 
 export function isCreateSequence(value: any): value is CreateSequence {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CREATE_SEQUENCE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CREATE_SEQUENCE
+  );
 }
 
 export function isDropSequence(value: any): value is DropSequence {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DROP_SEQUENCE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DROP_SEQUENCE
+  );
 }
 
 export function isPrimaryKey(value: any): value is PrimaryKey {
@@ -562,31 +625,52 @@ export function isAlterTableColumn(value: any): value is TableColumnForAlter {
 }
 
 export function isSelect(value: any): value is Select {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.SELECT;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.SELECT
+  );
 }
 
 export function isUpdate(value: any): value is Update {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.UPDATE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.UPDATE
+  );
 }
 
 export function isDelete(value: any): value is Delete {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DELETE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DELETE
+  );
 }
 
 export function isInsert(value: any): value is Insert {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.INSERT;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.INSERT
+  );
 }
 
 export function isAssignment(value: any): value is Assignment {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.ASSIGNMENT;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.ASSIGNMENT
+  );
 }
 
 export function isDeclare(value: any): value is Declare {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.DECLARE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.DECLARE
+  );
 }
 
 export function isExecute(value: any): value is Execute {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.EXECUTE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.EXECUTE
+  );
 }
 
 export function isStatement(value: any): value is Statement {
@@ -604,10 +688,12 @@ export function isIdentifier(value: any): value is Identifier {
 }
 
 export function isTable(value: any): value is Table {
-  return  value.$type === SQL_SYMBOLE.TABLE;
+  return value.$type === SQL_SYMBOLE.TABLE;
 }
 
-export function isProxiedTable<T extends RowObject>(value: any): value is ProxiedTable<T> {
+export function isProxiedTable<T extends RowObject>(
+  value: any
+): value is ProxiedTable<T> {
   return isTable(value) && Reflect.get(value, $IsProxy);
 }
 
@@ -657,7 +743,9 @@ export function isVariant(value: any): value is Variant {
   return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
 }
 
-export function isRowset<T extends RowObject = {}>(value: any): value is Rowset<T> {
+export function isRowset<T extends RowObject = {}>(
+  value: any
+): value is Rowset<T> {
   return (
     isTable(value) ||
     isNamedSelect(value) ||
@@ -667,7 +755,7 @@ export function isRowset<T extends RowObject = {}>(value: any): value is Rowset<
 }
 
 export function isExpression(value: any): value is Expression {
-  return (value?.$tag === SQL_SYMBOLE.EXPRESSION);
+  return value?.$tag === SQL_SYMBOLE.EXPRESSION;
 }
 
 export function isCase(value: any): value is Case {
@@ -764,7 +852,10 @@ export function invalidAST(type: string, value: any): Error {
 export function mergeFetchRelations<T extends RowObject>(
   ...includes: (FetchRelations<T> | undefined)[]
 ): FetchRelations<T> {
-  const merge = (dest: Record<string, any> | undefined, include: Record<string, any> | undefined) => {
+  const merge = (
+    dest: Record<string, any> | undefined,
+    include: Record<string, any> | undefined
+  ) => {
     if (!dest) return include;
     if (!include) return dest;
     Object.entries(include).forEach(([key, value]) => {
@@ -773,7 +864,7 @@ export function mergeFetchRelations<T extends RowObject>(
       const exists = dest[key];
       if (!exists) {
         if (typeof value === 'boolean') {
-          dest[key] = value
+          dest[key] = value;
         } else {
           dest[key] = merge({}, value);
         }
@@ -781,17 +872,17 @@ export function mergeFetchRelations<T extends RowObject>(
       }
       if (value === true) {
         // true不覆盖任何值
-        return
+        return;
       }
 
       if (exists === true) {
-        dest[key] = merge({}, value)
+        dest[key] = merge({}, value);
       } else {
         merge(exists, value);
       }
     });
     return dest;
-  }
+  };
   let result: any = includes[0];
   for (let i = 1; i < includes.length; i++) {
     const include = includes[i];
@@ -1019,19 +1110,30 @@ export function joinConditions(
 }
 
 export function isIf(value: any): value is If {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.IF;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.IF
+  );
 }
 
 export function isWhile(value: any): value is While {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.WHILE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.WHILE
+  );
 }
 
 export function isContinue(value: any): value is Continue {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.CONTINUE;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.CONTINUE
+  );
 }
 
 export function isBreak(value: any): value is Break {
-  return value?.$type === SQL_SYMBOLE.STATEMENT && value?.$kind === STATEMENT_KIND.BREAK;
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.BREAK
+  );
 }
 
 export function outputCommand(cmd: Command): void {
@@ -1077,8 +1179,36 @@ export function isUrl(str: string): boolean {
   }
 }
 
-export function assertAstNonempty(value: any, message: string = 'AST syntax error.'): asserts value {
+export function assertAstNonempty(
+  value: any,
+  message: string = 'AST syntax error.'
+): asserts value {
   if (!value) {
     throw new Error('AST syntax error:' + message);
   }
+}
+
+
+export function overloadFunc(
+  overloads: [Function[], Function][]
+): (...args: any) => any {
+  // TODO: 待完成
+  return function(...args: any[]) {
+
+  }
+}
+
+function constructorOf(value: any): Function | undefined {
+  if (!value) {
+    return undefined;
+  }
+  if (Array.isArray(value)) return Array;
+  if (typeof value === 'string') return String;
+  if (typeof value === 'number') return Number;
+  if (typeof value === 'bigint') return BigInt;
+  if (typeof value === 'boolean') return Boolean;
+  if (typeof value === 'function') return Function;
+  if (typeof value === 'symbol') return Symbol;
+  if (typeof value === 'object') return value.constructor;
+  throw new Error('Unknown constructor of ' + value);
 }

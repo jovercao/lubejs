@@ -167,7 +167,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         : Reflect.get(item, this.metadata.keyProperty);
       const added = await this.executor.find(
         this.rowset,
-        this.rowset.field(this.metadata.keyProperty as any).eq(key)
+        this.rowset.$(this.metadata.keyProperty as any).eq(key)
       );
       this.toEntity(added, item);
       if (options?.withoutRelations !== true) {
@@ -196,7 +196,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       );
     }
     let condition: Condition = this.rowset
-      .field(this.metadata.keyProperty as any)
+      .$(this.metadata.keyProperty as any)
       .eq(keyValue);
     if (this.metadata.rowflagColumn) {
       const rowflagValue = Reflect.get(
@@ -210,7 +210,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       }
       condition = condition.and(
         this.rowset
-          .field(this.metadata.rowflagColumn.property as any)
+          .$(this.metadata.rowflagColumn.property as any)
           .eq(rowflagValue)
       );
     }
