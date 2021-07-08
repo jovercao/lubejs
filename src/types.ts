@@ -88,7 +88,7 @@ export type DbContextEventHandler = (
 
 // **********************************类型声明******************************************
 
-export type Binary = ArrayBuffer | SharedArrayBuffer;
+export type Binary = ArrayBuffer | SharedArrayBuffer | Buffer;
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type RowObject = object;

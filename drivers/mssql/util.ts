@@ -76,6 +76,9 @@ export function formatSql(
  */
 export function sqlifyLiteral(value: Scalar): string {
   // 为方便JS，允许undefined进入，留给TS语法检查
+  if (value === undefined) {
+    throw new Error(`Unspport db value undefined, pls use null instead it.`);
+  }
   if (value === null || value === undefined) {
     return 'NULL';
   }
@@ -87,7 +90,7 @@ export function sqlifyLiteral(value: Scalar): string {
   }
 
   if (type === 'number' || type === 'bigint') {
-    return value.toString(10);
+    return (value as number | bigint).toString(10);
   }
 
   if (type === 'boolean') {
