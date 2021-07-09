@@ -125,7 +125,7 @@ describe('MSSQL TESTS', function () {
       ],
     });
 
-    const lines = await db.insert('Items', rows);
+    const lines = await db.insert<IItem>('Items', ['FAge', 'FSex', 'FName', 'FCreateDate', 'FParentId'], rows);
     assert(lines === rows.length);
   });
 

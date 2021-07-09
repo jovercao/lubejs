@@ -13,7 +13,7 @@ import {
   Table,
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
-import { DbContext, DbContextConstructor, EntityConstructor } from './db-context';
+import { DbContext, DbContextConstructor, DbInstance, EntityConstructor } from './db-context';
 import { FetchRelations } from './repository';
 import {
   Constructor,
@@ -471,7 +471,8 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
    */
   generator?: (
     rowset: ProxiedRowset<any>,
-    item: object
+    item: object,
+    context: DbInstance
   ) => CompatibleExpression<T>;
 }
 
@@ -484,9 +485,59 @@ export type RelationMetadata =
   | ManyToManyMetadata
   | ManyToOneMetadata;
 
+  /**
+   * 上级关系属性
+   */
 export type SuperiorRelation = ForeignOneToOneMetadata | ManyToOneMetadata;
 
+/**
+ * 下级关系属性
+ */
 export type SubordinateRelation = PrimaryOneToOneMetadata | OneToManyMetadata | ManyToManyMetadata;
+
+/**
+ * 多表一对多关系
+ */
+export interface MultiOneToManyRelation {
+  typeProperty: string;
+  typeColumn: ColumnMetadata;
+
+  property: string;
+
+  referenceRelations: {
+    description: string;
+    typeValue: Scalar;
+    referenceClass: EntityConstructor;
+    referenceEntity: EntityMetadata;
+    referenceProperty: string;
+    referenceRelation: MultiManyToOneRelation;
+  }[]
+}
+
+/**
+ * 多表多对一关系
+ */
+export interface MultiManyToOneRelation {
+  property: string;
+
+  /**
+   * 外键属性
+   */
+  foreignProperty: string;
+
+  /**
+   * 外键列
+   */
+  foreignColumn: ColumnMetadata;
+
+  referenceClass: EntityConstructor;
+  referenceEntity: EntityMetadata;
+
+  referenceProperty: string;
+
+  referenceRelation: MultiOneToManyRelation;
+}
+
 
 // /**
 //  * 一对一引用属性

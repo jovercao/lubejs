@@ -40,10 +40,8 @@ import {
   Entity,
   EntityType,
   Scalar,
-  ScalarType,
   DataTypeOf,
   isSameDbType,
-  TsTypeOf,
   UuidConstructor,
   Uuid,
 } from './types';
@@ -708,7 +706,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
     if (this._completed)
       throw new Error(`Context is completed, not allow this operation.`);
     if (!this._entityMap.has(ctr)) {
-      const metadata: Partial<EntityMetadata> =
+      const metadata: EntityMetadata =
         new EntityMetadataClass() as EntityMetadata;
       assign(metadata, {
         className: ctr.name,
@@ -925,7 +923,7 @@ export function context<T extends DbContext>(
 export class EntityMapBuilder<T extends Entity> {
   constructor(
     private modelBuilder: ContextBuilder,
-    public readonly metadata: Partial<EntityMetadata>
+    public readonly metadata: EntityMetadata
   ) {}
 
   private builder?: EntityBuilder<T>;
@@ -970,7 +968,7 @@ export class EntityMapBuilder<T extends Entity> {
       build = nameOrBuild;
     }
 
-    const tableMetadata = this.metadata as Partial<TableEntityMetadata>;
+    const tableMetadata = this.metadata as TableEntityMetadata;
     this.metadata.kind = 'TABLE';
     tableMetadata.tableName = name || this.metadata.className;
     this.metadata.readonly = false;
@@ -1012,7 +1010,7 @@ export class EntityMapBuilder<T extends Entity> {
       build = nameOrBuild;
     }
 
-    const viewMetadata = this.metadata as Partial<ViewEntityMetadata>;
+    const viewMetadata = this.metadata as ViewEntityMetadata;
     this.metadata.kind = 'VIEW';
     viewMetadata.viewName = name || this.metadata.className;
     this.metadata.readonly = true;
@@ -1060,7 +1058,7 @@ export class EntityMapBuilder<T extends Entity> {
 export abstract class EntityBuilder<T extends Entity> {
   constructor(
     protected modelBuilder: ContextBuilder,
-    public readonly metadata: Partial<EntityMetadata>
+    public readonly metadata: EntityMetadata
   ) {}
 
   protected readonly memberMaps: Map<
@@ -1098,7 +1096,7 @@ export abstract class EntityBuilder<T extends Entity> {
     if (!property) {
       throw new Error(`Please select a property`);
     }
-    let metadata: Partial<ColumnMetadata<P>> = this.memberMaps.get(
+    let metadata: ColumnMetadata<P> | undefined = this.memberMaps.get(
       property
     ) as any;
     if (!metadata) {
@@ -1106,7 +1104,7 @@ export abstract class EntityBuilder<T extends Entity> {
         kind: 'COLUMN',
         property: property,
         type,
-      };
+      } as ColumnMetadata<P>;
     }
 
     const columnBuilder = new ColumnBuilder<T, P>(
@@ -1115,7 +1113,7 @@ export abstract class EntityBuilder<T extends Entity> {
       metadata
     );
     this.memberMaps.set(property, columnBuilder);
-    this.metadata.addMember!(metadata as ColumnMetadata);
+    this.metadata.addMember(metadata as ColumnMetadata);
 
     if (build) {
       build(columnBuilder);
@@ -1170,7 +1168,7 @@ export class TableKeyBuilder {
  * 表实体构造器
  */
 export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  public readonly metadata!: Partial<TableEntityMetadata>;
+  public readonly metadata!: TableEntityMetadata;
 
   private assertRelation(property: string) {
     if (this.memberMaps.has(property)) {
@@ -1202,7 +1200,9 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
       throw new Error('Please select a property');
     }
     this.metadata.keyProperty = property;
-    this.metadata.keyConstraintName = constraintName;
+    if (constraintName) {
+      this.metadata.keyConstraintName = constraintName;
+    }
     // this.metadata.addIndex({
     //   name: undefined,
     //   properties: [property],
@@ -1258,13 +1258,13 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     }
 
     this.assertRelation(property);
-    const metadata: Partial<HasOneMetadata> = {
+    const metadata: HasOneMetadata = {
       property,
       referenceClass: type,
       // 追加关联关系
       referenceEntity: this.modelBuilder.entity(type)
-        .metadata as TableEntityMetadata,
-    };
+        .metadata,
+    } as any;
     const builder = new HasOneBuilder<T, D>(this.modelBuilder, this, metadata);
     this.memberMaps.set(property, builder);
     this.metadata.addMember!(metadata as HasOneMetadata);
@@ -1299,9 +1299,10 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     this.modelBuilder.entity(type);
     const builder = new HasManyBuilder<T, D>(this.modelBuilder, this, metadata);
     this.memberMaps.set(property, builder);
-    this.metadata.addMember!(metadata as HasManyMetadata);
+    this.metadata.addMember(metadata as HasManyMetadata);
     return builder;
   }
+
 
   // TODO: 待添加种子数据结构化初始
   /**
@@ -1327,7 +1328,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
 }
 
 export class ViewEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  metadata!: Partial<ViewEntityMetadata>;
+  metadata!: ViewEntityMetadata;
 
   /**
    * 声明视图选择语句
@@ -1340,7 +1341,7 @@ export class ViewEntityBuilder<T extends Entity> extends EntityBuilder<T> {
 }
 
 export class QueryEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  metadata!: Partial<QueryEntityMetadata>;
+  metadata!: QueryEntityMetadata;
 
   withSql(sql: Select<T>): this {
     this.metadata.sql = sql;

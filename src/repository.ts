@@ -143,9 +143,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
               `Entity ${this.metadata.className} Property ${column.property} is autoGen column, but value found, will override it here.`
             );
           }
-          row[column.columnName] = column.generator(
+          row[column.columnName] = await column.generator(
             this.rowset as ProxiedRowset<any>,
-            item
+            item,
+            this.context
           );
           continue;
         }
@@ -224,7 +225,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     ) {
       return JSON.stringify(Reflect.get(item, column.property));
     } else {
-      return Reflect.get(item, column.property);
+      const value = Reflect.get(item, column.property);
+      // undefined 切换为null
+      if (value === undefined) return null;
+      return value;
     }
   }
 

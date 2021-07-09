@@ -912,7 +912,7 @@ export abstract class Rowset<
   }
 
   /**
-   * 访问下一节点
+   * 字段
    * @param name 节点名称
    */
   $<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {

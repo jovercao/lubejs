@@ -12,7 +12,7 @@ import { deepthEqual } from './util';
 import { parse, stringify, v4 } from 'uuid';
 import { EntityConstructor } from './db-context';
 import { metadataStore } from './metadata';
-import { Decimal } from 'decimal.js';
+import { Decimal } from 'decimal.js-light';
 
 export const EntitySymble = Symbol('LUBEJS#Entity');
 
@@ -21,8 +21,7 @@ export const EntitySymble = Symbol('LUBEJS#Entity');
  * 不一定非得从此继承
  */
 export class Entity {
-  constructor() {
-  }
+  constructor() {}
 
   static create<T extends EntityConstructor<any>>(
     this: T,
@@ -38,7 +37,7 @@ export class Entity {
   ): EntityInstance<EntityTypeOf<T>> | EntityInstance<EntityTypeOf<T>>[] {
     const metadata = metadataStore.getEntity(this);
     if (!metadata) {
-      throw new Error(`Entity ${this.name} not register.`)
+      throw new Error(`Entity ${this.name} not register.`);
     }
     const init = (data: T) => {
       Object.setPrototypeOf(data, this.prototype);
@@ -154,7 +153,7 @@ export class Uuid {
   }
 }
 
-export { Decimal } from 'decimal.js';
+export { Decimal };
 
 // export interface Decimal {
 //   readonly source: string;

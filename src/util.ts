@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import Decimal from 'decimal.js';
+import Decimal from 'decimal.js-light';
 import { URL } from 'url';
 import {
   Condition,
@@ -140,10 +140,10 @@ export function ensureLiteral<T extends Scalar>(
  * 返回表达式
  */
 export function ensureExpression<T extends Scalar>(
-  expr: CompatibleExpression<T>
+  expr: CompatibleExpression<T> | undefined
 ): Expression<T> {
   if (!(expr instanceof AST)) {
-    return SqlBuilder.literal(expr);
+    return SqlBuilder.literal(expr === undefined ? null : expr);
   }
   return expr;
 }
@@ -1196,101 +1196,4 @@ export type Argument<N extends string = string, O extends boolean = boolean, T e
   name: N,
   optional: O;
   type: T;
-}
-
-// type ArgumentsOf<T> = {
-
-// }
-
-// export type DataType = any;
-
-export type ArgType<T> =
-  T extends Function
-  ? T extends StringConstructor
-    ? string
-    : T extends NumberConstructor
-    ? number
-    : T extends BooleanConstructor
-    ? boolean
-    : T extends ObjectConstructor
-    ? object
-    : T extends Constructor<infer I>
-    ? I
-    : T
-  : T extends any[]
-  ? T extends (infer M)[]
-    // 二维数组，表示元组
-    ? M extends any[]
-      ? M extends [infer X1, infer X2, infer X3, infer X4, infer X5]
-        ? [ArgType<X1>, ArgType<X2>, ArgType<X3>, ArgType<X4>, ArgType<X5>]
-        : M extends [infer X1, infer X2, infer X3, infer X4]
-        ? [ArgType<X1>, ArgType<X2>, ArgType<X3>, ArgType<X4>]
-        : M extends [infer X1, infer X2, infer X3]
-        ? [ArgType<X1>, ArgType<X2>, ArgType<X3>]
-        : M extends [infer X1, infer X2]
-        ? [ArgType<X1>, ArgType<X2>]
-        : M extends [infer X1]
-        ? [ArgType<X1>]
-        : ArgType<M>[]
-      // 一维数组表示联合类型
-      : T extends [infer X1, infer X2, infer X3, infer X4, infer X5]
-      ? ArgType<X1> | ArgType<X2> | ArgType<X3> | ArgType<X4> | ArgType<X5>
-      : T extends [infer X1, infer X2, infer X3, infer X4]
-      ? ArgType<X1> | ArgType<X2> | ArgType<X3> | ArgType<X4>
-      : T extends [infer X1, infer X2, infer X3]
-      ? ArgType<X1> | ArgType<X2> | ArgType<X3>
-      : T extends [infer X1, infer X2]
-      ? ArgType<X1> | ArgType<X2>
-      : T extends [infer X1]
-      ? ArgType<X1>
-      : never
-    : never
-  : T;
-
-// type x = ArgType<[[typeof Date, NumberConstructor]]>
-
-// export type ArgOf<A extends Argument> =
-//   A extends Argument<infer N, infer O, infer T> ? (
-//     T extends [infer T1, infer T2, infer T3, infer T4, infer T5]
-//     ? O extends true
-//     ? [T1 | T2]
-
-
-// export type FuncDec = [
-//   [T1, T2, T3, T4, T5],
-
-// ]
-
-// type X = [number, string?, number?]
-
-
-// type Y = [
-//   ...[P in Exclude<keyof X, string | symbol>]: X[P]
-// ]
-
-// type f = (...args: X) => void;
-
-
-export function overloadFunc(
-  overloads: [Function[], Function][]
-): (...args: any) => any {
-  // TODO: 待完成
-  return function(...args: any[]) {
-
-  }
-}
-
-function constructorOf(value: any): Function | undefined {
-  if (!value) {
-    return undefined;
-  }
-  if (Array.isArray(value)) return Array;
-  if (typeof value === 'string') return String;
-  if (typeof value === 'number') return Number;
-  if (typeof value === 'bigint') return BigInt;
-  if (typeof value === 'boolean') return Boolean;
-  if (typeof value === 'function') return Function;
-  if (typeof value === 'symbol') return Symbol;
-  if (typeof value === 'object') return value.constructor;
-  throw new Error('Unknown constructor of ' + value);
 }
