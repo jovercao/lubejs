@@ -15,5 +15,8 @@ module.exports = {
   "plugins": [
     "@typescript-eslint"
   ],
-  "rules": {}
+  "rules": {
+    "@typescript-eslint/no-inferrable-types": "off",
+    "prefer-const": "warn"
+  }
 };

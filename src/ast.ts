@@ -10,19 +10,15 @@ import {
   ensureFunction,
   ensureProcedure,
   pickName,
-  pathName,
   isPlainObject,
-  ensureVariant,
   clone,
   isSelect,
   isProxiedRowset,
   isExpression,
   isSortInfo,
   parseValueType,
-  ensureTableVariant,
   ensureLiteral,
   isCondition,
-  isBinaryLogicCondition,
   joinConditions,
   ensureRowset,
 } from './util';
@@ -34,7 +30,6 @@ import {
   BINARY_COMPARE_OPERATOR,
   SORT_DIRECTION,
   LOGIC_OPERATOR,
-  INSERT_MAXIMUM_ROWS,
   IDENTOFIER_KIND,
   BINARY_OPERATION_OPERATOR,
   UNARY_OPERATION_OPERATOR,
@@ -43,8 +38,6 @@ import {
   OPERATION_KIND,
   SQL_SYMBOLE_TABLE_MEMBER,
   STATEMENT_KIND,
-  $IsProxy,
-  $ROWSET_INSTANCE,
 } from './constants';
 import {
   DbType,
@@ -59,7 +52,7 @@ import {
 import { Scalar } from './types';
 import { TableSchema } from './schema';
 import { Standard } from './std';
-import { makeRowset, metadataStore } from './metadata';
+import { makeRowset } from './metadata';
 
 // /**
 //  * 混入函数，必须放最前面，避免循环引用导致无法获取
