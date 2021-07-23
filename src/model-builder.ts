@@ -83,6 +83,9 @@ function fixColumn(
   if (column.isNullable === undefined) {
     column.isNullable = false;
   }
+  if (column.isRowflag === undefined) {
+    column.isRowflag = false;
+  }
   if (column.isPrimaryKey === undefined) {
     column.isPrimaryKey = false;
   }
@@ -967,12 +970,12 @@ export class ModelBuilder {
   context<T extends DbContext>(
     context: Constructor<T>,
     build: (builder: ContextBuilder<T>) => void | Promise<void>
-  ): void;
+  ): this;
   context<T extends DbContext>(context: Constructor<T>): ContextBuilder<T>;
   context<T extends DbContext>(
     context: Constructor<T>,
     build?: (builder: ContextBuilder<T>) => void | Promise<void>
-  ): void | ContextBuilder<T> {
+  ): ContextBuilder<T> | this {
     let builder = this.contextMap.get(context);
     if (!builder) {
       builder = new ContextBuilder(context);
@@ -980,8 +983,7 @@ export class ModelBuilder {
     }
     if (build) {
       build(builder);
-      builder.ready();
-      return;
+      return this;
     }
     return builder;
   }
@@ -1654,9 +1656,16 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   }
 
   /**
-   * 行标记列
+   * 行标记列，每次更新时自动变换值
    */
   isRowflag(): Omit<this, 'isRowflag'> {
+    if (this.metadata.dbType) {
+      if (this.metadata.dbType.name !== 'ROWFLAG') {
+        throw new Error('Rowflag column must type of ROWFLAG.');
+      }
+    } else {
+      this.metadata.dbType = DbType.rowflag;
+    }
     this.metadata.isRowflag = true;
     return this;
   }

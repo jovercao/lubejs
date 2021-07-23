@@ -251,11 +251,14 @@ export async function load(
         type_precision,
         type_scale,
       } = row;
+      const isRowflag = ['ROWVERSION', 'TIMESTAMP'].includes((type_name as string).toUpperCase());
       const column: ColumnSchema = {
         name,
-        type: fullType(type_name, type_length, type_precision, type_scale),
+        // 统一行标记类型
+        type: isRowflag ? 'BINARY(8)' : fullType(type_name, type_length, type_precision, type_scale),
         isNullable,
         isIdentity,
+        isRowflag,
         identityStartValue,
         identityIncrement,
         isCalculate,

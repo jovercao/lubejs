@@ -28,6 +28,9 @@ import {
   CreateIndex,
   DropIndex,
   Expression,
+  CreateDatabase,
+  DropDatabase,
+  AlterDatabase,
 } from './ast';
 import { DbType, Name, RowObject, Scalar } from './types';
 import { isStatement } from './util';
@@ -128,19 +131,51 @@ export abstract class MigrateBuilder {
   abstract renameIndex(table: Name, name: string, newName: string): Statement;
   abstract renameProcedure(name: Name, newName: string): Statement;
   abstract renameFunction(name: Name, newName: string): Statement;
+  abstract renameDatabase(name: string, newName: string): Statement;
 
-  abstract commentTable(name: Name, comment?: string): Statement;
-  abstract commentColumn(table: Name, name: string, comment?: string): Statement;
-  abstract commentIndex(table: Name, name: string, comment?: string): Statement;
-  abstract commentConstraint(
+  abstract createDatabase(name: string): CreateDatabase;
+  abstract dropDatabase(name: string): DropDatabase;
+  abstract alterDatabase(name: string): AlterDatabase;
+
+  abstract setTableComment(name: Name, comment: string): Statement;
+  abstract setColumnComment(
     table: Name,
     name: string,
-    comment?: string
+    comment: string
   ): Statement;
-  abstract commentSchema(name: string, comment?: string): Statement;
-  abstract commentSequence(name: Name, comment?: string): Statement;
-  abstract commentProcedure(name: Name, comment?: string): Statement;
-  abstract commentFunction(name: Name, comment?: string): Statement;
+  abstract setIndexComment(
+    table: Name,
+    name: string,
+    comment: string
+  ): Statement;
+  abstract setConstraintComment(
+    table: Name,
+    name: string,
+    comment: string
+  ): Statement;
+  abstract setSchemaComment(name: string, comment: string): Statement;
+  abstract setSequenceComment(name: Name, comment: string): Statement;
+  abstract setProcedureComment(name: Name, comment: string): Statement;
+  abstract setFunctionComment(name: Name, comment: string): Statement;
+
+  abstract dropSchemaComment(name: string): Statement;
+  abstract dropSequenceComment(name: Name): Statement;
+  abstract dropProcedureComment(name: Name): Statement;
+  abstract dropFunctionComment(name: Name): Statement;
+  abstract dropTableComment(name: Name): Statement;
+  abstract dropColumnComment(table: Name, name: string): Statement;
+  abstract dropIndexComment(table: Name, name: string): Statement;
+  abstract dropConstraintComment(table: Name, name: string): Statement;
+
+  /**
+   * 将列修改为自动行标识列
+   */
+  abstract setAutoRowflag(table: Name, column: string): Statement;
+
+  /**
+   *
+   */
+  abstract dropAutoRowflag(table: Name, column: string): Statement;
 
   // abstract existsTable(name: Name): Expression;
   // 为列添加或修改默认值
@@ -150,10 +185,7 @@ export abstract class MigrateBuilder {
     defaultValue: CompatibleExpression
   ): Statement;
   // 删除列默认值约束
-  abstract dropDefaultValue(
-    table: Name,
-    column: string
-  ): Statement;
+  abstract dropDefaultValue(table: Name, column: string): Statement;
 
   // 给字段增加自增属性
   abstract setIdentity(
@@ -164,10 +196,7 @@ export abstract class MigrateBuilder {
   ): Statement;
 
   // 移除字段自增属性
-  abstract dropIdentity(
-    table: Name,
-    column: string
-  ): Statement;
+  abstract dropIdentity(table: Name, column: string): Statement;
 
   // /**
   //  * 复制一个新列
@@ -194,7 +223,6 @@ export abstract class MigrateBuilder {
   // 删除字段check约束
   abstract dropCheckConstaint(table: Name, name: string): Statement;
 }
-
 
 // export type MigrateScripter = {
 //   [P in keyof MigrateBuilder]: Promisify<MigrateBuilder[P]>;

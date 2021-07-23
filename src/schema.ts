@@ -17,19 +17,15 @@ import { PARAMETER_DIRECTION } from './constants';
 import {
   ColumnMetadata,
   DbContextMetadata,
-  ForeignOneToOneMetadata,
   ForeignRelation,
   IndexMetadata,
   isForeignRelation,
-  isManyToOne,
   isTableEntity,
   isViewEntity,
-  ManyToOneMetadata,
   TableEntityMetadata,
   ViewEntityMetadata,
 } from './metadata';
-import { DataType, DbType, RowObject, Scalar, DataTypeOf, Name } from './types';
-import { map } from './util';
+import { DbType, Scalar, Name } from './types';
 import { compareObject, EqulsCompartor, isChanged, ObjectDifference } from './util/compare';
 
 /**
@@ -225,6 +221,11 @@ export interface TableSchema {
    * 约束：包含检查约束及唯一约束，不含主键、外键、及索引
    */
   constraints: ConstraintSchema[];
+
+  /**
+   * 初始数据
+   */
+  seedData?: object[];
 }
 
 export interface SequenceSchema {
@@ -295,18 +296,22 @@ export interface ColumnSchema {
    * 字段名
    */
   name: string;
+
   /**
    * 数据类型
    */
   type: string;
+
   /**
    * 是否可空
    */
   isNullable: boolean;
+
   /**
    * 默认值
    */
   defaultValue?: string;
+
   /**
    * 是否标识列
    */
@@ -324,6 +329,11 @@ export interface ColumnSchema {
    * 是否计算列
    */
   isCalculate: boolean;
+
+  /**
+   * 是否行标识列
+   */
+  isRowflag: boolean;
   /**
    * 计算表达式
    */
@@ -353,6 +363,7 @@ export interface IndexSchema {
 
 /**
  * 从Metadata生成架构
+ * TODO: 添加快照，用于数据库差异对比
  * @param sqlUtil
  * @param context
  * @returns
@@ -422,6 +433,7 @@ export function generateSchema(
       foreignKeys,
       constraints: [], // TODO 实体添加约束代码
       comment: entity.comment,
+      seedData: entity.data
     };
     return table;
   }
@@ -435,6 +447,7 @@ export function generateSchema(
       identityStartValue: column.identityStartValue,
       identityIncrement: column.identityIncrement,
       isCalculate: column.isCalculate,
+      isRowflag: column.isRowflag,
       calculateExpression:
         column.calculateExpression &&
         sqlUtil.sqlifyExpression(column.calculateExpression),
@@ -515,8 +528,8 @@ export const isSameSchemaObject: EqulsCompartor = (left: SchemaObject, right: Sc
 };
 
 export function compareSchema(
-  source: DatabaseSchema,
-  target: DatabaseSchema
+  source: DatabaseSchema | undefined,
+  target: DatabaseSchema | undefined
 ): SchemaDifference | null {
   return compareObject(source, target, isSameSchemaObject);
 }

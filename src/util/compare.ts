@@ -20,8 +20,8 @@ export type ScalarDifference<T extends ScalarType> = {
 };
 
 export type ObjectDifference<T extends object> = {
-  source: T;
-  target: T;
+  source: T | undefined;
+  target: T | undefined;
   added?: T;
   removed?: T;
   changes?: {
@@ -130,8 +130,8 @@ export function compareScalar<T extends ScalarType>(
 }
 
 export function compareObject<T extends object>(
-  source: T,
-  target: T,
+  source: T | undefined,
+  target: T | undefined,
   isSameObject?: EqulsCompartor,
   // 对比的路径
   path: string = ''
@@ -157,18 +157,18 @@ export function compareObject<T extends object>(
   }
 
   const keyTypes: Record<string, ValueType> = {};
-  Object.entries(source).forEach(([key, value]) => {
+  Object.entries(source!).forEach(([key, value]) => {
     keyTypes[key] = getType(value);
   });
-  Object.entries(target).forEach(([key, value]) => {
+  Object.entries(target!).forEach(([key, value]) => {
     keyTypes[key] = Math.max(keyTypes[key] || 0, getType(value));
   });
 
   const changes: any = {};
 
   for (const [key, type] of Object.entries(keyTypes)) {
-    const propSource = Reflect.get(source, key);
-    const propTarget = Reflect.get(target, key);
+    const propSource = Reflect.get(source!, key);
+    const propTarget = Reflect.get(target!, key);
 
     if (type === ValueType.scalar) {
       const ch = compareScalar(propSource, propTarget);

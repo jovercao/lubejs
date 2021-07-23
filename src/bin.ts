@@ -61,8 +61,7 @@ const migrate = Program.command('migrate')
 //     try {
 //       await cli.create(name);
 //     } catch (error) {
-//       console.error(error.message.red);
-//       console.info(error.stack);
+//       errorHandler(error);
 //     } finally {
 //       await cli.dispose();
 //     }
@@ -79,13 +78,12 @@ const migrateAdd = migrate
     const addOpts = migrateAdd.opts();
     const cli = await createMigrateCli(opts);
     try {
-      const migrateInfo = await cli.gen(name, addOpts.notResolverType);
+      const migrateInfo = await cli.add(name, addOpts.notResolverType);
       if (addOpts.update) {
         await cli.update(migrateInfo.id)
       }
     } catch (error) {
-      console.error(error.message.red);
-      console.log(error.stack);
+      errorHandler(error);
     } finally {
       await cli.dispose();
     }
@@ -99,8 +97,7 @@ migrate
     try {
       await cli.list();
     } catch (error) {
-      console.error(error.message.red);
-      console.log(error.stack);
+      errorHandler(error);
     } finally {
       await cli.dispose();
     }
@@ -132,8 +129,7 @@ const migrateScript = migrate
         outputPath: opts.outputPath,
       });
     } catch (error) {
-      console.error(error.message.red);
-      console.error(error.stack);
+      errorHandler(error);
     } finally {
       await cli.dispose();
     }
@@ -153,8 +149,7 @@ const migrateUpdate = migrate
     try {
       await cli.update(targetName);
     } catch (error) {
-      console.error(error.message.red);
-      console.error(error.stack);
+      errorHandler(error);
     } finally {
       await cli.dispose();
     }
@@ -170,11 +165,19 @@ const migrateSync = migrate
     try {
       await cli.sync();
     } catch (error) {
-      console.error(error.message.red);
-      console.error(error.stack);
+      errorHandler(error);
     } finally {
       await cli.dispose();
     }
   });
 
 Program.parse(process.argv);
+function errorHandler(error: any) {
+  if (error instanceof Object) {
+    console.error(error.message.red);
+    console.log(error.stack);
+  } else {
+    console.log(error);
+  }
+}
+

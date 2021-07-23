@@ -514,13 +514,15 @@ export const LANGUAGE = variant<string, '@LANGUAGE'>('@LANGUAGE');
 /**
  * 返回 Microsoft SQL Server上允许的同时用户连接的最大数。返回的数不必为当前配置的数值。
  */
-export const MAX_CONNECTIONS =
-  variant<number, '@MAX_CONNECTIONS'>('@MAX_CONNECTIONS');
+export const MAX_CONNECTIONS = variant<number, '@MAX_CONNECTIONS'>(
+  '@MAX_CONNECTIONS'
+);
 /**
  * 返回 Microsoft SQL Server自上次启动后从网络上读取的输入数据包数目。
  */
-export const PACK_RECEIVED =
-  variant<number, '@PACK_RECEIVED'>('@PACK_RECEIVED');
+export const PACK_RECEIVED = variant<number, '@PACK_RECEIVED'>(
+  '@PACK_RECEIVED'
+);
 /**
  * 返回 Microsoft SQL Server自上次启动后写到网络上的输出数据包数目。
  */
@@ -528,8 +530,9 @@ export const PACK_SENT = variant<number, '@PACK_SENT'>('@PACK_SENT');
 /**
  * 返回自 SQL Server 上次启动后，在 Microsoft SQL Server连接上发生的网络数据包错误数。
  */
-export const PACKET_ERRORS =
-  variant<number, '@PACKET_ERRORS'>('@PACKET_ERRORS');
+export const PACKET_ERRORS = variant<number, '@PACKET_ERRORS'>(
+  '@PACKET_ERRORS'
+);
 /**
  * 返回运行 Microsoft SQL Server的本地服务器名称。
  */
@@ -812,7 +815,7 @@ export const format: (
  * 系统重命名函数
  */
 export const sp_rename: (
-  name: Name,
+  name: string,
   newName: string,
   kind?: 'USERDATATYPE' | 'OBJECT' | 'COLUMN' | 'INDEX' | 'DATABASE'
 ) => Statement = makeExec('sp_rename', true);

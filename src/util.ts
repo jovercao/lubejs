@@ -89,6 +89,9 @@ import {
   Break,
   WithSelect,
   ProxiedWithSelect,
+  CreateDatabase,
+  AlterDatabase,
+  DropDatabase,
 } from './ast';
 
 import {
@@ -445,6 +448,22 @@ export function pickName(name: Name): string {
     return name;
   }
   return name[0];
+}
+
+export function joinName(parent: Name, child: Name): Name {
+  const name: string[] = [];
+  if (typeof child === 'string') {
+    name.push(child);
+  } else {
+    name.push(...child);
+  }
+
+  if (typeof parent === 'string') {
+    name.push(parent);
+  } else {
+    name.push(...parent);
+  }
+  return name as Name;
 }
 
 export function pathName<T extends string>(name: Name<T>): PathedName<T> {
@@ -1128,6 +1147,27 @@ export function isContinue(value: any): value is Continue {
   );
 }
 
+export function isCreateDatabase(value: any): value is CreateDatabase {
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value.kind === STATEMENT_KIND.CREATE_DATABASE
+  );
+}
+
+export function isAlterDatabase(value: any): value is AlterDatabase {
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value.kind === STATEMENT_KIND.ALTER_DATABASE
+  );
+}
+
+export function isDropDatabase(value: any): value is DropDatabase {
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value.kind === STATEMENT_KIND.DROP_DATABASE
+  );
+}
+
 export function isBreak(value: any): value is Break {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
@@ -1190,11 +1230,15 @@ export function assertAstNonempty(
 /**
  * 参数
  */
-export type Argument<N extends string = string, O extends boolean = boolean, T extends any[] = []> = {
-  name: N,
+export type Argument<
+  N extends string = string,
+  O extends boolean = boolean,
+  T extends any[] = []
+> = {
+  name: N;
   optional: O;
   type: T;
-}
+};
 
 const PropertySelector: any = new Proxy(
   {},
@@ -1218,16 +1262,18 @@ export function selectProperty(selector: (p: any) => any): any {
 /**
  * 获取名称，暂时无法获取变量名
  */
-export function nameof<T>(fn: Function): string
-export function nameof<T>(propertySelector: (p: T) => any): string
+export function nameof<T>(fn: Function): string;
+export function nameof<T>(propertySelector: (p: T) => any): string;
 export function nameof<T>(arg: Function | ((p: T) => any)): string {
   if (typeof arg === 'function') {
     return arg.name;
   }
 
-  const name = selectProperty(arg)
+  const name = selectProperty(arg);
   if (typeof name !== 'string') {
-    throw new Error(`Invalid operation nameof, Pls use nameof like this 'nameof(p => p.property)'.`);
+    throw new Error(
+      `Invalid operation nameof, Pls use nameof like this 'nameof(p => p.property)'.`
+    );
   }
   return name;
 }
@@ -1236,8 +1282,8 @@ export function nameof<T>(arg: Function | ((p: T) => any)): string {
  * 判断一个类是否由另一个类继承而来
  */
 export function isExtendsOf(sub: Function, parent: Function): boolean {
-  let prototype: Object
-  while (prototype = Object.getPrototypeOf(sub.prototype)) {
+  let prototype: Object;
+  while ((prototype = Object.getPrototypeOf(sub.prototype))) {
     if (prototype.constructor === parent) {
       return true;
     }
@@ -1254,9 +1300,7 @@ export function parseConnectionUrl(url: string): ConnectOptions {
       urlOptions[key] = value;
     }
   }
-  const dialect = uri.protocol
-    .substr(0, uri.protocol.length - 1)
-    .toLowerCase();
+  const dialect = uri.protocol.substr(0, uri.protocol.length - 1).toLowerCase();
   const options = {
     dialect,
     host: uri.host,

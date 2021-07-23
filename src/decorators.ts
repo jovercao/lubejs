@@ -301,6 +301,7 @@ export function key(
 export function rowflag(): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
+      dbType: DbType.rowflag,
       isRowflag: true,
     });
   };

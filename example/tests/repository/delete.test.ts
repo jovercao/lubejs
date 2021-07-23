@@ -1,4 +1,4 @@
-import '../../orm';
+import '../../orm-configure';
 import {
   DB,
   Employee,
@@ -6,9 +6,9 @@ import {
   Order,
   OrderDetail,
   User,
-} from '../../orm';
+} from '../../orm-configure';
 import assert from 'assert';
-import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
+import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
@@ -30,7 +30,7 @@ describe('Repository: delete', function () {
   it('一对一(主）关系删除 - User <- Employee', async () => {
     const employee = Employee.create({
       name: '一对一（主）关系更新测试 - 职员',
-      organization: await db.Organization.get(0),
+      organization: await db.Organization.get(0n),
     });
 
     const user = User.create({
@@ -60,14 +60,14 @@ describe('Repository: delete', function () {
         {
           product: '产品1',
           count: 1,
-          price: 100,
-          amount: 100,
+          price: new Decimal(100),
+          amount: new Decimal(100),
         },
         {
           product: '产品2',
           count: 2,
-          price: 100,
-          amount: 200,
+          price: new Decimal(100),
+          amount: new Decimal(200),
         },
       ],
     });
@@ -99,7 +99,7 @@ describe('Repository: delete', function () {
         password: 'hehe',
       },
       name: 'repository.update ManyToMany1',
-      organization: await db.User.get(0),
+      organization: await db.User.get(0n),
       positions: [
         {
           name: 'ManyToMany职位1',

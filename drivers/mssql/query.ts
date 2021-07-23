@@ -1,4 +1,4 @@
-import { IRecordSet, IResult, ISqlType, Request } from 'mssql';
+import mssql from 'mssql';
 import {
   SqlOptions,
   Parameter,
@@ -9,9 +9,10 @@ import {
   Uuid
 } from 'lubejs';
 import { toMssqlType } from './types';
+import { map } from 'lodash';
 
 export type IDriver = {
-  request(): Request;
+  request(): mssql.Request;
 };
 
 export async function doQuery(
@@ -24,7 +25,7 @@ export async function doQuery(
   if (params) {
     params.forEach(
       ({ name, value, type, direction = 'INPUT' }) => {
-        let mssqlType: ISqlType;
+        let mssqlType: mssql.ISqlType;
         // 优先使用dbType
 
         mssqlType = toMssqlType(type);
@@ -48,7 +49,7 @@ export async function doQuery(
       }
     );
   }
-  let res: IResult<any>;
+  let res: mssql.IResult<any>;
   try {
     res = await request.query(sql);
   } catch (ex) {
@@ -77,10 +78,14 @@ export async function doQuery(
   return result;
 }
 
+mssql.map.register(Number, mssql.BigInt);
+mssql.map.register(Decimal, mssql.Decimal);
+mssql.map.register(Uuid, mssql.UniqueIdentifier);
+
 /**
  * mssql 的类型不足，在此处转换
  */
-function normalDatas(datas: IRecordSet<any>): any[] {
+function normalDatas(datas: mssql.IRecordSet<any>): any[] {
   for (const [column, { type }] of Object.entries(datas.columns)) {
     // HACK 使用mssql私有属性 SqlType declaration
     const declare = Reflect.get(type, 'declaration')?.toLowerCase?.();;

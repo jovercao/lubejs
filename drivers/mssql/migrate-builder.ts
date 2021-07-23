@@ -9,6 +9,11 @@ import {
   SqlUtil,
   Lube,
   Expression,
+  DbType,
+  joinName,
+  CreateDatabase,
+  DropDatabase,
+  AlterDatabase,
 } from 'lubejs';
 import { sp_rename } from './build-in';
 import { MssqlProvider } from './provider';
@@ -17,6 +22,73 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
+  renameDatabase(name: string, newName: string): Statement {
+    return SQL.raw(`
+    USE master;
+    ALTER DATABASE ${this.sqlUtil.sqlifyName(name)} SET SINGLE_USER WITH ROLLBACK IMMEDIAT
+    ALTER DATABASE ${this.sqlUtil.sqlifyName(name)} MODIFY NAME = ${this.sqlUtil.sqlifyName(newName)} ;
+    ALTER DATABASE ${this.sqlUtil.sqlifyName(newName)}  SET MULTI_USER`)
+  }
+  alterDatabase(name: string): AlterDatabase {
+    return SQL.alterDatabase(name);
+  }
+  createDatabase(name: string): CreateDatabase {
+    return SQL.createDatabase(name);
+  }
+  dropDatabase(name: string): DropDatabase {
+    return SQL.dropDatabase(name);
+  }
+  dropSchemaComment(name: string): Statement {
+    return this.setSchemaComment(name, null);
+  }
+  dropSequenceComment(name: Name<string>): Statement {
+    return this.setSequenceComment(name, null);
+  }
+  dropProcedureComment(name: Name<string>): Statement {
+    return this.setProcedureComment(name, null);
+  }
+  dropFunctionComment(name: Name<string>): Statement {
+    return this.setFunctionComment(name, null);
+  }
+  dropTableComment(name: Name<string>): Statement {
+    return this.setTableComment(name, null);
+  }
+  dropColumnComment(table: Name<string>, name: string): Statement {
+    return this.setColumnComment(table, name, null);
+  }
+  dropIndexComment(table: Name<string>, name: string): Statement {
+    return this.setIndexComment(table, name, null);
+  }
+  dropConstraintComment(table: Name<string>, name: string): Statement {
+    return this.setConstraintComment(table, name, null);
+  }
+  setAutoRowflag(table: Name<string>, column: string): Statement {
+    return SQL.block(
+      SQL.note(
+        '=========================注意：MSSQL 自带标记列，仅通过修改类型来达成========================'
+      ),
+      SQL.alterTable(table).dropColumn(column),
+      SQL.alterTable(table).add(({ column: c }) => c(column, DbType.raw('ROWVERSION'))),
+      // SQL.alterTable(table).alterColumn(c =>
+      //   c(column, DbType.raw('ROWVERSION'))
+      // )
+    );
+  }
+  dropAutoRowflag(table: Name<string>, column: string): Statement {
+    const tempColumn = '__' + column;
+    return SQL.block(
+      SQL.note(
+        '=========================MSSQL 自带标记列，仅通过修改类型来达成========================'
+      ),
+      SQL.alterTable(table).add(({ column: c }) => c(tempColumn, DbType.binary(8)).notNull()),
+      SQL.update(table).set({
+        [column]: SQL.field(column)
+      }),
+      SQL.alterTable(table).drop(({ column: c }) => c(column)),
+      this.renameColumn(table, tempColumn, column)
+    );
+  }
+
   // existsTable(name: Name<string>): Expression<Scalar> {
   //   return
   // }
@@ -46,8 +118,8 @@ WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
  EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
-      table
-    )} DROP CONSTRAINT ' + @ConstaintName)
+   table
+ )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
 ALTER TABLE ${this.sqlUtil.sqlifyName(
@@ -68,8 +140,8 @@ WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
 IF (@ConstaintName IS NOT NULL)
 BEGIN
   EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
-      table
-    )} DROP CONSTRAINT ' + @ConstaintName)
+    table
+  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 `);
   }
@@ -161,9 +233,11 @@ END
     );
   }
 
-  commentProcedure(name: Name, comment?: string): Statement {
+  setProcedureComment(name: Name, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyName(name)}, ${comment});
+-- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyName(
+      name
+    )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Proc VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Proc = o.name
@@ -183,7 +257,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  commentFunction(name: Name, comment?: string): Statement {
+  setFunctionComment(name: Name, comment: string | null): Statement {
     let sql = formatSql`
 -- MigrateBuilder.commentFunction(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Func VARCHAR(100), @ObjectId INT
@@ -205,7 +279,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  commentSequence(name: Name, comment?: string): Statement {
+  setSequenceComment(name: Name, comment: string | null): Statement {
     let sql = formatSql`
 -- MigrateBuilder.commentSequence(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Sequence VARCHAR(100), @ObjectId INT
@@ -227,11 +301,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  if(condition: Condition, statements: Statement[], elseStatements: Statement[]) {
-
-  }
-
-  commentTable(name: Name, comment?: string): Statement {
+  setTableComment(name: Name, comment: string | null): Statement {
     let sql = formatSql`
 -- MigrateBuilder.commentTable(${this.sqlUtil.sqlifyName(name)}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT
@@ -253,9 +323,11 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  commentColumn(table: Name, name: string, comment?: string): Statement {
+  setColumnComment(table: Name, name: string, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
+-- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyName(
+      table
+    )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Column VARCHAR(100)
 
 SET @Column = ${name}
@@ -280,9 +352,11 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  commentIndex(table: Name, name: string, comment?: string): Statement {
+  setIndexComment(table: Name, name: string, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
+-- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyName(
+      table
+    )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Index VARCHAR(100)
 
 SET @Index = ${name}
@@ -307,9 +381,15 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  commentConstraint(table: Name<string>, name: string, comment?: string): Statement {
+  setConstraintComment(
+    table: Name<string>,
+    name: string,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(table)}, ${name}, ${comment});
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(
+      table
+    )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
 
 SET @Constraint = ${name}
@@ -347,14 +427,16 @@ END
     if (comment) {
       sql += formatSql`
 EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'TABLE', @Table, 'CONSTRAINT', @Constraint;
-`
+`;
     }
     return SQL.raw(sql);
   }
 
-  commentSchema(name: string, comment?: string): Statement {
+  setSchemaComment(name: string, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(name)}, ${comment});
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(
+      name
+    )}, ${comment});
 IF EXISTS(
   SELECT 1 FROM sys.extended_properties p
   WHERE p.name = ${COMMENT_EXTEND_PROPERTY_NAME} AND p.major_id = SCHEMA_ID(${name}) AND p.class = 7 AND p.minor_id = 0
@@ -371,26 +453,26 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
   }
 
   renameTable(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
+    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
   }
 
   renameColumn(table: Name, name: string, newName: string): Statement {
-    return sp_rename([name, ...table] as Name, newName, 'COLUMN');
+    return sp_rename(this.sqlUtil.sqlifyName(joinName(table, name)), newName, 'COLUMN');
   }
 
   renameView(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
+    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
   }
 
   renameIndex(table: Name, name: string, newName: string): Statement {
-    return sp_rename([name, ...table] as Name, newName, 'INDEX');
+    return sp_rename(this.sqlUtil.sqlifyName(joinName(table, name)), newName, 'INDEX');
   }
 
   renameProcedure(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
+    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
   }
 
   renameFunction(name: Name, newName: string): Statement {
-    return sp_rename(name, newName);
+    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
   }
 }

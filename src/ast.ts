@@ -2836,7 +2836,7 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
 export class Procedure<
   R extends Scalar = number,
   O extends RowObject[] = [],
-  N extends string = string,
+  N extends string = string
   // P1 extends Scalar = never,
   // P2 extends Scalar = never,
   // P3 extends Scalar = never,
@@ -3586,6 +3586,10 @@ export class AlterTableDropMember extends AST {
   }
 }
 
+type CheckBuilder = {
+  (sql: Condition): CheckConstraint;
+  (name: string, sql: Condition): CheckConstraint;
+};
 export interface AlterTableAddBuilder {
   column<N extends string, T extends DbType>(
     name: N,
@@ -3596,22 +3600,21 @@ export interface AlterTableAddBuilder {
 
   foreignKey(name?: string): ForeignKey;
 
-  check(sql: Condition): CheckConstraint;
-  check(name: string, sql: Condition): CheckConstraint;
-
   uniqueKey(name?: string): UniqueKey;
+
+  check: CheckBuilder;
 }
 
 export interface AlterTableDropBuilder {
   column(name: string): AlterTableDropMember;
 
-  primaryKey(name: string): AlterTableDropMember;
+  primaryKey(constraintName: string): AlterTableDropMember;
 
-  foreignKey(name: string): AlterTableDropMember;
+  foreignKey(constraintName: string): AlterTableDropMember;
 
-  check(name: string): AlterTableDropMember;
+  check(constraintName: string): AlterTableDropMember;
 
-  uniqueKey(name: string): AlterTableDropMember;
+  uniqueKey(constraintName: string): AlterTableDropMember;
 }
 
 export const AlterTableDropBuilder: AlterTableDropBuilder = {
@@ -3678,13 +3681,34 @@ export class AlterTable<N extends string = string> extends Statement {
 
   $adds?: AlterTableAddMember[];
 
-  $drops?: AlterTableDropMember[];
+  $drop?: AlterTableDropMember;
 
   $alterColumn?: TableColumnForAlter;
 
   constructor(name: Name<N>) {
     super();
     this.$name = name;
+  }
+
+  private _assertDrop() {
+    if (this.$adds || this.$alterColumn) {
+      throw new Error(`A alter statement is only used by add or drop.`);
+    }
+    if (this.$drop) {
+      throw new Error(`A drop item is exists in it.`);
+    }
+    // if (!this.$drops) {
+    //   this.$drops = [];
+    // }
+  }
+
+  private _assertAdd() {
+    if (this.$drop || this.$alterColumn) {
+      throw new Error(`A alter statement is only used by add or drop.`);
+    }
+    if (!this.$adds) {
+      this.$adds = [];
+    }
   }
 
   add(
@@ -3702,50 +3726,146 @@ export class AlterTable<N extends string = string> extends Statement {
         ]
       | AlterTableAddMember[]
   ): this {
-    if (this.$drops || this.$alterColumn) {
-      throw new Error(`A alter statement is only used by add or drop.`);
-    }
+    this._assertAdd();
     if (typeof members[0] === 'function') {
       const ret = members[0](AlterTableAddBuilder);
       members = Array.isArray(ret) ? ret : [ret];
       this.add(...members);
       return this;
     }
-    if (!this.$adds) {
-      this.$adds = [];
-    }
-    this.$adds.push(...(members as AlterTableAddMember[]));
+    this.$adds!.push(...(members as AlterTableAddMember[]));
     return this;
   }
 
-  drop(...members: AlterTableDropMember[]): this;
-  drop(
-    build: (
-      builder: AlterTableDropBuilder
-    ) => AlterTableDropMember[] | AlterTableDropMember
-  ): this;
-  drop(
-    ...members:
-      | [
-          (
-            builder: AlterTableDropBuilder
-          ) => AlterTableDropMember[] | AlterTableDropMember
-        ]
-      | AlterTableDropMember[]
+  addColumn(
+    columnOrBuilder:
+      | TableColumnForAdd
+      | ((
+          columnBuilder: <N extends string, T extends DbType>(
+            name: N,
+            type: T
+          ) => TableColumnForAdd<N>
+        ) => TableColumnForAdd)
   ): this {
-    if (this.$adds || this.$alterColumn) {
-      throw new Error(`A alter statement is only used by add or drop.`);
+    this._assertAdd();
+    let column: TableColumnForAdd;
+    if (typeof columnOrBuilder === 'function') {
+      column = columnOrBuilder(AlterTableAddBuilder.column);
+    } else {
+      column = columnOrBuilder;
     }
-    if (!this.$drops) {
-      this.$drops = [];
+    this.$adds!.push(column);
+    return this;
+  }
+
+  addPrimaryKey(
+    keyOrBuilder:
+      | PrimaryKey
+      | ((keyBuilder: (name?: string) => PrimaryKey) => PrimaryKey)
+  ): this {
+    this._assertAdd();
+    let key: PrimaryKey;
+    if (typeof keyOrBuilder === 'function') {
+      key = keyOrBuilder(AlterTableAddBuilder.primaryKey);
+    } else {
+      key = keyOrBuilder;
     }
-    if (typeof members[0] === 'function') {
-      const ret = members[0](AlterTableDropBuilder);
-      members = Array.isArray(ret) ? ret : [ret];
-      this.drop(...members);
+    this.$adds!.push(key);
+    return this;
+  }
+
+  addForeignKey(
+    keyOrBuilder:
+      | ForeignKey
+      | ((keyBuilder: (name?: string) => ForeignKey) => ForeignKey)
+  ): this {
+    this._assertAdd();
+    let key: ForeignKey;
+    if (typeof keyOrBuilder === 'function') {
+      key = keyOrBuilder(AlterTableAddBuilder.foreignKey);
+    } else {
+      key = keyOrBuilder;
+    }
+    this.$adds!.push(key);
+    return this;
+  }
+
+  addUnionKey(
+    keyOrBuilder:
+      | UniqueKey
+      | ((keyBuilder: (name?: string) => UniqueKey) => UniqueKey)
+  ): this {
+    this._assertAdd();
+    let key: UniqueKey;
+    if (typeof keyOrBuilder === 'function') {
+      key = keyOrBuilder(AlterTableAddBuilder.uniqueKey);
+    } else {
+      key = keyOrBuilder;
+    }
+    this.$adds!.push(key);
+    return this;
+  }
+
+  addCheck(
+    keyOrBuilder:
+      | CheckConstraint
+      | ((checkBuilder: CheckBuilder) => CheckConstraint)
+  ): this {
+    this._assertAdd();
+    let check: CheckConstraint;
+    if (typeof keyOrBuilder === 'function') {
+      check = keyOrBuilder(AlterTableAddBuilder.check);
+    } else {
+      check = keyOrBuilder;
+    }
+    this.$adds!.push(check);
+    return this;
+  }
+
+  drop(member: AlterTableDropMember): this;
+  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember): this;
+  drop(
+    memberOrBuilder:
+      | ((builder: AlterTableDropBuilder) => AlterTableDropMember)
+      | AlterTableDropMember
+  ): this {
+    this._assertDrop();
+    if (typeof memberOrBuilder === 'function') {
+      const member = memberOrBuilder(AlterTableDropBuilder);
+      this.$drop = member;
       return this;
     }
-    this.$drops.push(...(members as AlterTableDropMember[]));
+    this.$drop = memberOrBuilder;
+    return this;
+  }
+
+  dropColumn(name: string): this {
+    this._assertDrop();
+    this.$drop = AlterTableDropBuilder.column(name);
+    return this;
+  }
+
+  dropPrimaryKey(name: string): this {
+    this._assertDrop();
+    this.$drop = AlterTableDropBuilder.primaryKey(name);
+    return this;
+  }
+
+  dropForeignKey(name: string): Statement {
+    this._assertDrop();
+    this.$drop = AlterTableDropBuilder.foreignKey(name);
+    return this;
+  }
+
+  dropCheck(name: string): this {
+    this._assertDrop();
+    this.$drop = AlterTableDropBuilder.check(name);
+    return this;
+  }
+
+  dropUniqueKey(name: string): this {
+    this._assertDrop();
+    this.$drop = AlterTableDropBuilder.uniqueKey(name);
     return this;
   }
 
@@ -3756,9 +3876,9 @@ export class AlterTable<N extends string = string> extends Statement {
           builder: (name: string, type: DbType) => TableColumnForAlter
         ) => TableColumnForAlter)
   ): this {
-    if (this.$adds || this.$drops || this.$alterColumn) {
+    if (this.$adds || this.$drop || this.$alterColumn) {
       throw new Error(
-        `A alter statement is only used by add or drop or alterColumn.`
+        `Alter statement is used only one of add or drop or alterColumn.`
       );
     }
     if (typeof buildColumn === 'function') {
@@ -4282,6 +4402,9 @@ export class Continue extends Statement {
 }
 
 export interface SqlBuilder extends Standard {
+  alterDatabase(name: string): AlterDatabase;
+  dropDatabase(name: string): DropDatabase;
+  createDatabase(name: string): CreateDatabase;
   createSequence(name: Name<string>): CreateSequence;
   dropSequence(name: Name<string>): DropSequence;
 
@@ -5157,6 +5280,15 @@ export const SqlBuilder: SqlBuilder = {
   get continue(): Continue {
     return new Continue();
   },
+  createDatabase(name: string): CreateDatabase {
+    return new CreateDatabase(name);
+  },
+  alterDatabase(name: string): AlterDatabase {
+    return new AlterDatabase(name);
+  },
+  dropDatabase(name: string): DropDatabase {
+    return new DropDatabase(name);
+  },
   createSequence(name: Name): CreateSequence {
     return new CreateSequence(name);
   },
@@ -5806,3 +5938,44 @@ export const SqlBuilder: SqlBuilder = {
     return new Parameter(name, type, value, 'OUTPUT');
   },
 };
+
+export class CreateDatabase extends Statement {
+  $kind: STATEMENT_KIND.CREATE_DATABASE = STATEMENT_KIND.CREATE_DATABASE;
+  $name: string;
+  $collate?: string;
+
+  constructor(name: string) {
+    super();
+    this.$name = name;
+  }
+
+  collate(collate: string) {
+    this.$collate = collate;
+  }
+}
+
+export class DropDatabase extends Statement {
+  $kind: STATEMENT_KIND.DROP_DATABASE = STATEMENT_KIND.DROP_DATABASE;
+  $name: string;
+
+  constructor(name: string) {
+    super();
+    this.$name = name;
+  }
+}
+
+export class AlterDatabase extends Statement {
+  $kind: STATEMENT_KIND.ALTER_DATABASE = STATEMENT_KIND.ALTER_DATABASE;
+  $name: string;
+  $collate!: string;
+
+  constructor(name: string) {
+    super();
+    this.$name = name;
+  }
+
+  collate(collate: string) {
+    this.$collate = collate;
+  }
+}
+

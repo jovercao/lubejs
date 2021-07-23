@@ -128,6 +128,20 @@ export enum SQL_SYMBOLE {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export enum STATEMENT_KIND {
   // RAW = 'RAW',
   SELECT = 'SELECT',
@@ -159,7 +173,10 @@ export enum STATEMENT_KIND {
   IF = 'IF',
   WHILE = 'WHILE',
   BREAK = 'BREAK',
-  CONTINUE = 'CONTINUE'
+  CONTINUE = 'CONTINUE',
+  DROP_DATABASE = "DROP_DATABASE",
+  CREATE_DATABASE = "CREATE_DATABASE",
+  ALTER_DATABASE = "ALTER_DATABASE"
 }
 
 export enum SQL_SYMBOLE_TABLE_MEMBER {

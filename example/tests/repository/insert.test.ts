@@ -1,7 +1,7 @@
 import assert from 'assert';
-import '../../orm';
-import { User, DB, OrderDetail } from '../../orm';
-import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
+import '../../orm-configure';
+import { User, DB, OrderDetail } from '../../orm-configure';
+import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
@@ -43,8 +43,8 @@ describe('Repository: insert', function () {
     await db.getRepository(OrderDetail).insert({
       product: '产品1',
       count: 1,
-      price: 100.0,
-      amount: 100.0,
+      price: new Decimal(100.0),
+      amount: new Decimal(100.0),
       order: {
         date: new Date(),
         orderNo: '202001010001',
@@ -60,21 +60,21 @@ describe('Repository: insert', function () {
         {
           product: '产品1',
           count: 1,
-          price: 100,
-          amount: 100,
+          price: new Decimal(100),
+          amount: new Decimal(100),
         },
         {
           product: '产品2',
           count: 2,
-          price: 200,
-          amount: 400,
+          price: new Decimal(200),
+          amount: new Decimal(400),
         },
       ],
     });
   });
 
   it('一对一关系(副)插入测试 - Employee -> User', async () => {
-    const organization = await db.Organization.get(0);
+    const organization = await db.Organization.get(0n);
     await db.Employee.insert({
       name: '职员2',
       description: '测试',
@@ -88,7 +88,7 @@ describe('Repository: insert', function () {
   });
 
   it('一对一关系(主)插入测试 - User <- Employee', async () => {
-    const organization = await db.Organization.get(0);
+    const organization = await db.Organization.get(0n);
     await db.User.insert({
       name: 'user1',
       password: '123456',
@@ -101,7 +101,7 @@ describe('Repository: insert', function () {
   });
 
   it('同表多对一关系插入测试 - Organization[] -> Organization', async () => {
-    const organization = await db.Organization.get(0);
+    const organization = await db.Organization.get(0n);
     await db.Organization.insert([
       {
         name: '关联公司的部门',
@@ -136,7 +136,7 @@ describe('Repository: insert', function () {
   });
 
   it('多对多关系插入测试 - Employee <- EmployeePosition -> Position', async () => {
-    const organization = await db.Organization.get(0);
+    const organization = await db.Organization.get(0n);
     await db.Employee.insert({
       name: '多对多关系插入测试 - 职员',
       description:

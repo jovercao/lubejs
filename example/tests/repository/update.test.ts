@@ -1,7 +1,7 @@
-import '../../orm';
-import { DB, Employee, Order, OrderDetail, User } from '../../orm';
+import '../../orm-configure';
+import { DB, Employee, Order, OrderDetail, User } from '../../orm-configure';
 import assert from 'assert';
-import { createContext, outputCommand, SqlBuilder as SQL } from 'lubejs';
+import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
 
@@ -26,7 +26,7 @@ describe('Repository: update', function () {
       password: '嘿咻',
       employee: {
         name: '一对一（主）关系更新测试 - 职员',
-        organization: (await db.Organization.get(0))!,
+        organization: (await db.Organization.get(0n))!,
       },
     };
     await db.User.save(user);
@@ -44,7 +44,7 @@ describe('Repository: update', function () {
   it('一对一(从）关系更新 - Employee -> User', async () => {
     const employee: Employee = {
       name: '一对一（从）关系更新测试 - 职员',
-      organization: (await db.Organization.get(0))!,
+      organization: (await db.Organization.get(0n))!,
       user: {
         name: '一对一（从）关系更新测试 - 用户',
         password: '嘿咻'
@@ -70,14 +70,14 @@ describe('Repository: update', function () {
         {
           product: '产品1',
           count: 1,
-          price: 100,
-          amount: 100,
+          price: new Decimal(100),
+          amount: new Decimal(100),
         },
         {
           product: '产品2',
           count: 2,
-          price: 100,
-          amount: 200,
+          price: new Decimal(100),
+          amount: new Decimal(200),
         },
       ],
     };
@@ -90,8 +90,8 @@ describe('Repository: update', function () {
     order.details!.push({
       product: '产品3',
       count: 3,
-      price: 100,
-      amount: 300,
+      price: new Decimal(100),
+      amount: new Decimal(300),
       description: '新增产品3',
     });
 
@@ -116,7 +116,7 @@ describe('Repository: update', function () {
         password: 'hehe',
       },
       name: 'repository.update ManyToMany1',
-      organization: (await db.User.get(0))!,
+      organization: (await db.User.get(0n))!,
       positions: [
         {
           name: 'ManyToMany职位1',

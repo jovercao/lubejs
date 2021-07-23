@@ -387,12 +387,14 @@ export type DataTypeOf<T> = T extends string
   ? StringConstructor
   : T extends number
   ? NumberConstructor
+  : T extends bigint
+  ? BigIntConstructor
   : T extends Date
   ? DateConstructor
-  : T extends DecimalConstructor
-  ? Decimal
-  : T extends UuidConstructor
-  ? Uuid
+  : T extends Decimal
+  ? DecimalConstructor
+  : T extends Uuid
+  ? UuidConstructor
   : T extends boolean
   ? BooleanConstructor
   : T extends Binary
@@ -504,6 +506,9 @@ export const DbType = {
   raw(name: string): any {
     return new Raw(name);
   },
+  rowflag: {
+    name: 'ROWFLAG'
+  } as ROWFLAG,
   MAX: 0,
 };
 

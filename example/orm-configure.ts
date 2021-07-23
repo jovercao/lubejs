@@ -6,6 +6,8 @@ import {
   Entity,
   SqlBuilder as SQL,
   EntityKey,
+  Binary,
+  Decimal,
 } from 'lubejs';
 
 /*************************试验代码****************************/
@@ -15,7 +17,7 @@ declare module 'lubejs/types' {
    * 主键声明接口
    */
   export interface EntityKey {
-    id?: number;
+    id?: bigint;
   }
 }
 
@@ -23,7 +25,7 @@ declare module 'lubejs/types' {
  * 用户实体类
  */
 export class User extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   name!: string;
   password!: string;
   description?: string;
@@ -34,11 +36,16 @@ export class User extends Entity implements EntityKey {
  * 订单
  */
 export class Order extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   date!: Date;
   // 自动生成，因此可以为空
   orderNo?: string;
   description?: string;
+  /**
+   * 行版本号
+   */
+  rowflag?: Binary;
+
   details?: OrderDetail[];
 }
 
@@ -46,25 +53,25 @@ export class Order extends Entity implements EntityKey {
  * 订单明细
  */
 export class OrderDetail extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   product!: string;
   count!: number;
-  price!: number;
-  amount!: number;
+  price!: Decimal;
+  amount!: Decimal;
   description?: string;
-  orderId?: number;
+  orderId?: bigint;
   order?: Order;
 }
 
 export class Position extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   name!: string;
   description?: string;
   employees?: Employee[];
 }
 
 export class Employee extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   name!: string;
   description?: string;
   organization?: Organization;
@@ -73,18 +80,18 @@ export class Employee extends Entity implements EntityKey {
 }
 
 export class EmployeePosition extends Entity implements EntityKey {
-  id?: number;
-  positionId!: number;
+  id?: bigint;
+  positionId!: bigint;
   position?: Position;
-  employeeId!: number;
+  employeeId!: bigint;
   employee?: Employee;
 }
 
 export class Organization extends Entity implements EntityKey {
-  id?: number;
+  id?: bigint;
   name!: string;
   description?: string;
-  parentId?: number;
+  parentId?: bigint;
   parent?: Organization;
   children?: Organization[];
   employees?: Employee[];
@@ -118,7 +125,7 @@ modelBuilder.context(DB, context => {
     .asTable(table => {
       table.hasComment('职员');
       table
-        .property(p => p.id, Number)
+        .property(p => p.id, BigInt)
         .isIdentity()
         .hasComment('ID');
       table.property(p => p.name, String).hasComment('职员姓名');
@@ -143,7 +150,7 @@ modelBuilder.context(DB, context => {
     .asTable(table => {
       table.hasComment('职员');
       table
-        .property(p => p.id, Number)
+        .property(p => p.id, BigInt)
         .isIdentity()
         .hasComment('ID');
       table.property(p => p.name, String).hasComment('职位名称');
@@ -164,7 +171,7 @@ modelBuilder.context(DB, context => {
     })
     .entity(Organization)
     .asTable(builder => {
-      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.id, BigInt).isIdentity();
       builder.property(p => p.name, String);
       builder.property(p => p.description, String).isNullable();
       builder.hasMany(p => p.employees, Employee).withOne(p => p.organization);
@@ -182,7 +189,7 @@ modelBuilder.context(DB, context => {
     })
     .entity(Employee)
     .asTable(builder => {
-      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.id, BigInt).isIdentity();
       builder
         .property(p => p.name, String)
         .hasType(DbType.string(100))
@@ -209,7 +216,7 @@ modelBuilder.context(DB, context => {
     })
     .entity(Order)
     .asTable(builder => {
-      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.id, BigInt).isIdentity();
       builder.property(p => p.orderNo, String).isAutogen(item => 'abc');
       builder
         .property(p => p.date, Date)
@@ -220,16 +227,18 @@ modelBuilder.context(DB, context => {
         .hasMany(p => p.details, OrderDetail)
         .withOne(p => p.order)
         .isDetail();
+
+      builder.property(p => p.rowflag, Buffer).isRowflag();
       builder.hasKey(p => p.id);
     })
     .entity(OrderDetail)
     .asTable(builder => {
-      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.id, BigInt).isIdentity();
       builder.property(p => p.product, String);
       builder.property(p => p.count, Number);
-      builder.property(p => p.price, Number).hasType(DbType.decimal(18, 6));
-      builder.property(p => p.amount, Number).hasType(DbType.decimal(18, 2));
-      builder.property(p => p.orderId, Number);
+      builder.property(p => p.price, Decimal).hasType(DbType.decimal(18, 6));
+      builder.property(p => p.amount, Decimal).hasType(DbType.decimal(18, 2));
+      builder.property(p => p.orderId, BigInt);
       builder.property(p => p.description, String).isNullable();
       builder
         .hasOne(p => p.order, Order)

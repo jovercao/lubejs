@@ -69,8 +69,12 @@ import {
   Break,
   Continue,
   WithSelect,
+  CreateTable,
+  CreateDatabase,
+  AlterDatabase,
+  DropDatabase,
 } from './ast';
-import { PARAMETER_DIRECTION, SQL_SYMBOLE } from './constants';
+import { PARAMETER_DIRECTION, SQL_SYMBOLE, STATEMENT_KIND } from './constants';
 import { Command } from './execute';
 import { DbType, Name, Scalar } from './types';
 
@@ -139,6 +143,9 @@ import {
   isContinue,
   assertAstNonempty,
   isWithSelect,
+  isCreateDatabase,
+  isAlterDatabase,
+  isDropDatabase,
 } from './util';
 import { Standard } from './std';
 
@@ -467,7 +474,7 @@ export abstract class SqlUtil {
     } else if (isDropSequence(statement)) {
       return this.sqlifyDropSequence(statement);
     } else if (isBlock(statement)) {
-      return this.sqlifyBlock(statement);
+      return this.sqlifyBlock(statement, params);
     } else if (isStandardStatement(statement)) {
       return this.sqlifyStatement(this.translationStandardOperation(statement));
     } else if (isIf(statement)) {
@@ -478,14 +485,26 @@ export abstract class SqlUtil {
       return this.sqlifyBreak(statement);
     } else if (isContinue(statement)) {
       return this.sqlifyContinue(statement);
+    } else if (isCreateDatabase(statement)) {
+      return this.sqlifyCreateDatabase(statement);
+    } else if (isAlterDatabase(statement)) {
+      return this.sqlifyAlterDatabase(statement);
+    } else if (isDropDatabase(statement)) {
+      return this.sqlifyDropDatabase(statement);
     }
     throw invalidAST('statement', statement);
   }
 
   abstract sqlifyContinue(statement: Continue): string;
   abstract sqlifyBreak(statement: Break): string;
-  abstract sqlifyWhile(statement: While, params?: Set<Parameter<Scalar, string>>): string;
-  abstract sqlifyIf(statement: If, params?: Set<Parameter<Scalar, string>>,): string;
+  abstract sqlifyWhile(
+    statement: While,
+    params?: Set<Parameter<Scalar, string>>
+  ): string;
+  abstract sqlifyIf(
+    statement: If,
+    params?: Set<Parameter<Scalar, string>>
+  ): string;
 
   protected sqlifyStatements(
     statements: Statement[],
@@ -505,7 +524,13 @@ export abstract class SqlUtil {
 
   protected abstract sqlifyCreateSequence(statement: CreateSequence): string;
 
-  protected abstract sqlifyBlock(statement: Block): string;
+  protected abstract sqlifyBlock(
+    statement: Block
+    /**
+     * 参数容器
+     */,
+    params?: Set<Parameter<Scalar, string>>
+  ): string;
 
   protected abstract sqlifyDropIndex(table: Name, name: string): string;
 
@@ -524,7 +549,7 @@ export abstract class SqlUtil {
   protected abstract sqlifyCreateProcedure(statement: CreateProcedure): string;
 
   protected sqlifyAlterView(statement: AlterView<any, string>): string {
-    assertAstNonempty(statement.$body, 'AlterView has no body statement.')
+    assertAstNonempty(statement.$body, 'AlterView has no body statement.');
     return `ALTER VIEW ${this.sqlifyName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
@@ -535,7 +560,10 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyCreateView(statement: CreateView<any, string>): string {
-    assertAstNonempty(statement.$body, 'CreateView statement has no statements body.');
+    assertAstNonempty(
+      statement.$body,
+      'CreateView statement has no statements body.'
+    );
     return `CREATE VIEW ${this.sqlifyName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
@@ -545,9 +573,15 @@ export abstract class SqlUtil {
     return `DROP TABLE ${this.sqlifyName(name)}`;
   }
 
-  protected abstract sqlifyAlterTable(statement: AlterTable<string>): string;
+  protected abstract sqlifyAlterTable(statement: AlterTable): string;
 
-  protected abstract sqlifyCreateTable(statement: Statement): string;
+  protected abstract sqlifyCreateTable(statement: CreateTable): string;
+
+  protected abstract sqlifyCreateDatabase(statement: CreateDatabase): string;
+
+  protected abstract sqlifyAlterDatabase(statement: AlterDatabase): string;
+
+  protected abstract sqlifyDropDatabase(statement: DropDatabase): string;
 
   protected sqlifyGroupExpression(
     expr: GroupExpression<Scalar>,
@@ -715,8 +749,7 @@ export abstract class SqlUtil {
         let sql = this.sqlifyExpression(ast, params, parent);
         if (
           isParameter(ast) &&
-          (ast as Parameter<Scalar, string>).direction ===
-            'OUTPUT'
+          (ast as Parameter<Scalar, string>).direction === 'OUTPUT'
         ) {
           sql += ' OUTPUT';
         }
@@ -842,9 +875,7 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>
   ): string {
     return (
-      expr.$operator +
-      ' ' +
-      this.sqlifyCondition(expr.$condition, params, expr)
+      expr.$operator + ' ' + this.sqlifyCondition(expr.$condition, params, expr)
     );
   }
 
@@ -1076,10 +1107,7 @@ export abstract class SqlUtil {
       return this.sqlifyExistsCondition(condition as ExistsCondition, params);
     }
     if (isGroupCondition(condition)) {
-      return this.sqlifyGroupCondition(
-        condition as GroupCondition,
-        params
-      );
+      return this.sqlifyGroupCondition(condition as GroupCondition, params);
     }
     if (isBinaryCompareCondition(condition)) {
       return this.sqlifyBinaryCompareCondition(
@@ -1131,7 +1159,7 @@ export abstract class SqlUtil {
         ')';
     }
 
-    assertAstNonempty($values)
+    assertAstNonempty($values);
     if (Array.isArray($values)) {
       sql += ' VALUES';
       sql += $values

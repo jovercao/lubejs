@@ -14,11 +14,8 @@ import { EventEmitter } from 'stream';
 import { DbContextMetadata, metadataStore } from './metadata';
 
 export class DbInstance {
-  constructor(executor: Executor, isTransaction = false) {
+  protected constructor(executor: Executor, isTransaction = false) {
     this.executor = executor;
-    this.metadata = metadataStore.getContext(
-      this.constructor as DbContextConstructor
-    );
     this._isTransaction = isTransaction;
     // this.executor.on('command', outputCommand);
   }
@@ -26,10 +23,17 @@ export class DbInstance {
   private _isTransaction: boolean = false;
 
   private _emitter: EventEmitter = new EventEmitter();
+  private _metadata!: DbContextMetadata;
 
   readonly executor: Executor;
 
-  private metadata: DbContextMetadata;
+  public get metadata(): DbContextMetadata {
+    return this._metadata;
+  };
+
+  protected set metadata(value: DbContextMetadata) {
+    this._metadata = value;
+  }
 
   // 为节省内存，Repository 使用共享对象
   private _repositories: Map<Entity, Repository<any>> = new Map();
@@ -267,6 +271,7 @@ export interface DbContextConstructor<T extends DbContext = DbContext> {
 export class DbContext extends DbInstance {
   constructor(public readonly lube: Lube) {
     super(lube);
+    this.metadata = metadataStore.getContext(this.constructor as DbContextConstructor);
   }
 
   /**
@@ -276,7 +281,8 @@ export class DbContext extends DbInstance {
     handler: (instance: DbInstance, abort: () => Promise<void>) => Promise<T>
   ): Promise<T> {
     return this.lube.trans((executor, abort) => {
-      const instance = new DbInstance(executor);
+      const instance = new DbInstance(executor, true);
+      Reflect.set(instance, 'metadata', this.metadata);
       return handler(instance, abort);
     });
   }

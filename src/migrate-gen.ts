@@ -1,3 +1,4 @@
+import { POINT_CONVERSION_COMPRESSED } from 'constants';
 import { KeyColumn, PrimaryKey } from './ast';
 import { DbContextMetadata, TableEntityMetadata } from './metadata';
 import {
@@ -17,6 +18,7 @@ import {
 } from './schema';
 import { DbType, Name } from './types';
 import { isNameEquals } from './util';
+import { ObjectDifference } from './util/compare';
 
 // TODO: 可空约束名称处理
 // TODO: 文本缩进美化处理
@@ -42,663 +44,696 @@ import { isNameEquals } from './util';
 export function generateMigrate(
   name: string,
   source: DatabaseSchema,
-  target: DatabaseSchema,
-  metadata: DbContextMetadata,
+  target?: DatabaseSchema,
   resolverType?: (rawType: string) => DbType
 ): string {
-  function genType(type: string): string {
-    if (!resolverType) return `SQL.raw('${type}')`;
-    const dbType = resolverType(type);
-    switch (dbType.name) {
-      case 'BINARY':
-      case 'STRING':
-        return `DbType.${dbType.name.toLowerCase()}(${
-          dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
-        })`;
-      case 'DECIMAL':
-        return `DbType.numeric(${dbType.precision}, ${dbType.digit})`;
-      default:
-        return 'DbType.' + dbType.name.toLowerCase();
+  function genCodes(diff: SchemaDifference | null): string[] {
+    function stringifyType(type: string): string {
+      if (!resolverType) return `SQL.raw('${type}')`;
+      const dbType = resolverType(type);
+      switch (dbType.name) {
+        case 'BINARY':
+        case 'STRING':
+          return `DbType.${dbType.name.toLowerCase()}(${
+            dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
+          })`;
+        case 'DECIMAL':
+          return `DbType.decimal(${dbType.precision}, ${dbType.digit})`;
+        default:
+          return 'DbType.' + dbType.name.toLowerCase();
+      }
     }
-  }
 
-  function genColumnForAlter(
-    column: ColumnSchema,
-    prefix: string = 'builder.'
-  ): string {
-    let sql = `${prefix}column(${genName(column.name)}, ${genType(
-      column.type
-    )})`;
-    if (column.isNullable) {
-      sql += '.null()';
-    } else {
-      sql += '.notNull()';
+    function columnForAlter(
+      column: ColumnSchema,
+      prefix: string = 'builder.'
+    ): string {
+      let sql = `${prefix}column(${codify(column.name)}, ${stringifyType(
+        column.type
+      )})`;
+      if (column.isNullable) {
+        sql += '.null()';
+      } else {
+        sql += '.notNull()';
+      }
+      return sql;
     }
-    return sql;
-  }
 
-  function genColumnForAdd(
-    column: ColumnSchema,
-    prefix: string = 'builder.'
-  ): string {
-    let sql = genColumnForAlter(column, prefix);
-    if (column.isIdentity)
-      sql += `.identity(${column.identityStartValue}, ${column.identityIncrement})`;
-    if (column.defaultValue) {
-      sql += `.default(${JSON.stringify(column.defaultValue)})`;
+    function columnForAdd(
+      column: ColumnSchema,
+      prefix: string = 'builder.'
+    ): string {
+      let sql = columnForAlter(column, prefix);
+      if (column.isIdentity)
+        sql += `.identity(${column.identityStartValue}, ${column.identityIncrement})`;
+      if (column.defaultValue) {
+        sql += `.default(${JSON.stringify(column.defaultValue)})`;
+      }
+      if (!column.isNullable) {
+        sql += '.notNull()';
+      } else {
+        sql += '.null()';
+      }
+      if (column.isCalculate) {
+        sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`;
+      }
+      return sql;
     }
-    if (column.isCalculate) {
-      sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`;
+
+    function keyeyColumns(columns: KeyColumnSchema[]): string {
+      return (
+        '{ ' +
+        columns
+          .map(
+            ({ name, isAscending }) =>
+              `${codify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+          )
+          .join(', ') +
+        ' }'
+      );
     }
-    return sql;
-  }
 
-  function genKeyColumns(columns: KeyColumnSchema[]): string {
-    return (
-      '{ ' +
-      columns
-        .map(
-          ({ name, isAscending }) =>
-            `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
-        )
-        .join(', ') +
-      ' }'
-    );
-  }
-
-  function genPrimaryKey(key: PrimaryKeySchema): string {
-    let sql = `builder.primaryKey(${
-      key.name ? genName(key.name) : ''
-    }).on({ ${key.columns.map(
-      ({ name, isAscending }) =>
-        `${genName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
-    )} })`;
-    if (key.isNonclustered) {
-      sql += '.withNoclustered()';
+    function primaryKey(key: PrimaryKeySchema): string {
+      let sql = `builder.primaryKey(${
+        key.name ? codify(key.name) : ''
+      }).on({ ${key.columns.map(
+        ({ name, isAscending }) =>
+          `${codify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+      )} })`;
+      if (key.isNonclustered) {
+        sql += '.withNoclustered()';
+      }
+      return sql;
     }
-    return sql;
-  }
 
-  function genForeignKey(fk: ForeignKeySchema): string {
-    let code = `builder.foreignKey(${genName(fk.name)}).on(${fk.columns
-      .map(column => genName(column))
-      .join(', ')}).reference(${genName(
-      fk.referenceTable
-    )}, [${fk.referenceColumns.map(column => genName(column)).join(', ')}])`;
+    function foreignKey(fk: ForeignKeySchema): string {
+      let code = `builder.foreignKey(${codify(fk.name)}).on(${fk.columns
+        .map(column => codify(column))
+        .join(', ')}).reference(${codify(
+        fk.referenceTable
+      )}, [${fk.referenceColumns.map(column => codify(column)).join(', ')}])`;
 
-    if (fk.isCascade) {
-      code += 'deleteCascade()';
+      if (fk.isCascade) {
+        code += 'deleteCascade()';
+      }
+      return code;
     }
-    return code;
-  }
 
-  function genConstraint(cst: ConstraintSchema): string {
-    if (cst.kind === 'CHECK') {
-      return genCheckConstraint(cst);
+    function codify(name: Name | undefined): string {
+      if (name === '') return "''";
+      if (!name) return '';
+
+      if (typeof name === 'string') return `'${name.replace(/''/g, "''")}'`;
+      return (
+        '[' +
+        name.map(node => `'${node.replace(/'/g, "\\'")}'`).join(', ') +
+        ']'
+      );
     }
-    return genUniqueConstraint(cst);
-  }
 
-  function genCheckConstraint(check: CheckConstraintSchema): string {
-    return `builder.check('${check.name}', SQL.raw(${check.sql}))`;
-  }
-
-  function genUniqueConstraint(key: UniqueConstraintSchema): string {
-    return `builder.uniqueKey('${key.name}').on(${genKeyColumns(key.columns)})`;
-  }
-
-  function genName(name: Name | undefined): string {
-    if (name === '') return "''";
-    if (!name) return '';
-
-    if (typeof name === 'string') return `'${name.replace(/''/g, "''")}'`;
-    return (
-      '[' + name.map(node => `'${node.replace(/'/g, "\\'")}'`).join(', ') + ']'
-    );
-  }
-
-  function genCreateTable(table: TableSchema): string {
-    const members: string[] = table.columns.map(col => genColumnForAdd(col));
-    if (table.primaryKey) {
-      members.push(genPrimaryKey(table.primaryKey));
+    function genConstraint(cst: ConstraintSchema): void {
+      if (cst.kind === 'CHECK') {
+        return genCheckConstraint(cst);
+      }
+      genUniqueConstraint(cst);
     }
-    if (table.constraints?.length > 0) {
-      members.push(...table.constraints.map(cst => genConstraint(cst)));
+
+    function genCheckConstraint(check: CheckConstraintSchema): void {
+      otherCodes.push(`builder.check('${check.name}', SQL.raw(${check.sql}))`);
     }
-    let sql = `builder.createTable(${genName(
-      table.name
-    )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
-    return sql;
-  }
 
-  function genDropTable(name: Name): string {
-    return `builder.dropTable(${JSON.stringify(name)})`;
-  }
+    function genUniqueConstraint(key: UniqueConstraintSchema): void {
+      otherCodes.push(
+        `builder.uniqueKey('${key.name}').on(${keyeyColumns(key.columns)})`
+      );
+    }
 
-  function genDropColumn(table: Name, column: string): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).drop(builder => builder.column(${genName(column)}))`;
-  }
+    function genCreateTable(table: TableSchema): void {
+      const members: string[] = table.columns.map(col => columnForAdd(col));
+      if (table.primaryKey) {
+        members.push(primaryKey(table.primaryKey));
+      }
+      if (table.constraints?.length > 0) {
+        table.constraints.map(cst => genConstraint(cst));
+      }
+      let sql = `builder.createTable(${codify(
+        table.name
+      )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
+      otherCodes.push(sql);
+      if (table.seedData?.length) {
+        genSeedData(table, table.seedData);
+      }
+      if (table.foreignKeys?.length > 0) {
+        table.foreignKeys.map(fk => genAddForeignKey(table.name, fk));
+      }
+      for (const index of table.indexes) {
+        genCreateIndex(table.name, index);
+      }
 
-  function genDropConstraint(
-    table: Name,
-    kind: 'CHECK' | 'UNIQUE' | 'PRIMARY_KEY',
-    constraint: string
-  ): string {
-    return `builder.alterTable(${genName(table)}).drop(builder => builder.${
-      {
-        CHECK: 'check',
-        UNIQUE: 'uniqueKey',
-        PRIMARY_KEY: 'primaryKey',
-      }[kind]
-    }(${genName(constraint)}))`;
-  }
+      if (table.comment) {
+        genComment('Table', table.name, table.comment);
+      }
 
-  // function genCreateIndex(table: Name, index: IndexSchema): string {
-  //   return `builder.createIndex(${genName(index.name)}).on(${genName(
-  //     table
-  //   )}, ${genKeyColumns(index.columns)})`;
-  // }
+      for (const column of table.columns) {
+        if (column.isRowflag) {
+          genSetAutoFlag(table.name, column.name);
+        }
+        if (column.comment) {
+          genComment('Column', table.name, column.name, column.comment);
+        }
+      }
 
-  function genAddColumn(table: Name, column: ColumnSchema): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).add(builder => ${genColumnForAdd(column)})`;
-  }
+      for (const cst of table.constraints || []) {
+        if (cst.comment) {
+          genComment('Constraint', table.name, cst.name, cst.comment);
+        }
+      }
 
-  function genAlterColumn(table: Name, column: ColumnSchema): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).alterColumn(column => ${genColumnForAlter(column, '')})`;
-  }
+      for (const index of table.indexes || []) {
+        if (index.comment) {
+          genComment('Index', table.name, index.name, index.comment);
+        }
+      }
+    }
 
-  function genSetDefault(
-    table: Name,
-    column: string,
-    defaultValue: string
-  ): string {
-    return `builder.setDefaultValue(${genName(table)}, ${genName(
-      column
-    )}, SQL.raw(${JSON.stringify(defaultValue)}))`;
-  }
+    function genAlterTable(tableChanges: ObjectDifference<TableSchema>): void {
+      const tableName = tableChanges.target!.name;
+      // PRIMARY KEY
+      if (tableChanges.changes?.primaryKey) {
+        if (tableChanges.changes.primaryKey.added) {
+          genAddPrimaryKey(tableName, tableChanges.changes.primaryKey.added);
+        }
 
-  function genDropDefault(table: Name, column: string): string {
-    return `builder.dropDefaultValue(${genName(table)}, ${genName(column)})`;
-  }
+        if (tableChanges.changes.primaryKey.removed) {
+          genDropConstraint(
+            tableName,
+            'PRIMARY_KEY',
+            tableChanges.changes.primaryKey.removed.name
+          );
+        }
 
-  function genSetIdentity(
-    table: Name,
-    column: string,
-    startValue: number,
-    increment: number
-  ): string {
-    return `builder.setIdentity(${genName(table)}, ${genName(
-      column
-    )}, ${startValue}, ${increment})`;
-  }
+        if (tableChanges.changes?.primaryKey.changes) {
+          if (
+            !(
+              tableChanges.changes?.primaryKey.changes.comment &&
+              Object.keys(tableChanges.changes?.primaryKey.changes).length === 1
+            )
+          ) {
+            genDropConstraint(
+              tableName,
+              'PRIMARY_KEY',
+              tableChanges.changes.primaryKey.target!.name
+            );
+            genAddPrimaryKey(
+              tableName,
+              tableChanges.changes.primaryKey.source!
+            );
+          }
 
-  function genDropIdentity(table: Name, column: string): string {
-    return `builder.dropIdentity(${genName(table)}, ${genName(column)})`;
-  }
+          if (tableChanges.changes?.primaryKey.changes.comment) {
+            genComment(
+              'Constraint',
+              tableName,
+              tableChanges.changes.primaryKey.source!.name,
+              tableChanges.changes.primaryKey.source!.comment
+            );
+          }
+        }
+      }
 
-  function genAddForeignKey(table: Name, fk: ForeignKeySchema): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).add(builder => ${genForeignKey(fk)})`;
-  }
+      // COLUMNS
+      if (tableChanges.changes?.columns) {
+        for (const col of tableChanges.changes.columns.removeds || []) {
+          // const fk = findTargetForeignKey(({ table, foreignKey }) => isNameEquals(tableName, name))
+          genDropColumn(tableName, col.name);
+        }
+        for (const column of tableChanges.changes.columns.addeds || []) {
+          genAddColumn(tableName, column);
+          if (column.isRowflag) {
+            genSetAutoFlag(tableName, column.name);
+          }
+          if (column.comment) {
+            genComment('Column', tableName, column.name, column.comment);
+          }
+        }
 
-  function genDropForeignKey(table: Name, name: string): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).drop(({ foreignKey }) => foreignKey(${genName(name)}))`;
-  }
+        for (const { target, source, changes } of tableChanges.changes.columns
+          .changes || []) {
+          if (!changes) continue;
+          // 如果类型或者是否可空变化
+          if (changes.type || changes.isNullable) {
+            genAlterColumn(tableName, source!);
+          }
+          if (changes.isRowflag) {
+            if (source!.isRowflag) {
+              genSetAutoFlag(tableName, source!.name);
+            } else {
+              genDropAutoFlag(tableName, source!.name);
+            }
+          }
+          if (changes.defaultValue) {
+            if (!changes.defaultValue.source) {
+              genDropDefault(tableName, target!.name);
+            } else {
+              genSetDefault(
+                tableName,
+                source!.name,
+                changes.defaultValue.source
+              );
+            }
+          }
 
-  function genAddConstraint(table: Name, constaint: ConstraintSchema): string {
-    if (constaint.kind === 'CHECK') {
-      return `builder.alterTable(${genName(
+          if (
+            changes.isIdentity ||
+            changes.identityIncrement ||
+            changes.identityIncrement
+          ) {
+            console.debug(source, target);
+            if (!source!.isIdentity) {
+              otherCodes.push(
+                '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
+              );
+              genDropIdentity(tableName, target!.name);
+            } else {
+              otherCodes.push(
+                '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
+              );
+
+              genSetIdentity(
+                tableName,
+                source!.name,
+                source!.identityStartValue!,
+                source!.identityIncrement!
+              );
+            }
+          }
+
+          if (changes.comment) {
+            genComment(
+              'Column',
+              tableName,
+              source!.name,
+              changes.comment.source
+            );
+          }
+        }
+      }
+
+      // FOREIGN KEY
+      if (tableChanges.changes?.foreignKeys) {
+        for (const fk of tableChanges.changes?.foreignKeys?.addeds || []) {
+          genAddForeignKey(tableName, fk);
+          if (fk.comment) {
+            genComment('Constraint', tableName, fk.name, fk.comment);
+          }
+        }
+
+        for (const { name } of tableChanges.changes?.foreignKeys?.removeds ||
+          []) {
+          genDropForeignKey(tableName, name);
+        }
+
+        for (const { source, target, changes } of tableChanges.changes
+          ?.foreignKeys?.changes || []) {
+          genDropForeignKey(tableName, target!.name);
+          genAddForeignKey(tableName, source!);
+          if (changes?.comment) {
+            genComment(
+              'Constraint',
+              tableName,
+              target!.name,
+              changes.comment.source
+            );
+          }
+        }
+      }
+
+      // CONSTRAINT
+      if (tableChanges.changes?.constraints) {
+        for (const constraint of tableChanges.changes.constraints.addeds ||
+          []) {
+          genAddConstraint(tableName, constraint);
+
+          if (constraint.comment) {
+            genComment(
+              'Constraint',
+              tableName,
+              constraint.name,
+              constraint.comment
+            );
+          }
+        }
+
+        for (const constraint of tableChanges.changes.constraints.removeds ||
+          []) {
+          genDropConstraint(tableName, constraint.kind, constraint.name);
+        }
+
+        for (const { source, target, changes } of tableChanges.changes
+          .constraints.changes || []) {
+          genDropConstraint(tableName, target!.kind, target!.name);
+          genAddConstraint(tableName, source!);
+          if (changes?.comment) {
+            genComment(
+              'Constraint',
+              tableName,
+              target!.name,
+              changes.comment.source
+            );
+          }
+        }
+      }
+
+      // INDEXES
+      if (tableChanges.changes?.indexes) {
+        for (const index of tableChanges.changes.indexes.addeds || []) {
+          genCreateIndex(tableName, index);
+          if (index.comment) {
+            genComment('Index', tableName, index.name, index.comment);
+          }
+        }
+
+        for (const index of tableChanges.changes.indexes.removeds || []) {
+          genDropIndex(tableName, index.name);
+        }
+
+        for (const { source, target, changes } of tableChanges.changes.indexes
+          .changes || []) {
+          genDropIndex(tableName, target!.name);
+          genCreateIndex(tableName, source!);
+          if (changes?.comment) {
+            genComment(
+              'Index',
+              tableName,
+              source!.name,
+              changes.comment.source
+            );
+          }
+        }
+      }
+
+      if (tableChanges.changes?.comment) {
+        genComment('Table', tableName, tableChanges.changes.comment.source);
+      }
+    }
+
+    function genDropTable(name: Name): void {
+      otherCodes.push(`builder.dropTable(${JSON.stringify(name)})`);
+    }
+
+    function genDropColumn(table: Name, column: string): void {
+      otherCodes.push(
+        `builder.alterTable(${codify(
+          table
+        )}).drop(builder => builder.column(${codify(column)}))`
+      );
+    }
+
+    function genSetAutoFlag(table: Name<string>, column: string): void {
+      otherCodes.push(
+        `builder.setAutoRowflag(${codify(table)}, ${codify(column)})`
+      );
+    }
+
+    function genDropAutoFlag(table: Name<string>, column: string): void {
+      otherCodes.push(
+        `builder.dropAutoRowflag(${codify(table)}, ${codify(column)})`
+      );
+    }
+
+    function genDropConstraint(
+      table: Name,
+      kind: 'CHECK' | 'UNIQUE' | 'PRIMARY_KEY',
+      constraint: string
+    ): void {
+      otherCodes.push(
+        `builder.alterTable(${codify(table)}).drop(builder => builder.${
+          {
+            CHECK: 'check',
+            UNIQUE: 'uniqueKey',
+            PRIMARY_KEY: 'primaryKey',
+          }[kind]
+        }(${codify(constraint)}))`
+      );
+    }
+
+    // function genCreateIndex(table: Name, index: IndexSchema): string {
+    //   return `builder.createIndex(${genName(index.name)}).on(${genName(
+    //     table
+    //   )}, ${genKeyColumns(index.columns)})`;
+    // }
+
+    function genAddColumn(table: Name, column: ColumnSchema): void {
+      otherCodes.push(
+        `builder.alterTable(${codify(table)}).add(builder => ${columnForAdd(
+          column
+        )})`
+      );
+    }
+
+    function genAlterColumn(table: Name, column: ColumnSchema): void {
+      otherCodes.push(
+        `builder.alterTable(${codify(
+          table
+        )}).alterColumn(column => ${columnForAlter(column, '')})`
+      );
+    }
+
+    function genSetDefault(
+      table: Name,
+      column: string,
+      defaultValue: string
+    ): void {
+      otherCodes.push(
+        `builder.setDefaultValue(${codify(table)}, ${codify(
+          column
+        )}, SQL.raw(${JSON.stringify(defaultValue)}))`
+      );
+    }
+
+    function genDropDefault(table: Name, column: string): void {
+      otherCodes.push(
+        `builder.dropDefaultValue(${codify(table)}, ${codify(column)})`
+      );
+    }
+
+    function genSetIdentity(
+      table: Name,
+      column: string,
+      startValue: number,
+      increment: number
+    ): void {
+      otherCodes.push(
+        `builder.setIdentity(${codify(table)}, ${codify(
+          column
+        )}, ${startValue}, ${increment})`
+      );
+    }
+
+    function genDropIdentity(table: Name, column: string): void {
+      otherCodes.push(
+        `builder.dropIdentity(${codify(table)}, ${codify(column)})`
+      );
+    }
+
+    function genAddForeignKey(table: Name, fk: ForeignKeySchema): void {
+      addFkCodes.push(
+        `builder.alterTable(${codify(table)}).add(builder => ${foreignKey(fk)})`
+      );
+    }
+
+    function genDropForeignKey(table: Name, name: string): void {
+      dropFkCodes.push(
+        `builder.alterTable(${codify(
+          table
+        )}).drop(({ foreignKey }) => foreignKey(${codify(name)}))`
+      );
+    }
+
+    function genAddConstraint(table: Name, constaint: ConstraintSchema): void {
+      if (constaint.kind === 'CHECK') {
+        otherCodes.push(
+          `builder.alterTable(${codify(
+            table
+          )}).add(({ check }) => check(${codify(constaint.name)}, SQL.raw(${
+            constaint.sql
+          }))`
+        );
+        return;
+      }
+      otherCodes.push(
+        `builder.alterTable(${codify(
+          table
+        )}).add(({ uniqueKey }) => uniqueKey(${codify(
+          constaint.name
+        )}).on(${keyeyColumns(constaint.columns)}))`
+      );
+    }
+
+    function genAddPrimaryKey(table: Name, key: PrimaryKeySchema): void {
+      otherCodes.push(
+        `builder.alterTable(${codify(
+          table
+        )}).add(({ primaryKey }) => primaryKey(${codify(
+          key.name
+        )}).on(${keyeyColumns(key.columns)}))`
+      );
+    }
+
+    function genCreateSequence(sequence: SequenceSchema): void {
+      otherCodes.push(
+        `builder.createSequence(${codify(sequence.name)}).as(${stringifyType(
+          sequence.type
+        )}).startsWith(${sequence.startValue}).incrementBy(${
+          sequence.increment
+        })`
+      );
+    }
+
+    function genDropSequence(name: Name): void {
+      otherCodes.push(`builder.dropSequence(${codify(name)})`);
+    }
+
+    function genCreateIndex(table: Name<string>, index: IndexSchema): void {
+      let sql = `builder.createIndex(${codify(index.name)}).on(${codify(
         table
-      )}).add(({ check }) => check(${genName(constaint.name)}, SQL.raw(${
-        constaint.sql
-      }))`;
-    }
-    return `builder.alterTable(${genName(
-      table
-    )}).add(({ uniqueKey }) => uniqueKey(${genName(
-      constaint.name
-    )}).on(${genKeyColumns(constaint.columns)}))`;
-  }
+      )}, ${keyeyColumns(index.columns)})`;
+      if (index.isUnique) {
+        sql += '.unique()';
+      }
 
-  function genAddPrimaryKey(table: Name, key: PrimaryKeySchema): string {
-    return `builder.alterTable(${genName(
-      table
-    )}).add(({ primaryKey }) => primaryKey(${genName(
-      key.name
-    )}).on(${genKeyColumns(key.columns)}))`;
-  }
-
-  function genCreateSequence(sequence: SequenceSchema): string {
-    return `builder.createSequence(${genName(sequence.name)}).as(${genType(
-      sequence.type
-    )}).startsWith(${sequence.startValue}).incrementBy(${sequence.increment})`;
-  }
-
-  function genDropSequence(name: Name): string {
-    return `builder.dropSequence(${genName(name)})`;
-  }
-
-  function genCreateIndex(table: Name<string>, index: IndexSchema): string {
-    let sql = `builder.createIndex(${genName(index.name)}).on(${genName(
-      table
-    )}, ${genKeyColumns(index.columns)})`;
-    if (index.isUnique) {
-      sql += '.unique()';
+      if (index.isClustered) {
+        sql += '.clustered()';
+      }
+      otherCodes.push(sql);
     }
 
-    if (index.isClustered) {
-      sql += '.clustered()';
+    function genDropIndex(table: Name<string>, name: string): void {
+      otherCodes.push(`builder.dropIndex(${codify(table)}, ${codify(name)})`);
     }
-    return sql;
-  }
 
-  function genDropIndex(table: Name<string>, name: string): string {
-    return `builder.dropIndex(${genName(table)}, ${genName(name)})`;
-  }
-
-  function genComment(
-    type: 'Table' | 'Procedure' | 'Function' | 'Schema',
-    object: Name<string>,
-    comment?: string
-  ): string;
-  function genComment(
-    type: 'Column' | 'Constraint' | 'Index',
-    table: Name<string>,
-    member: string,
-    comment?: string
-  ): string;
-  function genComment(
-    type: string,
-    object: Name<string>,
-    memberOrComment?: string,
-    _comment?: string
-  ): string {
-    let member: string | undefined;
-    let comment: string | undefined;
-    if (['Table', 'Procedure', 'Function', 'Schema'].includes(type)) {
-      comment = memberOrComment;
-    } else {
-      member = memberOrComment;
-      comment = _comment;
+    function genComment(
+      type: 'Table' | 'Procedure' | 'Function' | 'Schema',
+      object: Name<string>,
+      comment?: string
+    ): void;
+    function genComment(
+      type: 'Column' | 'Constraint' | 'Index',
+      table: Name<string>,
+      member: string,
+      comment?: string
+    ): void;
+    function genComment(
+      type: string,
+      object: Name<string>,
+      memberOrComment?: string,
+      _comment?: string
+    ): void {
+      let member: string | undefined;
+      let comment: string | undefined;
+      if (['Table', 'Procedure', 'Function', 'Schema'].includes(type)) {
+        comment = memberOrComment;
+      } else {
+        member = memberOrComment;
+        comment = _comment;
+      }
+      let code: string;
+      if (comment) {
+        code = `builder.set${type}Comment(${codify(object)}${
+          member ? `, ${codify(member)}` : ''
+        }, ${codify(comment)})`;
+      } else {
+        code = `builder.drop${type}Comment(${codify(object)}${
+          member ? `, ${codify(member)}` : ''
+        })`;
+      }
+      otherCodes.push(code);
     }
-    const code = `builder.comment${type}(${genName(object)}${
-      member ? `, ${genName(member)}` : ''
-    }, ${genName(comment)})`;
-    return code;
-  }
 
-  function genSeedData(table: TableSchema, data: any[]): string {
-    const fields = table.columns
-      .filter(col => !col.isCalculate)
-      .map(col => col.name);
-    const rows = data.map(item => {
-      const row: Record<string, any> = {};
-      fields.forEach(field => (row[field] = item[field]));
-      return row;
-    });
-    const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = `builder.insert(${genName(table.name)}).values(${JSON.stringify(
-      rows
-    )})`;
-    if (identityColumn) {
-      sql += '.withIdentity()';
+    function genSeedData(table: TableSchema, data: any[]): void {
+      const fields = table.columns
+        .filter(col => !col.isCalculate)
+        .map(col => col.name);
+      const rows = data.map(item => {
+        const row: Record<string, any> = {};
+        fields.forEach(field => (row[field] = item[field]));
+        return row;
+      });
+      const identityColumn = table.columns.find(col => col.isIdentity);
+      let sql = `builder.insert(${codify(table.name)}).values(${JSON.stringify(
+        rows
+      )})`;
+      if (identityColumn) {
+        sql += '.withIdentity()';
+      }
+      seedDataCodes.push(sql);
     }
-    return sql;
-  }
 
-  function genCodes(
-    diff: SchemaDifference,
-    metadata?: DbContextMetadata
-  ): string[] {
     const dropFkCodes: string[] = [];
     const addFkCodes: string[] = [];
     const otherCodes: string[] = [];
     const seedDataCodes: string[] = [];
-    if (diff.changes?.tables) {
-      for (const table of diff.changes.tables.removeds) {
-        // 删表前删除外键以免造成依赖问题, 注释掉的原因是因为表的变化本身就会记录需要删除的外键，除非整表删除
-        // const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
-        // dropFkCodes.push(
-        //   ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
-        // );
 
-        // 删除表之前本表外键，以免多表删除时造成依赖问题
-        table.foreignKeys.forEach(fk => {
-          dropFkCodes.push(genDropForeignKey(table.name, fk.name));
-        });
-        otherCodes.push(genDropTable(table.name));
-      }
-
-      for (const table of diff.changes.tables.addeds) {
-        otherCodes.push(genCreateTable(table));
-        if (metadata) {
-          const entity = metadata.findTableEntityByName(
-            typeof table.name === 'string' ? table.name : table.name[0]
-          );
-          // 如果有种子数据
-          if (entity?.data?.length) {
-            seedDataCodes.push(genSeedData(table, entity.data));
-          }
-        }
-        if (table.foreignKeys?.length > 0) {
-          addFkCodes.push(
-            ...table.foreignKeys.map(fk => genAddForeignKey(table.name, fk))
-          );
-        }
-        for (const index of table.indexes) {
-          otherCodes.push(genCreateIndex(table.name, index));
-        }
-
-        if (table.comment) {
-          otherCodes.push(genComment('Table', table.name, table.comment));
-        }
-
-        for (const column of table.columns) {
-          if (column.comment) {
-            otherCodes.push(
-              genComment('Column', table.name, column.name, column.comment)
-            );
-          }
-        }
-
-        for (const cst of table.constraints || []) {
-          if (cst.comment) {
-            otherCodes.push(
-              genComment('Constraint', table.name, cst.name, cst.comment)
-            );
-          }
-        }
-
-        for (const index of table.indexes || []) {
-          if (index.comment) {
-            otherCodes.push(
-              genComment('Index', table.name, index.name, index.comment)
-            );
-          }
-        }
-      }
-
-      for (const tableChanges of diff.changes.tables.changes) {
-        const tableName = tableChanges.target.name;
-        // PRIMARY KEY
-        if (tableChanges.changes?.primaryKey) {
-          if (tableChanges.changes.primaryKey.added) {
-            otherCodes.push(
-              genAddPrimaryKey(tableName, tableChanges.changes.primaryKey.added)
-            );
-          }
-
-          if (tableChanges.changes.primaryKey.removed) {
-            otherCodes.push(
-              genDropConstraint(
-                tableName,
-                'PRIMARY_KEY',
-                tableChanges.changes.primaryKey.removed.name
-              )
-            );
-          }
-
-          if (tableChanges.changes?.primaryKey.changes) {
-            if (
-              !(
-                tableChanges.changes?.primaryKey.changes.comment &&
-                Object.keys(tableChanges.changes?.primaryKey.changes).length ===
-                  1
-              )
-            ) {
-              otherCodes.push(
-                genDropConstraint(
-                  tableName,
-                  'PRIMARY_KEY',
-                  tableChanges.changes.primaryKey.target.name
-                )
-              );
-              otherCodes.push(
-                genAddPrimaryKey(
-                  tableName,
-                  tableChanges.changes.primaryKey.source
-                )
-              );
-            }
-
-            if (tableChanges.changes?.primaryKey.changes.comment) {
-              otherCodes.push(
-                genComment(
-                  'Constraint',
-                  tableName,
-                  tableChanges.changes.primaryKey.source.name,
-                  tableChanges.changes.primaryKey.source.comment
-                )
-              );
-            }
-          }
-        }
-
-        // COLUMNS
-        if (tableChanges.changes?.columns) {
-          for (const col of tableChanges.changes.columns.removeds || []) {
-            // const fk = findTargetForeignKey(({ table, foreignKey }) => isNameEquals(tableName, name))
-            otherCodes.push(genDropColumn(tableName, col.name));
-          }
-          for (const column of tableChanges.changes.columns.addeds || []) {
-            otherCodes.push(genAddColumn(tableName, column));
-            if (column.comment) {
-              otherCodes.push(
-                genComment('Column', tableName, column.name, column.comment)
-              );
-            }
-          }
-
-          for (const { target, source, changes } of tableChanges.changes.columns
-            .changes || []) {
-            if (!changes) continue;
-            // 如果类型或者是否可空变化
-            if (changes.type || changes.isNullable) {
-              otherCodes.push(genAlterColumn(tableName, source));
-            }
-
-            if (changes.defaultValue) {
-              if (!changes.defaultValue.source) {
-                otherCodes.push(genDropDefault(tableName, target.name));
-              } else {
-                otherCodes.push(
-                  genSetDefault(
-                    tableName,
-                    source.name,
-                    changes.defaultValue.source
-                  )
-                );
-              }
-            }
-
-            if (
-              changes.isIdentity ||
-              changes.identityIncrement ||
-              changes.identityIncrement
-            ) {
-              console.debug(source, target);
-              if (!source.isIdentity) {
-                otherCodes.push(
-                  '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
-                );
-                otherCodes.push(genDropIdentity(tableName, target.name));
-              } else {
-                otherCodes.push(
-                  '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
-                );
-                otherCodes.push(
-                  genSetIdentity(
-                    tableName,
-                    source.name,
-                    source.identityStartValue!,
-                    source.identityIncrement!
-                  )
-                );
-              }
-            }
-
-            if (changes.comment) {
-              otherCodes.push(
-                genComment(
-                  'Column',
-                  tableName,
-                  source.name,
-                  changes.comment.source
-                )
-              );
-            }
-          }
-        }
-
-        // FOREIGN KEY
-        if (tableChanges.changes?.foreignKeys) {
-          for (const fk of tableChanges.changes?.foreignKeys?.addeds || []) {
-            addFkCodes.push(genAddForeignKey(tableName, fk));
-            if (fk.comment) {
-              otherCodes.push(
-                genComment('Constraint', tableName, fk.name, fk.comment)
-              );
-            }
-          }
-
-          for (const { name } of tableChanges.changes?.foreignKeys?.removeds ||
-            []) {
-            dropFkCodes.push(genDropForeignKey(tableName, name));
-          }
-
-          for (const { source, target, changes } of tableChanges.changes
-            ?.foreignKeys?.changes || []) {
-            dropFkCodes.push(genDropForeignKey(tableName, target.name));
-            addFkCodes.push(genAddForeignKey(tableName, source));
-            if (changes?.comment) {
-              otherCodes.push(
-                genComment(
-                  'Constraint',
-                  tableName,
-                  target.name,
-                  changes.comment.source
-                )
-              );
-            }
-          }
-        }
-
-        // CONSTRAINT
-        if (tableChanges.changes?.constraints) {
-          for (const constraint of tableChanges.changes.constraints.addeds ||
-            []) {
-            otherCodes.push(genAddConstraint(tableName, constraint));
-
-            if (constraint.comment) {
-              otherCodes.push(
-                genComment(
-                  'Constraint',
-                  tableName,
-                  constraint.name,
-                  constraint.comment
-                )
-              );
-            }
-          }
-
-          for (const constraint of tableChanges.changes.constraints.removeds ||
-            []) {
-            otherCodes.push(
-              genDropConstraint(tableName, constraint.kind, constraint.name)
-            );
-          }
-
-          for (const { source, target, changes } of tableChanges.changes
-            .constraints.changes || []) {
-            otherCodes.push(
-              genDropConstraint(tableName, target.kind, target.name)
-            );
-            otherCodes.push(genAddConstraint(tableName, source));
-            if (changes?.comment) {
-              otherCodes.push(
-                genComment(
-                  'Constraint',
-                  tableName,
-                  target.name,
-                  changes.comment.source
-                )
-              );
-            }
-          }
-        }
-
-        // INDEXES
-        if (tableChanges.changes?.indexes) {
-          for (const index of tableChanges.changes.indexes.addeds || []) {
-            otherCodes.push(genCreateIndex(tableName, index));
-            if (index.comment) {
-              otherCodes.push(
-                genComment('Index', tableName, index.name, index.comment)
-              );
-            }
-          }
-
-          for (const index of tableChanges.changes.indexes.removeds || []) {
-            otherCodes.push(genDropIndex(tableName, index.name));
-          }
-
-          for (const { source, target, changes } of tableChanges.changes.indexes
-            .changes || []) {
-            otherCodes.push(genDropIndex(tableName, target.name));
-            otherCodes.push(genCreateIndex(tableName, source));
-            if (changes?.comment) {
-              otherCodes.push(
-                genComment(
-                  'Index',
-                  tableName,
-                  source.name,
-                  changes.comment.source
-                )
-              );
-            }
-          }
-        }
-
-        if (tableChanges.changes?.comment) {
-          otherCodes.push(
-            genComment('Table', tableName, tableChanges.changes.comment.source)
-          );
-        }
-
-        // WARN: 修改表名无法追踪。
-        // // 如果修改了表名
-        // if (tableChanges.changes.name) {
-        //   codes.push(
-        //     `migrate.renameTable(${JSON.stringify(
-        //       tableChanges.changes.name.source
-        //     )}, ${JSON.stringify(tableChanges.changes.name.target)})`
-        //   );
-        // }
-      }
+    if (!diff) {
+      return [];
     }
+    // 全新数据库
+    if (!diff.target && diff.source) {
+      // 创建数据库
+      diff.source.tables.forEach(table => genCreateTable(table));
+      diff.source.sequences.forEach(sequence => genCreateSequence(sequence));
+    } else if (diff.target && !diff.source) {
+      // 删除数据库
+      otherCodes.push(`builder.createDatabase(${codify(diff.target.name)})`);
+    } else if (diff.changes) {
+      // 修改数据库
+      if (diff.changes?.tables) {
+        for (const table of diff.changes.tables.removeds) {
+          // 删表前删除外键以免造成依赖问题, 注释掉的原因是因为表的变化本身就会记录需要删除的外键，除非整表删除
+          // const dropForeignKeys = allTargetForeignKeys.filter(fk => isNameEquals(fk.referenceTable, name));
+          // dropFkCodes.push(
+          //   ...dropForeignKeys.map(fk => genDropForeignKey(name, fk.name))
+          // );
 
-    if (diff.changes?.sequences) {
-      for (const sequence of diff.changes.sequences.addeds || []) {
-        otherCodes.push(genCreateSequence(sequence));
+          // 删除表之前本表外键，以免多表删除时造成依赖问题
+          table.foreignKeys.forEach(fk => {
+            genDropForeignKey(table.name, fk.name);
+          });
+          genDropTable(table.name);
+        }
+
+        for (const table of diff.changes.tables.addeds) {
+          genCreateTable(table);
+        }
+
+        for (const tableChanges of diff.changes.tables.changes) {
+          genAlterTable(tableChanges);
+
+          // WARN: 修改表名无法追踪。
+          // // 如果修改了表名
+          // if (tableChanges.changes.name) {
+          //   codes.push(
+          //     `migrate.renameTable(${JSON.stringify(
+          //       tableChanges.changes.name.source
+          //     )}, ${JSON.stringify(tableChanges.changes.name.target)})`
+          //   );
+          // }
+        }
       }
-      for (const { name } of diff.changes.sequences.removeds || []) {
-        otherCodes.push(genDropSequence(name));
+
+      if (diff.changes?.sequences) {
+        for (const sequence of diff.changes.sequences.addeds || []) {
+          genCreateSequence(sequence);
+        }
+        for (const { name } of diff.changes.sequences.removeds || []) {
+          genDropSequence(name);
+        }
       }
     }
     return [...dropFkCodes, ...otherCodes, ...addFkCodes, ...seedDataCodes];
   }
   const upDiff = compareSchema(source, target);
-  // 升级需要带上种子数据
-  const upCodes = upDiff ? genCodes(upDiff, metadata) : [];
+  const upCodes = upDiff ? genCodes(upDiff) : [];
 
   const downDiff = compareSchema(target, source);
   const downCodes = downDiff ? genCodes(downDiff) : [];

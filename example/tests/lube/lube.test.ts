@@ -1,7 +1,7 @@
 import assert from 'assert';
 import mock from 'mockjs';
 import _ from 'lodash';
-import '../../orm';
+import '../../orm-configure';
 
 import { Lube, connect, SqlBuilder as SQL, SortObject, Decimal } from 'lubejs';
 

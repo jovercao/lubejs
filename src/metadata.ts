@@ -225,7 +225,7 @@ export class EntityMetadata implements CommonEntityMetadata {
   /**
    * 种子数据
    */
-  data?: any[] | undefined;
+  data?: object[] | undefined;
 
   private _columnMap: Record<string, ColumnMetadata> = {};
   private _columns: ColumnMetadata[] = [];

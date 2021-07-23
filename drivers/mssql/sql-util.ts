@@ -88,6 +88,9 @@ import {
   While,
   Execute,
   assertAstNonempty,
+  AlterDatabase,
+  CreateDatabase,
+  DropDatabase,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -613,6 +616,19 @@ export class MssqlStandardTranslator implements StandardTranslator {
 }
 
 export class MssqlSqlUtil extends SqlUtil {
+  protected sqlifyCreateDatabase(statement: CreateDatabase): string {
+    let sql = `CREATE DATABASE ${this.sqlifyName(statement.$name)}`;
+    if (statement.$collate) {
+      sql += ' COLLATE ' + statement.$collate
+    }
+    return sql;
+  }
+  protected sqlifyAlterDatabase(statement: AlterDatabase): string {
+    return `ALTER DATABASE ${this.sqlifyName(statement.$name)} COLLATE ${statement.$collate}`;
+  }
+  protected sqlifyDropDatabase(statement: DropDatabase): string {
+    return `DROP DATABASE ${this.sqlifyName(statement.$name)}`;
+  }
   protected sqlifyExecute(
     exec: Execute,
     params: Set<Parameter<Scalar, string>>,
@@ -839,16 +855,13 @@ export class MssqlSqlUtil extends SqlUtil {
         .map(member => this.sqlifyTableMember(member))
         .join(',\n  ');
     }
-    if (statement.$drops) {
+    if (statement.$drop) {
       sql += ' DROP ';
-      sql += statement.$drops
-        .map(member => {
-          if (member.$kind === SQL_SYMBOLE_TABLE_MEMBER.COLUMN) {
-            return ` COLUMN ${this.quoted(member.$name)}`;
-          }
-          return ` CONSTRAINT ${this.quoted(member.$name)}`;
-        })
-        .join(',\n  ');
+      if (statement.$drop.$kind === SQL_SYMBOLE_TABLE_MEMBER.COLUMN) {
+        sql += ` COLUMN ${this.quoted(statement.$drop.$name)}`;
+      } else {
+        sql += ` CONSTRAINT ${this.quoted(statement.$drop.$name)}`;
+      }
     }
     if (statement.$alterColumn) {
       sql += ` ALTER COLUMN ${this.quoted(
