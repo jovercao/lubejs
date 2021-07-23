@@ -1,5 +1,5 @@
 import {
-  context,
+  modelBuilder,
   DbContext,
   Repository,
   DbType,
@@ -112,122 +112,130 @@ export class DB extends DbContext {
   }
 }
 
-context(DB, modelBuilder => {
-  modelBuilder.entity(User).asTable(table => {
-    table.hasComment('职员');
-    table
-      .column(p => p.id, Number)
-      .isIdentity()
-      .hasComment('ID');
-    table.column(p => p.name, String).hasComment('职员姓名');
-    table
-      .column(p => p.password, String)
-      .isNullable()
-      .hasComment('密码');
-    table
-      .column(p => p.description, String)
-      .isNullable()
-      .hasComment('摘要说明');
-    table
-      .hasOne(p => p.employee, Employee)
-      .withOne(p => p.user)
-      .isPrimary()
-      .hasComment('绑定职员')
-      .isDetail();
-    table.hasKey(p => p.id).hasComment('主键');
-    table.hasData([{ id: 0, name: 'admin' }]);
-  });
+modelBuilder.context(DB, context => {
+  context
+    .entity(User)
+    .asTable(table => {
+      table.hasComment('职员');
+      table
+        .property(p => p.id, Number)
+        .isIdentity()
+        .hasComment('ID');
+      table.property(p => p.name, String).hasComment('职员姓名');
+      table
+        .property(p => p.password, String)
+        .isNullable()
+        .hasComment('密码');
+      table
+        .property(p => p.description, String)
+        .isNullable()
+        .hasComment('摘要说明');
+      table
+        .hasOne(p => p.employee, Employee)
+        .withOne(p => p.user)
+        .isPrimary()
+        .hasComment('绑定职员')
+        .isDetail();
+      table.hasKey(p => p.id).hasComment('主键');
+      table.hasData([{ id: 0, name: 'admin' }]);
+    })
+    .entity(Position)
+    .asTable(table => {
+      table.hasComment('职员');
+      table
+        .property(p => p.id, Number)
+        .isIdentity()
+        .hasComment('ID');
+      table.property(p => p.name, String).hasComment('职位名称');
+      table
+        .property(p => p.description, String)
+        .isNullable()
+        .hasComment('摘要说明');
+      table.hasKey(p => p.id).hasComment('主键');
+      table
+        .hasMany(p => p.employees, Employee)
+        .withMany(p => p.positions)
+        .hasRelationTable(EmployeePosition);
+      table.hasData([
+        { id: 1, name: '总经理', description: '无' },
+        { id: 2, name: '总监', description: '无' },
+        { id: 3, name: '普通职员', description: '无' },
+      ]);
+    })
+    .entity(Organization)
+    .asTable(builder => {
+      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.name, String);
+      builder.property(p => p.description, String).isNullable();
+      builder.hasMany(p => p.employees, Employee).withOne(p => p.organization);
+      builder
+        .hasOne(p => p.parent, Organization)
+        .withMany()
+        .hasForeignKey(p => p.parentId);
+      builder.hasMany(p => p.children, Organization).withOne(p => p.parent);
 
-  modelBuilder.entity(Position).asTable(table => {
-    table.hasComment('职员');
-    table
-      .column(p => p.id, Number)
-      .isIdentity()
-      .hasComment('ID');
-    table.column(p => p.name, String).hasComment('职位名称');
-    table
-      .column(p => p.description, String)
-      .isNullable()
-      .hasComment('摘要说明');
-    table.hasKey(p => p.id).hasComment('主键');
-    table
-      .hasMany(p => p.employees, Employee)
-      .withMany(p => p.positions)
-      .hasRelationTable(EmployeePosition);
-    table.hasData([
-      { id: 1, name: '总经理', description: '无' },
-      { id: 2, name: '总监', description: '无' },
-      { id: 3, name: '普通职员', description: '无' },
-    ]);
-  });
-
-  modelBuilder.entity(Organization).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity();
-    builder.column(p => p.name, String);
-    builder.column(p => p.description, String).isNullable();
-    builder.hasMany(p => p.employees, Employee).withOne(p => p.organization);
-    builder
-      .hasOne(p => p.parent, Organization)
-      .withMany()
-      .hasForeignKey(p => p.parentId);
-    builder.hasMany(p => p.children, Organization).withOne(p => p.parent);
-
-    builder.hasData([
-      { id: 0, name: '公司', description: '没啥' },
-      { id: 1, name: '信息部', parentId: 0 },
-      { id: 2, name: '行政部', parentId: 0 },
-    ]);
-  });
-
-  modelBuilder.entity(Employee).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity();
-    builder
-      .column(p => p.name, String)
-      .hasType(DbType.string(100))
-      .isNullable();
-    builder
-      .column(p => p.description, String)
-      .hasType(DbType.string(100))
-      .isNullable();
-    builder.hasMany(p => p.positions, Position).withMany(p => p.employees).isDetail();
-    builder.hasKey(p => p.id);
-    builder
-      .hasOne(p => p.organization, Organization)
-      .withMany(p => p.employees)
-      .isRequired();
-    builder
-      .hasOne(p => p.user, User)
-      .withOne(p => p.employee)
-      .hasForeignKey()
-      .isRequired();
-    builder.hasData([{ id: 0, name: '管理员职员', userId: 0 }]);
-  });
-
-  modelBuilder.entity(Order).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity();
-    builder.column(p => p.orderNo, String).isAutogen(item => 'abc');
-    builder
-      .column(p => p.date, Date)
-      .hasType(DbType.datetime)
-      .hasDefaultValue(SQL.now());
-    builder.column(p => p.description, String).isNullable();
-    builder.hasMany(p => p.details, OrderDetail).withOne(p => p.order).isDetail();
-    builder.hasKey(p => p.id);
-  });
-
-  modelBuilder.entity(OrderDetail).asTable(builder => {
-    builder.column(p => p.id, Number).isIdentity();
-    builder.column(p => p.product, String);
-    builder.column(p => p.count, Number);
-    builder.column(p => p.price, Number).hasType(DbType.decimal(18, 6));
-    builder.column(p => p.amount, Number).hasType(DbType.decimal(18, 2));
-    builder.column(p => p.orderId, Number);
-    builder.column(p => p.description, String).isNullable();
-    builder
-      .hasOne(p => p.order, Order)
-      .withMany(p => p.details)
-      .hasForeignKey(p => p.orderId)
-      .isRequired();
-    builder.hasKey(p => p.id);
-  });
+      builder.hasData([
+        { id: 0, name: '公司', description: '没啥' },
+        { id: 1, name: '信息部', parentId: 0 },
+        { id: 2, name: '行政部', parentId: 0 },
+      ]);
+    })
+    .entity(Employee)
+    .asTable(builder => {
+      builder.property(p => p.id, Number).isIdentity();
+      builder
+        .property(p => p.name, String)
+        .hasType(DbType.string(100))
+        .isNullable();
+      builder
+        .property(p => p.description, String)
+        .hasType(DbType.string(100))
+        .isNullable();
+      builder
+        .hasMany(p => p.positions, Position)
+        .withMany(p => p.employees)
+        .isDetail();
+      builder.hasKey(p => p.id);
+      builder
+        .hasOne(p => p.organization, Organization)
+        .withMany(p => p.employees)
+        .isRequired();
+      builder
+        .hasOne(p => p.user, User)
+        .withOne(p => p.employee)
+        .hasForeignKey()
+        .isRequired();
+      builder.hasData([{ id: 0, name: '管理员职员', userId: 0 }]);
+    })
+    .entity(Order)
+    .asTable(builder => {
+      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.orderNo, String).isAutogen(item => 'abc');
+      builder
+        .property(p => p.date, Date)
+        .hasType(DbType.datetime)
+        .hasDefaultValue(SQL.now());
+      builder.property(p => p.description, String).isNullable();
+      builder
+        .hasMany(p => p.details, OrderDetail)
+        .withOne(p => p.order)
+        .isDetail();
+      builder.hasKey(p => p.id);
+    })
+    .entity(OrderDetail)
+    .asTable(builder => {
+      builder.property(p => p.id, Number).isIdentity();
+      builder.property(p => p.product, String);
+      builder.property(p => p.count, Number);
+      builder.property(p => p.price, Number).hasType(DbType.decimal(18, 6));
+      builder.property(p => p.amount, Number).hasType(DbType.decimal(18, 2));
+      builder.property(p => p.orderId, Number);
+      builder.property(p => p.description, String).isNullable();
+      builder
+        .hasOne(p => p.order, Order)
+        .withMany(p => p.details)
+        .hasForeignKey(p => p.orderId)
+        .isRequired();
+      builder.hasKey(p => p.id);
+    });
 });

@@ -3,49 +3,41 @@
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import Decimal from 'decimal.js-light';
 import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
-import { DbContext } from './db-context';
 import {
-  ManyToManyMetadata,
-  ColumnMetadata,
-  EntityMetadata,
-  DbContextMetadata,
-  TableEntityMetadata,
-  HasOneMetadata,
-  HasManyMetadata,
-  ViewEntityMetadata,
-  QueryEntityMetadata,
-  OneToOneMetadata,
-  OneToManyMetadata,
-  ManyToOneMetadata,
-  ForeignOneToOneMetadata,
-  PrimaryOneToOneMetadata,
-  EntityMemberMetadata,
-  EntityMetadataClass,
-  metadataStore,
-  isTableEntity,
-  RelationMetadata,
-  isForeignOneToOne,
-  isManyToOne,
-  isManyToMany,
-  isPrimaryOneToOne,
-  isOneToMany,
-  IndexMetadata,
-  ForeignRelation,
+  DbContext,
+  DbContextConstructor,
+  EntityConstructor
+} from './db-context';
+import {
+  columnKey,
+  ColumnOptions,
+  columnsKey,
+  connectionKey,
+  contextOptionsKey,
+  DbContextOptions,
+  EntityOptions,
+  entityOptionsKey,
+  keyKey,
+  KeyOptions
+} from './decorators';
+import { ConnectOptions } from './lube';
+import {
+  ColumnMetadata, DbContextMetadata, EntityMetadata, ForeignOneToOneMetadata, ForeignRelation, HasManyMetadata, HasOneMetadata, IndexMetadata, isForeignOneToOne, isManyToMany, isManyToOne, isOneToMany, isPrimaryOneToOne, isTableEntity, KeyMetadata, ManyToManyMetadata, ManyToOneMetadata, metadataStore, OneToManyMetadata, OneToOneMetadata, PrimaryOneToOneMetadata, RelationMetadata, TableEntityMetadata
 } from './metadata';
 import {
   Constructor,
-  DataType,
-  DbType,
+  DataType, DataTypeOf, DbType,
   Entity,
-  EntityType,
-  Scalar,
-  DataTypeOf,
-  isSameDbType,
-  UuidConstructor,
-  Uuid,
+  EntityType, isSameDbType, Scalar, Uuid, UuidConstructor
 } from './types';
-import { assign, complex, ensureExpression, lowerFirst } from './util';
+import {
+  assign,
+  complex,
+  ensureExpression, lowerFirst,
+  selectProperty
+} from './util';
 
 export type HasManyKeyOf<T extends Entity> = {
   [P in keyof T]: P extends string
@@ -154,14 +146,16 @@ function fixRelationIndex(
   }
   if (!index.columns) {
     index.columns = index.properties.map(prop => {
-      const column =  entity.getColumn(prop);
+      const column = entity.getColumn(prop);
       if (!column) {
-        throw new Error(`Index ${index?.name} property ${prop} column not found.`)
+        throw new Error(
+          `Index ${index?.name} property ${prop} column not found.`
+        );
       }
       return {
         column,
         sort: 'ASC',
-      }
+      };
     });
   }
 
@@ -227,7 +221,7 @@ function fixManyToOne(
         referenceRelation: relation,
         isDetail: false,
       };
-      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceEntity.addRelation(referenceRelation);
       relation.referenceRelation = referenceRelation;
       fixOneToMany(ctx, relation.referenceEntity, referenceRelation);
     }
@@ -262,7 +256,9 @@ function fixOneToMany(
       referenceRelation = {
         property: relation.referenceProperty,
         // dbName: relation.referenceProperty,
-        constraintName: `FK_${relation.referenceEntity.tableName}_${foreignProperty}_TO_${entity.tableName}_${entity.keyProperty}`,
+        constraintName: `FK_${
+          relation.referenceEntity.tableName
+        }_${foreignProperty}_TO_${entity.tableName}_${entity.key!.property}`,
         kind: 'MANY_TO_ONE',
         isImplicit: true,
         referenceClass: entity.class,
@@ -274,7 +270,7 @@ function fixOneToMany(
       } as ManyToOneMetadata;
       relation.referenceRelation = referenceRelation;
       // 创建隐式规则
-      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceEntity.addRelation(referenceRelation);
       fixForeignProperty(relation.referenceEntity, referenceRelation);
     } else {
       if (!isManyToOne(referenceRelation)) {
@@ -287,40 +283,21 @@ function fixOneToMany(
   }
 }
 
-function fixEntity(builder: ContextBuilder, entity: EntityMetadata): void {
-  // 先将列完善
-  for (const member of entity.columns) {
-    fixColumn(builder.metadata, entity, member);
+function fixEntityKey(builder: ContextBuilder, entity: EntityMetadata): void {
+  if (!entity.key) {
+    entity.key = {
+      property: builder.metadata.globalKeyName,
+    } as KeyMetadata;
   }
-
-  if (!isTableEntity(entity)) return;
-
-  entity.identityColumn = entity.columns.find(c => c.isIdentity);
-  entity.rowflagColumn = entity.columns.find(c => c.isRowflag);
-  if (entity.keyProperty) {
-    const keyColumn = entity.getColumn(entity.keyProperty);
-    if (!keyColumn) {
-      throw new Error(
-        `Entity ${entity.className} the key column ${entity.keyProperty} not found.`
-      );
-    }
-    keyColumn.isPrimaryKey = true;
-    entity.keyColumn = keyColumn;
-  } else {
-    if (!entity.keyProperty) {
-      entity.keyProperty = builder.metadata.globalKeyName;
-      builder.metadata.globalKeyType = BigInt;
-    }
-
-    let keyColumn = entity.getColumn(entity.keyProperty);
-
+  if (!entity.key!.column) {
+    let keyColumn = entity.getColumn(entity.key.property);
     if (!keyColumn) {
       // 隐式主键
       keyColumn = {
         kind: 'COLUMN',
         isImplicit: true,
         property: builder.metadata.globalKeyName,
-        type: Number,
+        type: builder.metadata.globalKeyType,
         columnName: builder.metadata.globalKeyName,
         dbType: dataTypeToDbType(builder.metadata.globalKeyType),
         isIdentity: true,
@@ -332,17 +309,34 @@ function fixEntity(builder: ContextBuilder, entity: EntityMetadata): void {
         isRowflag: false,
         comment: 'Auto generic key column.',
       };
-      entity.addMember(keyColumn);
+      entity.addColumn(keyColumn);
     }
-    entity.keyProperty = keyColumn.property;
-    entity.keyColumn = keyColumn;
+    keyColumn.isPrimaryKey = true;
+    entity.key.column = keyColumn;
   }
-  if (!entity.keyConstraintName) {
-    entity.keyConstraintName = `PK_${entity.tableName}_${entity.keyColumn.columnName}`;
+  if (!entity.key.constraintName) {
+    entity.key.constraintName = `PK_${entity.tableName}_${entity.key.column.columnName}`;
   }
-  if (entity.isNonclustered === undefined) {
-    entity.isNonclustered = false;
+  if (entity.key.isNonclustered === undefined) {
+    entity.key.isNonclustered = false;
   }
+}
+
+function fixEntity(builder: ContextBuilder, entity: EntityMetadata): void {
+  // if (!entity.kind) {
+  //   entity.kind = 'TABLE';
+  //   entity.tableName = entity.className;
+  // }
+  // 先将列完善
+  for (const member of entity.columns) {
+    fixColumn(builder.metadata, entity, member);
+  }
+
+  if (!isTableEntity(entity)) return;
+
+  entity.identityColumn = entity.columns.find(c => c.isIdentity);
+  entity.rowflagColumn = entity.columns.find(c => c.isRowflag);
+  fixEntityKey(builder, entity);
 }
 
 /**
@@ -375,9 +369,8 @@ function fixManyToMany(
       relation.relationClass = class extends Entity {};
       relation.relationEntity = ctxBuilder
         .entity<any>(relation.relationClass)
-        .asTable(
-          `${entity.className}${relation.referenceEntity.className}`
-        ).metadata as TableEntityMetadata;
+        .asTable(`${entity.className}${relation.referenceEntity.className}`)
+        .metadata as TableEntityMetadata;
       fixEntity(ctxBuilder, relation.relationEntity);
     } else {
       relation.relationClass = referenceRelation.relationClass;
@@ -407,8 +400,8 @@ function fixManyToMany(
         referenceEntity: relation.relationEntity,
       } as OneToManyMetadata;
       relation.relationRelation = relationRelation;
-      entity.addMember(relationRelation);
-      fixOneToMany(ctx, entity, relationRelation );
+      entity.addRelation(relationRelation);
+      fixOneToMany(ctx, entity, relationRelation);
     }
   }
 
@@ -424,7 +417,7 @@ function fixManyToMany(
       relationClass: relation.relationClass,
       relationEntity: relation.relationEntity,
     } as ManyToManyMetadata;
-    relation.referenceEntity.addMember(referenceRelation);
+    relation.referenceEntity.addRelation(referenceRelation);
     relation.referenceRelation = referenceRelation;
     fixManyToMany(ctxBuilder, relation.referenceEntity, referenceRelation);
   } else {
@@ -490,7 +483,7 @@ function fixPrimaryOneToOne(
         referenceProperty: relation.property,
         referenceRelation: relation,
       } as ForeignOneToOneMetadata;
-      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceEntity.addRelation(referenceRelation);
       relation.referenceRelation = referenceRelation as ForeignOneToOneMetadata;
       fixForeignOneToOne(ctx, relation.referenceEntity, referenceRelation);
     }
@@ -537,7 +530,7 @@ function fixForeignOneToOne(
         property: relation.referenceProperty,
         isDetail: false,
       };
-      relation.referenceEntity.addMember(referenceRelation);
+      relation.referenceEntity.addRelation(referenceRelation);
       relation.referenceRelation = referenceRelation;
       fixOneToOne(ctx, relation.referenceEntity, referenceRelation);
     } else {
@@ -572,15 +565,15 @@ function fixForeignProperty(
       property: relation.foreignProperty,
       columnName: relation.foreignProperty,
       kind: 'COLUMN',
-      type: relation.referenceEntity.keyColumn.type,
-      dbType: relation.referenceEntity.keyColumn.dbType,
+      type: relation.referenceEntity.key!.column.type,
+      dbType: relation.referenceEntity.key!.column.dbType,
       isNullable: !relation.isRequired,
       isPrimaryKey: false,
       isCalculate: false,
       isIdentity: false,
       isRowflag: false,
     };
-    entity.addMember(column);
+    entity.addColumn(column);
   } else {
     // if (relation.isRequired && column.isNullable === false) {
     //   console.warn(`Conflict Foreign column  isRequired is 'true`)
@@ -591,8 +584,8 @@ function fixForeignProperty(
     // }
     // 外键类型兼容检查
     if (
-      column.type !== relation.referenceEntity.keyColumn.type ||
-      !isSameDbType(column.dbType, relation.referenceEntity.keyColumn.dbType)
+      column.type !== relation.referenceEntity.key!.column.type ||
+      !isSameDbType(column.dbType, relation.referenceEntity.key!.column.dbType)
     ) {
       throw new Error(
         `Entity ${entity.className} colum ${column.property} type incompatible for foreign key.`
@@ -605,7 +598,11 @@ function fixForeignProperty(
   }
 
   if (!relation.constraintName) {
-    relation.constraintName = `FK_${entity.tableName}_${relation.foreignColumn.columnName}_${relation.referenceEntity.tableName}_${relation.referenceEntity.keyColumn.columnName}`;
+    relation.constraintName = `FK_${entity.tableName}_${
+      relation.foreignColumn.columnName
+    }_${relation.referenceEntity.tableName}_${
+      relation.referenceEntity.key!.column.columnName
+    }`;
   }
 }
 
@@ -652,28 +649,6 @@ function genRelationProperty(
   return property;
 }
 
-/**
- * 判定成员是否已经存在，并且是期望的成员，如果未存在，返回false,如果存在并是期望的类型，返回true，如果不是期望的类型，则抛出异常
- * @param entity
- * @param name
- * @param kind
- * @returns
- */
-function assertEntityMember(
-  entity: EntityMetadata,
-  name: string,
-  kind: EntityMemberMetadata['kind']
-): boolean {
-  const exists = entity.getMember(name);
-  if (!exists) return false;
-  if (exists.kind !== kind) {
-    throw new Error(
-      `Entity ${entity.className} member ${name} is exists and kind ${exists.kind} not is expect type ${kind}`
-    );
-  }
-  return true;
-}
-
 export class ContextBuilder<T extends DbContext = DbContext> {
   public readonly metadata: DbContextMetadata;
   constructor(ctr: Constructor<T>) {
@@ -684,40 +659,52 @@ export class ContextBuilder<T extends DbContext = DbContext> {
   /**
    * 实体映射
    */
-  private _entityMap: Map<EntityType, EntityMapBuilder<any>> = new Map();
+  private _entityMap: Map<EntityType, EntityBuilder<any>> = new Map();
 
   /**
    * 是否已经完成
    */
-  private _completed: boolean = false;
+  private _isReady: boolean = false;
+
+  get isReady() {
+    return this._isReady;
+  }
+
+  /**
+   * 指定数据连接
+   */
+  connectWith(connectionOptions: ConnectOptions) {
+    this.metadata.connection = connectionOptions;
+  }
 
   /**
    * 声明实体
    */
-  entity<T extends Entity>(ctr: Constructor<T>): EntityMapBuilder<T>;
+  entity<T extends Entity>(ctr: Constructor<T>): EntityBuilder<T>;
   entity<T extends Entity>(
     ctr: Constructor<T>,
-    build: (builder: EntityMapBuilder<T>) => void
+    build: (builder: EntityBuilder<T>) => void
   ): this;
   entity<T extends Entity>(
     ctr: Constructor<T>,
-    build?: (builder: EntityMapBuilder<T>) => void
-  ): EntityMapBuilder<T> | this {
-    if (this._completed)
+    build?: (builder: EntityBuilder<T>) => void
+  ): EntityBuilder<T> | this {
+    if (this._isReady)
       throw new Error(`Context is completed, not allow this operation.`);
     if (!this._entityMap.has(ctr)) {
-      const metadata: EntityMetadata =
-        new EntityMetadataClass() as EntityMetadata;
+      const metadata: EntityMetadata = new EntityMetadata();
       assign(metadata, {
+        kind: 'TABLE',
+        tableName: ctr.name,
         className: ctr.name,
         class: ctr,
         contextClass: this.metadata.class,
       });
-      const eb = new EntityMapBuilder<T>(this, metadata);
+      const eb = new EntityBuilder<T>(this, metadata);
       this._entityMap.set(ctr, eb);
-      this.metadata.addEntity(metadata as EntityMetadata);
+      this.metadata.addEntity(metadata);
     }
-    const builder = this._entityMap.get(ctr)! as EntityMapBuilder<T>;
+    const builder = this._entityMap.get(ctr)!;
     if (build) {
       build(builder);
       return this;
@@ -725,74 +712,74 @@ export class ContextBuilder<T extends DbContext = DbContext> {
     return builder;
   }
 
-  /**
-   * 将实体绑定到表中
-   * @param ctr
-   */
-  table<T extends Entity>(ctr: Constructor<T>): TableEntityBuilder<T>;
-  table<T extends Entity>(
-    ctr: Constructor<T>,
-    build: (builder: TableEntityBuilder<T>) => void
-  ): this;
-  table<T extends Entity>(
-    ctr: Constructor<T>,
-    build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T> | this {
-    const builder = this.entity(ctr).asTable();
-    if (build) {
-      build(builder);
-      return this;
-    }
-    return builder;
-  }
+  // /**
+  //  * 将实体绑定到表中
+  //  * @param ctr
+  //  */
+  // table<T extends Entity>(ctr: Constructor<T>): EntityBuilder<T>;
+  // table<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build: (builder: EntityBuilder<T>) => void
+  // ): this;
+  // table<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build?: (builder: EntityBuilder<T>) => void
+  // ): EntityBuilder<T> | this {
+  //   const builder = this.entity(ctr).asTable();
+  //   if (build) {
+  //     build(builder);
+  //     return this;
+  //   }
+  //   return builder;
+  // }
+
+  // /**
+  //  * 将实体绑定到视图当中
+  //  * @param ctr
+  //  */
+  // view<T extends Entity>(ctr: Constructor<T>): ViewEntityBuilder<T>;
+  // view<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build: (builder: ViewEntityBuilder<T>) => void
+  // ): this;
+  // view<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build?: (builder: ViewEntityBuilder<T>) => void
+  // ): ViewEntityBuilder<T> | this {
+  //   const builder = this.entity(ctr).asView();
+  //   if (build) {
+  //     build(builder);
+  //     return this;
+  //   }
+  //   return builder;
+  // }
+
+  // /**
+  //  * 将实体绑定到查询当中
+  //  * @param ctr
+  //  */
+  // query<T extends Entity>(ctr: Constructor<T>): QueryEntityBuilder<T>;
+  // query<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build: (builder: QueryEntityBuilder<T>) => void
+  // ): this;
+  // query<T extends Entity>(
+  //   ctr: Constructor<T>,
+  //   build?: (builder: QueryEntityBuilder<T>) => void
+  // ): QueryEntityBuilder<T> | this {
+  //   const builder = this.entity(ctr).asQuery();
+  //   if (build) {
+  //     build(builder);
+  //     return this;
+  //   }
+  //   return builder;
+  // }
 
   /**
-   * 将实体绑定到视图当中
-   * @param ctr
+   * 结束建模过程并完善数据并校验完整性
    */
-  view<T extends Entity>(ctr: Constructor<T>): ViewEntityBuilder<T>;
-  view<T extends Entity>(
-    ctr: Constructor<T>,
-    build: (builder: ViewEntityBuilder<T>) => void
-  ): this;
-  view<T extends Entity>(
-    ctr: Constructor<T>,
-    build?: (builder: ViewEntityBuilder<T>) => void
-  ): ViewEntityBuilder<T> | this {
-    const builder = this.entity(ctr).asView();
-    if (build) {
-      build(builder);
-      return this;
-    }
-    return builder;
-  }
-
-  /**
-   * 将实体绑定到查询当中
-   * @param ctr
-   */
-  query<T extends Entity>(ctr: Constructor<T>): QueryEntityBuilder<T>;
-  query<T extends Entity>(
-    ctr: Constructor<T>,
-    build: (builder: QueryEntityBuilder<T>) => void
-  ): this;
-  query<T extends Entity>(
-    ctr: Constructor<T>,
-    build?: (builder: QueryEntityBuilder<T>) => void
-  ): QueryEntityBuilder<T> | this {
-    const builder = this.entity(ctr).asQuery();
-    if (build) {
-      build(builder);
-      return this;
-    }
-    return builder;
-  }
-
-  /**
-   * 完善数据并校验完整性
-   */
-  complete() {
-    if (this._completed)
+  ready() {
+    if (this._isReady)
       throw new Error(
         `Context is completed, use 'context(Context, build)' will auto call the complete.`
       );
@@ -802,6 +789,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
 
     if (!this.metadata.globalKeyName) {
       this.metadata.globalKeyName = 'id';
+      this.metadata.globalKeyType = BigInt;
     }
 
     for (const entity of this.metadata.entities) {
@@ -815,7 +803,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       fixEntityRelations(this, entity);
     }
 
-    this._completed = true;
+    this._isReady = true;
     // 注册进 metadataStore中
     metadataStore.registerContext(this.metadata);
   }
@@ -887,294 +875,455 @@ function dataTypeToDbType(dataType: DataType): DbType {
       return DbType.int64;
     case Uuid:
       return DbType.uuid;
+    case Decimal:
+      return DbType.decimal(18, 6);
     default:
-      throw new Error(`Unsupport to default db type ${dataType}`);
+      throw new Error(
+        `Unsupport to default db type ${dataType}, please set DbType explicitly`
+      );
   }
 }
 
-/**
- * 声明数据库上下文类
- * @param context 数据库上下文类
- * @param build 模型构建在此函数中完成，在build函数完成后会自动调用 builder.ensure()
- */
-export function context<T extends DbContext>(
-  context: Constructor<T>,
-  build: (builder: ContextBuilder<T>) => void | Promise<void>
-): void;
-export function context<T extends DbContext>(
-  context: Constructor<T>
-): ContextBuilder<T>;
-export function context<T extends DbContext>(
-  context: Constructor<T>,
-  build?: (builder: ContextBuilder<T>) => void | Promise<void>
-): void | ContextBuilder<T> {
-  const builder = new ContextBuilder(context);
-  if (build) {
-    build(builder);
-    builder.complete();
-    return;
-  }
-  return builder;
-}
+export class ModelBuilder {
+  private constructor() {}
 
-/**
- * 实体映射构造器
- */
-export class EntityMapBuilder<T extends Entity> {
-  constructor(
-    private modelBuilder: ContextBuilder,
-    public readonly metadata: EntityMetadata
-  ) {}
+  private decoratorEntities: Set<EntityConstructor> = new Set();
+  private decoratorContexts: Set<DbContextConstructor> = new Set();
 
-  private builder?: EntityBuilder<T>;
-
-  private _assertKind(kind: EntityMetadata['kind']): boolean {
-    if (this.metadata.kind) {
-      if (this.metadata.kind !== kind) {
-        throw new Error(
-          `Entity ${this.metadata.class!.name} is declared as ${this.metadata.kind}`
-        );
-      }
-      return true;
+  private buildDecoratorDbContext(target: DbContextConstructor) {
+    const connectionOptions = Reflect.getMetadata(
+      connectionKey,
+      target
+    )
+    if (connectionOptions) {
+      this.context(target).metadata.connection = connectionOptions;
     }
-    return false;
+    const contextOptions: DbContextOptions = Reflect.getMetadata(
+      contextOptionsKey,
+      target
+    );
+    if (contextOptions) {
+      Object.assign(this.context(target).metadata, contextOptions);
+    }
+  }
+
+  private buildDecoratorEntity(target: EntityConstructor<Entity>) {
+    const entityOptions: EntityOptions = Reflect.getMetadata(
+      entityOptionsKey,
+      target
+    );
+    const { contextGetter, ...assignable } = entityOptions;
+    const entityBuilder = this.context(contextGetter?.() || DbContext).entity(
+      target
+    );
+    Object.assign(entityBuilder.metadata, assignable);
+
+    const properties: string[] = Reflect.getMetadata(columnsKey, target);
+    if (properties) {
+      for (const property of properties) {
+        const columnOptions: ColumnOptions = Reflect.getMetadata(
+          columnKey,
+          target,
+          property
+        );
+        if (columnOptions) {
+          const columnBuilder = entityBuilder.property(
+            (p: any) => p[property],
+            columnOptions.type as any
+          );
+          Object.assign(columnBuilder.metadata, columnOptions);
+        }
+      }
+    }
+
+    const keyOptions: KeyOptions = Reflect.getMetadata(keyKey, target);
+    if (keyOptions) {
+      const keyBuilder = entityBuilder.hasKey(
+        (p: any) => p[keyOptions.property!]
+      );
+      Object.assign(keyBuilder.metadata, keyOptions);
+    }
+  }
+
+  decoratorEntity(constructor: EntityConstructor): this {
+    this.decoratorEntities.add(constructor);
+    return this;
+  }
+
+  decoratorContext(constructor: DbContextConstructor): this {
+    this.decoratorContexts.add(constructor);
+    return this;
+  }
+
+  static readonly instance = new ModelBuilder();
+
+  private contextMap: Map<DbContextConstructor, ContextBuilder> = new Map();
+
+  /**
+   * 声明数据库上下文类
+   * @param context 数据库上下文类
+   * @param build 模型构建在此函数中完成，在build函数完成后会自动调用 builder.ensure()
+   */
+  context<T extends DbContext>(
+    context: Constructor<T>,
+    build: (builder: ContextBuilder<T>) => void | Promise<void>
+  ): void;
+  context<T extends DbContext>(context: Constructor<T>): ContextBuilder<T>;
+  context<T extends DbContext>(
+    context: Constructor<T>,
+    build?: (builder: ContextBuilder<T>) => void | Promise<void>
+  ): void | ContextBuilder<T> {
+    let builder = this.contextMap.get(context);
+    if (!builder) {
+      builder = new ContextBuilder(context);
+      this.contextMap.set(context, builder);
+    }
+    if (build) {
+      build(builder);
+      builder.ready();
+      return;
+    }
+    return builder;
   }
 
   /**
-   * 实体声明为表
+   * 完成建模工作
+   * 此方法请在ORM准备完毕时调用
    */
-  asTable(name?: string): TableEntityBuilder<T>;
-  asTable(build: (builder: TableEntityBuilder<T>) => void): ContextBuilder;
+  ready() {
+    for (const context of this.decoratorContexts) {
+      this.buildDecoratorDbContext(context);
+    }
+
+    for (const entity of this.decoratorEntities) {
+      this.buildDecoratorEntity(entity);
+    }
+
+    for (const ctxBuilder of this.contextMap.values()) {
+      if (!ctxBuilder.isReady) {
+        ctxBuilder.ready();
+      }
+    }
+  }
+}
+
+export const modelBuilder = ModelBuilder.instance;
+
+export const defaultDbContextBuilder = modelBuilder.context(DbContext);
+
+// /**
+//  * 实体映射构造器
+//  */
+// export class EntityMapBuilder<T extends Entity> {
+//   constructor(
+//     private contextBuilder: ContextBuilder,
+//     public readonly metadata: EntityMetadata
+//   ) {}
+
+//   private builder?: EntityBuilder<T>;
+
+//   private _assertKind(kind: EntityMetadata['kind']): boolean {
+//     if (this.metadata.kind) {
+//       if (this.metadata.kind !== kind) {
+//         throw new Error(
+//           `Entity ${this.metadata.class!.name} is declared as ${
+//             this.metadata.kind
+//           }`
+//         );
+//       }
+//       return true;
+//     }
+//     return false;
+//   }
+
+//   /**
+//    * 实体声明为表
+//    */
+//   asTable(name?: string): EntityBuilder<T>;
+//   asTable(build: (builder: EntityBuilder<T>) => void): ContextBuilder;
+//   asTable(
+//     name: string,
+//     build: (builder: EntityBuilder<T>) => void
+//   ): ContextBuilder;
+//   asTable(
+//     nameOrBuild?: string | ((builder: EntityBuilder<T>) => void),
+//     build?: (builder: EntityBuilder<T>) => void
+//   ): EntityBuilder<T> | ContextBuilder {
+//     if (this._assertKind('TABLE')) {
+//       if (arguments.length > 0) {
+//         throw new Error(
+//           `Entity ${this.metadata.class} is allowed declare as table once only, Pls use .asTable() to get EntityBuilder.`
+//         );
+//       }
+//       return this.builder as EntityBuilder<T>;
+//     }
+//     let name: string | undefined;
+//     if (typeof nameOrBuild === 'string') {
+//       name = nameOrBuild;
+//     } else if (typeof nameOrBuild === 'function') {
+//       build = nameOrBuild;
+//     }
+
+//     const tableMetadata = this.metadata as TableEntityMetadata;
+//     this.metadata.kind = 'TABLE';
+//     tableMetadata.tableName = name || this.metadata.className;
+//     this.metadata.readonly = false;
+//     const builder = new EntityBuilder<T>(this.modelBuilder, tableMetadata);
+//     this.builder = builder;
+//     if (build) {
+//       build(builder);
+//       return this.modelBuilder;
+//     }
+//     return builder;
+//   }
+
+//   /**
+//    * 实体声明为视图
+//    */
+//   asView(): ViewEntityBuilder<T>;
+//   asView(name: string): ViewEntityBuilder<T>;
+//   asView(build: (builder: ViewEntityBuilder<T>) => void): ViewEntityBuilder<T>;
+//   asView(
+//     name: string,
+//     build: (builder: ViewEntityBuilder<T>) => void
+//   ): ViewEntityBuilder<T>;
+//   asView(
+//     nameOrBuild?: string | ((builder: ViewEntityBuilder<T>) => void),
+//     build?: (builder: ViewEntityBuilder<T>) => void
+//   ): ViewEntityBuilder<T> {
+//     if (this._assertKind('VIEW')) {
+//       if (arguments.length > 0) {
+//         throw new Error(
+//           `Entity is allowed declare as View once only, Pls use .asView() to get EntityBuilder.`
+//         );
+//       }
+//       return this.builder as ViewEntityBuilder<T>;
+//     }
+//     let name: string | undefined;
+//     if (typeof nameOrBuild === 'string') {
+//       name = nameOrBuild;
+//     } else if (typeof nameOrBuild === 'function') {
+//       build = nameOrBuild;
+//     }
+
+//     const viewMetadata = this.metadata as ViewEntityMetadata;
+//     this.metadata.kind = 'VIEW';
+//     viewMetadata.viewName = name || this.metadata.className;
+//     this.metadata.readonly = true;
+//     const builder = new ViewEntityBuilder<T>(this.modelBuilder, viewMetadata);
+//     if (build) {
+//       build(builder);
+//     }
+//     this.builder = builder;
+//     return builder;
+//   }
+
+//   /**
+//    * 实体声明为视图
+//    */
+//   asQuery(): QueryEntityBuilder<T>;
+//   asQuery(
+//     build: (builder: QueryEntityBuilder<T>) => void
+//   ): QueryEntityBuilder<T>;
+//   asQuery(
+//     build?: (builder: QueryEntityBuilder<T>) => void
+//   ): QueryEntityBuilder<T> {
+//     if (this._assertKind('QUERY')) {
+//       if (arguments.length > 0) {
+//         throw new Error(
+//           `Entity is allowed declare as Query once only, Pls use .asQuery() to get EntityBuilder.`
+//         );
+//       }
+//       return this.builder as QueryEntityBuilder<T>;
+//     }
+
+//     this.metadata.kind = 'QUERY';
+//     this.metadata.readonly = true;
+//     const builder = new QueryEntityBuilder<T>(this.modelBuilder, this.metadata);
+//     if (build) {
+//       build(builder);
+//     }
+//     this.builder = builder;
+//     return builder;
+//   }
+// }
+
+/**
+ * 实体构造器
+ * 列可以重复获取，关系不可以重复获取
+ */
+export class EntityBuilder<T extends Entity> {
+  constructor(
+    protected contextBuilder: ContextBuilder,
+    public readonly metadata: EntityMetadata
+  ) {}
+
+  protected readonly relationMaps: Map<
+    string,
+    HasOneBuilder<T, Entity> | HasManyBuilder<T, Entity>
+  > = new Map();
+
+  protected readonly columnMaps: Map<string, PropertyBuilder<T>> = new Map();
+
+  private assertRelation(property: string) {
+    if (this.relationMaps.has(property) || this.columnMaps.has(property)) {
+      throw new Error(`Property or Relation ${property} is declared`);
+    }
+  }
+
+  private assertKind() {
+    if (this.metadata.kind) {
+      throw new Error('Not allow set a entity kind twice in modeling.');
+    }
+  }
+
+  asTable(name?: string): EntityBuilder<T>;
+  asTable(build: (builder: EntityBuilder<T>) => void): ContextBuilder;
   asTable(
     name: string,
-    build: (builder: TableEntityBuilder<T>) => void
+    build: (builder: EntityBuilder<T>) => void
   ): ContextBuilder;
   asTable(
-    nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
-    build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T> | ContextBuilder {
-    if (this._assertKind('TABLE')) {
-      if (arguments.length > 0) {
-        throw new Error(
-          `Entity ${this.metadata.class} is allowed declare as table once only, Pls use .asTable() to get TableEntityBuilder.`
-        );
-      }
-      return this.builder as TableEntityBuilder<T>;
-    }
-    let name: string | undefined;
+    nameOrBuild?: string | ((builder: EntityBuilder<T>) => void),
+    build?: (builder: EntityBuilder<T>) => void
+  ): EntityBuilder<T> | ContextBuilder {
+    // this.assertKind();
+    let tableName: string | undefined;
     if (typeof nameOrBuild === 'string') {
-      name = nameOrBuild;
+      tableName = nameOrBuild;
     } else if (typeof nameOrBuild === 'function') {
       build = nameOrBuild;
     }
 
     const tableMetadata = this.metadata as TableEntityMetadata;
     this.metadata.kind = 'TABLE';
-    tableMetadata.tableName = name || this.metadata.className;
+    tableMetadata.tableName = tableName || this.metadata.className;
     this.metadata.readonly = false;
-    const builder = new TableEntityBuilder<T>(this.modelBuilder, tableMetadata);
-    this.builder = builder;
     if (build) {
-      build(builder);
-      return this.modelBuilder;
+      build(this);
+      return this.contextBuilder;
     }
-    return builder;
+    return this;
   }
+
+  // asTable(tableName?: string): Omit<this, 'asTable' | 'asView' | 'asQuery'> {
+
+  // }
+
+  // asView(body: Select<T>): Omit<this, 'asTable' | 'asView' | 'asQuery'>
+  // asView(viewName: string, body: Select<T>): Omit<this, 'asTable' | 'asView' | 'asQuery'>
+  // asView(bodyOrViewName: Select<T> | string, body?: Select<T>): Omit<this, 'asTable' | 'asView' | 'asQuery'> {
+  //   // this.assertKind();
+  //   let viewName: string;
+  //   if (!body) {
+  //     body = bodyOrViewName as Select<T>;
+  //     viewName = this.metadata.class.name;
+  //   } else {
+  //     viewName = bodyOrViewName as string;
+  //   }
+
+  //   this.metadata.kind = 'VIEW';
+  //   this.metadata.viewName = viewName;
+  //   this.metadata.body = body;
+  //   this.metadata.readonly = true;
+  //   return this;
+  // }
+
+  // asQuery(sql: Select<T>): Omit<this, 'asTable' | 'asView' | 'asQuery'> {
+  //   // this.assertKind();
+  //   if (this.metadata.kind) {
+  //     throw new Error('Not allow change entity kind twice in modeling.')
+  //   }
+
+  //   this.metadata.kind = 'QUERY';
+  //   this.metadata.sql = sql;
+  //   this.metadata.readonly = true;
+  //   return this;
+  // }
+
+  // hasBody(body: Select<T>) {
+  //   if (this.metadata.kind !== 'VIEW') {
+  //     throw new Error(`Not need query sql when entity is not View.`)
+  //   }
+  //   this.metadata.body = body;
+  // }
+
+  // hasSql(sql: Select<T>) {
+  //   if (this.metadata.kind !== 'QUERY') {
+  //     throw new Error(`Not need query sql when entity is not Query.`)
+  //   }
+  //   this.metadata.sql = sql;
+  // }
 
   /**
    * 实体声明为视图
    */
-  asView(): ViewEntityBuilder<T>;
-  asView(name: string): ViewEntityBuilder<T>;
-  asView(build: (builder: ViewEntityBuilder<T>) => void): ViewEntityBuilder<T>;
+  asView(body: Select<T>): this;
+  asView(body: Select<T>, build: (builder: this) => void): ContextBuilder;
+  asView(name: string, body: Select<T>): this;
   asView(
     name: string,
-    build: (builder: ViewEntityBuilder<T>) => void
-  ): ViewEntityBuilder<T>;
+    body: Select<T>,
+    build: (builder: this) => void
+  ): ContextBuilder;
   asView(
-    nameOrBuild?: string | ((builder: ViewEntityBuilder<T>) => void),
-    build?: (builder: ViewEntityBuilder<T>) => void
-  ): ViewEntityBuilder<T> {
-    if (this._assertKind('VIEW')) {
-      if (arguments.length > 0) {
-        throw new Error(
-          `Entity is allowed declare as View once only, Pls use .asView() to get TableEntityBuilder.`
-        );
-      }
-      return this.builder as ViewEntityBuilder<T>;
-    }
+    nameOrBody: string | Select<T>,
+    bodyOrBuild?: Select<T> | ((builder: this) => void),
+    build?: (builder: this) => void
+  ): this | ContextBuilder {
     let name: string | undefined;
-    if (typeof nameOrBuild === 'string') {
-      name = nameOrBuild;
-    } else if (typeof nameOrBuild === 'function') {
-      build = nameOrBuild;
+    let body: Select<T>;
+    if (typeof nameOrBody === 'string') {
+      name = nameOrBody;
+      body = bodyOrBuild as Select<T>;
+    } else {
+      body = nameOrBody;
+      build = bodyOrBuild as (builder: this) => void;
     }
 
-    const viewMetadata = this.metadata as ViewEntityMetadata;
     this.metadata.kind = 'VIEW';
-    viewMetadata.viewName = name || this.metadata.className;
+    this.metadata.viewName = name || this.metadata.className;
     this.metadata.readonly = true;
-    const builder = new ViewEntityBuilder<T>(this.modelBuilder, viewMetadata);
+    this.metadata.body = body;
     if (build) {
-      build(builder);
+      build(this);
+      return this.contextBuilder;
     }
-    this.builder = builder;
-    return builder;
+    return this;
   }
 
   /**
    * 实体声明为视图
    */
-  asQuery(): QueryEntityBuilder<T>;
+  asQuery(sql: Select<T>): this;
+  asQuery(sql: Select<T>, build: (builder: this) => void): ContextBuilder;
   asQuery(
-    build: (builder: QueryEntityBuilder<T>) => void
-  ): QueryEntityBuilder<T>;
-  asQuery(
-    build?: (builder: QueryEntityBuilder<T>) => void
-  ): QueryEntityBuilder<T> {
-    if (this._assertKind('QUERY')) {
-      if (arguments.length > 0) {
-        throw new Error(
-          `Entity is allowed declare as Query once only, Pls use .asQuery() to get TableEntityBuilder.`
-        );
-      }
-      return this.builder as QueryEntityBuilder<T>;
-    }
-
+    sql: Select<T>,
+    build?: (builder: this) => void
+  ): this | ContextBuilder {
     this.metadata.kind = 'QUERY';
     this.metadata.readonly = true;
-    const builder = new QueryEntityBuilder<T>(this.modelBuilder, this.metadata);
+    this.metadata.sql = sql;
     if (build) {
-      build(builder);
+      build(this);
+      return this.contextBuilder;
     }
-    this.builder = builder;
-    return builder;
-  }
-}
-
-/**
- * 列可以重复获取，关系不可以重复获取
- */
-export abstract class EntityBuilder<T extends Entity> {
-  constructor(
-    protected modelBuilder: ContextBuilder,
-    public readonly metadata: EntityMetadata
-  ) {}
-
-  protected readonly memberMaps: Map<
-    string,
-    ColumnBuilder<T> | HasOneBuilder<T, Entity> | HasManyBuilder<T, Entity>
-  > = new Map();
-
-  column<P extends Scalar>(
-    selector: (p: Required<T>) => P,
-    type: DataTypeOf<P>
-  ): ColumnBuilder<T, P>;
-  column<P extends Scalar>(
-    selector: (p: Required<T>) => P,
-    type: DataTypeOf<P>,
-    build: (builder: ColumnBuilder<T>) => void
-  ): this;
-  column<D extends Scalar, P extends keyof T>(
-    property: string,
-    type: DataTypeOf<D>
-  ): ColumnBuilder<T, D>;
-  column<D extends Scalar, P extends keyof T>(
-    property: string,
-    type: DataTypeOf<D>,
-    build: (builder: ColumnBuilder<T>) => void
-  ): this;
-  column<P extends Scalar>(
-    propertyOrselector: string | ((p: Required<T>) => P),
-    type: DataTypeOf<P>,
-    build?: (builder: ColumnBuilder<T>) => void
-  ): ColumnBuilder<T, P> | this {
-    let property: string =
-      typeof propertyOrselector === 'function'
-        ? selectProperty(propertyOrselector)
-        : propertyOrselector;
-    if (!property) {
-      throw new Error(`Please select a property`);
-    }
-    let metadata: ColumnMetadata<P> | undefined = this.memberMaps.get(
-      property
-    ) as any;
-    if (!metadata) {
-      metadata = {
-        kind: 'COLUMN',
-        property: property,
-        type,
-      } as ColumnMetadata<P>;
-    }
-
-    const columnBuilder = new ColumnBuilder<T, P>(
-      this.modelBuilder,
-      this,
-      metadata
-    );
-    this.memberMaps.set(property, columnBuilder);
-    this.metadata.addMember(metadata as ColumnMetadata);
-
-    if (build) {
-      build(columnBuilder);
-      return this;
-    }
-    return columnBuilder;
-  }
-
-  hasComment(comment: string): Omit<this, 'hasComment'> {
-    this.metadata.comment = comment;
     return this;
   }
 
-  /**
-   * 可将初始化代码写于此处，支持异步方法
-   */
-  async forAsync(action: (builder: this) => Promise<void>): Promise<this> {
-    await action(this);
-    return this;
-  }
-}
+  // /**
+  //  * 声明视图选择语句
+  //  * 声明在函数中是为了避免循环引用时引发异常
+  //  */
+  // hasBody(body: Select<T>): this {
+  //   this.metadata.body = body;
+  //   return this;
+  // }
 
-export class TableKeyBuilder {
-  constructor(private entityBuilder: TableEntityBuilder<any>) {}
-
-  hasComment(comment: string): this {
-    this.entityBuilder.metadata.keyComment = comment;
-    return this;
-  }
-
-  /**
-   * 指定约束名称
-   * @param constraintName
-   * @returns
-   */
-  hasConstraintName(constraintName: string): this {
-    this.entityBuilder.metadata.keyConstraintName = constraintName;
-    return this;
-  }
-
-  /**
-   * 将主键声明为非聚焦
-   * @returns
-   */
-  isNonclustered() {
-    this.entityBuilder.metadata.isNonclustered = true;
-    return this;
-  }
-}
-
-/**
- * 表实体构造器
- */
-export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  public readonly metadata!: TableEntityMetadata;
-
-  private assertRelation(property: string) {
-    if (this.memberMaps.has(property)) {
-      throw new Error(`Property ${property} is declared`);
-    }
-  }
+  // withSql(sql: Select<T>): this {
+  //   this.metadata.sql = sql;
+  //   return this;
+  // }
 
   /**
    * 声明主键
@@ -1199,9 +1348,14 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     if (!property) {
       throw new Error('Please select a property');
     }
-    this.metadata.keyProperty = property;
+    if (!this.metadata.key) {
+      this.metadata.key = {} as KeyMetadata;
+    }
+    this.metadata.key = {
+      property,
+    } as KeyMetadata;
     if (constraintName) {
-      this.metadata.keyConstraintName = constraintName;
+      this.metadata.key!.constraintName = constraintName;
     }
     // this.metadata.addIndex({
     //   name: undefined,
@@ -1210,7 +1364,7 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     //   isUnique: true,
     //   isClustered
     // });
-    return new TableKeyBuilder(this);
+    return new TableKeyBuilder(this, this.metadata.key);
   }
 
   hasIndex(
@@ -1253,7 +1407,9 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
         : propertyOrSelector;
     if (!property) {
       throw new Error(
-        `Entity ${this.metadata.class!.name} hasOne selector mast return a property, example property name "user", 'builder.hasOne(p => p.user)'`
+        `Entity ${
+          this.metadata.class!.name
+        } hasOne selector mast return a property, example property name "user", 'builder.hasOne(p => p.user)'`
       );
     }
 
@@ -1262,12 +1418,15 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
       property,
       referenceClass: type,
       // 追加关联关系
-      referenceEntity: this.modelBuilder.entity(type)
-        .metadata,
+      referenceEntity: this.contextBuilder.entity(type).metadata,
     } as any;
-    const builder = new HasOneBuilder<T, D>(this.modelBuilder, this, metadata);
-    this.memberMaps.set(property, builder);
-    this.metadata.addMember!(metadata as HasOneMetadata);
+    const builder = new HasOneBuilder<T, D>(
+      this.contextBuilder,
+      this,
+      metadata
+    );
+    this.relationMaps.set(property, builder);
+    this.metadata.addRelation(metadata as HasOneMetadata);
     return builder;
   }
 
@@ -1284,25 +1443,30 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     let property: string = selectProperty(selector);
     if (!property)
       throw new Error(
-        `Entity ${this.metadata.class!.name} hasMany selector mast select a property like this: '.hasMany(p => p.listPropery)'.`
+        `Entity ${
+          this.metadata.class!.name
+        } hasMany selector mast select a property like this: '.hasMany(p => p.listPropery)'.`
       );
 
     this.assertRelation(property);
     const metadata: Partial<HasManyMetadata> = {
       referenceClass: type,
-      referenceEntity: this.modelBuilder.entity(type)
+      referenceEntity: this.contextBuilder.entity(type)
         .metadata as TableEntityMetadata,
       property: property,
       isDetail: false,
       isImplicit: false,
     };
-    this.modelBuilder.entity(type);
-    const builder = new HasManyBuilder<T, D>(this.modelBuilder, this, metadata);
-    this.memberMaps.set(property, builder);
-    this.metadata.addMember(metadata as HasManyMetadata);
+    this.contextBuilder.entity(type);
+    const builder = new HasManyBuilder<T, D>(
+      this.contextBuilder,
+      this,
+      metadata
+    );
+    this.relationMaps.set(property, builder);
+    this.metadata.addRelation(metadata as HasManyMetadata);
     return builder;
   }
-
 
   // TODO: 待添加种子数据结构化初始
   /**
@@ -1325,41 +1489,138 @@ export class TableEntityBuilder<T extends Entity> extends EntityBuilder<T> {
     this.metadata.data.push(...data);
     return this;
   }
-}
 
-export class ViewEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  metadata!: ViewEntityMetadata;
+  property<P extends Scalar>(
+    selector: (p: Required<T>) => P,
+    type: DataTypeOf<P>
+  ): PropertyBuilder<T, P>;
+  property<P extends Scalar>(
+    selector: (p: Required<T>) => P,
+    type: DataTypeOf<P>,
+    build: (builder: PropertyBuilder<T>) => void
+  ): this;
+  property<D extends Scalar, P extends keyof T>(
+    property: string,
+    type: DataTypeOf<D>
+  ): PropertyBuilder<T, D>;
+  property<D extends Scalar, P extends keyof T>(
+    property: string,
+    type: DataTypeOf<D>,
+    build: (builder: PropertyBuilder<T>) => void
+  ): this;
+  property<P extends Scalar>(
+    propertyOrselector: string | ((p: Required<T>) => P),
+    type: DataTypeOf<P>,
+    build?: (builder: PropertyBuilder<T>) => void
+  ): PropertyBuilder<T, P> | this {
+    let property: string =
+      typeof propertyOrselector === 'function'
+        ? selectProperty(propertyOrselector)
+        : propertyOrselector;
+    if (!property) {
+      throw new Error(`Please select a property`);
+    }
+    let columnBuilder: PropertyBuilder<T, P> | undefined = this.columnMaps.get(property) as PropertyBuilder<T, P>;
+    if (!columnBuilder) {
+      const metadata = {
+        kind: 'COLUMN',
+        property: property,
+        type,
+      } as ColumnMetadata<P>;
+      columnBuilder = new PropertyBuilder<T, P>(
+        this.contextBuilder,
+        this,
+        metadata
+      );
+      this.columnMaps.set(property, columnBuilder);
+      this.metadata.addColumn(metadata as ColumnMetadata);
+    }
+
+    if (build) {
+      build(columnBuilder);
+      return this;
+    }
+    return columnBuilder;
+  }
+
+  hasComment(comment: string): Omit<this, 'hasComment'> {
+    this.metadata.comment = comment;
+    return this;
+  }
 
   /**
-   * 声明视图选择语句
-   * 声明在函数中是为了避免循环引用时引发异常
+   * 可将初始化代码写于此处，支持异步方法
    */
-  hasBody(body: Select<T>): this {
-    this.metadata.body = body;
+  async forAsync(action: (builder: this) => Promise<void>): Promise<this> {
+    await action(this);
     return this;
   }
 }
 
-export class QueryEntityBuilder<T extends Entity> extends EntityBuilder<T> {
-  metadata!: QueryEntityMetadata;
-
-  withSql(sql: Select<T>): this {
-    this.metadata.sql = sql;
-    return this;
-  }
-}
-
-export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
+export class TableKeyBuilder {
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private entityBuilder: EntityBuilder<any>,
+    public readonly metadata: KeyMetadata
+  ) {}
+
+  hasComment(comment: string): this {
+    this.entityBuilder.metadata.key!.comment = comment;
+    return this;
+  }
+
+  /**
+   * 指定约束名称
+   * @param constraintName
+   * @returns
+   */
+  hasConstraintName(constraintName: string): this {
+    this.metadata.constraintName = constraintName;
+    return this;
+  }
+
+  /**
+   * 将主键声明为非聚焦
+   * @returns
+   */
+  isNonclustered() {
+    this.metadata.isNonclustered = true;
+    return this;
+  }
+}
+
+// /**
+//  * 表实体构造器
+//  */
+// export class EntityBuilder<T extends Entity> extends EntityBuilder<T> {
+//   public readonly metadata!: TableEntityMetadata;
+
+// }
+
+// export class ViewEntityBuilder<T extends Entity> extends EntityBuilder<T> {
+//   metadata!: ViewEntityMetadata;
+
+// }
+
+// export class QueryEntityBuilder<T extends Entity> extends EntityBuilder<T> {
+//   metadata!: QueryEntityMetadata;
+
+//   withSql(sql: Select<T>): this {
+//     this.metadata.sql = sql;
+//     return this;
+//   }
+// }
+
+export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
+  constructor(
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<T>,
     public readonly metadata: Partial<ColumnMetadata<V>>
   ) {}
 
   /**
-   * 列名
+   * 声明为列
    */
-  hasName(columnName: string): Omit<this, 'hasName'> {
+  hasColumnName(columnName: string): Omit<this, 'hasName'> {
     this.metadata.columnName = columnName;
     return this;
   }
@@ -1431,12 +1692,7 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
   /**
    * 将列声明为计算列
    */
-  asCalculated(
-    expr: Expression<V>
-  ): Omit<
-    this,
-    'asCalculated' | 'hasDefaultValue' | 'isIdentity' | 'isAutogen'
-  > {
+  isCalculated(expr: Expression<V>): this {
     this.metadata.isCalculate = true;
     this.metadata.calculateExpression = expr;
     return this;
@@ -1445,7 +1701,7 @@ export class ColumnBuilder<T extends Entity, V extends Scalar = Scalar> {
 
 export class HasOneBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private modelBuilder: ContextBuilder,
+    private contextBuilder: ContextBuilder,
     private entityBuilder: EntityBuilder<S>,
     public readonly metadata: Partial<HasOneMetadata>
   ) {}
@@ -1479,7 +1735,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
       }
     }
     const oneToOne = new OneToOneMapBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata as OneToOneMetadata
     );
@@ -1506,7 +1762,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
       }
     }
     const oneToMay = new ManyToOneBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata as ManyToOneMetadata
     );
@@ -1516,7 +1772,7 @@ export class HasOneBuilder<S extends Entity, D extends Entity> {
 
 export class HasManyBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
     public readonly metadata: Partial<HasManyMetadata>
   ) {}
@@ -1548,7 +1804,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
       }
     }
     const manyToOne = new OneToManyBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata as OneToManyMetadata
     );
@@ -1578,7 +1834,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
     }
 
     const builder = new ManyToManyBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata as ManyToManyMetadata
     );
@@ -1588,7 +1844,7 @@ export class HasManyBuilder<S extends Entity, D extends Entity> {
 
 export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
     public readonly metadata: OneToOneMetadata
   ) {}
@@ -1605,7 +1861,11 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
       if (referenceRelation) {
         if (referenceRelation.isPrimary === true) {
           throw new Error(
-            `Entity ${this.entityBuilder.metadata!.class!.name} PrimaryOneToOne relation ${this.metadata.property}, reference relation must be ForeignOneToOne relation, use .hasForeignKey()`
+            `Entity ${
+              this.entityBuilder.metadata!.class!.name
+            } PrimaryOneToOne relation ${
+              this.metadata.property
+            }, reference relation must be ForeignOneToOne relation, use .hasForeignKey()`
           );
         } else {
           // 补齐
@@ -1616,7 +1876,7 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
     }
     this.metadata.isPrimary = true;
     return new PrimaryOneToOneBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata
     );
@@ -1640,7 +1900,7 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
         foreignProperty;
     }
     return new ForeignOneToOneBuilder<S, D>(
-      this.modelBuilder,
+      this.contextBuilder,
       this.entityBuilder,
       this.metadata
     );
@@ -1655,7 +1915,7 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
 
 export abstract class OneToOneBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private modelBuilder: ContextBuilder,
+    private contextBuilder: ContextBuilder,
     private entityBuilder: EntityBuilder<S>,
     public readonly metadata: Partial<OneToOneMetadata>
   ) {}
@@ -1712,7 +1972,7 @@ export class OneToManyBuilder<S extends Entity, D extends Entity> {
   }
 
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
     public readonly metadata: OneToManyMetadata
   ) {}
@@ -1720,7 +1980,7 @@ export class OneToManyBuilder<S extends Entity, D extends Entity> {
 
 export class ManyToOneBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
     public readonly metadata: ManyToOneMetadata
   ) {}
@@ -1766,7 +2026,7 @@ export class ManyToOneBuilder<S extends Entity, D extends Entity> {
 
 export class ManyToManyBuilder<S extends Entity, D extends Entity> {
   constructor(
-    private readonly modelBuilder: ContextBuilder,
+    private readonly contextBuilder: ContextBuilder,
     private readonly entityBuilder: EntityBuilder<S>,
     public readonly metadata: ManyToManyMetadata
   ) {}
@@ -1776,18 +2036,18 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
    */
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T>;
+    build?: (builder: EntityBuilder<T>) => void
+  ): EntityBuilder<T>;
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
     name: string,
-    build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T>;
+    build?: (builder: EntityBuilder<T>) => void
+  ): EntityBuilder<T>;
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    nameOrBuild?: string | ((builder: TableEntityBuilder<T>) => void),
-    build?: (builder: TableEntityBuilder<T>) => void
-  ): TableEntityBuilder<T> {
+    nameOrBuild?: string | ((builder: EntityBuilder<T>) => void),
+    build?: (builder: EntityBuilder<T>) => void
+  ): EntityBuilder<T> {
     let name: string | undefined;
 
     if (typeof nameOrBuild === 'string') {
@@ -1795,9 +2055,7 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     } else {
       build = nameOrBuild;
     }
-    const builder: TableEntityBuilder<T> = this.modelBuilder
-      .entity(ctr)
-      .asTable(name);
+    const builder: EntityBuilder<T> = this.contextBuilder.entity(ctr);
     if (build) {
       build(builder);
     }
@@ -1830,23 +2088,4 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     this.metadata.relationConstraintName = name;
     return this;
   }
-}
-
-const PropertySelector: any = new Proxy(
-  {},
-  {
-    get: (_, key: string): string => {
-      if (typeof key !== 'string') {
-        throw new Error(
-          `Invalid property type ${typeof key}, entity property is allow string key only.`
-        );
-      }
-      return key;
-    },
-  }
-);
-
-function selectProperty(selector: (p: any) => any): any {
-  const property = selector(PropertySelector);
-  return property;
 }

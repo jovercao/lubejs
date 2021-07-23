@@ -407,12 +407,12 @@ export function generateSchema(
     const table: TableSchema = {
       name: entity.tableName,
       primaryKey: {
-        name: entity.keyConstraintName,
-        isNonclustered: entity.isNonclustered,
-        comment: entity.keyComment,
+        name: entity.key.constraintName,
+        isNonclustered: entity.key.isNonclustered,
+        comment: entity.key.comment,
         columns: [
           {
-            name: entity.keyColumn.columnName,
+            name: entity.key.column.columnName,
             isAscending: true,
           },
         ],
@@ -454,7 +454,7 @@ export function generateSchema(
       name: relation.constraintName,
       referenceTable: relation.referenceEntity.tableName,
       columns: [relation.foreignColumn.columnName],
-      referenceColumns: [relation.referenceEntity.keyColumn.columnName],
+      referenceColumns: [relation.referenceEntity.key.column.columnName],
       isCascade: relation.isCascade,
     };
     return fk;

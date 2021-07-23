@@ -12,7 +12,7 @@ import { join } from 'path';
 import { DbContext, DbContextConstructor, LubeConfig } from './orm';
 import { Constructor } from './types';
 import { metadataStore } from './metadata';
-import { isUrl } from './util';
+import { isUrl, parseConnectionUrl } from './util';
 
 export type ConnectOptions = {
   /**
@@ -216,7 +216,7 @@ export async function connect(
   optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube> {
   let options: ConnectOptions;
-  options = await parseOptions(optOrUrlOrCfg);
+  options = await getConnectOptions(optOrUrlOrCfg);
   const provider: DbProvider = await options.driver!(options);
   const lube = new Lube(provider);
   provider.lube = lube;
@@ -244,31 +244,12 @@ export async function loadConfig(): Promise<LubeConfig> {
   return config;
 }
 
-async function parseOptions(opt?: ConnectOptions | string): Promise<ConnectOptions> {
-  let options: ConnectOptions;
+async function getConnectOptions(opt?: ConnectOptions | string | DbContextConstructor): Promise<ConnectOptions> {
+  let options: ConnectOptions | undefined;
   if (typeof opt === 'object') {
     options = opt;
-  } else if (opt && isUrl(opt)) {
-    const url = new URL(opt);
-    const params = url.searchParams;
-    const urlOptions: Record<string, string> = {};
-    for (const [key, value] of params.entries()) {
-      if (value !== undefined) {
-        urlOptions[key] = value;
-      }
-    }
-    const dialect = url.protocol
-      .substr(0, url.protocol.length - 1)
-      .toLowerCase();
-    options = {
-      dialect,
-      host: url.host,
-      port: url.port ? parseInt(url.port) : undefined,
-      user: url.username,
-      password: url.password,
-      database: url.pathname.split('|')[0],
-      ...urlOptions,
-    };
+  } else if (typeof opt === 'string') {
+    options = parseConnectionUrl(opt);
   } else {
     const config = await loadConfig();
     if (!config) {
@@ -280,9 +261,12 @@ async function parseOptions(opt?: ConnectOptions | string): Promise<ConnectOptio
         throw new Error(`Default options not found in configure file`);
       }
     } else {
-      options = config.configures[opt];
+      options = config.configures[opt.name];
       if (!options) {
-        throw new Error(`Option ${opt} not found in configure file.`);
+        options = metadataStore.getContext(opt).connection;
+      }
+      if (!options) {
+        throw new Error(`Option ${opt.name} not found in configure file.`);
       }
     }
   }
@@ -331,7 +315,7 @@ export async function createContext(
   let lube: Lube;
   if (!optOrCfgOrUrlOrLubeOrCtr) {
     Ctr = metadataStore.defaultContext.class
-    const options = await parseOptions(Ctr.name);
+    const options = await getConnectOptions(Ctr);
     // if (!options) {
     //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`)
     // }
@@ -339,15 +323,12 @@ export async function createContext(
   } else if (typeof optOrCfgOrUrlOrLubeOrCtr === 'function') {
     Ctr = optOrCfgOrUrlOrLubeOrCtr;
     if (!optOrCfgOrUrlOrLube) {
-      const options = await parseOptions(Ctr.name);
-      // if (!options) {
-      //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`);
-      // }
+      const options = await getConnectOptions(Ctr)
       lube = await connect(options);
     } else if (optOrCfgOrUrlOrLube instanceof Lube) {
       lube = optOrCfgOrUrlOrLube
     } else {
-      const options = await parseOptions(optOrCfgOrUrlOrLube);
+      const options = await getConnectOptions(optOrCfgOrUrlOrLube);
       lube = await connect(options);
     }
   } else if (optOrCfgOrUrlOrLubeOrCtr instanceof Lube) {
@@ -355,7 +336,7 @@ export async function createContext(
     lube = optOrCfgOrUrlOrLubeOrCtr;
   } else {
     Ctr = metadataStore.defaultContext.class;
-    const options = await parseOptions(optOrCfgOrUrlOrLubeOrCtr)
+    const options = await getConnectOptions(optOrCfgOrUrlOrLubeOrCtr)
     lube = await connect(options);
   }
 

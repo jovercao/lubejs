@@ -3,6 +3,8 @@ import { MigrateCli } from './migrate-cli';
 import 'colors';
 import { createContext, loadConfig } from './lube';
 import { resolve } from 'path'
+import { metadataStore } from './metadata';
+import { DbContextConstructor } from './db-context';
 
 const OPTIONS_FILE = '.lubejs';
 
@@ -27,7 +29,13 @@ async function createMigrateCli(options?: {
   }
   // 加载配置，以便导入ORM Metadata
   await loadConfig();
-  const db = await createContext(context);
+  let Ctr: DbContextConstructor;
+  if (context) {
+    Ctr = metadataStore.getContext(context).class;
+  } else {
+    Ctr = metadataStore.defaultContext.class;
+  }
+  const db = await createContext(Ctr);
   const cli = await new MigrateCli(db, migrateDir);
   return cli;
 }

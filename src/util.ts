@@ -102,14 +102,12 @@ import {
   $ROWSET_INSTANCE,
 } from './constants';
 import { Command } from './execute';
+import { ConnectOptions } from './lube';
 import { FetchRelations } from './repository';
 
 import {
   Binary,
-  Constructor,
-  DataType,
   DbType,
-  DecimalConstructor,
   ListType,
   Name,
   PathedName,
@@ -1196,4 +1194,77 @@ export type Argument<N extends string = string, O extends boolean = boolean, T e
   name: N,
   optional: O;
   type: T;
+}
+
+const PropertySelector: any = new Proxy(
+  {},
+  {
+    get: (_, key: string): string => {
+      if (typeof key !== 'string') {
+        throw new Error(
+          `Invalid property type ${typeof key}, entity property is allow string key only.`
+        );
+      }
+      return key;
+    },
+  }
+);
+
+export function selectProperty(selector: (p: any) => any): any {
+  const property = selector(PropertySelector);
+  return property;
+}
+
+/**
+ * 获取名称，暂时无法获取变量名
+ */
+export function nameof<T>(fn: Function): string
+export function nameof<T>(propertySelector: (p: T) => any): string
+export function nameof<T>(arg: Function | ((p: T) => any)): string {
+  if (typeof arg === 'function') {
+    return arg.name;
+  }
+
+  const name = selectProperty(arg)
+  if (typeof name !== 'string') {
+    throw new Error(`Invalid operation nameof, Pls use nameof like this 'nameof(p => p.property)'.`);
+  }
+  return name;
+}
+
+/**
+ * 判断一个类是否由另一个类继承而来
+ */
+export function isExtendsOf(sub: Function, parent: Function): boolean {
+  let prototype: Object
+  while (prototype = Object.getPrototypeOf(sub.prototype)) {
+    if (prototype.constructor === parent) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function parseConnectionUrl(url: string): ConnectOptions {
+  const uri = new URL(url);
+  const params = uri.searchParams;
+  const urlOptions: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    if (value !== undefined) {
+      urlOptions[key] = value;
+    }
+  }
+  const dialect = uri.protocol
+    .substr(0, uri.protocol.length - 1)
+    .toLowerCase();
+  const options = {
+    dialect,
+    host: uri.host,
+    port: uri.port ? parseInt(uri.port) : undefined,
+    user: uri.username,
+    password: uri.password,
+    database: uri.pathname.split('|')[0],
+    ...urlOptions,
+  };
+  return options;
 }

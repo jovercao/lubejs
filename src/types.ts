@@ -389,6 +389,10 @@ export type DataTypeOf<T> = T extends string
   ? NumberConstructor
   : T extends Date
   ? DateConstructor
+  : T extends DecimalConstructor
+  ? Decimal
+  : T extends UuidConstructor
+  ? Uuid
   : T extends boolean
   ? BooleanConstructor
   : T extends Binary

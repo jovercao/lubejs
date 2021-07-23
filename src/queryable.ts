@@ -361,7 +361,7 @@ export class Queryable<T extends Entity | RowObject>
     relationRepository._includes = options?._includes;
 
     if (isPrimaryOneToOne(relation)) {
-      const key = Reflect.get(item, this.metadata.keyProperty);
+      const key = Reflect.get(item, this.metadata.key!.property);
       const subItem = await relationRepository
         .find(r => r[relation.referenceRelation.foreignProperty].eq(key))
         .fetchFirst();
@@ -371,7 +371,7 @@ export class Queryable<T extends Entity | RowObject>
       const refKey = Reflect.get(item, relation.foreignProperty);
       return await relationRepository.get(refKey);
     } else if (isOneToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.keyProperty);
+      const key = Reflect.get(item, this.metadata.key!.property);
       const relationItems = await relationRepository
         .filter(rowset =>
           rowset[relation.referenceRelation.foreignProperty].eq(key)
@@ -382,12 +382,12 @@ export class Queryable<T extends Entity | RowObject>
       const refValue = Reflect.get(item, relation.foreignProperty);
       const relationItem = await relationRepository
         .find(rowset =>
-          rowset[relation.referenceEntity.keyColumn.property].eq(refValue)
+          rowset[relation.referenceEntity.key.column.property].eq(refValue)
         )
         .fetchFirst();
       return relationItem;
     } else if (isManyToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.keyProperty);
+      const key = Reflect.get(item, this.metadata.key!.property);
       // 本表为字段1关联
       const rt = makeRowset<any>(relation.relationEntity.class);
       // 当前外键列
@@ -402,7 +402,7 @@ export class Queryable<T extends Entity | RowObject>
         .where(rt.$(thisForeignColumn.property).eq(key));
       const subItems = await relationRepository
         .filter(rowset =>
-          rowset[relation.referenceEntity.keyColumn.property].in(
+          rowset[relation.referenceEntity.key.column.property].in(
             relationIdsSelect
           )
         )

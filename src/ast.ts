@@ -2328,7 +2328,7 @@ abstract class Fromable<T extends RowObject = any> extends Statement {
     this.$froms.forEach(table => {
       if (!table.$alias) {
         if (!(table as any).$name) {
-          throw new Error('行集必须指定别名才可以进行FROM查询');
+          throw new Error('Rowset must give a name before query');
         }
       }
     });

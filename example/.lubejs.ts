@@ -1,6 +1,9 @@
-import { LubeConfig } from 'lubejs';
+import { LubeConfig, modelBuilder } from 'lubejs';
 import driver from 'lubejs-mssql';
 // import './orm'
+import './orm-decorators';
+
+modelBuilder.ready();
 
 export const config: LubeConfig = {
   default: 'DB',

@@ -103,7 +103,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     options?: FetchOptions<T>
   ): Promise<EntityInstance<T> | undefined> {
     let query = this.filter(rowset =>
-      rowset[this.metadata.keyColumn.columnName as ColumnsOf<T>]
+      rowset[this.metadata.key.column.columnName as ColumnsOf<T>]
         .eq(key as any)
     );
     if (options?.includes) {
@@ -160,15 +160,15 @@ export class Repository<T extends Entity> extends Queryable<T> {
       }
       await this.executor.insert(this.rowset, row);
 
-      const key = this.metadata.keyColumn.isIdentity
+      const key = this.metadata.key.column.isIdentity
         ? SqlBuilder.identityValue(
             this.metadata.tableName,
-            this.metadata.keyColumn.columnName
+            this.metadata.key.column.columnName
           )
-        : Reflect.get(item, this.metadata.keyProperty);
+        : Reflect.get(item, this.metadata.key.property);
       const added = await this.executor.find(
         this.rowset,
-        this.rowset.$(this.metadata.keyProperty as any).eq(key)
+        this.rowset.$(this.metadata.key.property as any).eq(key)
       );
       this.toEntity(added, item);
       if (options?.withoutRelations !== true) {
@@ -190,14 +190,14 @@ export class Repository<T extends Entity> extends Queryable<T> {
    * @returns
    */
   protected getWhere(item: T): Condition {
-    const keyValue = Reflect.get(item, this.metadata.keyProperty);
+    const keyValue = Reflect.get(item, this.metadata.key.property);
     if (keyValue === undefined) {
       throw new Error(
-        `Key property ${this.metadata.keyProperty} is undefined.`
+        `Key property ${this.metadata.key.property} is undefined.`
       );
     }
     let condition: Condition = this.rowset
-      .$(this.metadata.keyProperty as any)
+      .$(this.metadata.key.property as any)
       .eq(keyValue);
     if (this.metadata.rowflagColumn) {
       const rowflagValue = Reflect.get(
@@ -435,7 +435,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       items = [items];
     }
     for (const item of items) {
-      if (!Reflect.has(item, this.metadata.keyProperty)) {
+      if (!Reflect.has(item, this.metadata.key.property)) {
         // 如果存在主键，则表示更新数据
         await this._insert(item, options);
       } else {
@@ -461,8 +461,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
   }
 
   // protected async loadSnapshot(item: T): Promise<T> {
-  //   if (!Reflect.has(item, this.metadata.keyProperty)) return null;
-  //   const key = Reflect.get(item, this.metadata.keyProperty);
+  //   if (!Reflect.has(item, this.metadata.key.property)) return null;
+  //   const key = Reflect.get(item, this.metadata.key.property);
   //   const snaphsot = await this.get(key);
   //   for (const relation of this.metadata.relations) {
   //     if (!Reflect.has(item, relation.property)) continue;
@@ -526,7 +526,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
           });
         const foreignKey = Reflect.get(
           dependent,
-          relation.referenceEntity.keyProperty
+          relation.referenceEntity.key.property
         );
         this._setProperty(item, relation.foreignColumn, foreignKey);
       }
@@ -561,7 +561,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     relation: PrimaryOneToOneMetadata
   ): Promise<void> {
     let subItem: any = Reflect.get(item, relation.property);
-    const itemKey = Reflect.get(item, this.metadata.keyProperty);
+    const itemKey = Reflect.get(item, this.metadata.key.property);
     const repo = this.context.getRepository(
       relation.referenceClass as EntityConstructor<any>
     );
@@ -581,7 +581,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     skipCompare: boolean = false
   ): Promise<void> {
     let subItems: any[] = Reflect.get(item, relation.property) || [];
-    const itemKey = Reflect.get(item, this.metadata.keyProperty);
+    const itemKey = Reflect.get(item, this.metadata.key.property);
     const repo = this.context.getRepository(
       relation.referenceClass as EntityConstructor<any>
     );
@@ -608,12 +608,12 @@ export class Repository<T extends Entity> extends Queryable<T> {
     const snapshotMap: any = {};
 
     subItems.forEach((subItem: any) => {
-      itemsMap[Reflect.get(subItem, relation.referenceEntity.keyProperty)] =
+      itemsMap[Reflect.get(subItem, relation.referenceEntity.key.property)] =
         subItem;
     });
 
     subSnapshots.forEach((subItem: any) => {
-      snapshotMap[Reflect.get(subItem, relation.referenceEntity.keyProperty)] =
+      snapshotMap[Reflect.get(subItem, relation.referenceEntity.key.property)] =
         subItem;
     });
 
@@ -624,7 +624,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
 
     // 删除多余的子项
     for (const subItem of subSnapshots) {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.keyProperty);
+      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
       if (!itemsMap[subKey]) {
         await repo.delete(subItem);
       }
@@ -645,11 +645,11 @@ export class Repository<T extends Entity> extends Queryable<T> {
     const relationRepo = this.context.getRepository(
       relation.relationRelation.referenceClass as EntityConstructor<any>
     );
-    const itemKey = Reflect.get(item, this.metadata.keyProperty);
+    const itemKey = Reflect.get(item, this.metadata.key.property);
     const subItems: any[] = Reflect.get(item, relation.property);
 
     const makeRelationItem: (subItem: any) => any = (subItem: any) => {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.keyProperty);
+      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
       const relationItem = new relation.relationClass();
       relationRepo._setProperty(
         relationItem,
@@ -698,12 +698,12 @@ export class Repository<T extends Entity> extends Queryable<T> {
     });
     const itemsMap: any = {};
     subItems.forEach((subItem: any) => {
-      const subKey = subItem[relation.referenceEntity.keyProperty];
+      const subKey = subItem[relation.referenceEntity.key.property];
       itemsMap[subKey] = subItem;
     });
 
     const newSubItems: any[] = subItems.filter((subItem: any) => {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.keyProperty);
+      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
       return !snapshotMap[subKey];
     });
 

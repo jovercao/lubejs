@@ -13,7 +13,13 @@ import {
   Table,
 } from './ast';
 import { $IsProxy, $ROWSET_INSTANCE } from './constants';
-import { DbContext, DbContextConstructor, DbInstance, EntityConstructor } from './db-context';
+import {
+  DbContext,
+  DbContextConstructor,
+  DbInstance,
+  EntityConstructor,
+} from './db-context';
+import { ConnectOptions } from './lube';
 import { FetchRelations } from './repository';
 import {
   Constructor,
@@ -49,7 +55,7 @@ export interface IndexMetadata {
   comment?: string;
 }
 
-interface InternalEntityMetadata {
+export interface CommonEntityMetadata {
   /**
    * 是否隐式生成的
    */
@@ -58,6 +64,23 @@ interface InternalEntityMetadata {
    * 类型
    */
   kind: 'TABLE' | 'VIEW' | 'QUERY';
+  /**
+  * 表名
+  */
+  tableName?: string;
+  /**
+  * 表名
+  */
+  viewName?: string;
+  /**
+  * 视图的SELECT语句
+  */
+  body?: Select;
+
+  /**
+   * 查询语句
+   */
+  sql?: Select;
 
   /**
    * 构造函数
@@ -70,34 +93,14 @@ interface InternalEntityMetadata {
   contextClass: DbContextConstructor;
 
   /**
-   * 主键约束名称
-   */
-  keyConstraintName: string;
-
-  /**
-   * 主键是否为非聚焦键
-   */
-  isNonclustered: boolean;
-
-  /**
-   * 主键摘要
-   */
-  keyComment: string;
-
-  /**
    * 模型名称
    */
   className: string;
 
   /**
-   * 主键属性名称
+   * 主键元数据
    */
-  keyProperty: string;
-
-  /**
-   * 主键列名
-   */
-  keyColumn: ColumnMetadata;
+  key?: KeyMetadata;
 
   /**
    * 是否只读
@@ -123,30 +126,107 @@ interface InternalEntityMetadata {
    * 数据
    */
   data?: any[];
+
+  readonly indexes: ReadonlyArray<IndexMetadata>;
+  readonly relations: ReadonlyArray<RelationMetadata>;
+  readonly columns: ReadonlyArray<ColumnMetadata>;
+}
+
+/**
+ * 主键元数据
+ */
+export interface KeyMetadata {
+  /**
+   * 主键属性
+   */
+  property: string;
+  /**
+   * 主键列
+   */
+  column: ColumnMetadata;
+  /**
+  * 主键是否为非聚焦键
+  */
+  isNonclustered: boolean;
+  /**
+   * 主键约束名称
+   */
+  constraintName: string;
+  /**
+   * 主键约束摘要
+   */
+  comment?: string;
 }
 
 /**
  * 表格实体元数据
  */
-export class EntityMetadataClass implements InternalEntityMetadata {
+export class EntityMetadata implements CommonEntityMetadata {
+  /**
+   * 是否隐式生成的
+   */
   isImplicit!: boolean;
+  /**
+   * 类型
+   */
   kind!: 'TABLE' | 'VIEW' | 'QUERY';
-  class!: Constructor<Entity>;
-  contextClass!: DbContextConstructor<DbContext>;
-  keyConstraintName!: string;
-  isNonclustered!: boolean;
-  keyComment!: string;
+  /**
+   * 类构造函数
+   */
+  class!: EntityConstructor;
+  /**
+   * 所绑定的实体类构造函数
+   */
+  contextClass!: DbContextConstructor;
+
+  /**
+   * 主键
+   */
+  key?: KeyMetadata;
+
+  /**
+   * 表名
+   */
+  tableName?: string;
+  /**
+   * 视图名称
+   */
+  viewName?: string;
+  /**
+   * 视图主体语句
+   */
+  body?: Select;
+  /**
+   * 查询的SQL语句
+   */
+  sql?: Select;
+
+  /**
+   * 实体类名
+   */
   className!: string;
-  keyProperty!: string;
-  keyColumn!: ColumnMetadata<Scalar>;
+
+  /**
+   * 是否只读
+   */
   readonly!: boolean;
+  /**
+   * 标识列
+   */
   identityColumn?: ColumnMetadata<Scalar> | undefined;
+  /**
+   * 版本标记列
+   */
   rowflagColumn?: ColumnMetadata<Scalar> | undefined;
+  /**
+   * 批注
+   */
   comment?: string | undefined;
+  /**
+   * 种子数据
+   */
   data?: any[] | undefined;
 
-  private _members: EntityMemberMetadata[] = [];
-  private _memberMap: Record<string, EntityMemberMetadata> = {};
   private _columnMap: Record<string, ColumnMetadata> = {};
   private _columns: ColumnMetadata[] = [];
   private _relationMap: Record<string, RelationMetadata> = {};
@@ -167,28 +247,20 @@ export class EntityMetadataClass implements InternalEntityMetadata {
     return this;
   }
 
-  addMember(item: EntityMemberMetadata): this {
-    if (this._memberMap[item.property])
-      throw new Error(`Member ${item.property} is exists in Entity.`);
-
-    this._members.push(item);
-    this._memberMap[item.property] = item;
-    if (item.kind === 'COLUMN') {
-      this._columnMap[item.property] = item;
-      this._columns.push(item);
-    } else {
-      this._relationMap[item.property] = item;
-      this._reations.push(item);
-    }
+  addColumn(item: ColumnMetadata): this {
+    if (this._columnMap[item.property])
+      throw new Error(`Column ${item.property} is exists in Entity.`);
+    this._columnMap[item.property] = item;
+    this._columns.push(item);
     return this;
   }
 
-  get members(): ReadonlyArray<EntityMemberMetadata> {
-    return this._members;
-  }
-
-  getMember(name: string): EntityMemberMetadata | undefined {
-    return this._memberMap[name];
+  addRelation(item: RelationMetadata): this {
+    if (this._relationMap[item.property])
+      throw new Error(`Relation ${item.property} is exists in Entity.`);
+    this._relationMap[item.property] = item;
+    this._reations.push(item);
+    return this;
   }
 
   get columns(): ReadonlyArray<ColumnMetadata> {
@@ -228,7 +300,7 @@ export class EntityMetadataClass implements InternalEntityMetadata {
           detailIncludes[relation.property] =
             relation.referenceEntity.getDetailIncludes() || true;
         });
-        this._detailIncludes = detailIncludes
+        this._detailIncludes = detailIncludes;
       }
     }
     return this._detailIncludes;
@@ -237,7 +309,9 @@ export class EntityMetadataClass implements InternalEntityMetadata {
   getDetailRelations(): SubordinateRelation[] {
     const detailRelations = this.relations.filter(
       relation =>
-        (isPrimaryOneToOne(relation) || isOneToMany(relation) || isManyToMany(relation)) &&
+        (isPrimaryOneToOne(relation) ||
+          isOneToMany(relation) ||
+          isManyToMany(relation)) &&
         relation.isDetail
     );
     return detailRelations as SubordinateRelation[];
@@ -245,7 +319,10 @@ export class EntityMetadataClass implements InternalEntityMetadata {
 
   getSubordinateRelations(): SubordinateRelation[] {
     return this.relations.filter(
-      relation => isPrimaryOneToOne(relation) || isOneToMany(relation) || isManyToMany(relation)
+      relation =>
+        isPrimaryOneToOne(relation) ||
+        isOneToMany(relation) ||
+        isManyToMany(relation)
     ) as SubordinateRelation[];
   }
 
@@ -256,12 +333,14 @@ export class EntityMetadataClass implements InternalEntityMetadata {
   }
 }
 
-export interface TableEntityMetadata extends EntityMetadataClass {
+export interface TableEntityMetadata extends EntityMetadata {
   kind: 'TABLE';
   /**
    * 表名
    */
   tableName: string;
+
+  key: KeyMetadata;
 
   // TODO: metdata 需要添加数据架构支持
   // /**
@@ -273,7 +352,7 @@ export interface TableEntityMetadata extends EntityMetadataClass {
 /**
  * 视图实体元数据
  */
-export interface ViewEntityMetadata extends EntityMetadataClass {
+export interface ViewEntityMetadata extends EntityMetadata {
   /**
    * 类型
    */
@@ -295,14 +374,12 @@ export interface ViewEntityMetadata extends EntityMetadataClass {
   relations: never;
 
   getRelation: never;
-
-  addMember(column: ColumnMetadata): this;
 }
 
 /**
  * 查询实体元数据
  */
-export interface QueryEntityMetadata extends EntityMetadataClass {
+export interface QueryEntityMetadata extends EntityMetadata {
   /**
    * 是否隐式生成的
    */
@@ -325,14 +402,12 @@ export interface QueryEntityMetadata extends EntityMetadataClass {
   relations: never;
 
   getRelation: never;
-
-  addMember(column: ColumnMetadata): this;
 }
 
-export type EntityMetadata =
-  | TableEntityMetadata
-  | ViewEntityMetadata
-  | QueryEntityMetadata;
+// export type EntityMetadata =
+//   | TableEntityMetadata
+//   | ViewEntityMetadata
+//   | QueryEntityMetadata;
 
 export class DbContextMetadata {
   constructor(ctr: DbContextConstructor) {
@@ -346,6 +421,10 @@ export class DbContextMetadata {
    * 全局主键字段名称
    */
   globalKeyName!: string;
+  /**
+   * 连接
+   */
+  connection?: ConnectOptions;
   globalKeyType!:
     | NumberConstructor
     | StringConstructor
@@ -393,6 +472,7 @@ export class DbContextMetadata {
  */
 export type EntityMemberMetadata =
   | ColumnMetadata
+  | IndexMetadata
   | OneToOneMetadata
   | OneToManyMetadata
   | ManyToOneMetadata
@@ -406,7 +486,12 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
    * 是否由ORM隐式生成
    */
   isImplicit: boolean;
+
+  /**
+   * 类型
+   */
   kind: 'COLUMN';
+
   /**
    * 属性名称
    */
@@ -485,15 +570,18 @@ export type RelationMetadata =
   | ManyToManyMetadata
   | ManyToOneMetadata;
 
-  /**
-   * 上级关系属性
-   */
+/**
+ * 上级关系属性
+ */
 export type SuperiorRelation = ForeignOneToOneMetadata | ManyToOneMetadata;
 
 /**
  * 下级关系属性
  */
-export type SubordinateRelation = PrimaryOneToOneMetadata | OneToManyMetadata | ManyToManyMetadata;
+export type SubordinateRelation =
+  | PrimaryOneToOneMetadata
+  | OneToManyMetadata
+  | ManyToManyMetadata;
 
 /**
  * 多表一对多关系
@@ -511,7 +599,7 @@ export interface MultiOneToManyRelation {
     referenceEntity: EntityMetadata;
     referenceProperty: string;
     referenceRelation: MultiManyToOneRelation;
-  }[]
+  }[];
 }
 
 /**
@@ -537,7 +625,6 @@ export interface MultiManyToOneRelation {
 
   referenceRelation: MultiOneToManyRelation;
 }
-
 
 // /**
 //  * 一对一引用属性
@@ -1477,8 +1564,8 @@ export class MetadataStore {
    */
   get defaultContext(): DbContextMetadata {
     if (!this._defaultContext) {
-      throw new Error(`No DbContext is registered.`)
-    };
+      throw new Error(`No DbContext is registered.`);
+    }
     return this._defaultContext;
   }
   /**
@@ -1510,14 +1597,18 @@ export class MetadataStore {
   getContext(contextClass: DbContextConstructor | string): DbContextMetadata {
     let metadata: DbContextMetadata | undefined;
     if (typeof contextClass === 'string') {
-      metadata =  Array.from(this.contextMap.values()).find(
+      metadata = Array.from(this.contextMap.values()).find(
         metadata => metadata.class.name === contextClass
       );
     } else {
       metadata = this.contextMap.get(contextClass);
     }
     if (!metadata) {
-      throw new Error(`DbContext ${typeof contextClass === 'string' ? contextClass : contextClass.name} not register`)
+      throw new Error(
+        `DbContext ${
+          typeof contextClass === 'string' ? contextClass : contextClass.name
+        } not register`
+      );
     }
     return metadata;
   }
@@ -1618,7 +1709,7 @@ export function makeRowset<T extends Entity = any>(
     rowset = new Table(metadata.tableName);
     // SQL.table(metadata.tableName);
   } else {
-    rowset = new Table(metadata.viewName);
+    rowset = new Table(metadata.viewName!);
     // rowset = SQL.table(metadata.viewName);
   }
   return aroundRowset<T>(rowset, metadata);
@@ -1704,13 +1795,13 @@ export function isEntityMetadata(value: any): value is EntityMetadata {
 }
 
 export function isTableEntity(value: any): value is TableEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === 'TABLE';
+  return value instanceof EntityMetadata && value.kind === 'TABLE';
 }
 
 export function isViewEntity(value: any): value is ViewEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === 'VIEW';
+  return value instanceof EntityMetadata && value.kind === 'VIEW';
 }
 
 export function isQueryEntity(value: any): value is QueryEntityMetadata {
-  return value instanceof EntityMetadataClass && value.kind === 'QUERY';
+  return value instanceof EntityMetadata && value.kind === 'QUERY';
 }
