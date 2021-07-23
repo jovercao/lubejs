@@ -29,6 +29,7 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
     ALTER DATABASE ${this.sqlUtil.sqlifyName(name)} MODIFY NAME = ${this.sqlUtil.sqlifyName(newName)} ;
     ALTER DATABASE ${this.sqlUtil.sqlifyName(newName)}  SET MULTI_USER`)
   }
+
   alterDatabase(name: string): AlterDatabase {
     return SQL.alterDatabase(name);
   }
