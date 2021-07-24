@@ -1,5 +1,6 @@
 import mssql, { ISqlType, TYPES } from 'mssql';
-import { DbType, ISOLATION_LEVEL, isRaw } from 'lubejs';
+import { ConnectOptions, DbType, ISOLATION_LEVEL, isRaw } from 'lubejs';
+import { MssqlSqlOptions } from './sql-util'
 
 const strTypeMapps: Record<string, any> = {};
 Object.entries(mssql.TYPES).forEach(([name, dbType]) => {
@@ -209,4 +210,23 @@ export function rawToDbType(type: string): DbType {
   return Reflect.apply(dbTypeFactory as Function, DbType, [
     Number.parseInt(matched.groups!.p1),
   ]);
+}
+
+
+export interface MssqlConnectOptions extends ConnectOptions {
+  /**
+   * 实例名
+   */
+  instance?: string;
+  /**
+   * 是否启用加密
+   */
+  encrypt?: boolean;
+
+  /**
+   * 是否使用UTC时间，默认为true
+   */
+  useUTC?: boolean;
+
+  sqlOptions?: MssqlSqlOptions;
 }

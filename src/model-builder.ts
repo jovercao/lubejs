@@ -30,7 +30,7 @@ import {
   Constructor,
   DataType, DataTypeOf, DbType,
   Entity,
-  EntityType, isSameDbType, Scalar, Uuid, UuidConstructor
+  EntityType, isSameDbType, Scalar, ScalarType, Uuid, UuidConstructor
 } from './types';
 import {
   assign,
@@ -1524,10 +1524,10 @@ export class EntityBuilder<T extends Entity> {
     }
     let columnBuilder: PropertyBuilder<T, P> | undefined = this.columnMaps.get(property) as PropertyBuilder<T, P>;
     if (!columnBuilder) {
-      const metadata = {
+      const metadata: ColumnMetadata<P> = {
         kind: 'COLUMN',
-        property: property,
-        type,
+        property,
+        type: type as ScalarType,
       } as ColumnMetadata<P>;
       columnBuilder = new PropertyBuilder<T, P>(
         this.contextBuilder,

@@ -272,6 +272,9 @@ export class DbContext extends DbInstance {
   constructor(public readonly lube: Lube) {
     super(lube);
     this.metadata = metadataStore.getContext(this.constructor as DbContextConstructor);
+    // if (lube.database !== this.metadata.database) {
+    //   lube.change(this.metadata.database);
+    // }
   }
 
   /**

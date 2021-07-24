@@ -28,18 +28,19 @@ export type ObjectDifference<T extends object> = {
     [P in keyof T]?: T[P] extends ScalarType | ScalarType[]
       ? ScalarDifference<T[P]>
       : T[P] extends (infer M)[]
-      ? M extends object
-        ? ListDifference<M>
+      ? NonNullable<M> extends object
+        ? ListDifference<NonNullable<M>>
         : never
-      : T[P] extends object
-      ? ObjectDifference<T[P]>
+      : NonNullable<T[P]> extends object
+      ? ObjectDifference<NonNullable<T[P]>>
       : never;
   };
 };
 
+
 export type ListDifference<T extends object> = {
-  source: T[];
-  target: T[];
+  source: T[] | undefined;
+  target: T[] | undefined;
   addeds: T[];
   removeds: T[];
   changes: ObjectDifference<T>[];
@@ -219,8 +220,8 @@ export function compareObject<T extends object>(
 export type EqulsCompartor = (left: any, right: any, path: string) => boolean;
 
 export function compareList<T extends object>(
-  source: T[],
-  target: T[],
+  source: T[] | undefined,
+  target: T[] | undefined,
   // keyer: (item: T) => K,
   // keyComparator: (left: K, right: K) => boolean
   // 确定是否同一对象
@@ -230,17 +231,37 @@ export function compareList<T extends object>(
 ): ListDifference<T> | null {
   // const sourceMap = map(source, keyer);
   // const targetMap = map(target, keyer);
-  const addeds: T[] = source.filter(left =>
-    !target.find(right => isSameObject(left, right, path))
+  if (source === target) return null;
+  if (!source && target) {
+    return {
+      source,
+      target,
+      addeds: [],
+      removeds: target,
+      changes: []
+    }
+  }
+  if (!target && source) {
+    return {
+      source,
+      target,
+      addeds: source,
+      removeds: [],
+      changes: []
+    }
+  }
+
+  const addeds: T[] = source!.filter(left =>
+    !target!.find(right => isSameObject(left, right, path))
   );
-  const removeds: T[] = target.filter(left =>
-    !source.find(right => isSameObject(left, right, path))
+  const removeds: T[] = target!.filter(left =>
+    !source!.find(right => isSameObject(left, right, path))
   );
 
   const changes: ObjectDifference<T>[] = [];
 
-  source.forEach(source =>
-    target.forEach(target => {
+  source!.forEach(source =>
+    target!.forEach(target => {
       if (isSameObject(source, target, path)) {
         const itemChanges = compareObject(source, target, isSameObject, path);
         if (itemChanges) {

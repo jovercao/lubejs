@@ -42,7 +42,7 @@ export type ConnectOptions = {
   /**
    * 数据库名称
    */
-  database: string;
+  database?: string;
   /**
    * 连接池最大连接数，单位为秒，默认为5
    */
@@ -93,12 +93,20 @@ export interface DbProvider {
   readonly migrateBuilder: MigrateBuilder;
   query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
+  readonly database: string | undefined;
+  /**
+   * 重新选择数据库
+   * 注意：如果数据连接已经打开，则此操作会重新连接数据库。
+   * @param database
+   */
+  change(database: string | undefined): Promise<void>;
+  open(): Promise<void>;
   close(): Promise<void>;
-
+  readonly opened: boolean;
   /**
    * 方言名称，如'mssql', 'mysql', 'oracle'
    */
-  readonly dialect: string | symbol;
+  readonly dialect: string;
 
   // getTables(options?: {
   //   name?: string;
@@ -134,7 +142,7 @@ export interface DbProvider {
  * 实际上为一个工厂函数，通过实现该方法来扩展驱动支持
  */
 export interface Driver {
-  (config: ConnectOptions): Promise<DbProvider>;
+  (config: ConnectOptions): DbProvider;
 }
 
 /**
@@ -198,6 +206,22 @@ export class Lube extends Executor {
     }
   }
 
+  get database() {
+    return this.provider.database;
+  }
+
+  get opened() {
+    return this.provider.opened;
+  }
+
+  async change(database: string): Promise<void> {
+    await this.provider.change(database);
+  }
+
+  async open(): Promise<void> {
+    await this.provider.open();
+  }
+
   async close(): Promise<void> {
     await this.provider.close();
   }
@@ -217,8 +241,9 @@ export async function connect(
 ): Promise<Lube> {
   let options: ConnectOptions;
   options = await getConnectOptions(optOrUrlOrCfg);
-  const provider: DbProvider = await options.driver!(options);
+  const provider: DbProvider = options.driver!(options);
   const lube = new Lube(provider);
+  await lube.open();
   provider.lube = lube;
   return lube;
 }

@@ -67,6 +67,11 @@ export interface DatabaseSchema {
   name: string;
 
   /**
+   * 排序规则
+   */
+  collate?: string;
+
+  /**
    * 表
    */
   tables: TableSchema[];
@@ -210,7 +215,7 @@ export interface TableSchema {
    */
   indexes: IndexSchema[];
 
-  primaryKey: PrimaryKeySchema;
+  primaryKey?: PrimaryKeySchema;
 
   /**
    * 外键

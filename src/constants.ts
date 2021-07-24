@@ -142,6 +142,54 @@ export enum SQL_SYMBOLE {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export enum STATEMENT_KIND {
   // RAW = 'RAW',
   SELECT = 'SELECT',
@@ -176,7 +224,9 @@ export enum STATEMENT_KIND {
   CONTINUE = 'CONTINUE',
   DROP_DATABASE = "DROP_DATABASE",
   CREATE_DATABASE = "CREATE_DATABASE",
-  ALTER_DATABASE = "ALTER_DATABASE"
+  ALTER_DATABASE = "ALTER_DATABASE",
+  USE = "USE",
+  RETURN = "RETURN"
 }
 
 export enum SQL_SYMBOLE_TABLE_MEMBER {

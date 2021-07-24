@@ -696,7 +696,7 @@ export class MssqlSqlUtil extends SqlUtil {
     return sql;
   }
   constructor(
-    options: MssqlSqlOptions,
+    options: MssqlSqlOptions | undefined,
     public readonly translator: MssqlStandardTranslator
   ) {
     super(Object.assign({}, DefaultSqlOptions, options));

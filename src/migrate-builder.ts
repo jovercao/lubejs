@@ -36,6 +36,20 @@ import { DbType, Name, RowObject, Scalar } from './types';
 import { isStatement } from './util';
 
 export abstract class MigrateBuilder {
+  use(name: string): Statement {
+    return SQL.use(name);
+  }
+
+  alterDatabase(name: string): AlterDatabase {
+    return SQL.alterDatabase(name);
+  }
+  createDatabase(name: string): CreateDatabase {
+    return SQL.createDatabase(name);
+  }
+  dropDatabase(name: string): DropDatabase {
+    return SQL.dropDatabase(name);
+  }
+
   sql(statement: Statement | string): Statement {
     return isStatement(statement) ? statement : SqlBuilder.raw(statement);
   }
@@ -133,10 +147,6 @@ export abstract class MigrateBuilder {
   abstract renameFunction(name: Name, newName: string): Statement;
   abstract renameDatabase(name: string, newName: string): Statement;
 
-  abstract createDatabase(name: string): CreateDatabase;
-  abstract dropDatabase(name: string): DropDatabase;
-  abstract alterDatabase(name: string): AlterDatabase;
-
   abstract setTableComment(name: Name, comment: string): Statement;
   abstract setColumnComment(
     table: Name,
@@ -214,14 +224,19 @@ export abstract class MigrateBuilder {
   // abstract setColumnType(table: Name, name: string, type: DbType): Statement;
 
   // 创建Check约束
-  abstract addCheckConstaint(
-    table: Name,
+  addCheckConstaint(
+    table: Name<string>,
     sql: Condition,
     name?: string
-  ): Statement;
+  ): Statement {
+    return SQL.alterTable(table).add(builder =>
+      name ? builder.check(name, sql) : builder.check(sql)
+    );
+  }
 
-  // 删除字段check约束
-  abstract dropCheckConstaint(table: Name, name: string): Statement;
+  dropCheckConstaint(table: Name<string>, name: string): Statement {
+    return SQL.alterTable(table).drop(builder => builder.check(name));
+  }
 }
 
 // export type MigrateScripter = {

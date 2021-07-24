@@ -5,7 +5,9 @@ import {
   Binary,
   column,
   comment,
+  connection,
   context,
+  database,
   DbContext,
   DbType,
   Decimal,
@@ -13,12 +15,15 @@ import {
   EntityKey,
   identity,
   key,
+  modelBuilder,
   nullable,
   ProxiedRowset,
   Repository,
   rowflag,
   table,
 } from 'lubejs';
+
+import 'lubejs-mssql';
 
 declare module 'lubejs/types' {
   /**
@@ -223,6 +228,8 @@ export class Organization extends Entity implements EntityKey {
 }
 
 @comment('测试数据库')
+@connection('mssql://sa:!crgd-2019@jover.wicp.net:2433/Test')
+@database('Test')
 export class DB extends DbContext {
   get Organization(): Repository<Organization> {
     return this.getRepository(Organization);
@@ -244,3 +251,5 @@ export class DB extends DbContext {
     return this.getRepository(User);
   }
 }
+
+modelBuilder.ready();

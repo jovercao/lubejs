@@ -73,6 +73,7 @@ import {
   CreateDatabase,
   AlterDatabase,
   DropDatabase,
+  Use,
 } from './ast';
 import { PARAMETER_DIRECTION, SQL_SYMBOLE, STATEMENT_KIND } from './constants';
 import { Command } from './execute';
@@ -146,6 +147,7 @@ import {
   isCreateDatabase,
   isAlterDatabase,
   isDropDatabase,
+  isUse,
 } from './util';
 import { Standard } from './std';
 
@@ -491,8 +493,13 @@ export abstract class SqlUtil {
       return this.sqlifyAlterDatabase(statement);
     } else if (isDropDatabase(statement)) {
       return this.sqlifyDropDatabase(statement);
+    } else if (isUse(statement)) {
+      return this.sqlifyUse(statement);
     }
     throw invalidAST('statement', statement);
+  }
+  sqlifyUse(statement: Use): string {
+    return `USE ${this.sqlifyName(statement.$database)}`;
   }
 
   abstract sqlifyContinue(statement: Continue): string;
@@ -1096,7 +1103,7 @@ export abstract class SqlUtil {
     return this.sqlifyRowsetName(table);
   }
 
-  protected sqlifyCondition(
+  public sqlifyCondition(
     condition: Condition | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

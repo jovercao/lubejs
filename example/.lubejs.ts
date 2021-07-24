@@ -1,24 +1,22 @@
-import { LubeConfig, modelBuilder } from 'lubejs';
-import driver from 'lubejs-mssql';
-// import './orm'
+import { LubeConfig } from 'lubejs';
+import 'lubejs-mssql';
+// import './orm-configure'
 import './orm-decorator';
-
-modelBuilder.ready();
 
 export const config: LubeConfig = {
   default: 'DB',
   migrateDir: 'migrates',
   configures: {
-    _DB: {
-      driver,
+    DB: {
+      dialect: 'mssql',
       host: 'jover.wicp.net',
       user: 'sa',
       password: '!crgd-2019',
       database: 'Test',
       port: 2433,
     },
-    DB: {
-      driver,
+    _DB: {
+      dialect: 'mssql',
       host: 'rancher.vm',
       user: 'sa',
       password: '!crgd-2021',

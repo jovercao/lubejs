@@ -92,6 +92,7 @@ import {
   CreateDatabase,
   AlterDatabase,
   DropDatabase,
+  Use,
 } from './ast';
 
 import {
@@ -1150,8 +1151,15 @@ export function isContinue(value: any): value is Continue {
 export function isCreateDatabase(value: any): value is CreateDatabase {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
-    value.kind === STATEMENT_KIND.CREATE_DATABASE
+    value?.kind === STATEMENT_KIND.CREATE_DATABASE
   );
+}
+
+export function isUse(value: any): value is Use {
+  return (
+    value?.$type === SQL_SYMBOLE.STATEMENT &&
+    value?.$kind === STATEMENT_KIND.USE
+  )
 }
 
 export function isAlterDatabase(value: any): value is AlterDatabase {
@@ -1186,6 +1194,13 @@ export function outputCommand(cmd: Command): void {
   }
 }
 
+/**
+ * 对比是否是同一个表
+ * 如果任何一个名称 不存在架构，均认为它们是有相同的架构
+ * @param name1 架构
+ * @param name2
+ * @returns
+ */
 export function isNameEquals(name1: Name, name2: Name): boolean {
   let schema1: string | undefined;
   let table1: string;
@@ -1206,7 +1221,7 @@ export function isNameEquals(name1: Name, name2: Name): boolean {
     table2 = name2;
   }
 
-  return schema1 === schema2 && table1 === table2;
+  return (schema1 === schema2 || schema1 === undefined || schema2 === undefined) && table1 === table2;
 }
 
 export function isUrl(str: string): boolean {

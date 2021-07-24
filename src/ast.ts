@@ -2108,6 +2108,23 @@ export abstract class Statement extends AST {
  */
 export type CrudStatement = Insert | Update | Select | Delete;
 
+export type SchemaStatement = CreateDatabase | AlterDatabase | DropDatabase
+  | CreateFunction | AlterFunction | DropFunction
+  | CreateIndex | DropIndex
+  | CreateProcedure | AlterProcedure | DropProcedure
+  | CreateSequence | DropSequence
+  | CreateTable | AlterTable | DropTable
+  | CreateView | AlterView | DropView;
+
+export type ProgramStatement = If | While | Block | Break | Continue;
+
+export type AllStatement = FunctionStatement | SchemaStatement | ProgramStatement;
+
+/**
+ * 功能性语句
+ */
+export type FunctionStatement = Use | Assignment | Declare | CrudStatement;
+
 /**
  * When语句
  */
@@ -4397,6 +4414,15 @@ export class Break extends Statement {
   $kind: STATEMENT_KIND.BREAK = STATEMENT_KIND.BREAK;
 }
 
+export class Return extends Statement {
+  $kind: STATEMENT_KIND.RETURN = STATEMENT_KIND.RETURN;
+  $value?: Expression;
+  constructor(value: CompatibleExpression) {
+    super();
+    this.$value = ensureExpression(value);
+  }
+}
+
 export class Continue extends Statement {
   $kind: STATEMENT_KIND.CONTINUE = STATEMENT_KIND.CONTINUE;
 }
@@ -4407,6 +4433,8 @@ export interface SqlBuilder extends Standard {
   createDatabase(name: string): CreateDatabase;
   createSequence(name: Name<string>): CreateSequence;
   dropSequence(name: Name<string>): DropSequence;
+
+  use(database: string): Use;
 
   type: typeof DbType;
 
@@ -5268,6 +5296,9 @@ export interface SqlBuilder extends Standard {
 export const SqlBuilder: SqlBuilder = {
   ...Standard,
   type: DbType,
+  use(database: string): Use {
+    return new Use(database);
+  },
   if(condition: Condition): If {
     return new If(condition);
   },
@@ -5974,8 +6005,18 @@ export class AlterDatabase extends Statement {
     this.$name = name;
   }
 
-  collate(collate: string) {
+  collate(collate: string): this {
     this.$collate = collate;
+    return this;
   }
 }
 
+export class Use extends Statement {
+  $kind: STATEMENT_KIND.USE = STATEMENT_KIND.USE;
+  $database: string;
+
+  constructor(database: string) {
+    super();
+    this.$database = database;
+  }
+}

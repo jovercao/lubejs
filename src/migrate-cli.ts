@@ -15,7 +15,7 @@ import { MigrateBuilder } from './migrate-builder';
 import { mkdir } from 'fs/promises';
 import 'colors';
 import { ConnectOptions } from './lube';
-import { generateUpdateStatements } from './migrate-runner';
+import { generateUpdateStatements } from './migrate-scripter';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -103,17 +103,31 @@ export class MigrateCli {
   constructor(
     private readonly dbContext: DbContext,
     private migrateDir: string
-  ) {}
+  ) {
+  }
 
   async dispose(): Promise<void> {
     await this.dbContext.lube.close();
   }
 
+  private async connect() {
+    if (this.dbContext.lube.provider.opened) return;
+    try {
+      await this.dbContext.lube.provider.open();
+    } catch {
+      // 如果目标连接字符串数据库不存在，则切换到默认数据库连接;
+      this.dbContext.lube.provider.change(undefined);
+      await this.dbContext.lube.provider.open();
+    }
+  }
+
   private async loadSchema() {
+    await this.connect();
     return this.dbContext.lube.provider.getSchema();
   }
 
   private async getCurrentMigrate(): Promise<MigrateInfo | undefined> {
+    await this.connect();
     try {
       const [item] = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
@@ -201,7 +215,7 @@ export class MigrateCli {
     let lastMigrate = await this.getLastMigrate();
     let lastSchema: DatabaseSchema | undefined;
     if (lastMigrate) {
-      lastSchema = await import(lastMigrate.snapshotPath);
+      lastSchema = (await import(lastMigrate.snapshotPath)).default;
     }
     // const dbSchema = await this.loadSchema();
     const entityScheam = generateSchema(
@@ -223,14 +237,12 @@ export class MigrateCli {
     console.log(
       `Generate migrate file successed, and output to file ${filePath}`.green
     );
-    const snapshotPath = resolve(
-      join(this.migrateDir, `${id}_${name}_snapshot.ts`)
-    );
+    const snapshotPath = resolve(join(this.migrateDir, `${id}.snapshot.ts`));
     // 创建快照文件
     await writeFile(
       snapshotPath,
       `
-import DatabaseSchema from 'lubejs;
+import { DatabaseSchema } from 'lubejs';
 export const schema: DatabaseSchema = ${JSON.stringify(entityScheam)};
 export default schema;
 `
@@ -413,9 +425,8 @@ export default schema;
           timestamp: match[1],
           name: match[2],
           path: fullPath,
-          snapshotPath: join(
-            this.migrateDir,
-            `${match[2]}_snapshot.${extname}`
+          snapshotPath: resolve(
+            join(this.migrateDir, `${match[1]}_${match[2]}.snapshot.${extname}`)
           ),
           kind: extname === 'js' ? 'javascript' : 'typescript',
           index: 0,
@@ -454,8 +465,7 @@ export default schema;
     const statements = generateUpdateStatements(
       this.dbContext.lube.provider.migrateBuilder,
       metadataSchema,
-      dbSchema,
-      metadata
+      dbSchema
     );
 
     const commands = statements.map(p => this.dbContext.lube.sqlUtil.sqlify(p));
@@ -473,6 +483,13 @@ export default schema;
     console.info(
       `请注意，通过Sync更新的数据库，将不能再使用 'lubejs migrate update <migrate>' 命令更新，否则可能造成数据丢失！`
     );
+  }
+
+  /**
+   * 生成快照
+   */
+  async snapshot() {
+
   }
 }
 

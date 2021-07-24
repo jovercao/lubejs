@@ -1,6 +1,6 @@
 import mssql from 'mssql';
 import { doQuery } from './query';
-import { toMssqlIsolationLevel } from './types';
+import { MssqlConnectOptions, toMssqlIsolationLevel } from './types';
 import { MssqlSqlUtil, MssqlStandardTranslator } from './sql-util';
 import {
   SqlOptions,
@@ -11,18 +11,37 @@ import {
   DatabaseSchema,
   MigrateBuilder,
   Lube,
+  ConnectOptions,
 } from 'lubejs';
 import { load } from './schema-loader';
 import { MssqlMigrateBuilder } from './migrate-builder';
+import { parseMssqlConfig } from './util'
 
-export const DIALECT = Symbol('mssql');
+export const DIALECT = 'mssql';
 
+export const DefaultConnectOptions: mssql.config = {
+  server: 'localhost',
+  // 端口号
+  port: 1433,
+  options: {
+    encrypt: false,
+    trustedConnection: true,
+  },
+  // 请求超时时间
+  requestTimeout: 60000,
+  // 连接超时时间
+  connectionTimeout: 15000,
+  // 开启JSON
+  parseJSON: true,
+  // // 严格模式
+  // strict: true,
+};
 export class MssqlProvider implements DbProvider {
-  constructor(private _pool: mssql.ConnectionPool, options: SqlOptions) {
+  constructor(public options: MssqlConnectOptions) {
     const translator = new MssqlStandardTranslator(this);
-    this.sqlUtil = new MssqlSqlUtil(options, translator);
+    this.sqlUtil = new MssqlSqlUtil(options.sqlOptions, translator);
   }
-
+  private _pool?: mssql.ConnectionPool;
   lube!: Lube;
   readonly sqlUtil: MssqlSqlUtil;
   private _migrateBuilder?: MssqlMigrateBuilder;
@@ -33,21 +52,35 @@ export class MssqlProvider implements DbProvider {
     return this._migrateBuilder;
   }
 
-  dialect: string | symbol = DIALECT;
+  dialect: string = DIALECT;
+
+  private _database?: string;
+  get database(): string | undefined {
+    return this._database || this.options.database;
+  }
 
   getSchema(): Promise<DatabaseSchema> {
+    this._assertConnection();
     return load(this);
   }
 
+  private _assertConnection(): void {
+    if (!this._pool) {
+      throw new Error(`Connection is not opened yet.`)
+    }
+  }
+
   async query(sql: string, params: Parameter<any, string>[]) {
-    const res = await doQuery(this._pool, sql, params, this.sqlUtil.options);
+    this._assertConnection();
+    const res = await doQuery(this._pool!, sql, params, this.sqlUtil.options);
     return res;
   }
 
   async beginTrans(
     isolationLevel: ISOLATION_LEVEL = 'READ_COMMIT'
   ): Promise<Transaction> {
-    const trans = this._pool.transaction();
+    this._assertConnection();
+    const trans = this._pool!.transaction();
     let rolledBack = false;
     trans.on('rollback', aborted => {
       // emited with aborted === true
@@ -71,11 +104,41 @@ export class MssqlProvider implements DbProvider {
     };
   }
 
+  get opened() {
+    return !!this._pool;
+  }
+
+  async change(database: string | undefined): Promise<void> {
+    let opened = this.opened;
+    if (opened) {
+      await this.close();
+    }
+    this.options.database = database;
+    if (opened) {
+      await this.open();
+    }
+  }
+
   /**
    * 关闭所有连接
    * @memberof Pool
    */
-  async close() {
-    await this._pool.close();
+  async close(): Promise<void> {
+    this._assertConnection();
+    await this._pool!.close();
+    this._pool = undefined;
+    this._database = undefined;
+  }
+
+  async open(): Promise<void> {
+    if (this._pool) {
+      throw new Error(`Connection is opened.`)
+    }
+    const sqlconfig = parseMssqlConfig(this.options);
+    const pool = new mssql.ConnectionPool(sqlconfig);
+    await pool.connect();
+    this._pool = pool;
+    const result = await this._pool.query(`sp_who  @@SPID`);
+    this._database = result.recordset[0].dbname;
   }
 }
