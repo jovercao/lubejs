@@ -587,7 +587,7 @@ export function isAlterFunction(value: any): value is AlterFunction {
 export function isDropFunction(value: any): value is DropFunction {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
-    value?.$kind === STATEMENT_KIND.DROP_FUNCETION
+    value?.$kind === STATEMENT_KIND.DROP_FUNCTION
   );
 }
 

@@ -21,6 +21,7 @@ import {
   CompatibleExpression,
   CreateTable,
   CreateTableMember,
+  CreateView,
   ForeignKey,
   PrimaryKey,
   StandardStatement,
@@ -83,7 +84,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     column: string,
     defaultValue: CompatibleExpression<Scalar>
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, column, defaultValue]);
+    return StandardStatement.create(arguments.callee.name, [
+      table,
+      column,
+      defaultValue,
+    ]);
   }
 
   dropDefaultValue(table: Name<string>, column: string): Statement {
@@ -199,7 +204,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
 
 export class SnapshotMigrateTracker {
   constructor(
-    public schema: DatabaseSchema | undefined,
+    public database: DatabaseSchema | undefined,
     private sqlUtil: SqlUtil
   ) {}
 
@@ -218,25 +223,125 @@ export class SnapshotMigrateTracker {
   }
 
   private findTable(name: Name): TableSchema | undefined {
-    this.assertDatabaseExists(this.schema);
-    return this.schema.tables.find(p => isNameEquals(name, p.name));
+    this.assertDatabaseExists(this.database);
+    return this.database.tables.find(p => isNameEquals(name, p.name));
   }
 
-  private findView(name: Name): ViewSchema {
-    this.assertDatabaseExists(this.schema);
-    const view = this.schema.views.find(p => isNameEquals(name, p.name));
-    if (!view) {
+  private findView(name: Name): ViewSchema | undefined {
+    this.assertDatabaseExists(this.database);
+    return this.database.views.find(p => isNameEquals(name, p.name));
+  }
+
+  private assertTableNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const table = this.database.tables.find(p => isNameEquals(p.name, name));
+    if (table)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(name)} not exists in database.`
+        `Table ${this.sqlUtil.sqlifyName(table.name)} is exists.`
       );
-    }
-    return view;
+  }
+
+  private assertViewNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const view = this.database.views.find(p => isNameEquals(p.name, name));
+    if (view)
+      throw new Error(`View ${this.sqlUtil.sqlifyName(view.name)} is exists.`);
+  }
+
+  private assertProcedureNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const proc = this.database.procedures.find(p => isNameEquals(p.name, name));
+    if (proc)
+      throw new Error(
+        `Procedure ${this.sqlUtil.sqlifyName(proc.name)} is exists.`
+      );
+  }
+
+  private assertFunctionNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const func = this.database.functions.find(p => isNameEquals(p.name, name));
+    if (func)
+      throw new Error(
+        `Procedure ${this.sqlUtil.sqlifyName(func.name)} is exists.`
+      );
+  }
+
+  private assertSequenceNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const sequence = this.database.sequences.find(p =>
+      isNameEquals(p.name, name)
+    );
+    if (sequence)
+      throw new Error(
+        `Sequence ${this.sqlUtil.sqlifyName(sequence.name)} is exists.`
+      );
+  }
+
+  private assertSchemaNotExists(name: Name): void {
+    this.assertDatabaseExists(this.database);
+    const schema = this.database.schemas.find(p => p.name === name);
+    if (schema)
+      throw new Error(
+        `Schema ${this.sqlUtil.sqlifyName(schema.name)} is exists.`
+      );
+  }
+
+  private assertColumnNotExists(tableName: Name, columnName: string): void {
+    const table = this.getTable(tableName);
+    const column = table.columns.find(col => col.name === columnName);
+    if (column)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyName(
+          table.name
+        )} Column ${this.sqlUtil.sqlifyName(columnName)} is exists.`
+      );
+  }
+
+  private assertIndexNotExists(tableName: Name, name: string): void {
+    const table = this.getTable(tableName);
+    const index = table.indexes.find(idx => idx.name === name);
+    if (index)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyName(
+          table.name
+        )} Index ${this.sqlUtil.sqlifyName(name)} is exists.`
+      );
+  }
+
+  private assertPrimaryNotExists(tableName: Name, name: string): void {
+    const table = this.getTable(tableName);
+    if (table.primaryKey)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyName(table.name)} PrimaryKey is exists.`
+      );
+  }
+
+  private assertForeignKeyExists(tableName: Name, name: string): void {
+    const table = this.getTable(tableName);
+    const fk = table.foreignKeys.find(idx => idx.name === name);
+    if (fk)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyName(
+          table.name
+        )} ForeignKey ${this.sqlUtil.sqlifyName(name)} is exists.`
+      );
+  }
+
+  private assertConstraintNotExists(tableName: Name, name: string): void {
+    const table = this.getTable(tableName);
+    const constraint = table.constraints.find(ct => ct.name === name);
+    if (constraint)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyName(
+          table.name
+        )} Constraint ${this.sqlUtil.sqlifyName(name)} is exists.`
+      );
   }
 
   private addTableMembers(table: TableSchema, members: CreateTableMember[]) {
     members.forEach(item => {
       switch (item.$type) {
-        case SQL_SYMBOLE.PRIMARY_KEY:
+        case SQL_SYMBOLE.PRIMARY_KEY: {
           if (table.primaryKey)
             throw new Error(`Table ${table.name} primary key is exists.`);
           assertAst(item.$name, 'CreateTable statement name not found.');
@@ -250,7 +355,8 @@ export class SnapshotMigrateTracker {
             isNonclustered: item.$nonclustered,
           };
           break;
-        case SQL_SYMBOLE.CREATE_TABLE_COLUMN:
+        }
+        case SQL_SYMBOLE.CREATE_TABLE_COLUMN: {
           if (table.columns.find(col => col.name === item.$name)) {
             throw new Error(
               `Table ${this.sqlUtil.sqlifyName(
@@ -273,7 +379,8 @@ export class SnapshotMigrateTracker {
             isRowflag: false,
           });
           break;
-        case SQL_SYMBOLE.FOREIGN_KEY:
+        }
+        case SQL_SYMBOLE.FOREIGN_KEY: {
           assertAst(item.$name, 'Foreign key name not found.');
           assertAst(item.$columns, 'Foreign key columns not found.');
           assertAst(
@@ -291,7 +398,8 @@ export class SnapshotMigrateTracker {
             referenceTable: item.$referenceTable,
           });
           break;
-        case SQL_SYMBOLE.UNIQUE_KEY:
+        }
+        case SQL_SYMBOLE.UNIQUE_KEY: {
           assertAst(item.$columns, 'Unique key name not found.');
           assertAst(item.$name, 'Unique key name not found.');
           table.constraints.push({
@@ -303,7 +411,8 @@ export class SnapshotMigrateTracker {
             })),
           });
           break;
-        case SQL_SYMBOLE.CHECK_CONSTRAINT:
+        }
+        case SQL_SYMBOLE.CHECK_CONSTRAINT: {
           assertAst(item.$name, 'Unique key name not found.');
           table.constraints.push({
             kind: 'CHECK',
@@ -311,12 +420,13 @@ export class SnapshotMigrateTracker {
             sql: this.sqlUtil.sqlifyCondition(item.$sql),
           });
           break;
+        }
       }
     });
   }
 
   private createTable(statement: CreateTable): void {
-    this.assertDatabaseExists(this.schema);
+    this.assertDatabaseExists(this.database);
     if (this.findTable(statement.$name)) {
       throw new Error(
         `Table ${this.sqlUtil.sqlifyName(statement.$name)} is exists.`
@@ -333,11 +443,11 @@ export class SnapshotMigrateTracker {
 
     this.addTableMembers(table, statement.$members);
 
-    this.schema.tables.push(table);
+    this.database.tables.push(table);
   }
 
   private alterTable(statement: AlterTable): void {
-    this.assertDatabaseExists(this.schema);
+    this.assertDatabaseExists(this.database);
     const table = this.getTable(statement.$name);
     assertAst(
       statement.$adds || statement.$drop || statement.$alterColumn,
@@ -434,15 +544,15 @@ export class SnapshotMigrateTracker {
   run(statements: AllStatement[]) {
     for (const statement of statements) {
       if (statement.$kind === STATEMENT_KIND.CREATE_DATABASE) {
-        if (this.schema) {
+        if (this.database) {
           throw new Error('Database is exists.');
         }
       } else {
-        this.assertDatabaseExists(this.schema);
+        this.assertDatabaseExists(this.database);
       }
       switch (statement.$kind) {
         case STATEMENT_KIND.CREATE_DATABASE:
-          this.schema = {
+          this.database = {
             name: statement.$name,
             collate: statement.$collate,
             tables: [],
@@ -454,10 +564,11 @@ export class SnapshotMigrateTracker {
           };
           break;
         case STATEMENT_KIND.ALTER_DATABASE:
-          this.schema!.collate = statement.$collate;
+          this.assertDatabaseExists(this.database);
+          this.database!.collate = statement.$collate;
           break;
         case STATEMENT_KIND.DROP_DATABASE:
-          this.schema = undefined;
+          this.database = undefined;
           break;
         case STATEMENT_KIND.CREATE_TABLE:
           this.createTable(statement);
@@ -465,14 +576,155 @@ export class SnapshotMigrateTracker {
         case STATEMENT_KIND.ALTER_TABLE:
           this.alterTable(statement);
           break;
+        case STATEMENT_KIND.DROP_TABLE:
+          const index = this.database?.tables.findIndex(p =>
+            isNameEquals(p.name, statement.$name)
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+            );
+          }
+          this.database!.tables.splice(index, 1);
+          break;
+        case STATEMENT_KIND.CREATE_VIEW: {
+          this.assertViewNotExists(statement.$name);
+          assertAst(statement.$body, 'CreateView body not found.');
+          this.database!.views.push({
+            name: statement.$name,
+            scripts: this.sqlUtil.sqlify(statement.$body).sql,
+          });
+          break;
+        }
+        case STATEMENT_KIND.ALTER_VIEW: {
+          const view = this.getView(statement.$name);
+          assertAst(statement.$body, 'AlterView body not found.');
+          view.scripts = this.sqlUtil.sqlify(statement.$body).sql;
+          break;
+        }
+        case STATEMENT_KIND.DROP_VIEW: {
+          const index = this.database?.views.findIndex(p =>
+            isNameEquals(p.name, statement.$name)
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(
+              `View ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+            );
+          }
+          this.database!.views.splice(index, 1);
+          break;
+        }
+        case STATEMENT_KIND.CREATE_PROCEDURE: {
+          this.assertProcedureNotExists(statement.$name);
+          this.database!.procedures.push({
+            name: statement.$name,
+            scripts: this.sqlUtil.sqlify(statement).sql,
+          });
+          break;
+        }
+        case STATEMENT_KIND.ALTER_PROCEDURE: {
+          const procedure = this.getProcedure(statement.$name);
+          procedure.scripts = this.sqlUtil.sqlify(statement).sql;
+          break;
+        }
+        case STATEMENT_KIND.DROP_PROCEDURE: {
+          const index = this.database?.procedures.findIndex(p =>
+            isNameEquals(p.name, statement.$name)
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(
+              `Procedure ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+            );
+          }
+          this.database!.procedures.splice(index, 1);
+        }
+        case STATEMENT_KIND.CREATE_FUNCTION: {
+          this.assertFunctionNotExists(statement.$name);
+          this.database!.functions.push({
+            name: statement.$name,
+            scripts: this.sqlUtil.sqlify(statement).sql,
+          });
+          break;
+        }
+        case STATEMENT_KIND.ALTER_FUNCTION: {
+          const fn = this.getFunction(statement.$name);
+          fn.scripts = this.sqlUtil.sqlify(statement).sql;
+          break;
+        }
+        case STATEMENT_KIND.DROP_FUNCTION: {
+          const index = this.database?.functions.findIndex(p =>
+            isNameEquals(p.name, statement.$name)
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(
+              `Function ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+            );
+          }
+          this.database!.functions.splice(index, 1);
+          break;
+        }
+        case STATEMENT_KIND.CREATE_SEQUENCE: {
+          this.assertSequenceNotExists(statement.$name);
+          assertAst(statement.$dbType, 'CreateSequence dbtype not found.');
+          this.database!.sequences.push({
+            name: statement.$name,
+            type: this.sqlUtil.sqlifyType(statement.$dbType),
+            startValue: statement.$startValue.$value,
+            increment: statement.$increment.$value,
+          });
+          break;
+        }
+        case STATEMENT_KIND.DROP_SEQUENCE: {
+          const index = this.database?.sequences.findIndex(p =>
+            isNameEquals(p.name, statement.$name)
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(
+              `Sequence ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+            );
+          }
+          this.database!.sequences.splice(index, 1);
+          break;
+        }
+        case STATEMENT_KIND.CREATE_INDEX: {
+          assertAst(statement.$table, 'Create Index table declare not found.');
+          assertAst(statement.$name, 'Create Index name not declared.');
+          assertAst(
+            statement.$columns,
+            'Create Index columns declare not found.'
+          );
+          this.assertIndexNotExists(statement.$table, statement.$name);
+          const table = this.getTable(statement.$table);
+          table.indexes.push({
+            name: statement.$name,
+            columns: statement.$columns.map(c => ({
+              name: c.name,
+              isAscending: c.sort === 'ASC',
+            })),
+            isUnique: statement.$unique,
+            isClustered: statement.$clustered,
+          });
+          break;
+        }
+        case STATEMENT_KIND.DROP_INDEX: {
+          const table = this.getTable(statement.$table);
+          const index = table.indexes.findIndex(
+            i => i.name === statement.$name
+          );
+          if (index === undefined || index < 0) {
+            throw new Error(`Index ${statement.$name} not found.`);
+          }
+          table.indexes.splice(index, 1);
+          break;
+        }
         case STATEMENT_KIND.STANDARD_STATEMENT:
           switch (statement.$name) {
             case 'renameDatabase': {
-              this.assertDatabaseExists(this.schema);
-              if (this.schema.name !== statement.$datas[0]) {
+              this.assertDatabaseExists(this.database);
+              if (this.database.name !== statement.$datas[0]) {
                 continue;
               }
-              this.schema.name = statement.$datas[1];
+              this.database.name = statement.$datas[1];
               break;
             }
             case 'renameTable': {
@@ -499,7 +751,7 @@ export class SnapshotMigrateTracker {
               break;
             }
             case 'renameProcedure': {
-              const proc = this.schema?.procedures.find(p =>
+              const proc = this.database?.procedures.find(p =>
                 isNameEquals(p.name, statement.$datas[0])
               );
               if (!proc) {
@@ -513,7 +765,7 @@ export class SnapshotMigrateTracker {
               break;
             }
             case 'renameFunction': {
-              const func = this.schema?.functions.find(p =>
+              const func = this.database?.functions.find(p =>
                 isNameEquals(p.name, statement.$datas[0])
               );
               if (!func) {
@@ -527,7 +779,7 @@ export class SnapshotMigrateTracker {
               break;
             }
             case 'renameSequence': {
-              const sequence = this.schema?.sequences.find(p =>
+              const sequence = this.database?.sequences.find(p =>
                 isNameEquals(p.name, statement.$datas[0])
               );
               if (!sequence) {
@@ -553,9 +805,10 @@ export class SnapshotMigrateTracker {
               break;
             }
             case 'setIdentity': {
-              const [tableName, columnName, start, incerment] = statement.$datas;
+              const [tableName, columnName, start, incerment] =
+                statement.$datas;
               const column = this.getColumn(tableName, columnName);
-              column.isIdentity =  true;
+              column.isIdentity = true;
               column.identityStartValue = start;
               column.identityIncrement = incerment;
               break;
@@ -680,40 +933,49 @@ export class SnapshotMigrateTracker {
       }
     }
   }
-  getSchema(name: any): SchemaSchema {
-    this.assertDatabaseExists(this.schema);
-    const schema = this.schema.functions.find(p => name === p.name);
+
+  private getSchema(name: any): SchemaSchema {
+    this.assertDatabaseExists(this.database);
+    const schema = this.database.schemas.find(p => name === p.name);
     if (!schema) {
       throw new Error(`Schema ${this.sqlUtil.sqlifyName(name)} is not found.`);
     }
     return schema;
   }
-  getSequence(name: any): SequenceSchema {
-    this.assertDatabaseExists(this.schema);
-    const sequence = this.schema.sequences.find(p => isNameEquals(name, p.name));
+  private getSequence(name: any): SequenceSchema {
+    this.assertDatabaseExists(this.database);
+    const sequence = this.database.sequences.find(p =>
+      isNameEquals(name, p.name)
+    );
     if (!sequence) {
-      throw new Error(`Sequence ${this.sqlUtil.sqlifyName(name)} is not found.`);
+      throw new Error(
+        `Sequence ${this.sqlUtil.sqlifyName(name)} is not found.`
+      );
     }
     return sequence;
   }
-  getProcedure(name: any): ProcedureSchema {
-    this.assertDatabaseExists(this.schema);
-    const proc = this.schema.procedures.find(p => isNameEquals(name, p.name));
+  private getProcedure(name: any): ProcedureSchema {
+    this.assertDatabaseExists(this.database);
+    const proc = this.database.procedures.find(p => isNameEquals(name, p.name));
     if (!proc) {
-      throw new Error(`Procedure ${this.sqlUtil.sqlifyName(name)} is not found.`);
+      throw new Error(
+        `Procedure ${this.sqlUtil.sqlifyName(name)} is not found.`
+      );
     }
     return proc;
   }
-  getFunction(name: any): FunctionSchema {
-    this.assertDatabaseExists(this.schema);
-    const func = this.schema.functions.find(p => isNameEquals(name, p.name));
+  private getFunction(name: any): FunctionSchema {
+    this.assertDatabaseExists(this.database);
+    const func = this.database.functions.find(p => isNameEquals(name, p.name));
     if (!func) {
-      throw new Error(`Function ${this.sqlUtil.sqlifyName(name)} is not found.`);
+      throw new Error(
+        `Function ${this.sqlUtil.sqlifyName(name)} is not found.`
+      );
     }
     return func;
   }
-  getView(name: Name): ViewSchema {
-    const view = this.schema?.views.find(p => isNameEquals(name, p.name));
+  private getView(name: Name): ViewSchema {
+    const view = this.database?.views.find(p => isNameEquals(name, p.name));
     if (!view) {
       throw new Error(`View ${this.sqlUtil.sqlifyName(name)} is not found.`);
     }
@@ -732,7 +994,7 @@ export class SnapshotMigrateTracker {
     return column;
   }
 
-  getIndex(tableName: any, name: any) {
+  private getIndex(tableName: any, name: any) {
     const table = this.getTable(tableName);
     const index = table.indexes.find(col => col.name === name);
     if (!index)
@@ -767,14 +1029,22 @@ export class SnapshotMigrateTracker {
     return fk;
   }
 
-  private getConstraint(tableName: Name, name: string): ConstraintSchema | PrimaryKeySchema | ForeignKeySchema {
+  private getConstraint(
+    tableName: Name,
+    name: string
+  ): ConstraintSchema | PrimaryKeySchema | ForeignKeySchema {
     const table = this.getTable(tableName);
-    let constraint: ConstraintSchema | PrimaryKeySchema | ForeignKeySchema | undefined = table.constraints.find(c => c.name === name);
+    let constraint:
+      | ConstraintSchema
+      | PrimaryKeySchema
+      | ForeignKeySchema
+      | undefined = table.constraints.find(c => c.name === name);
     if (!constraint) {
       constraint = table.foreignKeys.find(p => p.name === name);
     }
     if (!constraint) {
-      constraint = table.primaryKey?.name === name ? table.primaryKey : undefined;
+      constraint =
+        table.primaryKey?.name === name ? table.primaryKey : undefined;
     }
     if (!constraint)
       throw new Error(

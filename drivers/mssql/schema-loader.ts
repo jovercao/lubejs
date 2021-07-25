@@ -179,7 +179,7 @@ export async function load(
       if (!matched) {
         throw new Error(`视图代码不正确`);
       }
-      view.body = code.substring(matched[0].length);
+      view.scripts = code.substring(matched[0].length);
     }
     return views;
   }

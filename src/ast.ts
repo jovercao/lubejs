@@ -2129,7 +2129,7 @@ export type SchemaStatement =
   | AlterView
   | DropView;
 
-export type ProgramStatement = If | While | Block | Break | Continue;
+export type ProgramStatement = If | While | Block | Break | Continue | Return;
 
 export type AllStatement =
   | FunctionStatement
@@ -3967,8 +3967,9 @@ export class CreateView<
     this.$name = name;
   }
 
-  as(select: Select<T>) {
+  as(select: Select<T>): this {
     this.$body = select;
+    return this;
   }
 }
 
@@ -4066,7 +4067,7 @@ export class CreateProcedure extends Statement {
   $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
   $name: Name;
   $params?: ProcedureParameter[];
-  $body?: Statement[];
+  $body?: Statement;
 
   constructor(name: Name) {
     super();
@@ -4078,7 +4079,7 @@ export class CreateProcedure extends Statement {
     return this;
   }
 
-  as(sql: Statement[]): this {
+  as(sql: Statement): this {
     this.$body = sql;
     return this;
   }
@@ -4088,7 +4089,7 @@ export class AlterProcedure extends Statement {
   $kind: STATEMENT_KIND.ALTER_PROCEDURE = STATEMENT_KIND.ALTER_PROCEDURE;
   $name: Name;
   $params?: ProcedureParameter[]; // TODO: 声明不正确
-  $body?: Statement[];
+  $body?: Statement;
 
   constructor(name: Name) {
     super();
@@ -4100,7 +4101,7 @@ export class AlterProcedure extends Statement {
     return this;
   }
 
-  as(sql: Statement[]): this {
+  as(sql: Statement): this {
     this.$body = sql;
     return this;
   }
@@ -4192,7 +4193,7 @@ export class DropProcedure<N extends string = string> extends Statement {
 }
 
 export class DropFunction<N extends string = string> extends Statement {
-  $kind: STATEMENT_KIND.DROP_FUNCETION = STATEMENT_KIND.DROP_FUNCETION;
+  $kind: STATEMENT_KIND.DROP_FUNCTION = STATEMENT_KIND.DROP_FUNCTION;
   $name: Name<N>;
 
   constructor(name: Name<N>) {

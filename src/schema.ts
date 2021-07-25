@@ -11,7 +11,7 @@
  * 关联关系等因缺乏信息完美无法生成，需要手动添加
  **********************************/
 
-import { Document } from './ast';
+import { Document, SqlBuilder } from './ast';
 import { SqlUtil } from './sql-util';
 import { PARAMETER_DIRECTION } from './constants';
 import {
@@ -26,7 +26,12 @@ import {
   ViewEntityMetadata,
 } from './metadata';
 import { DbType, Scalar, Name } from './types';
-import { compareObject, EqulsCompartor, isChanged, ObjectDifference } from './util/compare';
+import {
+  compareObject,
+  EqulsCompartor,
+  isChanged,
+  ObjectDifference,
+} from './util/compare';
 
 /**
  * 外键架构
@@ -119,23 +124,20 @@ export interface DatabaseSchema {
 
 export interface FunctionSchema {
   comment?: string;
-  params: ParameterSchema[];
-  return: DbType;
-  name: string;
-  body: Document;
+  name: Name;
+  scripts: string;
 }
 
-export interface ParameterSchema {
-  name: string;
-  type: string;
-  defaultValue: Scalar;
-  direction: PARAMETER_DIRECTION;
-}
+// export interface ParameterSchema {
+//   name: string;
+//   type: string;
+//   defaultValue: Scalar;
+//   direction: PARAMETER_DIRECTION;
+// }
 
 export interface ProcedureSchema {
-  params: ParameterSchema[];
-  name: string;
-  body: Document;
+  name: Name;
+  scripts: string;
   comment?: string;
 }
 
@@ -291,11 +293,11 @@ export interface ViewSchema {
   /**
    * 视图名称
    */
-  name: string;
+  name: Name;
   /**
    * 声明语句
    */
-  body: string;
+  scripts: string;
   // /**
   //  * 索引
   //  */
@@ -452,7 +454,7 @@ export function generateSchema(
       foreignKeys,
       constraints: [], // TODO 实体添加约束代码
       comment: entity.comment,
-      seedData: entity.data
+      seedData: entity.data,
     };
     return table;
   }
@@ -472,8 +474,7 @@ export function generateSchema(
         sqlUtil.sqlifyExpression(column.calculateExpression),
       comment: column.comment,
       defaultValue:
-        column.defaultValue &&
-        sqlUtil.sqlifyExpression(column.defaultValue),
+        column.defaultValue && sqlUtil.sqlifyExpression(column.defaultValue),
     };
     return col;
   }
@@ -509,7 +510,9 @@ export function generateSchema(
   function genViewSchema(view: ViewEntityMetadata): ViewSchema {
     const v: ViewSchema = {
       name: view.viewName,
-      body: sqlUtil.sqlify(view.body).sql,
+      scripts: sqlUtil.sqlify(
+        SqlBuilder.createView(view.viewName).as(view.body)
+      ).sql,
       comment: view.comment,
     };
     return v;
@@ -531,19 +534,26 @@ export type SchemaObject =
   | ProcedureSchema
   | FunctionSchema
   | SequenceSchema
-  | DatabaseSchema
-  | ParameterSchema;
+  | DatabaseSchema;
+// | ParameterSchema;
 
 /**
  * 数据库对象
  */
-export type ObjectSchema = TableSchema | ViewSchema | ProcedureSchema | FunctionSchema;
-
+export type ObjectSchema =
+  | TableSchema
+  | ViewSchema
+  | ProcedureSchema
+  | FunctionSchema;
 
 export type SchemaDifference = ObjectDifference<DatabaseSchema>;
 
-export const isSameSchemaObject: EqulsCompartor = (left: SchemaObject, right: SchemaObject, path: string): boolean => {
-  return !isChanged(left.name, right.name)
+export const isSameSchemaObject: EqulsCompartor = (
+  left: SchemaObject,
+  right: SchemaObject,
+  path: string
+): boolean => {
+  return !isChanged(left.name, right.name);
 };
 
 export function compareSchema(
