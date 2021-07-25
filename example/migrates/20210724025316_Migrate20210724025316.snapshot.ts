@@ -1,6 +1,7 @@
 import { DatabaseSchema } from 'lubejs';
 export const schema: DatabaseSchema = {
   name: 'DB',
+  schemas: [],
   tables: [
     {
       name: 'User',

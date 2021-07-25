@@ -488,5 +488,6 @@ export async function load(
     procedures: [],
     functions: [],
     sequences: [],
+    schemas: []
   };
 }

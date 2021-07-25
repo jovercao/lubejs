@@ -637,12 +637,6 @@ export class StatementMigrateScripter extends MigrateScripter {
     } else {
       col.notNull();
     }
-    if (schema.isIdentity) {
-      col.identity(schema.identityStartValue, schema.identityIncrement);
-    }
-    if (schema.isCalculate) {
-      col.as(SQL.raw(schema.calculateExpression!));
-    }
     return col;
   }
 
@@ -655,6 +649,12 @@ export class StatementMigrateScripter extends MigrateScripter {
       col.null();
     } else {
       col.notNull();
+    }
+    if (schema.isIdentity) {
+      col.identity(schema.identityStartValue, schema.identityIncrement);
+    }
+    if (schema.isCalculate) {
+      col.as(SQL.raw(schema.calculateExpression!));
     }
     if (schema.isIdentity) {
       col.identity(schema.identityStartValue, schema.identityIncrement);

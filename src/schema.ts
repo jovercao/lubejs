@@ -60,6 +60,11 @@ export interface ForeignKeySchema {
   comment?: string;
 }
 
+export interface SchemaSchema {
+  name: string;
+  comment?: string;
+}
+
 export interface DatabaseSchema {
   /**
    * 数据库名称
@@ -75,6 +80,11 @@ export interface DatabaseSchema {
    * 表
    */
   tables: TableSchema[];
+
+  /**
+   * 架构
+   */
+  schemas: SchemaSchema[];
 
   /**
    * 视图
@@ -108,6 +118,7 @@ export interface DatabaseSchema {
 }
 
 export interface FunctionSchema {
+  comment?: string;
   params: ParameterSchema[];
   return: DbType;
   name: string;
@@ -125,6 +136,7 @@ export interface ProcedureSchema {
   params: ParameterSchema[];
   name: string;
   body: Document;
+  comment?: string;
 }
 
 // export class DatabaseSchemaStore {
@@ -234,6 +246,7 @@ export interface TableSchema {
 }
 
 export interface SequenceSchema {
+  comment?: string;
   type: string;
   name: Name;
   startValue: number;
@@ -386,6 +399,7 @@ export function generateSchema(
       procedures: [],
       functions: [],
       sequences: [],
+      schemas: [],
       comment: context.comment,
     };
 

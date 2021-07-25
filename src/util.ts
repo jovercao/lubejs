@@ -1233,7 +1233,7 @@ export function isUrl(str: string): boolean {
   }
 }
 
-export function assertAstNonempty(
+export function assertAst(
   value: any,
   message: string = 'AST syntax error.'
 ): asserts value {

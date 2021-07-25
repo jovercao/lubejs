@@ -2108,22 +2108,38 @@ export abstract class Statement extends AST {
  */
 export type CrudStatement = Insert | Update | Select | Delete;
 
-export type SchemaStatement = CreateDatabase | AlterDatabase | DropDatabase
-  | CreateFunction | AlterFunction | DropFunction
-  | CreateIndex | DropIndex
-  | CreateProcedure | AlterProcedure | DropProcedure
-  | CreateSequence | DropSequence
-  | CreateTable | AlterTable | DropTable
-  | CreateView | AlterView | DropView;
+export type SchemaStatement =
+  | CreateDatabase
+  | AlterDatabase
+  | DropDatabase
+  | CreateFunction
+  | AlterFunction
+  | DropFunction
+  | CreateIndex
+  | DropIndex
+  | CreateProcedure
+  | AlterProcedure
+  | DropProcedure
+  | CreateSequence
+  | DropSequence
+  | CreateTable
+  | AlterTable
+  | DropTable
+  | CreateView
+  | AlterView
+  | DropView;
 
 export type ProgramStatement = If | While | Block | Break | Continue;
 
-export type AllStatement = FunctionStatement | SchemaStatement | ProgramStatement;
+export type AllStatement =
+  | FunctionStatement
+  | SchemaStatement
+  | ProgramStatement;
 
 /**
  * 功能性语句
  */
-export type FunctionStatement = Use | Assignment | Declare | CrudStatement;
+export type FunctionStatement = Use | Assignment | Declare | CrudStatement | StandardStatement;
 
 /**
  * When语句
@@ -3584,12 +3600,7 @@ export class CreateIndex extends Statement {
   }
 }
 
-export type AlterTableAddMember =
-  | TableColumnForAdd
-  | PrimaryKey
-  | ForeignKey
-  | CheckConstraint
-  | UniqueKey;
+export type AlterTableAddMember = CreateTableMember;
 
 export class AlterTableDropMember extends AST {
   $type: SQL_SYMBOLE.ALTER_TABLE_DROP_MEMBER =
@@ -3919,23 +3930,11 @@ abstract class TableColumn<
   $name: N;
   $nullable?: boolean;
   $dbType: T;
-  $calculate?: Expression<TsTypeOf<T>>;
-  $identity?: {
-    startValue: number;
-    increment: number;
-  };
-  // 检查约束
-  $check?: Condition;
 
   constructor(name: N, type: T) {
     super();
     this.$name = name;
     this.$dbType = type;
-  }
-
-  as(expr: Expression<TsTypeOf<T>>): this {
-    this.$calculate = expr;
-    return this;
   }
 
   null(): this {
@@ -3945,19 +3944,6 @@ abstract class TableColumn<
 
   notNull(): this {
     this.$nullable = false;
-    return this;
-  }
-
-  identity(startValue: number = 0, increment: number = 1): this {
-    this.$identity = {
-      startValue,
-      increment,
-    };
-    return this;
-  }
-
-  check(sql: Condition): this {
-    this.$check = sql;
     return this;
   }
 }
@@ -4020,6 +4006,31 @@ export class TableColumnForAdd<
   $primaryKey?: {
     nonclustered: boolean;
   };
+
+  $calculate?: Expression<TsTypeOf<T>>;
+  $identity?: {
+    startValue: number;
+    increment: number;
+  };
+  // 检查约束
+  $check?: Condition;
+
+  as(expr: Expression<TsTypeOf<T>>): this {
+    this.$calculate = expr;
+    return this;
+  }
+  identity(startValue: number = 0, increment: number = 1): this {
+    this.$identity = {
+      startValue,
+      increment,
+    };
+    return this;
+  }
+
+  check(sql: Condition): this {
+    this.$check = sql;
+    return this;
+  }
 
   primaryKey(nonclustered: boolean = false): this {
     this.$primaryKey = {

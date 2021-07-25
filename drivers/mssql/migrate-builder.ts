@@ -22,6 +22,9 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
+  renameSequence(name: Name, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyName(name), newName, 'OBJECT');
+  }
   renameDatabase(name: string, newName: string): Statement {
     return SQL.raw(`
     USE master;

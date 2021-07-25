@@ -143,9 +143,14 @@ export abstract class MigrateBuilder {
   abstract renameColumn(table: Name, name: string, newName: string): Statement;
   abstract renameView(name: Name, newName: string): Statement;
   abstract renameIndex(table: Name, name: string, newName: string): Statement;
+  abstract renameSequence(name: Name, newName: string): Statement;
   abstract renameProcedure(name: Name, newName: string): Statement;
   abstract renameFunction(name: Name, newName: string): Statement;
   abstract renameDatabase(name: string, newName: string): Statement;
+
+  // abstract setPrimaryKeyComment(table: Name, name: string, comment: string): Statement;
+
+  // abstract setForeignKeyComment(table: Name, name: string, comment: string): Statement;
 
   abstract setTableComment(name: Name, comment: string): Statement;
   abstract setColumnComment(

@@ -142,7 +142,7 @@ import {
   isWhile,
   isBreak,
   isContinue,
-  assertAstNonempty,
+  assertAst,
   isWithSelect,
   isCreateDatabase,
   isAlterDatabase,
@@ -556,7 +556,7 @@ export abstract class SqlUtil {
   protected abstract sqlifyCreateProcedure(statement: CreateProcedure): string;
 
   protected sqlifyAlterView(statement: AlterView<any, string>): string {
-    assertAstNonempty(statement.$body, 'AlterView has no body statement.');
+    assertAst(statement.$body, 'AlterView has no body statement.');
     return `ALTER VIEW ${this.sqlifyName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
@@ -567,7 +567,7 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyCreateView(statement: CreateView<any, string>): string {
-    assertAstNonempty(
+    assertAst(
       statement.$body,
       'CreateView statement has no statements body.'
     );
@@ -1166,7 +1166,7 @@ export abstract class SqlUtil {
         ')';
     }
 
-    assertAstNonempty($values);
+    assertAst($values);
     if (Array.isArray($values)) {
       sql += ' VALUES';
       sql += $values
