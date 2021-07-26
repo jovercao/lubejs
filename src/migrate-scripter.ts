@@ -677,7 +677,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   alterDatabase(database: DatabaseSchema): void {
-    this.beforeCodes.push(`builder.alterDatabase(${this.sqlUtil.sqlifyObjectName(database.name)}).collate(${database.collate})`);
+    this.beforeCodes.push(`builder.alterDatabase(${JSON.stringify(database.name)}).collate(${database.collate})`);
   }
   commentColumn(table: CompatiableObjectName<string>, name: string, comment?: string): void {
     this.comment('Column', table, name, comment);
@@ -727,7 +727,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
     column: ColumnSchema,
     prefix: string = 'builder.'
   ): string {
-    let sql = `${prefix}column(${this.sqlUtil.sqlifyObjectName(column.name)}, ${this.stringifyType(
+    let sql = `${prefix}column(${JSON.stringify(column.name)}, ${this.stringifyType(
       column.type
     )})`;
     if (column.isNullable) {
@@ -765,7 +765,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
       columns
         .map(
           ({ name, isAscending }) =>
-            `${this.sqlUtil.sqlifyObjectName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+            `${JSON.stringify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
         )
         .join(', ') +
       ' }'
@@ -774,10 +774,10 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   private primaryKey(key: PrimaryKeySchema): string {
     let sql = `builder.primaryKey(${
-      key.name ? this.sqlUtil.sqlifyObjectName(key.name) : ''
+      key.name ? JSON.stringify(key.name) : ''
     }).on({ ${key.columns.map(
       ({ name, isAscending }) =>
-        `${this.sqlUtil.sqlifyObjectName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+        `${JSON.stringify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
     )} })`;
     if (key.isNonclustered) {
       sql += '.withNoclustered()';
@@ -786,11 +786,11 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   private foreignKey(fk: ForeignKeySchema): string {
-    let code = `builder.foreignKey(${this.sqlUtil.sqlifyObjectName(fk.name)}).on(${fk.columns
-      .map(column => this.sqlUtil.sqlifyObjectName(column))
-      .join(', ')}).reference(${this.sqlUtil.sqlifyObjectName(
+    let code = `builder.foreignKey(${JSON.stringify(fk.name)}).on(${fk.columns
+      .map(column => JSON.stringify(column))
+      .join(', ')}).reference(${this.namify(
       fk.referenceTable
-    )}, [${fk.referenceColumns.map(column => this.sqlUtil.sqlifyObjectName(column)).join(', ')}])`;
+    )}, [${fk.referenceColumns.map(column => JSON.stringify(column)).join(', ')}])`;
 
     if (fk.isCascade) {
       code += 'deleteCascade()';
@@ -823,7 +823,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
     if (table.constraints?.length > 0) {
       table.constraints.map(cst => this.constraint(cst));
     }
-    let sql = `builder.createTable(${this.sqlUtil.sqlifyObjectName(
+    let sql = `builder.createTable(${this.namify(
       table.name
     )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
@@ -1082,9 +1082,17 @@ export class ProgramMigrateScripter implements MigrateScripter {
     }
   }
 
+  namify(name: CompatiableObjectName): string {
+    const objName = this.sqlUtil.parseObjectName(name);
+    if (!objName.database && !objName.schema) {
+      return objName.name;
+    }
+    return JSON.stringify(objName);
+  }
+
   dropPrimaryKey(table: CompatiableObjectName<string>, name: string) {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).drop(builder => builder.primaryKey(${this.sqlUtil.sqlifyObjectName(name)}))`
+      `builder.alterTable(${this.namify(table)}).drop(builder => builder.primaryKey(${JSON.stringify(name)}))`
     );
   }
 
@@ -1094,21 +1102,19 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   dropColumn(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-        table
-      )}).drop(builder => builder.column(${this.sqlUtil.sqlifyObjectName(column)}))`
+      `builder.alterTable(${this.namify(table)}).drop(builder => builder.column(${JSON.stringify(column)}))`
     );
   }
 
   setAutoFlag(table: CompatiableObjectName<string>, column: string): void {
     this.middleCodes.push(
-      `builder.setAutoRowflag(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
+      `builder.setAutoRowflag(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
   dropAutoFlag(table: CompatiableObjectName<string>, column: string): void {
     this.middleCodes.push(
-      `builder.dropAutoRowflag(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
+      `builder.dropAutoRowflag(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
@@ -1117,13 +1123,13 @@ export class ProgramMigrateScripter implements MigrateScripter {
     constraint: ConstraintSchema
   ): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).drop(builder => builder.${
+      `builder.alterTable(${this.namify(table)}).drop(builder => builder.${
         {
           CHECK: 'check',
           UNIQUE: 'uniqueKey',
           PRIMARY_KEY: 'primaryKey',
         }[constraint.kind]
-      }(${this.sqlUtil.sqlifyObjectName(constraint.name)}))`
+      }(${JSON.stringify(constraint.name)}))`
     );
   }
 
@@ -1135,7 +1141,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   addColumn(table: CompatiableObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).add(builder => ${this.columnForAdd(
+      `builder.alterTable(${this.namify(table)}).add(builder => ${this.columnForAdd(
         column
       )})`
     );
@@ -1143,9 +1149,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   alterColumn(table: CompatiableObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-        table
-      )}).alterColumn(column => ${this.columnForAlter(column, '')})`
+      `builder.alterTable(${this.namify(table)}).alterColumn(column => ${this.columnForAlter(column, '')})`
     );
   }
 
@@ -1155,15 +1159,13 @@ export class ProgramMigrateScripter implements MigrateScripter {
     defaultValue: string
   ): void {
     this.middleCodes.push(
-      `builder.setDefaultValue(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(
-        column
-      )}, SQL.raw(${JSON.stringify(defaultValue)}))`
+      `builder.setDefaultValue(${this.namify(table)}, ${JSON.stringify(column)}, SQL.raw(${JSON.stringify(defaultValue)}))`
     );
   }
 
   dropDefaultValue(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.dropDefaultValue(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
+      `builder.dropDefaultValue(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
@@ -1174,47 +1176,39 @@ export class ProgramMigrateScripter implements MigrateScripter {
     increment: number
   ): void {
     this.middleCodes.push(
-      `builder.setIdentity(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(
-        column
-      )}, ${startValue}, ${increment})`
+      `builder.setIdentity(${this.namify(table)}, ${JSON.stringify(column)}, ${startValue}, ${increment})`
     );
   }
 
   dropIdentity(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.dropIdentity(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
+      `builder.dropIdentity(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
   addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema): void {
     this.afterCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).add(builder => ${this.foreignKey(fk)})`
+      `builder.alterTable(${this.namify(table)}).add(builder => ${this.foreignKey(fk)})`
     );
   }
 
   dropForeignKey(table: CompatiableObjectName, name: string): void {
     this.beforeCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-        table
-      )}).drop(({ foreignKey }) => foreignKey(${this.sqlUtil.sqlifyObjectName(name)}))`
+      `builder.alterTable(${this.namify(table)}).drop(({ foreignKey }) => foreignKey(${JSON.stringify(name)}))`
     );
   }
 
   addConstraint(table: CompatiableObjectName, constaint: ConstraintSchema): void {
     if (constaint.kind === 'CHECK') {
       this.middleCodes.push(
-        `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-          table
-        )}).add(({ check }) => check(${this.sqlUtil.sqlifyObjectName(constaint.name)}, SQL.raw(${
+        `builder.alterTable(${this.namify(table)}).add(({ check }) => check(${JSON.stringify(constaint.name)}, SQL.raw(${
           constaint.sql
         }))`
       );
       return;
     }
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-        table
-      )}).add(({ uniqueKey }) => uniqueKey(${this.sqlUtil.sqlifyObjectName(
+      `builder.alterTable(${this.namify(table)}).add(({ uniqueKey }) => uniqueKey(${JSON.stringify(
         constaint.name
       )}).on(${this.keyColumns(constaint.columns)}))`
     );
@@ -1222,9 +1216,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   addPrimaryKey(table: CompatiableObjectName, key: PrimaryKeySchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
-        table
-      )}).add(({ primaryKey }) => primaryKey(${this.sqlUtil.sqlifyObjectName(
+      `builder.alterTable(${this.namify(table)}).add(({ primaryKey }) => primaryKey(${JSON.stringify(
         key.name
       )}).on(${this.keyColumns(key.columns)}))`
     );
@@ -1232,7 +1224,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   createSequence(sequence: SequenceSchema): void {
     this.middleCodes.push(
-      `builder.createSequence(${this.sqlUtil.sqlifyObjectName(sequence.name)}).as(${this.stringifyType(
+      `builder.createSequence(${JSON.stringify(sequence.name)}).as(${this.stringifyType(
         sequence.type
       )}).startsWith(${sequence.startValue}).incrementBy(${
         sequence.increment
@@ -1241,13 +1233,11 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   dropSequence(name: CompatiableObjectName): void {
-    this.middleCodes.push(`builder.dropSequence(${this.sqlUtil.sqlifyObjectName(name)})`);
+    this.middleCodes.push(`builder.dropSequence(${this.namify(name)})`);
   }
 
   createIndex(table: CompatiableObjectName<string>, index: IndexSchema): void {
-    let sql = `builder.createIndex(${this.sqlUtil.sqlifyObjectName(index.name)}).on(${this.sqlUtil.sqlifyObjectName(
-      table
-    )}, ${this.keyColumns(index.columns)})`;
+    let sql = `builder.createIndex(${JSON.stringify(index.name)}).on(${this.namify(table)}, ${this.keyColumns(index.columns)})`;
     if (index.isUnique) {
       sql += '.unique()';
     }
@@ -1259,7 +1249,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   dropIndex(table: CompatiableObjectName<string>, name: string): void {
-    this.middleCodes.push(`builder.dropIndex(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(name)})`);
+    this.middleCodes.push(`builder.dropIndex(${this.namify(table)}, ${JSON.stringify(name)})`);
   }
 
   comment(
@@ -1289,12 +1279,12 @@ export class ProgramMigrateScripter implements MigrateScripter {
     }
     let code: string;
     if (comment) {
-      code = `builder.set${type}Comment(${this.sqlUtil.sqlifyObjectName(object)}${
-        member ? `, ${this.sqlUtil.sqlifyObjectName(member)}` : ''
-      }, ${this.sqlUtil.sqlifyObjectName(comment)})`;
+      code = `builder.set${type}Comment(${this.namify(object)}${
+        member ? `, ${JSON.stringify(member)}` : ''
+      }, ${JSON.stringify(comment)})`;
     } else {
-      code = `builder.drop${type}Comment(${this.sqlUtil.sqlifyObjectName(object)}${
-        member ? `, ${this.sqlUtil.sqlifyObjectName(member)}` : ''
+      code = `builder.drop${type}Comment(${this.namify(object)}${
+        member ? `, ${JSON.stringify(member)}` : ''
       })`;
     }
     this.middleCodes.push(code);
@@ -1310,7 +1300,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
       return row;
     });
     const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = `builder.insert(${this.sqlUtil.sqlifyObjectName(table.name)}).values(${JSON.stringify(
+    let sql = `builder.insert(${this.namify(table.name)}).values(${JSON.stringify(
       rows
     )})`;
     if (identityColumn) {
@@ -1320,7 +1310,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   createDatabase(database: DatabaseSchema): void {
-    let sql = `builder.createDatabase(${this.sqlUtil.sqlifyObjectName(database.name)})`;
+    let sql = `builder.createDatabase(${JSON.stringify(database.name)})`;
     if (database.collate) {
       sql += `.collate(${database.collate})`;
     }
@@ -1328,11 +1318,11 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   useDatabase(name: string): void {
-    this.beforeCodes.push(`builder.use(${this.sqlUtil.sqlifyObjectName(name)})`);
+    this.beforeCodes.push(`builder.use(${JSON.stringify(name)})`);
   }
 
   dropDatabase(name: string): void {
-    this.middleCodes.push(`builder.dropDatabase(${this.sqlUtil.sqlifyObjectName(name)})`);
+    this.middleCodes.push(`builder.dropDatabase(${JSON.stringify(name)})`);
   }
 }
 

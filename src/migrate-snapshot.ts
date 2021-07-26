@@ -388,12 +388,13 @@ export class SnapshotMigrateTracker {
             item.$referenceTable,
             'Foreign key ReferenceTable not found.'
           );
+          const objName = this.sqlUtil.parseObjectName(item.$name);
           table.foreignKeys.push({
             name: item.$name!,
             columns: item.$columns,
             referenceColumns: item.$referenceColumns,
-            referenceTable: item.$referenceTable.name,
-            referenceSchema: item.$referenceTable.schema ?? this.defaultSchema
+            referenceTable: objName.name,
+            referenceSchema: objName.schema ?? this.defaultSchema
           });
           break;
         }
@@ -431,9 +432,10 @@ export class SnapshotMigrateTracker {
       );
     }
     assertAst(statement.$members, 'CreateTable statement member not found.');
+    const objName = this.sqlUtil.parseObjectName(statement.$name);
     const table: TableSchema = {
-      name: statement.$name.name,
-      schema: statement.$name.schema ?? this.defaultSchema,
+      name: objName.name,
+      schema: objName.schema ?? this.defaultSchema,
       indexes: [],
       columns: [],
       foreignKeys: [],
@@ -589,9 +591,10 @@ export class SnapshotMigrateTracker {
         case STATEMENT_KIND.CREATE_VIEW: {
           this.assertViewNotExists(statement.$name);
           assertAst(statement.$body, 'CreateView body not found.');
+          const objName = this.sqlUtil.parseObjectName(statement.$name);
           this.database!.views.push({
-            name: statement.$name.name,
-            schema: statement.$name.schema ?? this.defaultSchema,
+            name: objName.name,
+            schema: objName.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement.$body).sql,
           });
           break;
@@ -616,9 +619,10 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.CREATE_PROCEDURE: {
           this.assertProcedureNotExists(statement.$name);
+          const objName = this.sqlUtil.parseObjectName(statement.$name);
           this.database!.procedures.push({
-            name: statement.$name.name,
-            schema: statement.$name.schema ?? this.defaultSchema,
+            name: objName.name,
+            schema: objName.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement).sql,
           });
           break;
@@ -641,9 +645,10 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.CREATE_FUNCTION: {
           this.assertFunctionNotExists(statement.$name);
+          const objName = this.sqlUtil.parseObjectName(statement.$name);
           this.database!.functions.push({
-            name: statement.$name.name,
-            schema: statement.$name.schema ?? this.defaultSchema,
+            name: objName.name,
+            schema: objName.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement).sql,
           });
           break;
@@ -668,9 +673,10 @@ export class SnapshotMigrateTracker {
         case STATEMENT_KIND.CREATE_SEQUENCE: {
           this.assertSequenceNotExists(statement.$name);
           assertAst(statement.$dbType, 'CreateSequence dbtype not found.');
+          const objName = this.sqlUtil.parseObjectName(statement.$name);
           this.database!.sequences.push({
-            name: statement.$name.name,
-            schema: statement.$name.schema ?? this.defaultSchema,
+            name: objName.name,
+            schema: objName.schema ?? this.defaultSchema,
             type: this.sqlUtil.sqlifyType(statement.$dbType),
             startValue: statement.$startValue.$value,
             increment: statement.$increment.$value,

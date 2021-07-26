@@ -1011,7 +1011,7 @@ export class ModelBuilder {
 
 export const modelBuilder = ModelBuilder.instance;
 
-export const defaultDbContextBuilder = modelBuilder.context(DbContext);
+// export const defaultDbContextBuilder = modelBuilder.context(DbContext);
 
 // /**
 //  * 实体映射构造器

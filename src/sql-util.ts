@@ -78,6 +78,7 @@ import {
   DropProcedure,
   DropFunction,
   DropIndex,
+  DropTable,
 } from './ast';
 import { Command } from './execute';
 import { CompatiableObjectName, DbType, ObjectName, Scalar } from './types';
@@ -269,10 +270,9 @@ export abstract class SqlUtil {
     // TIPS: buildIn 使用小写原因是数据库默认值会被自动转换为小写从而产生结果差异，造成不必要的数据架构变化。
 
     if (typeof name === 'string') {
-      // 疑问
-      return builtIn ? this.quoted(name) : name.toLowerCase();
+      name = this.parseObjectName(name);
     }
-    let str = this.quoted(name.name);
+    let str = builtIn ? name.name : this.quoted(name.name);
     if (name.schema) {
       str = this.quoted(name.schema) + '.' + str;
     }
@@ -429,6 +429,8 @@ export abstract class SqlUtil {
     };
   }
 
+  abstract parseObjectName(name: CompatiableObjectName): ObjectName;
+
   protected sqlifyStatement(
     /**
      * AST
@@ -469,7 +471,7 @@ export abstract class SqlUtil {
     } else if (isAlterTable(statement)) {
       return this.sqlifyAlterTable(statement);
     } else if (isDropTable(statement)) {
-      return this.sqlifyDropTable(statement.$name);
+      return this.sqlifyDropTable(statement);
     } else if (isCreateView(statement)) {
       return this.sqlifyCreateView(statement);
     } else if (isAlterView(statement)) {
@@ -597,8 +599,8 @@ export abstract class SqlUtil {
     )} AS ${this.sqlifySelect(statement.$body)}`;
   }
 
-  protected sqlifyDropTable(name: ObjectName): string {
-    return `DROP TABLE ${this.sqlifyObjectName(name)}`;
+  protected sqlifyDropTable(statement: DropTable): string {
+    return `DROP TABLE ${this.sqlifyObjectName(statement.$name)}`;
   }
 
   protected abstract sqlifyAlterTable(statement: AlterTable): string;

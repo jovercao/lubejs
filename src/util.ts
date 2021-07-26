@@ -449,14 +449,22 @@ export function isProxiedRowset<T extends RowObject>(
 //   return name[0];
 // }
 
-export function ensureObjectName<N extends string>(name: CompatiableObjectName<N>): ObjectName<N> {
-  if (typeof name ==='string') {
-    return {
-      name
-    }
-  }
-  return name;
-}
+// export function ensureObjectName<N extends string>(name: CompatiableObjectName<N>): ObjectName<N> {
+//   if (typeof name ==='string') {
+//     if (name.includes('.')) {
+//       const [objename, schema, database] = name.split('.');
+//       return {
+//         name: objename as N,
+//         schema,
+//         database
+//       }
+//     }
+//     return {
+//       name
+//     }
+//   }
+//   return name;
+// }
 
 export function ensureFieldName<N extends string>(name: CompatiableFieldName<N>): FieldName<N> {
   if (typeof name === 'string') {
@@ -1313,11 +1321,12 @@ export function nameof<T>(arg: Function | ((p: T) => any)): string {
  * 判断一个类是否由另一个类继承而来
  */
 export function isExtendsOf(sub: Function, parent: Function): boolean {
-  let prototype: Object;
-  while ((prototype = Object.getPrototypeOf(sub.prototype))) {
+  let prototype: Object | undefined = Object.getPrototypeOf(sub.prototype);
+  while (prototype) {
     if (prototype.constructor === parent) {
       return true;
     }
+    prototype = Object.getPrototypeOf(prototype);
   }
   return false;
 }

@@ -93,6 +93,8 @@ import {
   DropProcedure,
   DropFunction,
   DropIndex,
+  CompatiableObjectName,
+  ObjectName,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -620,6 +622,28 @@ export class MssqlStandardTranslator implements StandardTranslator {
 }
 
 export class MssqlSqlUtil extends SqlUtil {
+  private parseQuotedName(name: string): string {
+    if (name.startsWith(this.options.quotedLeft) && name.endsWith(this.options.quotedRight)) {
+      return name.substr(1, name.length - 2);
+    }
+    return name;
+  }
+
+  parseObjectName(name: CompatiableObjectName): ObjectName {
+    if (typeof name === 'string') {
+      if (name.includes('.')) {
+        // WARN: 此处可能会产生问题 [table.name] 这种写法将会产生错误解析.
+        const [n, schema, database] = name.split('.');
+        return {
+          name: this.parseQuotedName(n),
+          schema: schema && this.parseQuotedName(schema),
+          database: database && this.parseQuotedName(database)
+        }
+      }
+      return { name };
+    }
+    return name;
+  }
   protected sqlifyCreateDatabase(statement: CreateDatabase): string {
     let sql = `CREATE DATABASE ${this.sqlifyObjectName(statement.$name)}`;
     if (statement.$collate) {

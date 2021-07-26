@@ -20,7 +20,6 @@ import {
   isCondition,
   joinConditions,
   ensureRowset,
-  ensureObjectName,
 } from './util';
 
 import {
@@ -763,14 +762,14 @@ export class Join extends AST {
 export abstract class DBObject<N extends string = string> extends AST {
   constructor(name: CompatiableObjectName<N>, builtIn = false) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
     this.$builtin = builtIn;
   }
   readonly $type: SQL_SYMBOLE.OBJECT = SQL_SYMBOLE.OBJECT;
   /**
    * 标识符名称
    */
-  readonly $name: ObjectName<N>;
+  readonly $name: CompatiableObjectName<N>;
 
   /**
    * 是否内建标识符，如果是，在编译时不会自动加上引号，如系统函数类的 count 等聚合函数
@@ -975,9 +974,9 @@ export class Table<
 > extends Rowset<T, N> {
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
   $builtin: false = false;
   $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 
@@ -3396,7 +3395,7 @@ export class ForeignKey extends AST {
   $name?: string;
   $columns?: string[];
   $referenceColumns?: string[];
-  $referenceTable?: ObjectName;
+  $referenceTable?: CompatiableObjectName;
   $deleteCascade?: boolean;
 
   on(...columns: string[] | [string[]]): this {
@@ -3408,7 +3407,7 @@ export class ForeignKey extends AST {
   }
 
   reference(table: CompatiableObjectName, columns: string[]): this {
-    this.$referenceTable = ensureObjectName(table);
+    this.$referenceTable = table;
     this.$referenceColumns = columns;
     return this;
   }
@@ -3491,11 +3490,11 @@ export const CreateTableMemberBuilder: CreateTableMemberBuilder = {
 export class CreateTable<N extends string = string> extends Statement {
   readonly $kind: STATEMENT_KIND.CREATE_TABLE = STATEMENT_KIND.CREATE_TABLE;
   $members?: CreateTableMember[];
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   // has(build: (builder: CreateTableBuilder) => CreateTableMember[]): this {
@@ -3525,7 +3524,7 @@ export class CreateTable<N extends string = string> extends Statement {
 export class CreateIndex extends Statement {
   $kind: STATEMENT_KIND.CREATE_INDEX = STATEMENT_KIND.CREATE_INDEX;
   $name?: string;
-  $table?: ObjectName;
+  $table?: CompatiableObjectName;
   $columns?: KeyColumns;
   $clustered: boolean = false;
   $unique: boolean = false;
@@ -3549,7 +3548,7 @@ export class CreateIndex extends Statement {
     if (this.$table) {
       throw new Error(`Table & Columns is defined.`);
     }
-    this.$table = ensureObjectName(table);
+    this.$table = table;
     if (this.$columns) {
       throw new Error(`Columns is defined.`);
     }
@@ -3681,7 +3680,7 @@ export const AlterTableAddBuilder: AlterTableAddBuilder = {
 
 export class AlterTable<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.ALTER_TABLE = STATEMENT_KIND.ALTER_TABLE;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   $adds?: AlterTableAddMember[];
 
@@ -3691,7 +3690,7 @@ export class AlterTable<N extends string = string> extends Statement {
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   private _assertDrop() {
@@ -3936,11 +3935,11 @@ export class CreateView<
   N extends string = string
 > extends Statement {
   $kind: STATEMENT_KIND.CREATE_VIEW = STATEMENT_KIND.CREATE_VIEW;
-  $name: ObjectName;
+  $name: CompatiableObjectName<N>;
   $body?: Select<T>;
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   as(select: Select<T>): this {
@@ -3954,11 +3953,11 @@ export class AlterView<
   N extends string = string
 > extends Statement {
   $kind: STATEMENT_KIND.ALTER_VIEW = STATEMENT_KIND.ALTER_VIEW;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
   $body?: Select<T>;
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   as(select: Select<T>) {
@@ -4041,13 +4040,13 @@ export class Block extends Statement {
 
 export class CreateProcedure extends Statement {
   $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
-  $name: ObjectName;
+  $name: CompatiableObjectName;
   $params?: ProcedureParameter[];
   $body?: Statement;
 
   constructor(name: CompatiableObjectName) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   params(params: ProcedureParameter[]) {
@@ -4086,14 +4085,14 @@ export class AlterProcedure extends Statement {
 export type FunctinKind = 'SCALAR' | 'TABLE';
 export class CreateFunction extends Statement {
   $kind: STATEMENT_KIND.CREATE_FUNCTION = STATEMENT_KIND.CREATE_FUNCTION;
-  $name: ObjectName;
+  $name: CompatiableObjectName;
   $params?: VariantDeclare[];
   $body?: Statement[];
   $returns?: VariantDeclare | TableVariantDeclare | DbType;
 
   constructor(name: CompatiableObjectName) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   params(params: VariantDeclare[]): this;
@@ -4140,52 +4139,52 @@ export class AlterFunction extends Statement {
 
 export class DropTable<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_TABLE = STATEMENT_KIND.DROP_TABLE;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 }
 
 export class DropView<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_VIEW = STATEMENT_KIND.DROP_VIEW;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 }
 
 export class DropProcedure<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_PROCEDURE = STATEMENT_KIND.DROP_PROCEDURE;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 }
 
 export class DropFunction<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_FUNCTION = STATEMENT_KIND.DROP_FUNCTION;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 }
 
 export class DropIndex<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_INDEX = STATEMENT_KIND.DROP_INDEX;
-  $table: ObjectName;
+  $table: CompatiableObjectName;
   $name: N;
 
   constructor(table: CompatiableObjectName, name: N) {
     super();
-    this.$table = ensureObjectName(table);
+    this.$table = table;
     this.$name = name;
   }
 }
@@ -4195,13 +4194,13 @@ export class CreateSequence<
   N extends string = string
 > extends Statement {
   $kind: STATEMENT_KIND.CREATE_SEQUENCE = STATEMENT_KIND.CREATE_SEQUENCE;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
   $startValue: Literal<number> = SqlBuilder.literal(0);
   $increment: Literal<number> = SqlBuilder.literal(1);
   $dbType?: DbType;
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 
   as<T extends DbType>(type: T): CreateSequence<TsTypeOf<T>, N> {
@@ -4222,11 +4221,11 @@ export class CreateSequence<
 
 export class DropSequence<N extends string = string> extends Statement {
   $kind: STATEMENT_KIND.DROP_SEQUENCE = STATEMENT_KIND.DROP_SEQUENCE;
-  $name: ObjectName<N>;
+  $name: CompatiableObjectName<N>;
 
   constructor(name: CompatiableObjectName<N>) {
     super();
-    this.$name = ensureObjectName(name);
+    this.$name = name;
   }
 }
 

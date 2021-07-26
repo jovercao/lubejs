@@ -90,6 +90,7 @@ function setContextOptions(
   if (!options) {
     options = {};
     Reflect.defineMetadata(contextOptionsKey, options, target);
+    modelBuilder.decoratorContext(target);
   }
   Object.assign(options, data);
 }

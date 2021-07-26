@@ -5,6 +5,7 @@ import { createContext, loadConfig } from './lube';
 import { resolve } from 'path'
 import { metadataStore } from './metadata';
 import { DbContextConstructor } from './db-context';
+import { outputCommand } from './util';
 
 const OPTIONS_FILE = '.lubejs';
 
@@ -36,6 +37,7 @@ async function createMigrateCli(options?: {
     Ctr = metadataStore.defaultContext.class;
   }
   const db = await createContext(Ctr);
+  db.lube.on('command', outputCommand);
   const cli = await new MigrateCli(db, migrateDir);
   return cli;
 }
