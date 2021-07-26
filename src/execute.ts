@@ -3,7 +3,6 @@ import { assert, ensureTable, isDocument, isScalar, isStatement } from './util';
 import { EventEmitter } from 'events';
 import {
   Parameter,
-  AST,
   Select,
   CompatibleExpression,
   Condition,
@@ -30,9 +29,7 @@ import {
 import { SqlUtil } from './sql-util';
 import { INSERT_MAXIMUM_ROWS } from './constants';
 import { Lube } from './lube';
-import { Queryable } from './queryable';
-import { Name, RowObject, Scalar } from './types';
-import { makeRowset } from './metadata';
+import { CompatiableObjectName, RowObject, Scalar } from './types';
 
 const { and, doc, or } = SQL;
 
@@ -295,18 +292,18 @@ export class Executor {
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: Name | Table<T, string>,
+    table: CompatiableObjectName | Table<T, string>,
     values: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
   ): Promise<number>;
   /**
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: Name | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T, string>,
     values: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T, string>,
     fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value:
       | InputObject<T>
@@ -315,12 +312,12 @@ export class Executor {
       | CompatibleExpression[][]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T, string>,
     fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: Name | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T, string>,
     arg2:
       | ColumnsOf<T>[]
       | Field<Scalar, ColumnsOf<T>>[]
@@ -387,7 +384,7 @@ export class Executor {
   }
 
   async find<T extends RowObject = any>(
-    table: ProxiedTable<T, string> | Name,
+    table: ProxiedTable<T, string> | CompatiableObjectName,
     where:
       | Condition
       | WhereObject<T>
@@ -419,16 +416,16 @@ export class Executor {
    * @param options
    */
   async select<T extends RowObject = any, G extends InputObject = InputObject>(
-    table: Name | ProxiedTable<T>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     results: (rowset: Readonly<Rowset<T>>) => G,
     options?: SelectOptions<T>
   ): Promise<RowObjectFrom<G>[]>;
   async select<T extends RowObject = any>(
-    table: Name | ProxiedTable<T>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
   async select(
-    table: Name | ProxiedTable,
+    table: CompatiableObjectName | ProxiedTable,
     arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
@@ -562,7 +559,7 @@ export class Executor {
   }
 
   async delete<T extends RowObject = any>(
-    table: ProxiedTable<T> | Name,
+    table: ProxiedTable<T> | CompatiableObjectName,
     where?:
       | WhereObject<T>
       | Condition
@@ -582,7 +579,7 @@ export class Executor {
     T extends RowObject = never,
     O extends [T, ...RowObject[]] = [T]
   >(
-    spName: Name | Procedure<R, O>,
+    spName: CompatiableObjectName | Procedure<R, O>,
     params?: CompatibleExpression[]
   ): Promise<QueryResult<O[0], R, O>> {
     const sql = SQL.execute<R, O>(spName, params);
@@ -596,7 +593,7 @@ export class Executor {
   //  * 遵守不存在的则插入、已存在的则更新的原则；
   //  */
   // async save<T extends RowObject = any>(
-  //   table: Table<T, string> | Name,
+  //   table: Table<T, string> | CompatiableObjectName,
   //   keyFields: FieldsOf<T>[],
   //   items: T[] | T
   // ): Promise<number> {

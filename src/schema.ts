@@ -11,12 +11,10 @@
  * 关联关系等因缺乏信息完美无法生成，需要手动添加
  **********************************/
 
-import { Document, SqlBuilder } from './ast';
+import { SqlBuilder } from './ast';
 import { SqlUtil } from './sql-util';
-import { PARAMETER_DIRECTION } from './constants';
 import {
   ColumnMetadata,
-  DbContextMetadata,
   ForeignRelation,
   IndexMetadata,
   isForeignRelation,
@@ -25,13 +23,13 @@ import {
   TableEntityMetadata,
   ViewEntityMetadata,
 } from './metadata';
-import { DbType, Scalar, Name } from './types';
 import {
   compareObject,
   EqulsCompartor,
   isChanged,
   ObjectDifference,
 } from './util/compare';
+import { DbContext } from './db-context';
 
 /**
  * 外键架构
@@ -50,7 +48,11 @@ export interface ForeignKeySchema {
   /**
    * 主键表
    */
-  referenceTable: Name;
+  referenceTable: string;
+  /**
+   * 主键表所在架构
+   */
+  referenceSchema: string;
   /**
    * 引用列（主键列）
    */
@@ -124,7 +126,8 @@ export interface DatabaseSchema {
 
 export interface FunctionSchema {
   comment?: string;
-  name: Name;
+  name: string;
+  schema: string;
   scripts: string;
 }
 
@@ -136,7 +139,8 @@ export interface FunctionSchema {
 // }
 
 export interface ProcedureSchema {
-  name: Name;
+  name: string;
+  schema: string;
   scripts: string;
   comment?: string;
 }
@@ -207,7 +211,12 @@ export interface TableSchema {
   /**
    * 数据库对象名称
    */
-  name: Name;
+  name: string;
+
+  /**
+   * 所在架构
+   */
+  schema: string;
 
   /**
    * 摘要说明
@@ -250,7 +259,8 @@ export interface TableSchema {
 export interface SequenceSchema {
   comment?: string;
   type: string;
-  name: Name;
+  name: string;
+  schema: string;
   startValue: number;
   increment: number;
 }
@@ -293,7 +303,11 @@ export interface ViewSchema {
   /**
    * 视图名称
    */
-  name: Name;
+  name: string;
+  /**
+   * 所在架构
+   */
+  schema: string;
   /**
    * 声明语句
    */
@@ -388,24 +402,26 @@ export interface IndexSchema {
  * @param context
  * @returns
  */
-export function generateSchema(
+export async function generateSchema(
   sqlUtil: SqlUtil,
-  context: DbContextMetadata
-): DatabaseSchema {
-  function genDbSchema(context: DbContextMetadata): DatabaseSchema {
+  context: DbContext
+): Promise<DatabaseSchema> {
+  const databaseName  = await context.lube.provider.getCurrentDatabase();
+  const defaultSchema = await context.lube.provider.getDefaultSchema();
+  function genDbSchema(context: DbContext): DatabaseSchema {
     // const tables = context.entities.filter(p => isTableEntity(p)).map(entity => genTableSchema(entity as TableEntityMetadata));
     const db: DatabaseSchema = {
-      name: context.database,
+      name: context.metadata.database,
       tables: [],
       views: [],
       procedures: [],
       functions: [],
       sequences: [],
       schemas: [],
-      comment: context.comment,
+      comment: context.metadata.comment,
     };
 
-    for (const entity of context.entities) {
+    for (const entity of context.metadata.entities) {
       if (isTableEntity(entity)) {
         db.tables.push(genTableSchema(entity));
       }
@@ -413,7 +429,7 @@ export function generateSchema(
 
     // const tableMap = map(db.tables, table => table.name);
 
-    for (const entity of context.entities) {
+    for (const entity of context.metadata.entities) {
       // if (isTableEntity(entity)) {
       //   const foreignKeys = entity.relations
       //     .filter((p) => isForeignRelation(p))
@@ -438,6 +454,7 @@ export function generateSchema(
       .map(p => genForeignKeySchema(entity, p as ForeignRelation));
     const table: TableSchema = {
       name: entity.tableName,
+      schema: entity.schema ?? defaultSchema,
       primaryKey: {
         name: entity.key.constraintName,
         isNonclustered: entity.key.isNonclustered,
@@ -485,6 +502,7 @@ export function generateSchema(
   ): ForeignKeySchema {
     const fk: ForeignKeySchema = {
       name: relation.constraintName,
+      referenceSchema: relation.referenceEntity.schema ?? defaultSchema,
       referenceTable: relation.referenceEntity.tableName,
       columns: [relation.foreignColumn.columnName],
       referenceColumns: [relation.referenceEntity.key.column.columnName],
@@ -510,6 +528,7 @@ export function generateSchema(
   function genViewSchema(view: ViewEntityMetadata): ViewSchema {
     const v: ViewSchema = {
       name: view.viewName,
+      schema: view.schema ?? sqlUtil.options.defaultSchema,
       scripts: sqlUtil.sqlify(
         SqlBuilder.createView(view.viewName).as(view.body)
       ).sql,

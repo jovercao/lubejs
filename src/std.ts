@@ -8,11 +8,8 @@ import {
   CompatibleExpression,
   Star,
   StandardExpression,
-  Statement,
-  StandardStatement,
-  Condition,
 } from './ast';
-import { Binary, DbType, TsTypeOf, Scalar, Name } from './types';
+import { Binary, DbType, TsTypeOf, Scalar } from './types';
 
 export interface Standard {
   count(expr: Star | CompatibleExpression<Scalar>): Expression<number>;

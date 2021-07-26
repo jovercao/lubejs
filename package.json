@@ -43,6 +43,7 @@
   },
   "homepage": "https://github.com/jovercao/lubejs#readme",
   "devDependencies": {
+    "@types/crypto-js": "^4.0.2",
     "@types/lodash": "^4.14.170",
     "@types/mocha": "^8.2.2",
     "@types/mockjs": "^1.0.3",
@@ -77,6 +78,7 @@
     "@types/uuid": "^8.3.0",
     "colors": "^1.4.0",
     "commander": "^7.2.0",
+    "crypto-js": "^4.1.1",
     "decimal.js-light": "^2.5.1",
     "install": "^0.13.0",
     "npm": "^7.19.1",

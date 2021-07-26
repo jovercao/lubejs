@@ -162,6 +162,7 @@ export interface KeyMetadata {
  * 表格实体元数据
  */
 export class EntityMetadata implements CommonEntityMetadata {
+  schema?: string;
   /**
    * 是否隐式生成的
    */
@@ -362,6 +363,10 @@ export interface ViewEntityMetadata extends EntityMetadata {
    */
   viewName: string;
   /**
+   * 架构名称
+   */
+  schema?: string;
+  /**
    * 查询,视图或者查询的SELECT语句
    */
   body: Select;
@@ -393,6 +398,9 @@ export interface QueryEntityMetadata extends EntityMetadata {
    * 查询,视图或者查询的SELECT语句
    */
   sql: Select;
+
+  schema: never;
+  name: never;
 
   /**
    * 是否只读

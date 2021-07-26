@@ -7,7 +7,7 @@ export const config: LubeConfig = {
   default: 'DB',
   migrateDir: 'migrates',
   configures: {
-    DB: {
+    _DB: {
       dialect: 'mssql',
       host: 'jover.wicp.net',
       user: 'sa',
@@ -15,7 +15,7 @@ export const config: LubeConfig = {
       database: 'Test',
       port: 2433,
     },
-    _DB: {
+    DB: {
       dialect: 'mssql',
       host: 'rancher.vm',
       user: 'sa',

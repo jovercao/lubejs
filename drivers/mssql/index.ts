@@ -1,9 +1,6 @@
-import sql from 'mssql';
 import { DIALECT, MssqlProvider } from './provider';
-import { DefaultSqlOptions } from './sql-util';
 import { Driver, DbProvider, register } from 'lubejs';
 import { MssqlConnectOptions } from './types'
-import { parseMssqlConfig } from './util'
 
 
 

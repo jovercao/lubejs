@@ -21,7 +21,7 @@ import {
   Declare,
   Delete,
   Execute,
-  Identifier,
+  DBObject,
   Insert,
   NamedSelect,
   Operation,
@@ -75,8 +75,8 @@ import {
   ForeignKey,
   UniqueKey,
   CheckConstraint,
-  TableColumnForAdd,
-  TableColumnForAlter,
+  ColumnDeclareForAdd,
+  ColumnDeclareForAlter,
   StandardStatement,
   CreateSequence,
   DropSequence,
@@ -97,7 +97,6 @@ import {
 
 import {
   CONDITION_KIND,
-  IDENTOFIER_KIND,
   OPERATION_KIND,
   $IsProxy,
   SQL_SYMBOLE,
@@ -111,10 +110,12 @@ import { FetchRelations } from './repository';
 
 import {
   Binary,
+  CompatiableFieldName,
+  CompatiableObjectName,
   DbType,
+  FieldName,
   ListType,
-  Name,
-  PathedName,
+  ObjectName,
   RowObject,
   Scalar,
   Uuid,
@@ -154,10 +155,10 @@ export function ensureExpression<T extends Scalar>(
  * 确保字段类型
  */
 export function ensureField<T extends Scalar, N extends string>(
-  name: Name<N> | Field<T, N>
+  name: N | Field<T, N>
 ): Field<T, N> {
   if (!(name instanceof AST)) {
-    return new Field(name);
+    return SqlBuilder.field(name);
   }
   return name;
 }
@@ -184,20 +185,20 @@ export function ensureTableVariant<T extends RowObject, N extends string>(
 //  * 确保表格类型
 //  */
 // export function ensureRowset<TModel extends RowObject>(
-//   name: Name | Table<TModel>
+//   name: CompatiableObjectName | Table<TModel>
 // ): Table<TModel>;
 // export function ensureRowset<TModel extends RowObject>(
-//   name: Name | Rowset<TModel>
+//   name: CompatiableObjectName | Rowset<TModel>
 // ): Rowset<TModel>;
 // export function ensureRowset<TModel extends RowObject>(
-//   name: Name | Rowset<TModel> | Table<TModel>
+//   name: CompatiableObjectName | Rowset<TModel> | Table<TModel>
 // ): Rowset<TModel> | Table<TModel> {
 //   if (name instanceof AST) return name;
 //   return new Table(name);
 // }
 
 export function ensureTable<T extends RowObject>(
-  nameOrTable: Name | ProxiedTable<T>
+  nameOrTable: CompatiableObjectName | ProxiedTable<T>
 ): ProxiedTable<T> {
   if (isProxiedTable<T>(nameOrTable)) {
     return nameOrTable;
@@ -206,7 +207,7 @@ export function ensureTable<T extends RowObject>(
 }
 
 export function ensureRowset<T extends RowObject>(
-  nameOrRowset: Name | ProxiedRowset<T>
+  nameOrRowset: CompatiableObjectName | ProxiedRowset<T>
 ): ProxiedRowset<T> {
   if (isProxiedRowset<T>(nameOrRowset)) {
     return nameOrRowset;
@@ -217,9 +218,9 @@ export function ensureRowset<T extends RowObject>(
 /**
  * 确保函数类型
  */
-export function ensureFunction<TName extends string>(
-  name: Name<TName> | Func<TName>
-): Func<TName> {
+export function ensureFunction<N extends string>(
+  name: CompatiableObjectName<N> | Func<N>
+): Func<N> {
   if (name instanceof AST) return name;
   return new Func(name);
 }
@@ -231,7 +232,7 @@ export function ensureProcedure<
   R extends Scalar,
   O extends RowObject[] = [],
   N extends string = string
->(name: Name<N> | Procedure<R, O, N>): Procedure<R, O, N> {
+>(name: CompatiableObjectName<N> | Procedure<R, O, N>): Procedure<R, O, N> {
   if (name instanceof AST) return name;
   return new Procedure(name);
 }
@@ -251,10 +252,7 @@ export function ensureCondition<T extends RowObject>(
   if (rowset) {
     if (typeof rowset === 'string' || Array.isArray(rowset)) {
       makeField = (key: string) =>
-        new Field([
-          ...(Array.isArray(rowset) ? rowset : [rowset]),
-          key,
-        ] as Name);
+        SqlBuilder.field(key, rowset);
     } else if (isRowset(rowset)) {
       makeField = (key: string) => (rowset as any).field(key);
     }
@@ -444,35 +442,53 @@ export function isProxiedRowset<T extends RowObject>(
 //   return cls;
 // }
 
-export function pickName(name: Name): string {
-  if (typeof name === 'string') {
-    return name;
-  }
-  return name[0];
-}
+// export function pickName(name: CompatiableObjectName): string {
+//   if (typeof name === 'string') {
+//     return name;
+//   }
+//   return name[0];
+// }
 
-export function joinName(parent: Name, child: Name): Name {
-  const name: string[] = [];
-  if (typeof child === 'string') {
-    name.push(child);
-  } else {
-    name.push(...child);
-  }
-
-  if (typeof parent === 'string') {
-    name.push(parent);
-  } else {
-    name.push(...parent);
-  }
-  return name as Name;
-}
-
-export function pathName<T extends string>(name: Name<T>): PathedName<T> {
-  if (typeof name === 'string') {
-    return [name];
+export function ensureObjectName<N extends string>(name: CompatiableObjectName<N>): ObjectName<N> {
+  if (typeof name ==='string') {
+    return {
+      name
+    }
   }
   return name;
 }
+
+export function ensureFieldName<N extends string>(name: CompatiableFieldName<N>): FieldName<N> {
+  if (typeof name === 'string') {
+    return {
+      name
+    }
+  }
+  return name;
+}
+
+// export function joinName(parent: CompatiableObjectName, child: CompatiableObjectName): CompatiableObjectName {
+//   const name: string[] = [];
+//   if (typeof child === 'string') {
+//     name.push(child);
+//   } else {
+//     name.push(...child);
+//   }
+
+//   if (typeof parent === 'string') {
+//     name.push(parent);
+//   } else {
+//     name.push(...parent);
+//   }
+//   return name as Name;
+// }
+
+// export function pathName<T extends string>(name: CompatiableObjectName<T>): PathedName<T> {
+//   if (typeof name === 'string') {
+//     return [name];
+//   }
+//   return name;
+// }
 
 export function isPlainObject(obj: any): boolean {
   return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
@@ -635,11 +651,11 @@ export function isCheckConstraint(value: any): value is CheckConstraint {
   return value?.$type === SQL_SYMBOLE.CHECK_CONSTRAINT;
 }
 
-export function isCreateTableColumn(value: any): value is TableColumnForAdd {
+export function isCreateTableColumn(value: any): value is ColumnDeclareForAdd {
   return value?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN;
 }
 
-export function isAlterTableColumn(value: any): value is TableColumnForAlter {
+export function isAlterTableColumn(value: any): value is ColumnDeclareForAlter {
   return value?.$type === SQL_SYMBOLE.ALTER_TABLE_COLUMN;
 }
 
@@ -702,7 +718,7 @@ export function isCrudStatement(value: any): value is CrudStatement {
   );
 }
 
-export function isIdentifier(value: any): value is Identifier {
+export function isIdentifier(value: any): value is DBObject {
   return value?.$type === SQL_SYMBOLE.IDENTIFIER;
 }
 
@@ -717,7 +733,7 @@ export function isProxiedTable<T extends RowObject>(
 }
 
 export function isField(value: any): value is Field {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.FIELD;
+  return value?.$type === SQL_SYMBOLE.FIELD;
 }
 
 export function isLiteral(value: any): value is Literal {
@@ -745,7 +761,7 @@ export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
 }
 
 export function isTableVariant(value: any): value is TableVariant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.TABLE_VARIANT;
+  return  value.$type === SQL_SYMBOLE.TABLE_VARIANT;
 }
 
 export function isVariantDeclare(value: any): value is VariantDeclare {
@@ -759,7 +775,7 @@ export function isTableVariantDeclare(
 }
 
 export function isVariant(value: any): value is Variant {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.VARIANT;
+  return value.$type === SQL_SYMBOLE.VARIANT;
 }
 
 export function isRowset<T extends RowObject = {}>(
@@ -808,7 +824,7 @@ export function isBinaryOperation(value: Operation): value is BinaryOperation {
 // }
 
 export function isParameter(value: any): value is Parameter {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.PARAMETER;
+  return value?.$type === SQL_SYMBOLE.PARAMETER;
 }
 
 export function isStar(value: any): value is Star {
@@ -816,11 +832,11 @@ export function isStar(value: any): value is Star {
 }
 
 export function isBuiltIn(value: any): value is BuiltIn {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.BUILT_IN;
+  return value.$type === SQL_SYMBOLE.BUILT_IN;
 }
 
-export function isColumn(value: any): value is SelectColumn {
-  return isIdentifier(value) && value.$kind === IDENTOFIER_KIND.COLUMN;
+export function isSelectColumn(value: any): value is SelectColumn {
+  return value?.$type === SQL_SYMBOLE.SELECT_COLUMN;
 }
 
 export function isCondition(value: any): value is Condition {
@@ -1201,22 +1217,22 @@ export function outputCommand(cmd: Command): void {
  * @param name2
  * @returns
  */
-export function isNameEquals(name1: Name, name2: Name): boolean {
+export function isSameObject(name1: CompatiableObjectName, name2: CompatiableObjectName): boolean {
   let schema1: string | undefined;
   let table1: string;
   let schema2: string | undefined;
   let table2: string;
 
-  if (Array.isArray(name1)) {
-    schema1 = name1[1];
-    table1 = name1[0];
+  if (typeof name1 === 'object') {
+    schema1 = name1.schema;
+    table1 = name1.name;
   } else {
     table1 = name1;
   }
 
-  if (Array.isArray(name2)) {
-    schema2 = name2[1];
-    table2 = name2[0];
+  if (typeof name2 ==='object') {
+    schema2 = name2.schema;
+    table2 = name2.name;
   } else {
     table2 = name2;
   }

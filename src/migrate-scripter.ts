@@ -1,15 +1,13 @@
-import { DbType, Name } from './types';
+import { CompatiableObjectName, DbType } from './types';
 import {
   SqlBuilder as SQL,
   CreateTableMember,
   CreateTableMemberBuilder,
   Statement,
-  TableColumnForAdd,
-  TableColumnForAlter,
+  ColumnDeclareForAdd,
+  ColumnDeclareForAlter,
   KeyColumn,
-  SqlBuilder,
 } from './ast';
-import { DbContextMetadata } from './metadata';
 import { MigrateBuilder } from './migrate-builder';
 import {
   CheckConstraintSchema,
@@ -21,14 +19,12 @@ import {
   IndexSchema,
   KeyColumnSchema,
   PrimaryKeySchema,
-  SchemaDifference,
   SequenceSchema,
   TableSchema,
   UniqueConstraintSchema,
 } from './schema';
 import { ObjectDifference } from './util/compare';
-import { isNameEquals } from './util'
-import { takeRight } from 'lodash'
+import { SqlUtil } from './sql-util';
 
 export abstract class MigrateScripter {
   abstract insertSeedData(table: TableSchema, data: any[]): void;
@@ -41,36 +37,36 @@ export abstract class MigrateScripter {
 
   abstract dropDatabase(name: string): void
 
-  abstract createIndex(table: Name, index: IndexSchema): void;
+  abstract createIndex(table: CompatiableObjectName, index: IndexSchema): void;
 
-  abstract dropIndex(table: Name, name: string): void;
+  abstract dropIndex(table: CompatiableObjectName, name: string): void;
 
-  abstract addForeignKey(table: Name, fk: ForeignKeySchema): void;
+  abstract addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema): void;
 
-  abstract dropForeignKey(table: Name, name: string): void;
+  abstract dropForeignKey(table: CompatiableObjectName, name: string): void;
 
-  abstract commentColumn(table: Name<string>, name: string, comment?: string): void;
+  abstract commentColumn(table: CompatiableObjectName<string>, name: string, comment?: string): void;
 
-  abstract commentTable(table: Name, comment?: string): void;
+  abstract commentTable(table: CompatiableObjectName, comment?: string): void;
 
-  abstract commentIndex(table: Name, name: string, comment?: string): void;
+  abstract commentIndex(table: CompatiableObjectName, name: string, comment?: string): void;
 
-  abstract commentConstraint(table: Name, name: string, comment?: string): void;
+  abstract commentConstraint(table: CompatiableObjectName, name: string, comment?: string): void;
 
-  abstract commentForeignKey(table: Name, name: string, comment?: string): void;
+  abstract commentForeignKey(table: CompatiableObjectName, name: string, comment?: string): void;
 
-  abstract setDefaultValue(table: Name, column: string, defaultValue: string): void;
+  abstract setDefaultValue(table: CompatiableObjectName, column: string, defaultValue: string): void;
 
-  abstract dropDefaultValue(table: Name, column: string): void;
+  abstract dropDefaultValue(table: CompatiableObjectName, column: string): void;
 
-  abstract setAutoRowflag(table: Name, column: string): void;
+  abstract setAutoRowflag(table: CompatiableObjectName, column: string): void;
 
-  abstract dropAutoRowflag(table: Name, column: string): void;
+  abstract dropAutoRowflag(table: CompatiableObjectName, column: string): void;
 
-  abstract dropIdentity(table: Name, column: string): void;
+  abstract dropIdentity(table: CompatiableObjectName, column: string): void;
 
   abstract setIdentity(
-    table: Name,
+    table: CompatiableObjectName,
     column: string,
     start: number,
     increment: number
@@ -80,24 +76,24 @@ export abstract class MigrateScripter {
 
   abstract alterTable(tableChanges: ObjectDifference<TableSchema>): void
 
-  abstract dropTable(name: Name): void;
+  abstract dropTable(name: CompatiableObjectName): void;
 
   abstract createSequence(sequence: SequenceSchema): void;
 
-  abstract dropSequence(name: Name): void;
+  abstract dropSequence(name: CompatiableObjectName): void;
 
-  abstract addColumn(table: Name, schema: ColumnSchema): void;
+  abstract addColumn(table: CompatiableObjectName, schema: ColumnSchema): void;
 
-  abstract dropColumn(table: Name, name: string): void;
+  abstract dropColumn(table: CompatiableObjectName, name: string): void;
 
-  abstract alterColumn(table: Name, column: ColumnSchema): void;
+  abstract alterColumn(table: CompatiableObjectName, column: ColumnSchema): void;
 
-  abstract addPrimaryKey(table: Name, pk: PrimaryKeySchema): void;
-  abstract dropPrimaryKey(table: Name, name: string): void;
+  abstract addPrimaryKey(table: CompatiableObjectName, pk: PrimaryKeySchema): void;
+  abstract dropPrimaryKey(table: CompatiableObjectName, name: string): void;
 
-  abstract addConstraint(table: Name, constraint: ConstraintSchema): void;
+  abstract addConstraint(table: CompatiableObjectName, constraint: ConstraintSchema): void;
 
-  abstract dropConstraint(table: Name, constraint: ConstraintSchema): void;
+  abstract dropConstraint(table: CompatiableObjectName, constraint: ConstraintSchema): void;
 }
 
 export class StatementMigrateScripter extends MigrateScripter {
@@ -151,7 +147,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     ];
   }
 
-  createIndex(table: Name, index: IndexSchema): void {
+  createIndex(table: CompatiableObjectName, index: IndexSchema): void {
     this.middleCodes.push(
       this.builder.createIndex(index.name).on(
         table,
@@ -166,11 +162,11 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropIndex(table: Name, name: string): void {
+  dropIndex(table: CompatiableObjectName, name: string): void {
     this.middleCodes.push(this.builder.dropIndex(table, name));
   }
 
-  addForeignKey(table: Name, fk: ForeignKeySchema) {
+  addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema) {
     this.afterCodes.push(
       this.builder
         .alterTable(table)
@@ -183,11 +179,11 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropForeignKey(table: Name, name: string) {
+  dropForeignKey(table: CompatiableObjectName, name: string) {
     this.beforeCodes.push(this.builder.alterTable(table).dropForeignKey(name));
   }
 
-  commentColumn(table: Name<string>, name: string, comment?: string) {
+  commentColumn(table: CompatiableObjectName<string>, name: string, comment?: string) {
     if (comment) {
       this.middleCodes.push(
         this.builder.setColumnComment(table, name, comment)
@@ -197,7 +193,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     }
   }
 
-  commentTable(table: Name, comment?: string) {
+  commentTable(table: CompatiableObjectName, comment?: string) {
     if (comment) {
       this.middleCodes.push(this.builder.setTableComment(table, comment));
     } else {
@@ -205,7 +201,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     }
   }
 
-  commentIndex(table: Name, name: string, comment?: string) {
+  commentIndex(table: CompatiableObjectName, name: string, comment?: string) {
     if (comment) {
       this.middleCodes.push(this.builder.setIndexComment(table, name, comment));
     } else {
@@ -213,7 +209,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     }
   }
 
-  commentConstraint(table: Name, name: string, comment?: string) {
+  commentConstraint(table: CompatiableObjectName, name: string, comment?: string) {
     if (comment) {
       this.middleCodes.push(
         this.builder.setConstraintComment(table, name, comment)
@@ -223,7 +219,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     }
   }
 
-  commentForeignKey(table: Name, name: string, comment?: string) {
+  commentForeignKey(table: CompatiableObjectName, name: string, comment?: string) {
     if (comment) {
       this.middleCodes.push(
         this.builder.setConstraintComment(table, name, comment)
@@ -233,29 +229,29 @@ export class StatementMigrateScripter extends MigrateScripter {
     }
   }
 
-  setDefaultValue(table: Name, column: string, defaultValue: string) {
+  setDefaultValue(table: CompatiableObjectName, column: string, defaultValue: string) {
     this.middleCodes.push(
       this.builder.setDefaultValue(table, column, SQL.raw(defaultValue))
     );
   }
 
-  dropDefaultValue(table: Name, column: string) {
+  dropDefaultValue(table: CompatiableObjectName, column: string) {
     this.middleCodes.push(this.builder.dropDefaultValue(table, column));
   }
 
-  setAutoRowflag(table: Name, column: string) {
+  setAutoRowflag(table: CompatiableObjectName, column: string) {
     this.middleCodes.push(this.builder.setAutoRowflag(table, column));
   }
 
-  dropAutoRowflag(table: Name, column: string) {
+  dropAutoRowflag(table: CompatiableObjectName, column: string) {
     this.middleCodes.push(this.builder.dropAutoRowflag(table, column));
   }
 
-  dropIdentity(table: Name, column: string) {
+  dropIdentity(table: CompatiableObjectName, column: string) {
     this.middleCodes.push(this.builder.dropIdentity(table, column));
   }
 
-  setIdentity(table: Name, column: string, start: number, increment: number) {
+  setIdentity(table: CompatiableObjectName, column: string, start: number, increment: number) {
     this.middleCodes.push(
       this.builder.setIdentity(table, column, start, increment)
     );
@@ -533,7 +529,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     // }
   }
 
-  dropTable(name: Name): void {
+  dropTable(name: CompatiableObjectName): void {
     this.middleCodes.push(this.builder.dropTable(name));
   }
 
@@ -547,11 +543,11 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropSequence(name: Name): void {
+  dropSequence(name: CompatiableObjectName): void {
     this.middleCodes.push(this.builder.dropSequence(name));
   }
 
-  addColumn(table: Name, schema: ColumnSchema): void {
+  addColumn(table: CompatiableObjectName, schema: ColumnSchema): void {
     this.middleCodes.push(
       this.builder
         .alterTable(table)
@@ -559,11 +555,11 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropColumn(table: Name, name: string): void {
+  dropColumn(table: CompatiableObjectName, name: string): void {
     this.middleCodes.push(this.builder.alterTable(table).dropColumn(name));
   }
 
-  alterColumn(table: Name, column: ColumnSchema): void {
+  alterColumn(table: CompatiableObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
       this.builder
         .alterTable(table)
@@ -571,7 +567,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  addPrimaryKey(table: Name, pk: PrimaryKeySchema): void {
+  addPrimaryKey(table: CompatiableObjectName, pk: PrimaryKeySchema): void {
     this.middleCodes.push(
       this.builder.alterTable(table).add(({ primaryKey }) =>
         primaryKey(pk.name).on(
@@ -587,11 +583,11 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropPrimaryKey(table: Name, name: string): void {
+  dropPrimaryKey(table: CompatiableObjectName, name: string): void {
     this.middleCodes.push(this.builder.alterTable(table).dropPrimaryKey(name));
   }
 
-  addConstraint(table: Name, constraint: ConstraintSchema): void {
+  addConstraint(table: CompatiableObjectName, constraint: ConstraintSchema): void {
     this.middleCodes.push(
       this.builder.alterTable(table).add(g => {
         switch (constraint.kind) {
@@ -612,7 +608,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
   }
 
-  dropConstraint(table: Name, constraint: ConstraintSchema): void {
+  dropConstraint(table: CompatiableObjectName, constraint: ConstraintSchema): void {
     switch (constraint.kind) {
       case 'CHECK':
         this.middleCodes.push(
@@ -628,10 +624,10 @@ export class StatementMigrateScripter extends MigrateScripter {
   }
 
   private tableColumnForAlter(
-    g: (name: string, type: DbType) => TableColumnForAlter,
+    g: (name: string, type: DbType) => ColumnDeclareForAlter,
     schema: ColumnSchema
-  ): TableColumnForAlter {
-    const col: TableColumnForAlter = g(schema.name, DbType.raw(schema.type));
+  ): ColumnDeclareForAlter {
+    const col: ColumnDeclareForAlter = g(schema.name, DbType.raw(schema.type));
     if (schema.isNullable) {
       col.null();
     } else {
@@ -644,7 +640,7 @@ export class StatementMigrateScripter extends MigrateScripter {
     column: CreateTableMemberBuilder['column'],
     schema: ColumnSchema
   ): CreateTableMember {
-    const col: TableColumnForAdd = column(schema.name, DbType.raw(schema.type));
+    const col: ColumnDeclareForAdd = column(schema.name, DbType.raw(schema.type));
     if (schema.isNullable) {
       col.null();
     } else {
@@ -667,7 +663,7 @@ export class StatementMigrateScripter extends MigrateScripter {
 }
 
 export class ProgramMigrateScripter implements MigrateScripter {
-  constructor(private resolverType?: (type: string) => DbType) {
+  constructor(private sqlUtil: SqlUtil, private resolverType?: (type: string) => DbType) {
 
   }
 
@@ -681,28 +677,28 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   alterDatabase(database: DatabaseSchema): void {
-    this.beforeCodes.push(`builder.alterDatabase(${this.codify(database.name)}).collate(${database.collate})`);
+    this.beforeCodes.push(`builder.alterDatabase(${this.sqlUtil.sqlifyObjectName(database.name)}).collate(${database.collate})`);
   }
-  commentColumn(table: Name<string>, name: string, comment?: string): void {
+  commentColumn(table: CompatiableObjectName<string>, name: string, comment?: string): void {
     this.comment('Column', table, name, comment);
   }
-  commentTable(table: Name<string>, comment?: string): void {
+  commentTable(table: CompatiableObjectName<string>, comment?: string): void {
     this.comment('Table', table, comment);
   }
-  commentIndex(table: Name<string>, name: string, comment?: string): void {
+  commentIndex(table: CompatiableObjectName<string>, name: string, comment?: string): void {
     this.comment('Index', table, name, comment);
   }
-  commentConstraint(table: Name<string>, name: string, comment?: string): void {
+  commentConstraint(table: CompatiableObjectName<string>, name: string, comment?: string): void {
     this.comment('Constraint', table, name, comment);
   }
-  commentForeignKey(table: Name<string>, name: string, comment?: string): void {
+  commentForeignKey(table: CompatiableObjectName<string>, name: string, comment?: string): void {
     this.comment('Constraint', table, name, comment);
   }
 
-  setAutoRowflag(table: Name<string>, column: string): void {
+  setAutoRowflag(table: CompatiableObjectName<string>, column: string): void {
     throw new Error('Method not implemented.')
   }
-  dropAutoRowflag(table: Name<string>, column: string): void {
+  dropAutoRowflag(table: CompatiableObjectName<string>, column: string): void {
     throw new Error('Method not implemented.')
   }
 
@@ -731,7 +727,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
     column: ColumnSchema,
     prefix: string = 'builder.'
   ): string {
-    let sql = `${prefix}column(${this.codify(column.name)}, ${this.stringifyType(
+    let sql = `${prefix}column(${this.sqlUtil.sqlifyObjectName(column.name)}, ${this.stringifyType(
       column.type
     )})`;
     if (column.isNullable) {
@@ -769,7 +765,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
       columns
         .map(
           ({ name, isAscending }) =>
-            `${this.codify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+            `${this.sqlUtil.sqlifyObjectName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
         )
         .join(', ') +
       ' }'
@@ -778,10 +774,10 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   private primaryKey(key: PrimaryKeySchema): string {
     let sql = `builder.primaryKey(${
-      key.name ? this.codify(key.name) : ''
+      key.name ? this.sqlUtil.sqlifyObjectName(key.name) : ''
     }).on({ ${key.columns.map(
       ({ name, isAscending }) =>
-        `${this.codify(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
+        `${this.sqlUtil.sqlifyObjectName(name)}: '${isAscending ? 'ASC' : 'DESC'}'`
     )} })`;
     if (key.isNonclustered) {
       sql += '.withNoclustered()';
@@ -790,28 +786,16 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   private foreignKey(fk: ForeignKeySchema): string {
-    let code = `builder.foreignKey(${this.codify(fk.name)}).on(${fk.columns
-      .map(column => this.codify(column))
-      .join(', ')}).reference(${this.codify(
+    let code = `builder.foreignKey(${this.sqlUtil.sqlifyObjectName(fk.name)}).on(${fk.columns
+      .map(column => this.sqlUtil.sqlifyObjectName(column))
+      .join(', ')}).reference(${this.sqlUtil.sqlifyObjectName(
       fk.referenceTable
-    )}, [${fk.referenceColumns.map(column => this.codify(column)).join(', ')}])`;
+    )}, [${fk.referenceColumns.map(column => this.sqlUtil.sqlifyObjectName(column)).join(', ')}])`;
 
     if (fk.isCascade) {
       code += 'deleteCascade()';
     }
     return code;
-  }
-
-  private codify(name: Name | undefined): string {
-    if (name === '') return "''";
-    if (!name) return '';
-
-    if (typeof name === 'string') return `'${name.replace(/''/g, "''")}'`;
-    return (
-      '[' +
-      name.map(node => `'${node.replace(/'/g, "\\'")}'`).join(', ') +
-      ']'
-    );
   }
 
   private constraint(cst: ConstraintSchema): void {
@@ -839,7 +823,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
     if (table.constraints?.length > 0) {
       table.constraints.map(cst => this.constraint(cst));
     }
-    let sql = `builder.createTable(${this.codify(
+    let sql = `builder.createTable(${this.sqlUtil.sqlifyObjectName(
       table.name
     )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
@@ -1098,149 +1082,149 @@ export class ProgramMigrateScripter implements MigrateScripter {
     }
   }
 
-  dropPrimaryKey(table: Name<string>, name: string) {
+  dropPrimaryKey(table: CompatiableObjectName<string>, name: string) {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(table)}).drop(builder => builder.primaryKey(${this.codify(name)}))`
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).drop(builder => builder.primaryKey(${this.sqlUtil.sqlifyObjectName(name)}))`
     );
   }
 
-  dropTable(name: Name): void {
+  dropTable(name: CompatiableObjectName): void {
     this.middleCodes.push(`builder.dropTable(${JSON.stringify(name)})`);
   }
 
-  dropColumn(table: Name, column: string): void {
+  dropColumn(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
         table
-      )}).drop(builder => builder.column(${this.codify(column)}))`
+      )}).drop(builder => builder.column(${this.sqlUtil.sqlifyObjectName(column)}))`
     );
   }
 
-  setAutoFlag(table: Name<string>, column: string): void {
+  setAutoFlag(table: CompatiableObjectName<string>, column: string): void {
     this.middleCodes.push(
-      `builder.setAutoRowflag(${this.codify(table)}, ${this.codify(column)})`
+      `builder.setAutoRowflag(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
     );
   }
 
-  dropAutoFlag(table: Name<string>, column: string): void {
+  dropAutoFlag(table: CompatiableObjectName<string>, column: string): void {
     this.middleCodes.push(
-      `builder.dropAutoRowflag(${this.codify(table)}, ${this.codify(column)})`
+      `builder.dropAutoRowflag(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
     );
   }
 
   dropConstraint(
-    table: Name,
+    table: CompatiableObjectName,
     constraint: ConstraintSchema
   ): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(table)}).drop(builder => builder.${
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).drop(builder => builder.${
         {
           CHECK: 'check',
           UNIQUE: 'uniqueKey',
           PRIMARY_KEY: 'primaryKey',
         }[constraint.kind]
-      }(${this.codify(constraint.name)}))`
+      }(${this.sqlUtil.sqlifyObjectName(constraint.name)}))`
     );
   }
 
-  // function genCreateIndex(table: Name, index: IndexSchema): string {
+  // function genCreateIndex(table: CompatiableObjectName, index: IndexSchema): string {
   //   return `builder.createIndex(${genName(index.name)}).on(${genName(
   //     table
   //   )}, ${genKeyColumns(index.columns)})`;
   // }
 
-  addColumn(table: Name, column: ColumnSchema): void {
+  addColumn(table: CompatiableObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(table)}).add(builder => ${this.columnForAdd(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).add(builder => ${this.columnForAdd(
         column
       )})`
     );
   }
 
-  alterColumn(table: Name, column: ColumnSchema): void {
+  alterColumn(table: CompatiableObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
         table
       )}).alterColumn(column => ${this.columnForAlter(column, '')})`
     );
   }
 
   setDefaultValue(
-    table: Name,
+    table: CompatiableObjectName,
     column: string,
     defaultValue: string
   ): void {
     this.middleCodes.push(
-      `builder.setDefaultValue(${this.codify(table)}, ${this.codify(
+      `builder.setDefaultValue(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(
         column
       )}, SQL.raw(${JSON.stringify(defaultValue)}))`
     );
   }
 
-  dropDefaultValue(table: Name, column: string): void {
+  dropDefaultValue(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.dropDefaultValue(${this.codify(table)}, ${this.codify(column)})`
+      `builder.dropDefaultValue(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
     );
   }
 
   setIdentity(
-    table: Name,
+    table: CompatiableObjectName,
     column: string,
     startValue: number,
     increment: number
   ): void {
     this.middleCodes.push(
-      `builder.setIdentity(${this.codify(table)}, ${this.codify(
+      `builder.setIdentity(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(
         column
       )}, ${startValue}, ${increment})`
     );
   }
 
-  dropIdentity(table: Name, column: string): void {
+  dropIdentity(table: CompatiableObjectName, column: string): void {
     this.middleCodes.push(
-      `builder.dropIdentity(${this.codify(table)}, ${this.codify(column)})`
+      `builder.dropIdentity(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(column)})`
     );
   }
 
-  addForeignKey(table: Name, fk: ForeignKeySchema): void {
+  addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema): void {
     this.afterCodes.push(
-      `builder.alterTable(${this.codify(table)}).add(builder => ${this.foreignKey(fk)})`
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(table)}).add(builder => ${this.foreignKey(fk)})`
     );
   }
 
-  dropForeignKey(table: Name, name: string): void {
+  dropForeignKey(table: CompatiableObjectName, name: string): void {
     this.beforeCodes.push(
-      `builder.alterTable(${this.codify(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
         table
-      )}).drop(({ foreignKey }) => foreignKey(${this.codify(name)}))`
+      )}).drop(({ foreignKey }) => foreignKey(${this.sqlUtil.sqlifyObjectName(name)}))`
     );
   }
 
-  addConstraint(table: Name, constaint: ConstraintSchema): void {
+  addConstraint(table: CompatiableObjectName, constaint: ConstraintSchema): void {
     if (constaint.kind === 'CHECK') {
       this.middleCodes.push(
-        `builder.alterTable(${this.codify(
+        `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
           table
-        )}).add(({ check }) => check(${this.codify(constaint.name)}, SQL.raw(${
+        )}).add(({ check }) => check(${this.sqlUtil.sqlifyObjectName(constaint.name)}, SQL.raw(${
           constaint.sql
         }))`
       );
       return;
     }
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
         table
-      )}).add(({ uniqueKey }) => uniqueKey(${this.codify(
+      )}).add(({ uniqueKey }) => uniqueKey(${this.sqlUtil.sqlifyObjectName(
         constaint.name
       )}).on(${this.keyColumns(constaint.columns)}))`
     );
   }
 
-  addPrimaryKey(table: Name, key: PrimaryKeySchema): void {
+  addPrimaryKey(table: CompatiableObjectName, key: PrimaryKeySchema): void {
     this.middleCodes.push(
-      `builder.alterTable(${this.codify(
+      `builder.alterTable(${this.sqlUtil.sqlifyObjectName(
         table
-      )}).add(({ primaryKey }) => primaryKey(${this.codify(
+      )}).add(({ primaryKey }) => primaryKey(${this.sqlUtil.sqlifyObjectName(
         key.name
       )}).on(${this.keyColumns(key.columns)}))`
     );
@@ -1248,7 +1232,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
   createSequence(sequence: SequenceSchema): void {
     this.middleCodes.push(
-      `builder.createSequence(${this.codify(sequence.name)}).as(${this.stringifyType(
+      `builder.createSequence(${this.sqlUtil.sqlifyObjectName(sequence.name)}).as(${this.stringifyType(
         sequence.type
       )}).startsWith(${sequence.startValue}).incrementBy(${
         sequence.increment
@@ -1256,12 +1240,12 @@ export class ProgramMigrateScripter implements MigrateScripter {
     );
   }
 
-  dropSequence(name: Name): void {
-    this.middleCodes.push(`builder.dropSequence(${this.codify(name)})`);
+  dropSequence(name: CompatiableObjectName): void {
+    this.middleCodes.push(`builder.dropSequence(${this.sqlUtil.sqlifyObjectName(name)})`);
   }
 
-  createIndex(table: Name<string>, index: IndexSchema): void {
-    let sql = `builder.createIndex(${this.codify(index.name)}).on(${this.codify(
+  createIndex(table: CompatiableObjectName<string>, index: IndexSchema): void {
+    let sql = `builder.createIndex(${this.sqlUtil.sqlifyObjectName(index.name)}).on(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${this.keyColumns(index.columns)})`;
     if (index.isUnique) {
@@ -1274,24 +1258,24 @@ export class ProgramMigrateScripter implements MigrateScripter {
     this.middleCodes.push(sql);
   }
 
-  dropIndex(table: Name<string>, name: string): void {
-    this.middleCodes.push(`builder.dropIndex(${this.codify(table)}, ${this.codify(name)})`);
+  dropIndex(table: CompatiableObjectName<string>, name: string): void {
+    this.middleCodes.push(`builder.dropIndex(${this.sqlUtil.sqlifyObjectName(table)}, ${this.sqlUtil.sqlifyObjectName(name)})`);
   }
 
   comment(
     type: 'Table' | 'Procedure' | 'Function' | 'Schema',
-    object: Name<string>,
+    object: CompatiableObjectName<string>,
     comment?: string
   ): void;
   comment(
     type: 'Column' | 'Constraint' | 'Index',
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     member: string,
     comment?: string
   ): void;
   comment(
     type: string,
-    object: Name<string>,
+    object: CompatiableObjectName<string>,
     memberOrComment?: string,
     _comment?: string
   ): void {
@@ -1305,12 +1289,12 @@ export class ProgramMigrateScripter implements MigrateScripter {
     }
     let code: string;
     if (comment) {
-      code = `builder.set${type}Comment(${this.codify(object)}${
-        member ? `, ${this.codify(member)}` : ''
-      }, ${this.codify(comment)})`;
+      code = `builder.set${type}Comment(${this.sqlUtil.sqlifyObjectName(object)}${
+        member ? `, ${this.sqlUtil.sqlifyObjectName(member)}` : ''
+      }, ${this.sqlUtil.sqlifyObjectName(comment)})`;
     } else {
-      code = `builder.drop${type}Comment(${this.codify(object)}${
-        member ? `, ${this.codify(member)}` : ''
+      code = `builder.drop${type}Comment(${this.sqlUtil.sqlifyObjectName(object)}${
+        member ? `, ${this.sqlUtil.sqlifyObjectName(member)}` : ''
       })`;
     }
     this.middleCodes.push(code);
@@ -1326,7 +1310,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
       return row;
     });
     const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = `builder.insert(${this.codify(table.name)}).values(${JSON.stringify(
+    let sql = `builder.insert(${this.sqlUtil.sqlifyObjectName(table.name)}).values(${JSON.stringify(
       rows
     )})`;
     if (identityColumn) {
@@ -1336,7 +1320,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   createDatabase(database: DatabaseSchema): void {
-    let sql = `builder.createDatabase(${this.codify(database.name)})`;
+    let sql = `builder.createDatabase(${this.sqlUtil.sqlifyObjectName(database.name)})`;
     if (database.collate) {
       sql += `.collate(${database.collate})`;
     }
@@ -1344,11 +1328,11 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   useDatabase(name: string): void {
-    this.beforeCodes.push(`builder.use(${this.codify(name)})`);
+    this.beforeCodes.push(`builder.use(${this.sqlUtil.sqlifyObjectName(name)})`);
   }
 
   dropDatabase(name: string): void {
-    this.middleCodes.push(`builder.dropDatabase(${this.codify(name)})`);
+    this.middleCodes.push(`builder.dropDatabase(${this.sqlUtil.sqlifyObjectName(name)})`);
   }
 }
 
@@ -1397,13 +1381,6 @@ export function generateScripts(
   }
 }
 
-export function generateUpdateSnapshot(
-  source: DatabaseSchema,
-  target: DatabaseSchema
-): void {
-  // const scripter = new SnapshotMigrateScripter(target);
-}
-
 export function generateUpdateStatements(
   builder: MigrateBuilder,
   source: DatabaseSchema,
@@ -1418,9 +1395,10 @@ export function generateUpdateStatements(
 export function generateUpdatePrograme(
   source: DatabaseSchema | undefined,
   target: DatabaseSchema | undefined,
+  sqlUtil: SqlUtil,
   resolverType?: (type: string) => DbType
 ): string[] {
-  const scripter = new ProgramMigrateScripter(resolverType);
+  const scripter = new ProgramMigrateScripter(sqlUtil, resolverType);
   generateScripts(source, target, scripter);
   return scripter.getScripts();
 }

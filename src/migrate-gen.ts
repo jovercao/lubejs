@@ -2,6 +2,7 @@ import { generateUpdatePrograme } from './migrate-scripter'
 import {
   DatabaseSchema,
 } from './schema';
+import { SqlUtil } from './sql-util';
 import { DbType } from './types';
 
 // TODO: 可空约束名称处理
@@ -28,13 +29,14 @@ import { DbType } from './types';
 export function generateMigrate(
   name: string,
   source: DatabaseSchema,
-  target?: DatabaseSchema,
+  target: DatabaseSchema | undefined,
+  sqlUtil: SqlUtil,
   resolverType?: (rawType: string) => DbType
 ): string {
 
-  const upCodes = generateUpdatePrograme(source, target);
+  const upCodes = generateUpdatePrograme(source, target, sqlUtil);
 
-  const downCodes = generateUpdatePrograme(target, source);
+  const downCodes = generateUpdatePrograme(target, source, sqlUtil);
 
   return generateMigrateClass(name, upCodes, downCodes);
   // 勿删，此代码另有用处

@@ -19,7 +19,7 @@ import {
 import { DbType, Entity, ScalarType } from './types';
 import { modelBuilder } from './model-builder';
 import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
-import { ensureExpression, isDbType, parseConnectionUrl } from './util';
+import { ensureExpression, isDbType, isExtendsOf, parseConnectionUrl } from './util';
 import { LubeConfig } from './migrate-cli';
 import { ConnectOptions } from './lube';
 
@@ -212,14 +212,20 @@ export function query<T extends Entity>(
 
 export function comment(
   msg: string
-): (target: EntityConstructor | Object, key?: string) => void {
-  return function (target: EntityConstructor | Object, key?: string) {
-    if (key !== undefined) {
-      setColumnOptions(target.constructor as EntityConstructor, key, {
-        comment: msg,
-      });
+): (target: EntityConstructor | DbContextConstructor | Object, key?: string) => void {
+  return function (target: EntityConstructor | DbContextConstructor | Object, key?: string) {
+    if (typeof target === 'function') {
+      if (isExtendsOf(target, DbContext)) {
+        setContextOptions(target as DbContextConstructor, {
+          comment: msg
+        })
+      } else {
+        setEntityOptions(target as EntityConstructor, {
+          comment: msg,
+        });
+      }
     } else {
-      setEntityOptions(target as EntityConstructor, {
+      setColumnOptions(target.constructor as EntityConstructor, key!, {
         comment: msg,
       });
     }

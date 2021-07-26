@@ -135,6 +135,16 @@ export interface DbProvider {
    * 获取数据库架构
    */
   getSchema(): Promise<DatabaseSchema>;
+
+  /**
+   * 获取当前连接的数据库名称
+   */
+  getCurrentDatabase(): Promise<string>;
+
+  /**
+   * 获取当前连接的默认架构
+   */
+  getDefaultSchema(): Promise<string>;
 }
 
 /**

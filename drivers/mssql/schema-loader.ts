@@ -15,7 +15,7 @@ import {
   InputObject,
   ColumnsOf,
 } from 'lubejs';
-import { isNull } from './build-in';
+import { isNull, schema_name } from './build-in';
 import { fullType } from './types';
 
 const {
@@ -43,9 +43,9 @@ export async function load(
   name?: string
 ): Promise<DatabaseSchema | TableSchema> {
   async function getForeignKeys(tableId: number): Promise<ForeignKeySchema[]> {
-    const fk = table(['foreign_keys', 'sys']).as('fk');
-    const rt = table(['tables', 'sys']).as('rt');
-    const d = table(['extended_properties', 'sys']).as('d');
+    const fk = table({ name: 'foreign_keys', schema: 'sys' }).as('fk');
+    const rt = table({ name: 'tables', schema: 'sys' }).as('rt');
+    const d = table({ name: 'extended_properties', schema: 'sys' }).as('d');
 
     const sql = select({
       id: fk.object_id,
@@ -70,9 +70,9 @@ export async function load(
     for (const foreignKey of foreignKeys) {
       const foreignKeyId = Reflect.get(foreignKey, 'id');
       Reflect.deleteProperty(foreignKey, 'id');
-      const fkc = table(['foreign_key_columns', 'sys']).as('fkc');
-      const fc = table(['columns', 'sys']).as('fc');
-      const rc = table(['columns', 'sys']).as('rc');
+      const fkc = table({ name: 'foreign_key_columns', schema: 'sys' }).as('fkc');
+      const fc = table({ name: 'columns', schema: 'sys' }).as('fc');
+      const rc = table({ name: 'columns', schema: 'sys' }).as('rc');
 
       const colSql = select({
         fcolumn: fc.name,
@@ -103,8 +103,8 @@ export async function load(
    * 获取 表格及视图
    */
   async function getTables(atable?: string) {
-    const t = table(['tables', 'sys']).as('t');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const t = table({ name: 'tables', schema: 'sys' }).as('t');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
     const sql = select({
       id: t.object_id,
       name: t.name,
@@ -140,12 +140,14 @@ export async function load(
   }
 
   async function getViews(): Promise<ViewSchema[]> {
-    const v = table(['views', 'sys']).as('v');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const v = table({ name: 'views', schema: 'sys' }).as('v');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
     const sql = select({
       id: v.object_id,
       name: v.name,
-      body: '',
+      schema: s.name,
+      scripts: '',
       comment: p.value,
     })
       .from(v)
@@ -158,8 +160,8 @@ export async function load(
           .and(p.name.eq('MS_Description'))
       )
       .where(v.name.notIn(...excludeTables));
-
-    const views: ViewSchema[] = (await provider.lube.query(sql)).rows;
+    const result = (await provider.lube.query(sql)).rows;
+    const views: ViewSchema[] = result;
 
     for (const view of views) {
       // const cmd = provider.sqlUtil.sqlify(execute('sp_helptext', [view.name]));
@@ -172,25 +174,18 @@ export async function load(
       ).rows!;
       const key = Object.keys(rows[0])[0];
       const code = rows.map(row => Reflect.get(row, key)).join('\n');
-      const matched = new RegExp(
-        `^create[ \n]*${view.name}[ \n]*as[ \n]*`,
-        'i'
-      ).exec(code);
-      if (!matched) {
-        throw new Error(`视图代码不正确`);
-      }
-      view.scripts = code.substring(matched[0].length);
+      view.scripts = code;
     }
     return views;
   }
 
   async function getColumns(tableId: number): Promise<ColumnSchema[]> {
-    const c = table(['columns', 'sys']).as('c');
-    const t = table(['types', 'sys']).as('t');
-    const p = table(['extended_properties', 'sys']).as('p');
-    const m = table(['default_constraints', 'sys']).as('m');
-    const ic = table(['identity_columns', 'sys']).as('ic');
-    const cc = table(['computed_columns', 'sys']).as('cc');
+    const c = table({ name: 'columns', schema: 'sys' }).as('c');
+    const t = table({ name: 'types', schema: 'sys' }).as('t');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const m = table({ name: 'default_constraints', schema: 'sys' }).as('m');
+    const ic = table({ name: 'identity_columns', schema: 'sys' }).as('ic');
+    const cc = table({ name: 'computed_columns', schema: 'sys' }).as('cc');
 
     const sql = select({
       name: c.name,
@@ -274,9 +269,9 @@ export async function load(
   }
 
   async function getPrimaryKey(tableId: number): Promise<PrimaryKeySchema> {
-    const k = table(['key_constraints', 'sys']).as('k');
-    const i = table(['indexes', 'sys']).as('i');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const k = table({ name: 'key_constraints', schema: 'sys' }).as('k');
+    const i = table({ name: 'indexes', schema: 'sys' }).as('i');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
 
     const sql = select<PrimaryKeySchema>({
       name: k.name,
@@ -297,9 +292,9 @@ export async function load(
     const pk: PrimaryKeySchema = rows[0];
 
     if (pk) {
-      const ic = table(['index_columns', 'sys']).as('ic');
+      const ic = table({ name: 'index_columns', schema: 'sys' }).as('ic');
       // const ik = table('sysindexkeys').as('ik')
-      const c = table(['columns', 'sys']).as('c');
+      const c = table({ name: 'columns', schema: 'sys' }).as('c');
 
       const colSql = select({
         name: c.name,
@@ -322,9 +317,9 @@ export async function load(
   async function getUniqueConstraints(
     tableId: number
   ): Promise<UniqueConstraintSchema[]> {
-    const i = table(['indexes', 'sys']).as('i');
-    const p = table(['extended_properties', 'sys']).as('p');
-    const k = table(['key_constraints', 'sys']).as('k');
+    const i = table({ name: 'indexes', schema: 'sys' }).as('i');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const k = table({ name: 'key_constraints', schema: 'sys' }).as('k');
 
     const sql = select({
       name: k.name,
@@ -352,9 +347,9 @@ export async function load(
       comment: p.comment,
       columns: []
     }));
-    const ic = table(['index_columns', 'sys']).as('ic');
+    const ic = table({ name: 'index_columns', schema: 'sys' }).as('ic');
     // const ik = table('sysindexkeys').as('ik')
-    const c = table(['columns', 'sys']).as('c');
+    const c = table({ name: 'columns', schema: 'sys' }).as('c');
 
     const colSql = select({
       indexName: i.name,
@@ -379,8 +374,8 @@ export async function load(
   async function getCheckConstraints(
     tableId: number
   ): Promise<CheckConstraintSchema[]> {
-    const c = table(['check_constraints', 'sys']).as('c');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const c = table({ name: 'check_constraints', schema: 'sys' }).as('c');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
     const sql = select<CheckConstraintSchema>({
       kind: 'CHECK',
       name: c.name,
@@ -404,8 +399,8 @@ export async function load(
   }
 
   async function getIndexes(tableId: number): Promise<IndexSchema[]> {
-    const i = table(['indexes', 'sys']).as('i');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const i = table({ name: 'indexes', schema: 'sys' }).as('i');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
 
     const sql = select<IndexSchema>({
       name: i.name,
@@ -444,9 +439,9 @@ export async function load(
       } as IndexSchema)
     );
 
-    const ic = table(['index_columns', 'sys']).as('ic');
+    const ic = table({ name: 'index_columns', schema: 'sys' }).as('ic');
     // const ik = table('sysindexkeys').as('ik')
-    const c = table(['columns', 'sys']).as('c');
+    const c = table({ name: 'columns', schema: 'sys' }).as('c');
 
     const colSql = select({
       indexName: i.name,

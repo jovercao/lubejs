@@ -81,7 +81,6 @@ import {
   CreateSequence,
   DropSequence,
   Annotation,
-  Name,
   Break,
   Continue,
   If,
@@ -91,6 +90,9 @@ import {
   AlterDatabase,
   CreateDatabase,
   DropDatabase,
+  DropProcedure,
+  DropFunction,
+  DropIndex,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -113,6 +115,8 @@ export interface MssqlSqlOptions extends SqlOptions {}
  * 默认编译选项
  */
 export const DefaultSqlOptions: MssqlSqlOptions = {
+  defaultSchema: 'dbo',
+
   strict: true,
   /**
    * 标识符引用，左
@@ -617,17 +621,17 @@ export class MssqlStandardTranslator implements StandardTranslator {
 
 export class MssqlSqlUtil extends SqlUtil {
   protected sqlifyCreateDatabase(statement: CreateDatabase): string {
-    let sql = `CREATE DATABASE ${this.sqlifyName(statement.$name)}`;
+    let sql = `CREATE DATABASE ${this.sqlifyObjectName(statement.$name)}`;
     if (statement.$collate) {
       sql += ' COLLATE ' + statement.$collate
     }
     return sql;
   }
   protected sqlifyAlterDatabase(statement: AlterDatabase): string {
-    return `ALTER DATABASE ${this.sqlifyName(statement.$name)} COLLATE ${statement.$collate}`;
+    return `ALTER DATABASE ${this.sqlifyObjectName(statement.$name)} COLLATE ${statement.$collate}`;
   }
   protected sqlifyDropDatabase(statement: DropDatabase): string {
-    return `DROP DATABASE ${this.sqlifyName(statement.$name)}`;
+    return `DROP DATABASE ${this.sqlifyObjectName(statement.$name)}`;
   }
   protected sqlifyExecute(
     exec: Execute,
@@ -728,10 +732,10 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyDropSequence(statement: DropSequence): string {
-    return `DROP SEQUENCE ${this.sqlifyName(statement.$name)}`;
+    return `DROP SEQUENCE ${this.sqlifyObjectName(statement.$name)}`;
   }
   protected sqlifyCreateSequence(statement: CreateSequence): string {
-    return `CREATE SEQUENCE ${this.sqlifyName(
+    return `CREATE SEQUENCE ${this.sqlifyObjectName(
       statement.$name
     )} START WITH ${this.sqlifyLiteral(
       statement.$startValue.$value
@@ -760,8 +764,8 @@ export class MssqlSqlUtil extends SqlUtil {
       .join('\n  ')}\nEND`;
   }
 
-  protected sqlifyDropIndex(table: Name, name: string): string {
-    return `DROP INDEX ${this.sqlifyName(table)}.${this.quoted(name)}`;
+  protected sqlifyDropIndex(index: DropIndex): string {
+    return `DROP INDEX ${this.sqlifyObjectName(index.$table)}.${this.quoted(index.$name)}`;
   }
 
   protected sqlifyCreateIndex(statement: CreateIndex): string {
@@ -775,7 +779,7 @@ export class MssqlSqlUtil extends SqlUtil {
     assertAst(statement.$name, `Index name not found.`);
     assertAst(statement.$table, `Index on table not found.`);
     assertAst(statement.$columns, `Index columns not found.`);
-    sql += `INDEX ${this.sqlifyName(statement.$name)} ON ${this.sqlifyName(
+    sql += `INDEX ${this.sqlifyObjectName(statement.$name)} ON ${this.sqlifyObjectName(
       statement.$table
     )}(${statement.$columns
       .map(col => `${this.quoted(col.name)} ${col.sort}`)
@@ -783,12 +787,12 @@ export class MssqlSqlUtil extends SqlUtil {
     return sql;
   }
 
-  protected sqlifyDropFunction(name: Name): string {
-    return `DROP FUNCTION ${name}`;
+  protected sqlifyDropFunction(statement: DropFunction): string {
+    return `DROP FUNCTION ${this.sqlifyObjectName(statement.$name)}`;
   }
 
   protected sqlifyAlterFunction(statement: AlterFunction): string {
-    return `ALTER FUNCTION ${this.sqlifyName(statement.$name)}(${
+    return `ALTER FUNCTION ${this.sqlifyObjectName(statement.$name)}(${
       statement.$params
         ? statement.$params
             .map(param => this.sqlifyVariantDeclare(param))
@@ -806,7 +810,7 @@ export class MssqlSqlUtil extends SqlUtil {
       statement.$returns,
       'In CreateFunction statement, returns type not found.'
     );
-    return `CREATE FUNCTION ${this.sqlifyName(statement.$name)}(${
+    return `CREATE FUNCTION ${this.sqlifyObjectName(statement.$name)}(${
       statement.$params
         ? statement.$params
             .map(param => this.sqlifyVariantDeclare(param))
@@ -823,12 +827,12 @@ export class MssqlSqlUtil extends SqlUtil {
     } AS ${this.sqlifyStatements(statement.$body)}`;
   }
 
-  protected sqlifyDropProcedure(name: Name): string {
-    return `DROP PROCEDURE ${this.sqlifyName(name)}`;
+  protected sqlifyDropProcedure(statement: DropProcedure): string {
+    return `DROP PROCEDURE ${this.sqlifyObjectName(statement.$name)}`;
   }
 
   protected sqlifyAlterProcedure(statement: AlterProcedure): string {
-    return `ALTER PROCEDURE ${this.sqlifyName(statement.$name)} (${
+    return `ALTER PROCEDURE ${this.sqlifyObjectName(statement.$name)} (${
       statement.$params
         ? statement.$params
             .map(param => this.sqlifyProcedureParameter(param))
@@ -838,7 +842,7 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyCreateProcedure(statement: CreateProcedure): string {
-    return `CREATE PROCEDURE ${this.sqlifyName(statement.$name)} (${
+    return `CREATE PROCEDURE ${this.sqlifyObjectName(statement.$name)} (${
       statement.$params
         ? statement.$params
             .map(param => this.sqlifyProcedureParameter(param))
@@ -848,7 +852,7 @@ export class MssqlSqlUtil extends SqlUtil {
   }
 
   protected sqlifyAlterTable(statement: AlterTable<string>): string {
-    let sql = `ALTER TABLE ${this.sqlifyName(statement.$name)}`;
+    let sql = `ALTER TABLE ${this.sqlifyObjectName(statement.$name)}`;
     if (statement.$adds) {
       sql += ' ADD ';
       sql += statement.$adds
@@ -938,7 +942,7 @@ export class MssqlSqlUtil extends SqlUtil {
         (member.$name ? `CONSTRAINT ${this.quoted(member.$name)} ` : '') +
         `FOREIGN KEY(${member.$columns.map(col =>
           this.quoted(col)
-        )}) REFERENCES ${this.sqlifyName(
+        )}) REFERENCES ${this.sqlifyObjectName(
           member.$referenceTable
         )}(${member.$referenceColumns.map(col => this.quoted(col)).join(', ')})`
       );
@@ -957,7 +961,7 @@ export class MssqlSqlUtil extends SqlUtil {
       statement.$members,
       'CreateTable statement name not found.'
     );
-    let sql = `CREATE TABLE ${this.sqlifyName(statement.$name)} (`;
+    let sql = `CREATE TABLE ${this.sqlifyObjectName(statement.$name)} (`;
     sql += statement.$members
       .map(member => this.sqlifyTableMember(member))
       .join(',\n  ');
@@ -972,9 +976,9 @@ export class MssqlSqlUtil extends SqlUtil {
   ): string {
     const sql = super.sqlifyInsert(insert, params, parent);
     if (!insert.$identityInsert) return sql;
-    return `SET IDENTITY_INSERT ${this.sqlifyName(insert.$table.$name)} ON
+    return `SET IDENTITY_INSERT ${this.sqlifyObjectName(insert.$table.$name)} ON
 ${sql}
-SET IDENTITY_INSERT ${this.sqlifyName(insert.$table.$name)} OFF
+SET IDENTITY_INSERT ${this.sqlifyObjectName(insert.$table.$name)} OFF
 `;
   }
 

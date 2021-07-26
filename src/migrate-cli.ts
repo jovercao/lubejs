@@ -1,5 +1,5 @@
-import { existsSync, promises } from 'fs';
-import { basename, dirname, extname, join, resolve } from 'path';
+import { existsSync, promises, readFileSync } from 'fs';
+import path, { basename, dirname, extname, join, resolve } from 'path';
 import { Statement, SqlBuilder, SqlBuilder as SQL } from './ast';
 import { DbContext } from './db-context';
 import { DbContextMetadata, metadataStore } from './metadata';
@@ -12,10 +12,12 @@ import { Constructor, DbType } from './types';
 import { Command } from './execute';
 import { isRaw, isStatement, outputCommand } from './util';
 import { MigrateBuilder } from './migrate-builder';
-import { mkdir } from 'fs/promises';
+import { mkdir, readFile } from 'fs/promises';
 import 'colors';
 import { ConnectOptions } from './lube';
 import { generateUpdateStatements } from './migrate-scripter';
+import md5 from 'crypto-js/md5';
+import { SnapshotMigrateBuilder, SnapshotMigrateTracker } from './migrate-snapshot';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -84,12 +86,13 @@ function assertName(name: string): asserts name {
 export class MigrateCli {
   private async runMigrate(
     Ctr: Constructor<Migrate>,
-    action: 'up' | 'down'
+    action: 'up' | 'down',
+    builder: MigrateBuilder
   ): Promise<Statement[]> {
     const instance = new Ctr();
     const statements: Statement[] = [];
     const scripter = createMigrateBuilder(
-      this.dbContext.lube.provider.migrateBuilder,
+      builder,
       statements
     );
     if (action === 'up') {
@@ -209,23 +212,22 @@ export class MigrateCli {
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
     }
-    const metadata = metadataStore.getContext(
-      this.dbContext.constructor as Constructor<DbContext>
-    );
+    await this.snapshot();
     let lastMigrate = await this.getLastMigrate();
     let lastSchema: DatabaseSchema | undefined;
     if (lastMigrate) {
       lastSchema = (await import(lastMigrate.snapshotPath)).default;
     }
     // const dbSchema = await this.loadSchema();
-    const entityScheam = generateSchema(
+    const entityScheam = await generateSchema(
       this.dbContext.executor.sqlUtil,
-      metadata
+      this.dbContext
     );
     const code = generateMigrate(
       name,
       entityScheam,
       lastSchema,
+      this.dbContext.lube.sqlUtil,
       notResolverType
         ? undefined
         : this.dbContext.lube.provider.sqlUtil.parseRawType
@@ -345,7 +347,7 @@ export default schema;
         const info = migrates[i];
         statements.push(SQL.note(`Migrate up script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(Migrate, 'up');
+        const codes = await this.runMigrate(Migrate, 'up', this.dbContext.lube.provider.migrateBuilder);
         statements.push(...codes);
       }
     }
@@ -354,7 +356,7 @@ export default schema;
         const info = migrates[i];
         statements.push(SQL.note(`Migrate down script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(Migrate, 'down');
+        const codes = await this.runMigrate(Migrate, 'down', this.dbContext.lube.provider.migrateBuilder);
         statements.push(...codes);
       }
     }
@@ -455,9 +457,9 @@ export default schema;
     const metadata = metadataStore.getContext(
       this.dbContext.constructor as Constructor<DbContext>
     );
-    const metadataSchema = generateSchema(
+    const metadataSchema = await  generateSchema(
       this.dbContext.executor.sqlUtil,
-      metadata
+      this.dbContext
     );
 
     const dbSchema = await this.loadSchema();
@@ -489,7 +491,52 @@ export default schema;
    * 生成快照
    */
   async snapshot() {
+    let lastSchema: DatabaseSchema | undefined = undefined;
+    const list = await this._list();
+    let needRetrace = false;
+    let currentHash: string = '';
+    const defaultSchema = await this.dbContext.lube.provider.getDefaultSchema();
+    for (const item of list) {
+      if (!currentHash) {
+        currentHash = await getFileHash((await readFile(item.path)).toString('utf-8'));
+      } else {
+        currentHash = md5(currentHash + (await readFile(item.path)).toString('utf-8')).toString();
+      }
+      if (!needRetrace) {
+        if (!existsSync(item.snapshotPath)) {
+          needRetrace = true;
+        }
+      }
+      if (!needRetrace) {
+        // 较难哈希码
+        const { hash, schema: snapshot } = await import(item.snapshotPath);
+        if (!currentHash !== hash) {
+          needRetrace = true;
+        } else {
+          lastSchema = snapshot;
+          continue;
+        }
+      }
 
+      if (needRetrace) {
+        const tracker = new SnapshotMigrateTracker(lastSchema, this.dbContext.lube.provider.sqlUtil, defaultSchema);
+        const builder = new SnapshotMigrateBuilder();
+        const migrate = (await import(item.path)).default;
+        const statements = await this.runMigrate(migrate, 'up', builder);
+        tracker.run(statements)
+        lastSchema = tracker.database;
+        // 生成快照文件
+        await writeFile(
+          item.snapshotPath,
+          `
+import { DatabaseSchema } from 'lubejs';
+export const schema: DatabaseSchema = ${JSON.stringify(lastSchema)};
+export const hash: '${currentHash}';
+export default schema;
+`
+        );
+      }
+    }
   }
 }
 
@@ -504,4 +551,9 @@ async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
   if (!migrate)
     throw new Error(`Migrate 文件 ${info.path} ，无法找到迁移实例类。`);
   return migrate;
+}
+
+async function getFileHash(path: string): Promise<string> {
+  const data = await (await readFile(path)).toString('utf-8');
+  return md5(data).toString();
 }

@@ -6,7 +6,6 @@ import {
   CompatibleExpression,
   DbType,
   Expression,
-  Name,
   Scalar,
   TsTypeOf,
   SqlBuilder as SQL,
@@ -812,6 +811,23 @@ export const format: (
 ) => Expression<string> = makeInvoke('scalar', 'FORMAT', true);
 
 /**
+ * 获取当前数据库名称
+ */
+export const db_name: () => Expression<string> = makeInvoke(
+  'scalar',
+  'db_name',
+  true
+);
+/**
+ * 获取当前架构名称
+ */
+export const schema_name: () => Expression<string> = makeInvoke(
+  'scalar',
+  'schema_name',
+  true
+);
+
+/**
  * 系统重命名函数
  */
 export const sp_rename: (
@@ -829,7 +845,10 @@ export const sp_addextendedproperty: (
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
   level2?: string
-) => Statement = makeExec(['sp_addextendedproperty', 'sys'], false);
+) => Statement = makeExec(
+  { name: 'sp_addextendedproperty', schema: 'sys' },
+  false
+);
 
 export const sp_dropextendedproperty: (
   name: string,
@@ -839,7 +858,10 @@ export const sp_dropextendedproperty: (
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
   level2?: string
-) => Statement = makeExec(['sp_addextendedproperty', 'sys'], true);
+) => Statement = makeExec(
+  { name: 'sp_addextendedproperty', schema: 'sys' },
+  true
+);
 
 export const sp_updateextendedproperty: (
   name: string,
@@ -850,4 +872,7 @@ export const sp_updateextendedproperty: (
   level1?: string,
   level2Type?: 'CONSTRAINT' | 'COLUMN',
   level2?: string
-) => Statement = makeExec(['sp_updateextendedproperty', 'sys'], true);
+) => Statement = makeExec(
+  { name: 'sp_updateextendedproperty', schema: 'sys' },
+  true
+);

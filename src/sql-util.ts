@@ -4,7 +4,7 @@ import assert from 'assert';
 import {
   AST,
   Parameter,
-  Identifier,
+  DBObject,
   When,
   SelectColumn,
   Declare,
@@ -74,10 +74,13 @@ import {
   AlterDatabase,
   DropDatabase,
   Use,
+  DropView,
+  DropProcedure,
+  DropFunction,
+  DropIndex,
 } from './ast';
-import { PARAMETER_DIRECTION, SQL_SYMBOLE, STATEMENT_KIND } from './constants';
 import { Command } from './execute';
-import { DbType, Name, Scalar } from './types';
+import { CompatiableObjectName, DbType, ObjectName, Scalar } from './types';
 
 import {
   invalidAST,
@@ -89,7 +92,7 @@ import {
   isGroupExpression,
   isBuiltIn,
   isCase,
-  isColumn,
+  isSelectColumn,
   isCondition,
   isLiteral,
   isDeclare,
@@ -175,6 +178,12 @@ export interface SqlOptions {
   quotedRight: string;
 
   /**
+   * 默认架构名称
+   * 当对表结构进行操作时，如果未指定架构，则自动使用该架构操作
+   */
+  defaultSchema: string;
+
+  /**
    * 参数前缀
    */
   parameterPrefix?: string;
@@ -212,6 +221,8 @@ export interface SqlOptions {
 
 const DEFAULT_COMPILE_OPTIONS: SqlOptions = {
   strict: true,
+
+  defaultSchema: 'dbo',
 
   /**
    * 标识符引用，左
@@ -254,20 +265,30 @@ export abstract class SqlUtil {
     this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
   }
 
-  sqlifyName(name: Name, builtIn = false): string {
+  sqlifyObjectName(name: CompatiableObjectName, builtIn = false): string {
     // TIPS: buildIn 使用小写原因是数据库默认值会被自动转换为小写从而产生结果差异，造成不必要的数据架构变化。
-    if (Array.isArray(name)) {
-      return name
-        .map((n, index) => {
-          if (index < name.length - 1) {
-            return this.quoted(n);
-          }
-          return builtIn ? n.toLowerCase() : this.quoted(n);
-        })
-        .reverse()
-        .join('.');
+
+    if (typeof name === 'string') {
+      // 疑问
+      return builtIn ? this.quoted(name) : name.toLowerCase();
     }
-    return builtIn ? name.toLowerCase() : this.quoted(name);
+    let str = this.quoted(name.name);
+    if (name.schema) {
+      str = this.quoted(name.schema) + '.' + str;
+    }
+    if (name.database) {
+      str = this.quoted(name.database) + '.' + str;
+    }
+    return str;
+  }
+
+  sqlifyField(field: Field): string {
+    let sql: string = '';
+    if (field.$table) {
+      sql = this.sqlifyRowsetName(field.$table);
+    }
+    sql += this.quoted(field.$name);
+    return sql;
   }
 
   /**
@@ -359,8 +380,8 @@ export abstract class SqlUtil {
     return this.options.variantPrefix + name;
   }
 
-  protected sqlifyIdentifier(identifier: Identifier<string>): string {
-    return this.sqlifyName(identifier.$name, identifier.$builtin);
+  protected sqlifyIdentifier(identifier: DBObject<string>): string {
+    return this.sqlifyObjectName(identifier.$name, identifier.$builtin);
   }
 
   // /**
@@ -454,23 +475,23 @@ export abstract class SqlUtil {
     } else if (isAlterView(statement)) {
       return this.sqlifyAlterView(statement);
     } else if (isDropView(statement)) {
-      return this.sqlifyDropView(statement.$name);
+      return this.sqlifyDropView(statement);
     } else if (isCreateProcedure(statement)) {
       return this.sqlifyCreateProcedure(statement);
     } else if (isAlterProcedure(statement)) {
       return this.sqlifyAlterProcedure(statement);
     } else if (isDropProcedure(statement)) {
-      return this.sqlifyDropProcedure(statement.$name);
+      return this.sqlifyDropProcedure(statement);
     } else if (isCreateFunction(statement)) {
       return this.sqlifyCreateFunction(statement);
     } else if (isAlterFunction(statement)) {
       return this.sqlifyAlterFunction(statement);
     } else if (isDropFunction(statement)) {
-      return this.sqlifyDropFunction(statement.$name);
+      return this.sqlifyDropFunction(statement);
     } else if (isCreateIndex(statement)) {
       return this.sqlifyCreateIndex(statement);
     } else if (isDropIndex(statement)) {
-      return this.sqlifyDropIndex(statement.$table, statement.$name);
+      return this.sqlifyDropIndex(statement);
     } else if (isCreateSequence(statement)) {
       return this.sqlifyCreateSequence(statement);
     } else if (isDropSequence(statement)) {
@@ -499,7 +520,7 @@ export abstract class SqlUtil {
     throw invalidAST('statement', statement);
   }
   sqlifyUse(statement: Use): string {
-    return `USE ${this.sqlifyName(statement.$database)}`;
+    return `USE ${this.sqlifyObjectName(statement.$database)}`;
   }
 
   abstract sqlifyContinue(statement: Continue): string;
@@ -539,17 +560,17 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>
   ): string;
 
-  protected abstract sqlifyDropIndex(table: Name, name: string): string;
+  protected abstract sqlifyDropIndex(statement: DropIndex): string;
 
   protected abstract sqlifyCreateIndex(statement: CreateIndex): string;
 
-  protected abstract sqlifyDropFunction($name: Name): string;
+  protected abstract sqlifyDropFunction(statement: DropFunction): string;
 
   protected abstract sqlifyAlterFunction(statement: AlterFunction): string;
 
   protected abstract sqlifyCreateFunction(statement: CreateFunction): string;
 
-  protected abstract sqlifyDropProcedure($name: Name): string;
+  protected abstract sqlifyDropProcedure(statement: DropProcedure): string;
 
   protected abstract sqlifyAlterProcedure(statement: AlterProcedure): string;
 
@@ -557,13 +578,13 @@ export abstract class SqlUtil {
 
   protected sqlifyAlterView(statement: AlterView<any, string>): string {
     assertAst(statement.$body, 'AlterView has no body statement.');
-    return `ALTER VIEW ${this.sqlifyName(
+    return `ALTER VIEW ${this.sqlifyObjectName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
   }
 
-  protected sqlifyDropView(name: Name): string {
-    return `DROP VIEW ${this.sqlifyName(name)}`;
+  protected sqlifyDropView(statement: DropView): string {
+    return `DROP VIEW ${this.sqlifyObjectName(statement.$name)}`;
   }
 
   protected sqlifyCreateView(statement: CreateView<any, string>): string {
@@ -571,13 +592,13 @@ export abstract class SqlUtil {
       statement.$body,
       'CreateView statement has no statements body.'
     );
-    return `CREATE VIEW ${this.sqlifyName(
+    return `CREATE VIEW ${this.sqlifyObjectName(
       statement.$name
     )} AS ${this.sqlifySelect(statement.$body)}`;
   }
 
-  protected sqlifyDropTable(name: Name): string {
-    return `DROP TABLE ${this.sqlifyName(name)}`;
+  protected sqlifyDropTable(name: ObjectName): string {
+    return `DROP TABLE ${this.sqlifyObjectName(name)}`;
   }
 
   protected abstract sqlifyAlterTable(statement: AlterTable): string;
@@ -606,13 +627,6 @@ export abstract class SqlUtil {
     parent?: AST
   ): string {
     return `(${this.sqlifySelect(expr.$select, params, parent)})`;
-  }
-
-  protected sqlifyStar(star: Star): string {
-    if (star.$parent) {
-      return this.sqlifyName(star.$parent) + '.*';
-    }
-    return '*';
   }
 
   protected sqlifyOperation(
@@ -645,7 +659,7 @@ export abstract class SqlUtil {
       return this.quoted(rowset.$alias);
     }
     if (rowset.$name) {
-      return this.sqlifyName(rowset.$name);
+      return this.sqlifyObjectName(rowset.$name);
     }
     throw new Error('Rowset must have alias or name.');
   }
@@ -675,15 +689,18 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
-    if (isColumn(column)) {
+    if (isBuiltIn(column)) {
+      return this.sqlifyBuildIn(column);
+    }
+    if (isStar(column)) {
+      return this.sqlifyStar(column);
+    }
+    if (isSelectColumn(column)) {
       return `${this.sqlifyExpression(
         column.$expr,
         params,
         column
       )} AS ${this.quoted(column.$name)}`;
-    }
-    if (isStar(column)) {
-      return this.sqlifyStar(column);
     }
     return this.sqlifyExpression(column, params, parent);
   }
@@ -911,7 +928,7 @@ export abstract class SqlUtil {
     }
 
     if (isField(expr)) {
-      return this.sqlifyIdentifier(expr);
+      return this.sqlifyField(expr);
     }
 
     if (isGroupExpression(expr)) {
@@ -948,6 +965,14 @@ export abstract class SqlUtil {
     if (isStar(arg)) return this.sqlifyStar(arg);
     if (isBuiltIn(arg)) return this.sqlifyBuildIn(arg);
     return this.sqlifyExpression(arg, params, parent);
+  }
+  protected sqlifyStar(arg: Star<any>): string {
+    let sql = '';
+    if (arg.$table) {
+      sql += this.sqlifyRowsetName(arg.$table);
+    }
+    sql += '.*';
+    return sql;
   }
   /**
    * 函数调用
@@ -1079,7 +1104,7 @@ export abstract class SqlUtil {
     }
     if (isTable(table) || isWithSelect(table)) {
       let sql = '';
-      sql += this.sqlifyName(table.$name);
+      sql += this.sqlifyObjectName(table.$name);
       if (table.$alias) sql += ' AS ' + this.quoted(table.$alias);
       return sql;
     }

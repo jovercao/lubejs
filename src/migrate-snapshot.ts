@@ -1,4 +1,4 @@
-import { Name, Scalar } from './types';
+import { CompatiableObjectName, Scalar } from './types';
 import { MigrateBuilder } from './migrate-builder';
 import {
   ColumnSchema,
@@ -13,21 +13,15 @@ import {
   TableSchema,
   ViewSchema,
 } from './schema';
-import { assertAst, isNameEquals } from './util';
+import { assertAst, isSameObject } from './util';
 import {
   AllStatement,
   AlterTable,
-  CheckConstraint,
   CompatibleExpression,
   CreateTable,
   CreateTableMember,
-  CreateView,
-  ForeignKey,
-  PrimaryKey,
   StandardStatement,
   Statement,
-  TableColumnForAdd,
-  UniqueKey,
 } from './ast';
 import {
   SQL_SYMBOLE,
@@ -35,13 +29,15 @@ import {
   STATEMENT_KIND,
 } from './constants';
 import { SqlUtil } from './sql-util';
-import { table } from './decorators';
 
 export class SnapshotMigrateBuilder extends MigrateBuilder {
   constructor() {
     super();
   }
-  renameSequence(name: Name, newName: string): Statement {
+
+  readonly statements: Statement[] = [];
+
+  renameSequence(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name, newName]);
   }
 
@@ -52,35 +48,35 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   dropSchemaComment(name: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name]);
   }
-  dropSequenceComment(name: Name<string>): Statement {
+  dropSequenceComment(name: CompatiableObjectName<string>): Statement {
     return StandardStatement.create(arguments.callee.name, [name]);
   }
-  dropProcedureComment(name: Name<string>): Statement {
+  dropProcedureComment(name: CompatiableObjectName<string>): Statement {
     return StandardStatement.create(arguments.callee.name, [name]);
   }
-  dropFunctionComment(name: Name<string>): Statement {
+  dropFunctionComment(name: CompatiableObjectName<string>): Statement {
     return StandardStatement.create(arguments.callee.name, [name]);
   }
-  dropTableComment(name: Name<string>): Statement {
+  dropTableComment(name: CompatiableObjectName<string>): Statement {
     return StandardStatement.create(arguments.callee.name, [name]);
   }
-  dropColumnComment(table: Name<string>, name: string): Statement {
+  dropColumnComment(table: CompatiableObjectName<string>, name: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, name]);
   }
-  dropIndexComment(table: Name<string>, name: string): Statement {
+  dropIndexComment(table: CompatiableObjectName<string>, name: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, name]);
   }
-  dropConstraintComment(table: Name<string>, name: string): Statement {
+  dropConstraintComment(table: CompatiableObjectName<string>, name: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, name]);
   }
-  setAutoRowflag(table: Name<string>, column: string): Statement {
+  setAutoRowflag(table: CompatiableObjectName<string>, column: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, column]);
   }
-  dropAutoRowflag(table: Name<string>, column: string): Statement {
+  dropAutoRowflag(table: CompatiableObjectName<string>, column: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, column]);
   }
   setDefaultValue(
-    table: Name<string>,
+    table: CompatiableObjectName,
     column: string,
     defaultValue: CompatibleExpression<Scalar>
   ): Statement {
@@ -91,12 +87,12 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     ]);
   }
 
-  dropDefaultValue(table: Name<string>, column: string): Statement {
+  dropDefaultValue(table: CompatiableObjectName, column: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, column]);
   }
 
   setIdentity(
-    table: Name<string>,
+    table: CompatiableObjectName,
     column: string,
     startValue: number,
     increment: number
@@ -109,28 +105,28 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     ]);
   }
 
-  dropIdentity(table: Name<string>, column: string): Statement {
+  dropIdentity(table: CompatiableObjectName<string>, column: string): Statement {
     return StandardStatement.create(arguments.callee.name, [table, column]);
   }
 
-  setProcedureComment(name: Name, comment: string | null): Statement {
+  setProcedureComment(name: CompatiableObjectName, comment: string | null): Statement {
     return StandardStatement.create(arguments.callee.name, [name, comment]);
   }
 
-  setFunctionComment(name: Name, comment: string | null): Statement {
+  setFunctionComment(name: CompatiableObjectName, comment: string | null): Statement {
     return StandardStatement.create(arguments.callee.name, [name, comment]);
   }
 
-  setSequenceComment(name: Name, comment: string | null): Statement {
+  setSequenceComment(name: CompatiableObjectName, comment: string | null): Statement {
     return StandardStatement.create(arguments.callee.name, [name, comment]);
   }
 
-  setTableComment(name: Name, comment: string | null): Statement {
+  setTableComment(name: CompatiableObjectName, comment: string | null): Statement {
     return StandardStatement.create(arguments.callee.name, [name, comment]);
   }
 
   setColumnComment(
-    table: Name,
+    table: CompatiableObjectName,
     name: string,
     comment: string | null
   ): Statement {
@@ -142,7 +138,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   setIndexComment(
-    table: Name,
+    table: CompatiableObjectName,
     name: string,
     comment: string | null
   ): Statement {
@@ -154,7 +150,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   setConstraintComment(
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     name: string,
     comment: string | null
   ): Statement {
@@ -169,11 +165,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     return StandardStatement.create(arguments.callee.name, [name, comment]);
   }
 
-  renameTable(name: Name, newName: string): Statement {
+  renameTable(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name, newName]);
   }
 
-  renameColumn(table: Name, name: string, newName: string): Statement {
+  renameColumn(table: CompatiableObjectName, name: string, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [
       table,
       name,
@@ -181,11 +177,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     ]);
   }
 
-  renameView(name: Name, newName: string): Statement {
+  renameView(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name, newName]);
   }
 
-  renameIndex(table: Name, name: string, newName: string): Statement {
+  renameIndex(table: CompatiableObjectName, name: string, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [
       table,
       name,
@@ -193,11 +189,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     ]);
   }
 
-  renameProcedure(name: Name, newName: string): Statement {
+  renameProcedure(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name, newName]);
   }
 
-  renameFunction(name: Name, newName: string): Statement {
+  renameFunction(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(arguments.callee.name, [name, newName]);
   }
 }
@@ -205,7 +201,8 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
 export class SnapshotMigrateTracker {
   constructor(
     public database: DatabaseSchema | undefined,
-    private sqlUtil: SqlUtil
+    private sqlUtil: SqlUtil,
+    private defaultSchema: string,
   ) {}
 
   assertDatabaseExists(schema: DatabaseSchema | undefined): asserts schema {
@@ -214,7 +211,7 @@ export class SnapshotMigrateTracker {
     }
   }
 
-  private getTable(name: Name): TableSchema {
+  private getTable(name: CompatiableObjectName): TableSchema {
     const table = this.findTable(name);
     if (!table) {
       throw new Error(`Table ${name} not exists in database.`);
@@ -222,119 +219,119 @@ export class SnapshotMigrateTracker {
     return table;
   }
 
-  private findTable(name: Name): TableSchema | undefined {
+  private findTable(name: CompatiableObjectName): TableSchema | undefined {
     this.assertDatabaseExists(this.database);
-    return this.database.tables.find(p => isNameEquals(name, p.name));
+    return this.database.tables.find(p => isSameObject(name, p.name));
   }
 
-  private findView(name: Name): ViewSchema | undefined {
+  private findView(name: CompatiableObjectName): ViewSchema | undefined {
     this.assertDatabaseExists(this.database);
-    return this.database.views.find(p => isNameEquals(name, p.name));
+    return this.database.views.find(p => isSameObject(name, p.name));
   }
 
-  private assertTableNotExists(name: Name): void {
+  private assertTableNotExists(name: CompatiableObjectName): void {
     this.assertDatabaseExists(this.database);
-    const table = this.database.tables.find(p => isNameEquals(p.name, name));
+    const table = this.database.tables.find(p => isSameObject(p.name, name));
     if (table)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(table.name)} is exists.`
+        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} is exists.`
       );
   }
 
-  private assertViewNotExists(name: Name): void {
+  private assertViewNotExists(name: CompatiableObjectName): void {
     this.assertDatabaseExists(this.database);
-    const view = this.database.views.find(p => isNameEquals(p.name, name));
+    const view = this.database.views.find(p => isSameObject(p.name, name));
     if (view)
-      throw new Error(`View ${this.sqlUtil.sqlifyName(view.name)} is exists.`);
+      throw new Error(`View ${this.sqlUtil.sqlifyObjectName(view.name)} is exists.`);
   }
 
-  private assertProcedureNotExists(name: Name): void {
+  private assertProcedureNotExists(name: CompatiableObjectName): void {
     this.assertDatabaseExists(this.database);
-    const proc = this.database.procedures.find(p => isNameEquals(p.name, name));
+    const proc = this.database.procedures.find(p => isSameObject(p.name, name));
     if (proc)
       throw new Error(
-        `Procedure ${this.sqlUtil.sqlifyName(proc.name)} is exists.`
+        `Procedure ${this.sqlUtil.sqlifyObjectName(proc.name)} is exists.`
       );
   }
 
-  private assertFunctionNotExists(name: Name): void {
+  private assertFunctionNotExists(name: CompatiableObjectName): void {
     this.assertDatabaseExists(this.database);
-    const func = this.database.functions.find(p => isNameEquals(p.name, name));
+    const func = this.database.functions.find(p => isSameObject(p.name, name));
     if (func)
       throw new Error(
-        `Procedure ${this.sqlUtil.sqlifyName(func.name)} is exists.`
+        `Procedure ${this.sqlUtil.sqlifyObjectName(func.name)} is exists.`
       );
   }
 
-  private assertSequenceNotExists(name: Name): void {
+  private assertSequenceNotExists(name: CompatiableObjectName): void {
     this.assertDatabaseExists(this.database);
     const sequence = this.database.sequences.find(p =>
-      isNameEquals(p.name, name)
+      isSameObject(p.name, name)
     );
     if (sequence)
       throw new Error(
-        `Sequence ${this.sqlUtil.sqlifyName(sequence.name)} is exists.`
+        `Sequence ${this.sqlUtil.sqlifyObjectName(sequence.name)} is exists.`
       );
   }
 
-  private assertSchemaNotExists(name: Name): void {
+  private assertSchemaNotExists(name: string): void {
     this.assertDatabaseExists(this.database);
     const schema = this.database.schemas.find(p => p.name === name);
     if (schema)
       throw new Error(
-        `Schema ${this.sqlUtil.sqlifyName(schema.name)} is exists.`
+        `Schema ${this.sqlUtil.sqlifyObjectName(schema.name)} is exists.`
       );
   }
 
-  private assertColumnNotExists(tableName: Name, columnName: string): void {
+  private assertColumnNotExists(tableName: CompatiableObjectName, columnName: string): void {
     const table = this.getTable(tableName);
     const column = table.columns.find(col => col.name === columnName);
     if (column)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Column ${this.sqlUtil.sqlifyName(columnName)} is exists.`
+        )} Column ${this.sqlUtil.sqlifyObjectName(columnName)} is exists.`
       );
   }
 
-  private assertIndexNotExists(tableName: Name, name: string): void {
+  private assertIndexNotExists(tableName: CompatiableObjectName, name: string): void {
     const table = this.getTable(tableName);
     const index = table.indexes.find(idx => idx.name === name);
     if (index)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Index ${this.sqlUtil.sqlifyName(name)} is exists.`
+        )} Index ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
       );
   }
 
-  private assertPrimaryNotExists(tableName: Name, name: string): void {
+  private assertPrimaryNotExists(tableName: CompatiableObjectName, name: string): void {
     const table = this.getTable(tableName);
     if (table.primaryKey)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(table.name)} PrimaryKey is exists.`
+        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} PrimaryKey is exists.`
       );
   }
 
-  private assertForeignKeyExists(tableName: Name, name: string): void {
+  private assertForeignKeyExists(tableName: CompatiableObjectName, name: string): void {
     const table = this.getTable(tableName);
     const fk = table.foreignKeys.find(idx => idx.name === name);
     if (fk)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} ForeignKey ${this.sqlUtil.sqlifyName(name)} is exists.`
+        )} ForeignKey ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
       );
   }
 
-  private assertConstraintNotExists(tableName: Name, name: string): void {
+  private assertConstraintNotExists(tableName: CompatiableObjectName, name: string): void {
     const table = this.getTable(tableName);
     const constraint = table.constraints.find(ct => ct.name === name);
     if (constraint)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Constraint ${this.sqlUtil.sqlifyName(name)} is exists.`
+        )} Constraint ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
       );
   }
 
@@ -359,9 +356,9 @@ export class SnapshotMigrateTracker {
         case SQL_SYMBOLE.CREATE_TABLE_COLUMN: {
           if (table.columns.find(col => col.name === item.$name)) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(
+              `Table ${this.sqlUtil.sqlifyObjectName(
                 table.name
-              )} column ${this.sqlUtil.sqlifyName(item.$name)} is exists.`
+              )} column ${this.sqlUtil.sqlifyObjectName(item.$name)} is exists.`
             );
           }
           table.columns.push({
@@ -395,7 +392,8 @@ export class SnapshotMigrateTracker {
             name: item.$name!,
             columns: item.$columns,
             referenceColumns: item.$referenceColumns,
-            referenceTable: item.$referenceTable,
+            referenceTable: item.$referenceTable.name,
+            referenceSchema: item.$referenceTable.schema ?? this.defaultSchema
           });
           break;
         }
@@ -429,12 +427,13 @@ export class SnapshotMigrateTracker {
     this.assertDatabaseExists(this.database);
     if (this.findTable(statement.$name)) {
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(statement.$name)} is exists.`
+        `Table ${this.sqlUtil.sqlifyObjectName(statement.$name)} is exists.`
       );
     }
     assertAst(statement.$members, 'CreateTable statement member not found.');
     const table: TableSchema = {
-      name: statement.$name,
+      name: statement.$name.name,
+      schema: statement.$name.schema ?? this.defaultSchema,
       indexes: [],
       columns: [],
       foreignKeys: [],
@@ -462,9 +461,9 @@ export class SnapshotMigrateTracker {
       );
       if (!column)
         throw new Error(
-          `Table ${this.sqlUtil.sqlifyName(
+          `Table ${this.sqlUtil.sqlifyObjectName(
             table.name
-          )} Column ${this.sqlUtil.sqlifyName(
+          )} Column ${this.sqlUtil.sqlifyObjectName(
             statement.$alterColumn.$name
           )} not found.`
         );
@@ -483,9 +482,9 @@ export class SnapshotMigrateTracker {
           );
           if (index < 0) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(
+              `Table ${this.sqlUtil.sqlifyObjectName(
                 table.name
-              )} Constraint ${this.sqlUtil.sqlifyName(
+              )} Constraint ${this.sqlUtil.sqlifyObjectName(
                 statement.$drop.$name
               )} not found.`
             );
@@ -499,9 +498,9 @@ export class SnapshotMigrateTracker {
           );
           if (index < 0) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(
+              `Table ${this.sqlUtil.sqlifyObjectName(
                 table.name
-              )} Column ${this.sqlUtil.sqlifyName(
+              )} Column ${this.sqlUtil.sqlifyObjectName(
                 statement.$drop.$name
               )} not found.`
             );
@@ -512,9 +511,9 @@ export class SnapshotMigrateTracker {
         case SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY: {
           if (table.primaryKey?.name !== statement.$drop.$name) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(
+              `Table ${this.sqlUtil.sqlifyObjectName(
                 table.name
-              )} Primary key ${this.sqlUtil.sqlifyName(
+              )} Primary key ${this.sqlUtil.sqlifyObjectName(
                 statement.$drop.$name
               )} not found.`
             );
@@ -528,9 +527,9 @@ export class SnapshotMigrateTracker {
           );
           if (index < 0) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(
+              `Table ${this.sqlUtil.sqlifyObjectName(
                 table.name
-              )} ForeignKey ${this.sqlUtil.sqlifyName(
+              )} ForeignKey ${this.sqlUtil.sqlifyObjectName(
                 statement.$drop.$name
               )} not found.`
             );
@@ -541,8 +540,8 @@ export class SnapshotMigrateTracker {
     }
   }
 
-  run(statements: AllStatement[]) {
-    for (const statement of statements) {
+  run(statements: Statement[]) {
+    for (const statement of statements as AllStatement[]) {
       if (statement.$kind === STATEMENT_KIND.CREATE_DATABASE) {
         if (this.database) {
           throw new Error('Database is exists.');
@@ -578,11 +577,11 @@ export class SnapshotMigrateTracker {
           break;
         case STATEMENT_KIND.DROP_TABLE:
           const index = this.database?.tables.findIndex(p =>
-            isNameEquals(p.name, statement.$name)
+            isSameObject(p.name, statement.$name)
           );
           if (index === undefined || index < 0) {
             throw new Error(
-              `Table ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+              `Table ${this.sqlUtil.sqlifyObjectName(statement.$name)} not found.`
             );
           }
           this.database!.tables.splice(index, 1);
@@ -591,7 +590,8 @@ export class SnapshotMigrateTracker {
           this.assertViewNotExists(statement.$name);
           assertAst(statement.$body, 'CreateView body not found.');
           this.database!.views.push({
-            name: statement.$name,
+            name: statement.$name.name,
+            schema: statement.$name.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement.$body).sql,
           });
           break;
@@ -604,11 +604,11 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.DROP_VIEW: {
           const index = this.database?.views.findIndex(p =>
-            isNameEquals(p.name, statement.$name)
+            isSameObject(p.name, statement.$name)
           );
           if (index === undefined || index < 0) {
             throw new Error(
-              `View ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+              `View ${this.sqlUtil.sqlifyObjectName(statement.$name)} not found.`
             );
           }
           this.database!.views.splice(index, 1);
@@ -617,7 +617,8 @@ export class SnapshotMigrateTracker {
         case STATEMENT_KIND.CREATE_PROCEDURE: {
           this.assertProcedureNotExists(statement.$name);
           this.database!.procedures.push({
-            name: statement.$name,
+            name: statement.$name.name,
+            schema: statement.$name.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement).sql,
           });
           break;
@@ -629,11 +630,11 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.DROP_PROCEDURE: {
           const index = this.database?.procedures.findIndex(p =>
-            isNameEquals(p.name, statement.$name)
+            isSameObject(p.name, statement.$name)
           );
           if (index === undefined || index < 0) {
             throw new Error(
-              `Procedure ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+              `Procedure ${this.sqlUtil.sqlifyObjectName(statement.$name)} not found.`
             );
           }
           this.database!.procedures.splice(index, 1);
@@ -641,7 +642,8 @@ export class SnapshotMigrateTracker {
         case STATEMENT_KIND.CREATE_FUNCTION: {
           this.assertFunctionNotExists(statement.$name);
           this.database!.functions.push({
-            name: statement.$name,
+            name: statement.$name.name,
+            schema: statement.$name.schema ?? this.defaultSchema,
             scripts: this.sqlUtil.sqlify(statement).sql,
           });
           break;
@@ -653,11 +655,11 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.DROP_FUNCTION: {
           const index = this.database?.functions.findIndex(p =>
-            isNameEquals(p.name, statement.$name)
+            isSameObject(p.name, statement.$name)
           );
           if (index === undefined || index < 0) {
             throw new Error(
-              `Function ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+              `Function ${this.sqlUtil.sqlifyObjectName(statement.$name)} not found.`
             );
           }
           this.database!.functions.splice(index, 1);
@@ -667,7 +669,8 @@ export class SnapshotMigrateTracker {
           this.assertSequenceNotExists(statement.$name);
           assertAst(statement.$dbType, 'CreateSequence dbtype not found.');
           this.database!.sequences.push({
-            name: statement.$name,
+            name: statement.$name.name,
+            schema: statement.$name.schema ?? this.defaultSchema,
             type: this.sqlUtil.sqlifyType(statement.$dbType),
             startValue: statement.$startValue.$value,
             increment: statement.$increment.$value,
@@ -676,11 +679,11 @@ export class SnapshotMigrateTracker {
         }
         case STATEMENT_KIND.DROP_SEQUENCE: {
           const index = this.database?.sequences.findIndex(p =>
-            isNameEquals(p.name, statement.$name)
+            isSameObject(p.name, statement.$name)
           );
           if (index === undefined || index < 0) {
             throw new Error(
-              `Sequence ${this.sqlUtil.sqlifyName(statement.$name)} not found.`
+              `Sequence ${this.sqlUtil.sqlifyObjectName(statement.$name)} not found.`
             );
           }
           this.database!.sequences.splice(index, 1);
@@ -742,7 +745,7 @@ export class SnapshotMigrateTracker {
               const view = this.findView(statement.$datas[0]);
               if (!view) {
                 throw new Error(
-                  `View ${this.sqlUtil.sqlifyName(
+                  `View ${this.sqlUtil.sqlifyObjectName(
                     statement.$datas[0]
                   )} is not found.`
                 );
@@ -752,11 +755,11 @@ export class SnapshotMigrateTracker {
             }
             case 'renameProcedure': {
               const proc = this.database?.procedures.find(p =>
-                isNameEquals(p.name, statement.$datas[0])
+                isSameObject(p.name, statement.$datas[0])
               );
               if (!proc) {
                 throw new Error(
-                  `Procedure ${this.sqlUtil.sqlifyName(
+                  `Procedure ${this.sqlUtil.sqlifyObjectName(
                     statement.$datas[0]
                   )} is not found.`
                 );
@@ -766,11 +769,11 @@ export class SnapshotMigrateTracker {
             }
             case 'renameFunction': {
               const func = this.database?.functions.find(p =>
-                isNameEquals(p.name, statement.$datas[0])
+                isSameObject(p.name, statement.$datas[0])
               );
               if (!func) {
                 throw new Error(
-                  `Function ${this.sqlUtil.sqlifyName(
+                  `Function ${this.sqlUtil.sqlifyObjectName(
                     statement.$datas[0]
                   )} is not found.`
                 );
@@ -780,11 +783,11 @@ export class SnapshotMigrateTracker {
             }
             case 'renameSequence': {
               const sequence = this.database?.sequences.find(p =>
-                isNameEquals(p.name, statement.$datas[0])
+                isSameObject(p.name, statement.$datas[0])
               );
               if (!sequence) {
                 throw new Error(
-                  `Function ${this.sqlUtil.sqlifyName(
+                  `Function ${this.sqlUtil.sqlifyObjectName(
                     statement.$datas[0]
                   )} is not found.`
                 );
@@ -938,58 +941,58 @@ export class SnapshotMigrateTracker {
     this.assertDatabaseExists(this.database);
     const schema = this.database.schemas.find(p => name === p.name);
     if (!schema) {
-      throw new Error(`Schema ${this.sqlUtil.sqlifyName(name)} is not found.`);
+      throw new Error(`Schema ${this.sqlUtil.sqlifyObjectName(name)} is not found.`);
     }
     return schema;
   }
   private getSequence(name: any): SequenceSchema {
     this.assertDatabaseExists(this.database);
     const sequence = this.database.sequences.find(p =>
-      isNameEquals(name, p.name)
+      isSameObject(name, p.name)
     );
     if (!sequence) {
       throw new Error(
-        `Sequence ${this.sqlUtil.sqlifyName(name)} is not found.`
+        `Sequence ${this.sqlUtil.sqlifyObjectName(name)} is not found.`
       );
     }
     return sequence;
   }
   private getProcedure(name: any): ProcedureSchema {
     this.assertDatabaseExists(this.database);
-    const proc = this.database.procedures.find(p => isNameEquals(name, p.name));
+    const proc = this.database.procedures.find(p => isSameObject(name, p.name));
     if (!proc) {
       throw new Error(
-        `Procedure ${this.sqlUtil.sqlifyName(name)} is not found.`
+        `Procedure ${this.sqlUtil.sqlifyObjectName(name)} is not found.`
       );
     }
     return proc;
   }
   private getFunction(name: any): FunctionSchema {
     this.assertDatabaseExists(this.database);
-    const func = this.database.functions.find(p => isNameEquals(name, p.name));
+    const func = this.database.functions.find(p => isSameObject(name, p.name));
     if (!func) {
       throw new Error(
-        `Function ${this.sqlUtil.sqlifyName(name)} is not found.`
+        `Function ${this.sqlUtil.sqlifyObjectName(name)} is not found.`
       );
     }
     return func;
   }
-  private getView(name: Name): ViewSchema {
-    const view = this.database?.views.find(p => isNameEquals(name, p.name));
+  private getView(name: CompatiableObjectName): ViewSchema {
+    const view = this.database?.views.find(p => isSameObject(name, p.name));
     if (!view) {
-      throw new Error(`View ${this.sqlUtil.sqlifyName(name)} is not found.`);
+      throw new Error(`View ${this.sqlUtil.sqlifyObjectName(name)} is not found.`);
     }
     return view;
   }
 
-  private getColumn(tableName: Name, name: string): ColumnSchema {
+  private getColumn(tableName: CompatiableObjectName, name: string): ColumnSchema {
     const table = this.getTable(tableName);
     const column = table.columns.find(col => col.name === name);
     if (!column)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Column ${this.sqlUtil.sqlifyName(name)} not found.`
+        )} Column ${this.sqlUtil.sqlifyObjectName(name)} not found.`
       );
     return column;
   }
@@ -999,38 +1002,38 @@ export class SnapshotMigrateTracker {
     const index = table.indexes.find(col => col.name === name);
     if (!index)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Index ${this.sqlUtil.sqlifyName(name)} not found.`
+        )} Index ${this.sqlUtil.sqlifyObjectName(name)} not found.`
       );
     return index;
   }
 
-  private getPrimaryKey(tableName: Name, name: string): PrimaryKeySchema {
+  private getPrimaryKey(tableName: CompatiableObjectName, name: string): PrimaryKeySchema {
     const table = this.getTable(tableName);
     if (!table.primaryKey || table.primaryKey.name !== name)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} PrimaryKey ${this.sqlUtil.sqlifyName(name)} not found.`
+        )} PrimaryKey ${this.sqlUtil.sqlifyObjectName(name)} not found.`
       );
     return table.primaryKey;
   }
 
-  private getForeignKey(tableName: Name, name: string): ForeignKeySchema {
+  private getForeignKey(tableName: CompatiableObjectName, name: string): ForeignKeySchema {
     const table = this.getTable(tableName);
     const fk = table.foreignKeys.find(col => col.name === name);
     if (!fk)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} ForeignKey ${this.sqlUtil.sqlifyName(name)} not found.`
+        )} ForeignKey ${this.sqlUtil.sqlifyObjectName(name)} not found.`
       );
     return fk;
   }
 
   private getConstraint(
-    tableName: Name,
+    tableName: CompatiableObjectName,
     name: string
   ): ConstraintSchema | PrimaryKeySchema | ForeignKeySchema {
     const table = this.getTable(tableName);
@@ -1048,9 +1051,9 @@ export class SnapshotMigrateTracker {
     }
     if (!constraint)
       throw new Error(
-        `Table ${this.sqlUtil.sqlifyName(
+        `Table ${this.sqlUtil.sqlifyObjectName(
           table.name
-        )} Constraint ${this.sqlUtil.sqlifyName(name)} not found.`
+        )} Constraint ${this.sqlUtil.sqlifyObjectName(name)} not found.`
       );
     return constraint;
   }

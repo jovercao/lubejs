@@ -1,6 +1,5 @@
 import {
   MigrateBuilder,
-  Name,
   Statement,
   SqlBuilder as SQL,
   CompatibleExpression,
@@ -8,12 +7,11 @@ import {
   Condition,
   SqlUtil,
   Lube,
-  Expression,
   DbType,
-  joinName,
   CreateDatabase,
   DropDatabase,
   AlterDatabase,
+  CompatiableObjectName,
 } from 'lubejs';
 import { sp_rename } from './build-in';
 import { MssqlProvider } from './provider';
@@ -22,15 +20,19 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
-  renameSequence(name: Name, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(name), newName, 'OBJECT');
+  renameSequence(name: CompatiableObjectName, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName, 'OBJECT');
   }
   renameDatabase(name: string, newName: string): Statement {
     return SQL.raw(`
     USE master;
-    ALTER DATABASE ${this.sqlUtil.sqlifyName(name)} SET SINGLE_USER WITH ROLLBACK IMMEDIAT
-    ALTER DATABASE ${this.sqlUtil.sqlifyName(name)} MODIFY NAME = ${this.sqlUtil.sqlifyName(newName)} ;
-    ALTER DATABASE ${this.sqlUtil.sqlifyName(newName)}  SET MULTI_USER`)
+    ALTER DATABASE ${this.sqlUtil.sqlifyObjectName(
+      name
+    )} SET SINGLE_USER WITH ROLLBACK IMMEDIAT
+    ALTER DATABASE ${this.sqlUtil.sqlifyObjectName(
+      name
+    )} MODIFY NAME = ${this.sqlUtil.sqlifyObjectName(newName)} ;
+    ALTER DATABASE ${this.sqlUtil.sqlifyObjectName(newName)}  SET MULTI_USER`);
   }
 
   alterDatabase(name: string): AlterDatabase {
@@ -45,55 +47,74 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
   dropSchemaComment(name: string): Statement {
     return this.setSchemaComment(name, null);
   }
-  dropSequenceComment(name: Name<string>): Statement {
+  dropSequenceComment(name: CompatiableObjectName<string>): Statement {
     return this.setSequenceComment(name, null);
   }
-  dropProcedureComment(name: Name<string>): Statement {
+  dropProcedureComment(name: CompatiableObjectName<string>): Statement {
     return this.setProcedureComment(name, null);
   }
-  dropFunctionComment(name: Name<string>): Statement {
+  dropFunctionComment(name: CompatiableObjectName<string>): Statement {
     return this.setFunctionComment(name, null);
   }
-  dropTableComment(name: Name<string>): Statement {
+  dropTableComment(name: CompatiableObjectName<string>): Statement {
     return this.setTableComment(name, null);
   }
-  dropColumnComment(table: Name<string>, name: string): Statement {
+  dropColumnComment(
+    table: CompatiableObjectName<string>,
+    name: string
+  ): Statement {
     return this.setColumnComment(table, name, null);
   }
-  dropIndexComment(table: Name<string>, name: string): Statement {
+  dropIndexComment(
+    table: CompatiableObjectName<string>,
+    name: string
+  ): Statement {
     return this.setIndexComment(table, name, null);
   }
-  dropConstraintComment(table: Name<string>, name: string): Statement {
+  dropConstraintComment(
+    table: CompatiableObjectName<string>,
+    name: string
+  ): Statement {
     return this.setConstraintComment(table, name, null);
   }
-  setAutoRowflag(table: Name<string>, column: string): Statement {
+  setAutoRowflag(
+    table: CompatiableObjectName<string>,
+    column: string
+  ): Statement {
     return SQL.block(
       SQL.note(
         '=========================注意：MSSQL 自带标记列，仅通过修改类型来达成========================'
       ),
       SQL.alterTable(table).dropColumn(column),
-      SQL.alterTable(table).add(({ column: c }) => c(column, DbType.raw('ROWVERSION'))),
+      SQL.alterTable(table).add(({ column: c }) =>
+        c(column, DbType.raw('ROWVERSION'))
+      )
       // SQL.alterTable(table).alterColumn(c =>
       //   c(column, DbType.raw('ROWVERSION'))
       // )
     );
   }
-  dropAutoRowflag(table: Name<string>, column: string): Statement {
+  dropAutoRowflag(
+    table: CompatiableObjectName<string>,
+    column: string
+  ): Statement {
     const tempColumn = '__' + column;
     return SQL.block(
       SQL.note(
         '=========================MSSQL 自带标记列，仅通过修改类型来达成========================'
       ),
-      SQL.alterTable(table).add(({ column: c }) => c(tempColumn, DbType.binary(8)).notNull()),
+      SQL.alterTable(table).add(({ column: c }) =>
+        c(tempColumn, DbType.binary(8)).notNull()
+      ),
       SQL.update(table).set({
-        [column]: SQL.field(column)
+        [column]: SQL.field(column),
       }),
       SQL.alterTable(table).drop(({ column: c }) => c(column)),
       this.renameColumn(table, tempColumn, column)
     );
   }
 
-  // existsTable(name: Name<string>): Expression<Scalar> {
+  // existsTable(name: CompatiableObjectName<string>): Expression<Scalar> {
   //   return
   // }
 
@@ -107,7 +128,7 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
   }
 
   setDefaultValue(
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     column: string,
     defaultValue: CompatibleExpression<Scalar>
   ): Statement {
@@ -116,41 +137,44 @@ DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id and dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.sqlifyObjectName(
       table
     )}') AND c.name = ${this.sqlUtil.sqlifyLiteral(column)};
 IF (@ConstaintName IS NOT NULL)
 BEGIN
- EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
+ EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyObjectName(
    table
  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
-ALTER TABLE ${this.sqlUtil.sqlifyName(
+ALTER TABLE ${this.sqlUtil.sqlifyObjectName(
       table
     )} ADD DEFAULT (${defaultValue}) FOR ${this.sqlUtil.quoted(column)}
 `);
   }
 
-  dropDefaultValue(table: Name<string>, column: string): Statement {
+  dropDefaultValue(
+    table: CompatiableObjectName<string>,
+    column: string
+  ): Statement {
     return SQL.raw(`
 DECLARE @ConstaintName varchar(128);
 SELECT @ConstaintName = dc.name
 FROM sys.default_constraints dc
 JOIN sys.columns c ON dc.parent_column_id = c.column_id AND dc.parent_object_id = c.object_id
-WHERE c.object_id = object_id('${this.sqlUtil.sqlifyName(
+WHERE c.object_id = object_id('${this.sqlUtil.sqlifyObjectName(
       table
     )}') and c.name = ${this.sqlUtil.sqlifyLiteral(column)}
 IF (@ConstaintName IS NOT NULL)
 BEGIN
-  EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyName(
+  EXEC ('ALTER TABLE ${this.sqlUtil.sqlifyObjectName(
     table
   )} DROP CONSTRAINT ' + @ConstaintName)
 END
 `);
   }
 
-  // setColumnType(table: Name<string>, name: string, type: DbType): Statement {
+  // setColumnType(table: CompatiableObjectName<string>, name: string, type: DbType): Statement {
   //   throw new Error('Method not implemented.')
   // }
 
@@ -161,7 +185,7 @@ END
   //  * @param newName
   //  */
   // public async copyNewColumn(
-  //   table: Name,
+  //   table: CompatiableObjectName,
   //   name: string,
   //   newName: string
   // ): Promise<Statement> {
@@ -190,7 +214,7 @@ END
   // }
 
   addCheckConstaint(
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     sql: Condition,
     name?: string
   ): Statement {
@@ -199,12 +223,15 @@ END
     );
   }
 
-  dropCheckConstaint(table: Name<string>, name: string): Statement {
+  dropCheckConstaint(
+    table: CompatiableObjectName<string>,
+    name: string
+  ): Statement {
     return SQL.alterTable(table).drop(builder => builder.check(name));
   }
 
   setIdentity(
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     column: string,
     startValue: number,
     increment: number
@@ -212,7 +239,7 @@ END
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，setIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： setIdentity(table: ${this.sqlUtil.sqlifyName(
+        `操作信息： setIdentity(table: ${this.sqlUtil.sqlifyObjectName(
           table
         )}, column: ${column}, startValue: ${startValue}, increment: ${increment})`
       ),
@@ -222,12 +249,15 @@ END
     );
   }
 
-  dropIdentity(table: Name<string>, column: string): Statement {
+  dropIdentity(
+    table: CompatiableObjectName<string>,
+    column: string
+  ): Statement {
     // const sql = this.copyNewColumn(table, column)
     return SQL.block(
       SQL.comments(
         '警告: 由于mssql特性原因，dropIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
-        `操作信息： dropIdentity(table: ${this.sqlUtil.sqlifyName(
+        `操作信息： dropIdentity(table: ${this.sqlUtil.sqlifyObjectName(
           table
         )}, column: ${column})`
       ),
@@ -237,16 +267,19 @@ END
     );
   }
 
-  setProcedureComment(name: Name, comment: string | null): Statement {
+  setProcedureComment(
+    name: CompatiableObjectName,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyName(
+-- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Proc VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Proc = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(name)})
 
 IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
@@ -261,14 +294,19 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  setFunctionComment(name: Name, comment: string | null): Statement {
+  setFunctionComment(
+    name: CompatiableObjectName,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentFunction(${this.sqlUtil.sqlifyName(name)}, ${comment});
+-- MigrateBuilder.commentFunction(${this.sqlUtil.sqlifyObjectName(
+      name
+    )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Func VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Func = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(name)})
 
 IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
@@ -283,14 +321,19 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  setSequenceComment(name: Name, comment: string | null): Statement {
+  setSequenceComment(
+    name: CompatiableObjectName,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentSequence(${this.sqlUtil.sqlifyName(name)}, ${comment});
+-- MigrateBuilder.commentSequence(${this.sqlUtil.sqlifyObjectName(
+      name
+    )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Sequence VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Sequence = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(name)})
 
 IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
@@ -305,14 +348,19 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  setTableComment(name: Name, comment: string | null): Statement {
+  setTableComment(
+    name: CompatiableObjectName,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentTable(${this.sqlUtil.sqlifyName(name)}, ${comment});
+-- MigrateBuilder.commentTable(${this.sqlUtil.sqlifyObjectName(
+      name
+    )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(name)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(name)})
 
 IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
 BEGIN
@@ -327,9 +375,13 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  setColumnComment(table: Name, name: string, comment: string | null): Statement {
+  setColumnComment(
+    table: CompatiableObjectName,
+    name: string,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyName(
+-- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Column VARCHAR(100)
@@ -338,7 +390,7 @@ SET @Column = ${name}
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(table)})
 
 IF EXISTS(SELECT 1
   FROM sys.extended_properties p INNER JOIN
@@ -356,9 +408,13 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
-  setIndexComment(table: Name, name: string, comment: string | null): Statement {
+  setIndexComment(
+    table: CompatiableObjectName,
+    name: string,
+    comment: string | null
+  ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyName(
+-- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Index VARCHAR(100)
@@ -367,7 +423,7 @@ SET @Index = ${name}
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(table)})
 
 IF EXISTS(SELECT 1
   FROM sys.extended_properties p INNER JOIN
@@ -386,12 +442,12 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
   }
 
   setConstraintComment(
-    table: Name<string>,
+    table: CompatiableObjectName<string>,
     name: string,
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
@@ -400,7 +456,7 @@ SET @Constraint = ${name}
 
 SELECT @ObjectId = o.object_id, @Schema = s.name, @Table = o.name
 FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
-WHERE o.object_id = object_id(${this.sqlUtil.sqlifyName(table)})
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(table)})
 
 IF EXISTS(
   SELECT 1
@@ -438,7 +494,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   setSchemaComment(name: string, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyName(
+-- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 IF EXISTS(
@@ -456,27 +512,44 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     return SQL.raw(sql);
   }
 
-  renameTable(name: Name, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
+  renameTable(name: CompatiableObjectName, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName);
   }
 
-  renameColumn(table: Name, name: string, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(joinName(table, name)), newName, 'COLUMN');
+  renameColumn(
+    table: CompatiableObjectName,
+    name: string,
+    newName: string
+  ): Statement {
+    return sp_rename(
+      this.sqlUtil.sqlifyObjectName(table) + '.' + this.sqlUtil.quoted(name),
+      newName,
+      'COLUMN'
+    );
   }
 
-  renameView(name: Name, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
+  renameView(name: CompatiableObjectName, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName);
   }
 
-  renameIndex(table: Name, name: string, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(joinName(table, name)), newName, 'INDEX');
+  renameIndex(
+    table: CompatiableObjectName,
+    name: string,
+    newName: string
+  ): Statement {
+    return sp_rename(
+      this.sqlUtil.sqlifyObjectName(table) + '.' + this.sqlUtil.quoted(name)
+      ,
+      newName,
+      'INDEX'
+    );
   }
 
-  renameProcedure(name: Name, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
+  renameProcedure(name: CompatiableObjectName, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName);
   }
 
-  renameFunction(name: Name, newName: string): Statement {
-    return sp_rename(this.sqlUtil.sqlifyName(name), newName);
+  renameFunction(name: CompatiableObjectName, newName: string): Statement {
+    return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName);
   }
 }

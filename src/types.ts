@@ -346,14 +346,32 @@ export type TsTypeOf<T extends DbType> = T extends
   ? TsTypeOf<M>[]
   : never;
 
-export type PathedName<T extends string = string> =
-  | [T]
-  | [T, string]
-  | [T, string, string]
-  | [T, string, string, string]
-  | [T, string, string, string, string];
+// export type PathedName<T extends string = string> =
+//   | [T]
+//   | [T, string]
+//   | [T, string, string]
+//   | [T, string, string, string]
+//   | [T, string, string, string, string];
 
-export type Name<T extends string = string> = T | PathedName<T>;
+// export type Name<T extends string = string> = T | PathedName<T>;
+
+/**
+ * ObjectName
+ */
+export interface ObjectName<N extends string = string> {
+  name: N;
+  schema?: string;
+  database?: string;
+}
+
+export type CompatiableObjectName<N extends string = string> = ObjectName<N> | N;
+
+export interface FieldName<N extends string> {
+  table?: ObjectName;
+  name: N;
+}
+
+export type CompatiableFieldName<N extends string = string> = FieldName<N> | N;
 
 /**
  * 从TS Type 转换为DbType的类型

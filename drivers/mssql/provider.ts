@@ -12,10 +12,12 @@ import {
   MigrateBuilder,
   Lube,
   ConnectOptions,
+  SqlBuilder,
 } from 'lubejs';
 import { load } from './schema-loader';
 import { MssqlMigrateBuilder } from './migrate-builder';
 import { parseMssqlConfig } from './util'
+import { db_name, schema_name } from './build-in';
 
 export const DIALECT = 'mssql';
 
@@ -40,6 +42,12 @@ export class MssqlProvider implements DbProvider {
   constructor(public options: MssqlConnectOptions) {
     const translator = new MssqlStandardTranslator(this);
     this.sqlUtil = new MssqlSqlUtil(options.sqlOptions, translator);
+  }
+  getCurrentDatabase(): Promise<string> {
+    return this.lube.queryScalar(SqlBuilder.select(db_name()));
+  }
+  getDefaultSchema(): Promise<string> {
+    return this.lube.queryScalar(SqlBuilder.select(schema_name()));
   }
   private _pool?: mssql.ConnectionPool;
   lube!: Lube;

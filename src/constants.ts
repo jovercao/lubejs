@@ -89,7 +89,6 @@ export enum SQL_SYMBOLE {
   EXPRESSION = 'EXPRESSION',
   CREATE_TABLE_COLUMN = 'CREATE_TABLE_COLUMN',
   STAR = 'STAR',
-  FUNCTION = 'FUNCTION',
   RAW = 'RAW',
   STATEMENT = 'STATEMENT',
   // ANY = '*',
@@ -98,7 +97,6 @@ export enum SQL_SYMBOLE {
   VARAINT_DECLARE = 'VARAINT_DECLARE',
   TABLE_VARIANT_DECLARE = 'TABLE_VARIANT_DECLARE',
   IDENTIFIER = 'IDENTIFIER',
-  TABLE = 'TABLE',
   IDENTITY_VALUE = 'IDENTITY_VALUE',
   STANDARD_EXPRESSION = 'STANDARD_EXPRESSION',
   SCALAR_FUNCTION_INVOKE = 'SCALAR_FUNCTION_INVOKE',
@@ -124,7 +122,53 @@ export enum SQL_SYMBOLE {
   UNIQUE_KEY = 'UNIQUE_KEY',
   PROCEDURE_PARAMETER = 'PROCEDURE_PARAMETER',
   ALTER_TABLE_COLUMN = 'ALTER_TABLE_COLUMN',
-  CONDITION = "CONDITION"
+  CONDITION = "CONDITION",
+  PARAMETER = "PARAMETER",
+  /**
+   * 表
+   */
+  TABLE = 'TABLE',
+  /**
+   * 字段
+   */
+  FIELD = 'FIELD',
+  /**
+   * 函数
+   */
+  FUNCTION = 'FUNCITON',
+  // /**
+  //  * 标量函数
+  //  */
+  // SCALAR_FUNCTION ='SCALAR_FUNCTION',
+  // /**
+  //  * 表值函数
+  //  */
+  // TABLE_FUNCTION = 'TABLE_FUNCTION',
+  /**
+   * 存储过程
+   */
+  PROCEDURE = 'PROCEDURE',
+  /**
+   * 内建标识
+   */
+  BUILT_IN = 'BUILT_IN',
+  /**
+   * 别名
+   */
+  ALIAS = 'ALIAS',
+  /**
+   * 列
+   */
+  SELECT_COLUMN = 'SELECT_COLUMN',
+  /**
+   * 变量
+   */
+  VARIANT = 'VARIANT',
+  /**
+   * 表变量
+   */
+  TABLE_VARIANT = 'TABLE_VARIANT',
+  OBJECT = "OBJECT"
 }
 
 
@@ -263,58 +307,13 @@ export enum OPERATION_KIND {
   CONVERT = 'CONVERT',
 }
 
-export enum IDENTOFIER_KIND {
-  /**
-   * 表
-   */
-  TABLE = 'TABLE',
-  /**
-   * 字段
-   */
-  FIELD = 'FIELD',
-  /**
-   * 函数
-   */
-  FUNCTION = 'FUNCITON',
-  // /**
-  //  * 标量函数
-  //  */
-  // SCALAR_FUNCTION ='SCALAR_FUNCTION',
-  // /**
-  //  * 表值函数
-  //  */
-  // TABLE_FUNCTION = 'TABLE_FUNCTION',
-  /**
-   * 存储过程
-   */
-  PROCEDURE = 'PROCEDURE',
+// export enum IDENTOFIER_KIND {
 
-  PARAMETER = 'PARAMETER',
-  /**
-   * 内建标识
-   */
-  BUILT_IN = 'BUILT_IN',
-  /**
-   * 别名
-   */
-  ALIAS = 'ALIAS',
-  /**
-   * 列
-   */
-  COLUMN = 'COLUMN',
-  /**
-   * 变量
-   */
-  VARIANT = 'VARIANT',
-  /**
-   * 表变量
-   */
-  TABLE_VARIANT = 'TABLE_VARIANT',
-  // /**
-  //  * 命名参数
-  //  */
-  // NAMED_ARGUMENT = 'NAMED_ARGUMENT',
-}
+//   // /**
+//   //  * 命名参数
+//   //  */
+//   // NAMED_ARGUMENT = 'NAMED_ARGUMENT',
+// }
 
 export const INSERT_MAXIMUM_ROWS = 1000;
 

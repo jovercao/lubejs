@@ -338,7 +338,7 @@ describe('MSSQL TESTS', function () {
     const sql = select({
       性别: SQL.case<string>(a.FSex).when(true, '男').else('女'),
       Now: now(),
-      SomeThingResult: makeFunc<number, number>('scalar', ['dosomething', 'dbo'])(100),
+      SomeThingResult: makeFunc<number, number>('scalar', { name: 'dosomething', schema: 'dbo' })(100),
       // 子查询
       field: select(group(1)).asValue(),
       aid: a.FId,
@@ -378,7 +378,7 @@ describe('MSSQL TESTS', function () {
 
   it('db.query(sql: Select)', async function () {
     const o = table('sysobjects').as('o');
-    const p = table(['extended_properties', 'sys']).as('p');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
     const sql = select(
       o.$('id'),
       o.$('name'),
