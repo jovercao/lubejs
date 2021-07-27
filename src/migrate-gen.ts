@@ -72,14 +72,14 @@ export class ${name} implements Migrate {
     builder: MigrateBuilder,
     dialect: string
   ): Promise<void> {
-    ${(upcodes && upcodes.join(';\n    ')) || ''}
+    ${(upcodes && upcodes.map(line => line + ';').join('\n    ')) || ''}
   }
 
   async down(
     builder: MigrateBuilder,
     dialect: string
   ): Promise<void> {
-    ${(downcodes && downcodes.join(';\n    ')) || ''}
+    ${(downcodes && downcodes.map(line => line + ';').join(';\n    ')) || ''}
   }
 
 }

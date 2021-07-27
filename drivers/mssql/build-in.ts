@@ -828,6 +828,11 @@ export const schema_name: () => Expression<string> = makeInvoke(
 );
 
 /**
+ * 获取数据库的上级ID
+ */
+export const database_principal_id: (dbName: CompatibleExpression<string>) => Expression<string> = makeInvoke('scalar', 'database_principal_id', true);
+
+/**
  * 系统重命名函数
  */
 export const sp_rename: (

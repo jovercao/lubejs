@@ -1208,9 +1208,9 @@ export function isBreak(value: any): value is Break {
 }
 
 export function outputCommand(cmd: Command): void {
-  console.debug('sql:'.bgBlack, cmd.sql);
+  console.info('sql:', cmd.sql.gray);
   if (cmd.params && cmd.params.length > 0) {
-    console.debug(
+    console.info(
       'params: {\n',
       cmd.params.map(p => `${p.name}: ${JSON.stringify(p.value)}`).join(',\n') +
         '\n}'

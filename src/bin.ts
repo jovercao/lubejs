@@ -108,7 +108,7 @@ migrate
 const migrateScript = migrate
   .command('script')
   .description('生成数据库更新脚本，脚本更新方向为: <source> ==> <target>')
-  .option('-o, --output-path <outputPath>', '输出目录.')
+  .option('-o, --output-path <outputPath>', '输出路径.')
   .option(
     '-t, --target <target>',
     `目标迁移版本名称：\n  ${'*'.yellow} ---- 表示使用最新版本\n  ${
@@ -159,13 +159,15 @@ const migrateUpdate = migrate
 
 const migrateSync = migrate
   .command('sync')
+  .option('-o, --output-path <outputPath>', '脚本输出路径，不指定此参数时则更新数据库')
   .description(`同步数据库架构及种子数据，本命令为方便开发测试而建立，不建议在生产环境中使用，
 因为通过Sync更新的数据库后，将不能再使用迁移版本管理命令 'lubejs migrate update <migrate>'
 进行更新，否则可能造成数据丢失！`)
   .action(async () => {
+    const opts = migrateSync.opts();
     const cli = await createMigrateCli(migrate.opts());
     try {
-      await cli.sync();
+      await cli.sync(opts?.outputPath);
     } catch (error) {
       errorHandler(error);
     } finally {
@@ -177,9 +179,9 @@ Program.parse(process.argv);
 function errorHandler(error: any) {
   if (error instanceof Object) {
     console.error(error.message.red);
-    console.log(error.stack);
+    console.error(error.stack);
   } else {
-    console.log(error);
+    console.error(error);
   }
 }
 

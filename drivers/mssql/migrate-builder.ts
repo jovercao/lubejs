@@ -272,7 +272,7 @@ END
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentProcedure(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setProcedureComment(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Proc VARCHAR(100), @ObjectId INT
@@ -299,7 +299,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentFunction(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setFunctionComment(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Func VARCHAR(100), @ObjectId INT
@@ -326,7 +326,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentSequence(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setSequenceComment(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Sequence VARCHAR(100), @ObjectId INT
@@ -353,7 +353,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentTable(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setTableComment(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT
@@ -375,13 +375,40 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     return SQL.raw(sql);
   }
 
+  setViewComment(
+    name: CompatiableObjectName,
+    comment: string | null
+  ): Statement {
+    let sql = formatSql`
+-- MigrateBuilder.setViewComment(${this.sqlUtil.sqlifyObjectName(
+      name
+    )}, ${comment});
+DECLARE @Schema VARCHAR(100), @View VARCHAR(100), @ObjectId INT
+
+SELECT @ObjectId = o.object_id, @Schema = s.name, @View = o.name
+FROM sys.objects o JOIN sys.schemas s ON o.schema_id = s.schema_id
+WHERE o.object_id = object_id(${this.sqlUtil.sqlifyObjectName(name)})
+
+IF EXISTS(SELECT 1 FROM sys.extended_properties p WHERE p.major_id = @ObjectId AND p.minor_id = 0 AND p.class = 1)
+BEGIN
+  EXEC sys.sp_dropextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, 'SCHEMA', @Schema, 'VIEW', @View
+END
+`;
+
+    if (comment) {
+      sql += formatSql`
+EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA', @Schema, 'VIEW', @View`;
+    }
+    return SQL.raw(sql);
+  }
+
   setColumnComment(
     table: CompatiableObjectName,
     name: string,
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentColumn(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setColumnComment(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Column VARCHAR(100)
@@ -414,7 +441,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentIndex(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setIndexComment(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Index VARCHAR(100)
@@ -447,7 +474,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
     comment: string | null
   ): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setConstraintComment(${this.sqlUtil.sqlifyObjectName(
       table
     )}, ${name}, ${comment});
 DECLARE @Schema VARCHAR(100), @Table VARCHAR(100), @ObjectId INT, @Constraint VARCHAR(100)
@@ -494,7 +521,7 @@ EXEC sys.sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SC
 
   setSchemaComment(name: string, comment: string | null): Statement {
     let sql = formatSql`
--- MigrateBuilder.commentConstraint(${this.sqlUtil.sqlifyObjectName(
+-- MigrateBuilder.setSchemaComment(${this.sqlUtil.sqlifyObjectName(
       name
     )}, ${comment});
 IF EXISTS(
@@ -538,8 +565,7 @@ EXEC sp_addextendedproperty ${COMMENT_EXTEND_PROPERTY_NAME}, ${comment}, 'SCHEMA
     newName: string
   ): Statement {
     return sp_rename(
-      this.sqlUtil.sqlifyObjectName(table) + '.' + this.sqlUtil.quoted(name)
-      ,
+      this.sqlUtil.sqlifyObjectName(table) + '.' + this.sqlUtil.quoted(name),
       newName,
       'INDEX'
     );

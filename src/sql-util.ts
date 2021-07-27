@@ -287,7 +287,7 @@ export abstract class SqlUtil {
     if (field.$table) {
       sql = this.sqlifyRowsetName(field.$table);
     }
-    sql += this.quoted(field.$name);
+    sql += '.' + this.quoted(field.$name);
     return sql;
   }
 

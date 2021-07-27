@@ -38,49 +38,49 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   readonly statements: Statement[] = [];
 
   renameSequence(name: CompatiableObjectName, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameSequence.name, [name, newName]);
   }
 
   renameDatabase(name: string, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameDatabase.name, [name, newName]);
   }
 
   dropSchemaComment(name: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name]);
+    return StandardStatement.create(this.dropSchemaComment.name, [name]);
   }
   dropSequenceComment(name: CompatiableObjectName<string>): Statement {
-    return StandardStatement.create(arguments.callee.name, [name]);
+    return StandardStatement.create(this.dropSequenceComment.name, [name]);
   }
   dropProcedureComment(name: CompatiableObjectName<string>): Statement {
-    return StandardStatement.create(arguments.callee.name, [name]);
+    return StandardStatement.create(this.dropProcedureComment.name, [name]);
   }
   dropFunctionComment(name: CompatiableObjectName<string>): Statement {
-    return StandardStatement.create(arguments.callee.name, [name]);
+    return StandardStatement.create(this.dropFunctionComment.name, [name]);
   }
   dropTableComment(name: CompatiableObjectName<string>): Statement {
-    return StandardStatement.create(arguments.callee.name, [name]);
+    return StandardStatement.create(this.dropTableComment.name, [name]);
   }
   dropColumnComment(table: CompatiableObjectName<string>, name: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, name]);
+    return StandardStatement.create(this.dropColumnComment.name, [table, name]);
   }
   dropIndexComment(table: CompatiableObjectName<string>, name: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, name]);
+    return StandardStatement.create(this.dropIndexComment.name, [table, name]);
   }
   dropConstraintComment(table: CompatiableObjectName<string>, name: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, name]);
+    return StandardStatement.create(this.dropConstraintComment.name, [table, name]);
   }
   setAutoRowflag(table: CompatiableObjectName<string>, column: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, column]);
+    return StandardStatement.create(this.setAutoRowflag.name, [table, column]);
   }
   dropAutoRowflag(table: CompatiableObjectName<string>, column: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, column]);
+    return StandardStatement.create(this.dropAutoRowflag.name, [table, column]);
   }
   setDefaultValue(
     table: CompatiableObjectName,
     column: string,
     defaultValue: CompatibleExpression<Scalar>
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.setDefaultValue.name, [
       table,
       column,
       defaultValue,
@@ -88,7 +88,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   dropDefaultValue(table: CompatiableObjectName, column: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, column]);
+    return StandardStatement.create(this.dropDefaultValue.name, [table, column]);
   }
 
   setIdentity(
@@ -97,7 +97,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     startValue: number,
     increment: number
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.setIdentity.name, [
       table,
       column,
       startValue,
@@ -106,23 +106,27 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   dropIdentity(table: CompatiableObjectName<string>, column: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [table, column]);
+    return StandardStatement.create(this.dropIdentity.name, [table, column]);
   }
 
   setProcedureComment(name: CompatiableObjectName, comment: string | null): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, comment]);
+    return StandardStatement.create(this.setProcedureComment.name, [name, comment]);
   }
 
   setFunctionComment(name: CompatiableObjectName, comment: string | null): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, comment]);
+    return StandardStatement.create(this.setFunctionComment.name, [name, comment]);
   }
 
   setSequenceComment(name: CompatiableObjectName, comment: string | null): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, comment]);
+    return StandardStatement.create(this.setSequenceComment.name, [name, comment]);
   }
 
   setTableComment(name: CompatiableObjectName, comment: string | null): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, comment]);
+    return StandardStatement.create(this.setTableComment.name, [name, comment]);
+  }
+
+  setViewComment(name: CompatiableObjectName, comment: string | null): Statement {
+    return StandardStatement.create(this.setViewComment.name, [name, comment]);
   }
 
   setColumnComment(
@@ -130,7 +134,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     name: string,
     comment: string | null
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.setColumnComment.name, [
       table,
       name,
       comment,
@@ -142,7 +146,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     name: string,
     comment: string | null
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.setIndexComment.name, [
       table,
       name,
       comment,
@@ -154,7 +158,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     name: string,
     comment: string | null
   ): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.setConstraintComment.name, [
       table,
       name,
       comment,
@@ -162,15 +166,15 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   setSchemaComment(name: string, comment: string | null): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, comment]);
+    return StandardStatement.create(this.setSchemaComment.name, [name, comment]);
   }
 
   renameTable(name: CompatiableObjectName, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameTable.name, [name, newName]);
   }
 
   renameColumn(table: CompatiableObjectName, name: string, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.renameColumn.name, [
       table,
       name,
       newName,
@@ -178,11 +182,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   renameView(name: CompatiableObjectName, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameView.name, [name, newName]);
   }
 
   renameIndex(table: CompatiableObjectName, name: string, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [
+    return StandardStatement.create(this.renameIndex.name, [
       table,
       name,
       newName,
@@ -190,11 +194,11 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
   }
 
   renameProcedure(name: CompatiableObjectName, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameProcedure.name, [name, newName]);
   }
 
   renameFunction(name: CompatiableObjectName, newName: string): Statement {
-    return StandardStatement.create(arguments.callee.name, [name, newName]);
+    return StandardStatement.create(this.renameFunction.name, [name, newName]);
   }
 }
 
@@ -852,6 +856,12 @@ export class SnapshotMigrateTracker {
               const [viewName, comment] = statement.$datas;
               const view = this.getView(viewName);
               view.comment = comment;
+              break;
+            }
+            case 'setColumnComment': {
+              const [tableName, columnName, comment] = statement.$datas;
+              const column = this.getColumn(tableName, columnName);
+              column.comment = comment;
               break;
             }
             case 'setProcedureComment': {

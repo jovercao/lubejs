@@ -14,7 +14,7 @@ import {
   ConnectOptions,
   SqlBuilder,
 } from 'lubejs';
-import { load } from './schema-loader';
+import { loadDatabaseSchema } from './schema-loader';
 import { MssqlMigrateBuilder } from './migrate-builder';
 import { parseMssqlConfig } from './util'
 import { db_name, schema_name } from './build-in';
@@ -69,7 +69,7 @@ export class MssqlProvider implements DbProvider {
 
   getSchema(): Promise<DatabaseSchema> {
     this._assertConnection();
-    return load(this);
+    return loadDatabaseSchema(this);
   }
 
   private _assertConnection(): void {

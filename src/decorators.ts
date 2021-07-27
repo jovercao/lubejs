@@ -252,7 +252,8 @@ function setColumnOptions(
 ): void {
   let columnOptions: ColumnOptions | undefined = Reflect.getMetadata(
     columnKey,
-    target
+    target,
+    key
   );
   if (!columnOptions) {
     let columns: string[] = Reflect.getMetadata(columnsKey, target);

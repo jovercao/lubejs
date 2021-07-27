@@ -12,10 +12,12 @@ import {
   TableSchema,
   UniqueConstraintSchema,
   ViewSchema,
-  InputObject,
-  ColumnsOf,
+  ProcedureSchema,
+  FunctionSchema,
+  SequenceSchema,
+  SchemaSchema,
 } from 'lubejs';
-import { isNull, schema_name } from './build-in';
+import { database_principal_id, isNull, schema_name } from './build-in';
 import { fullType } from './types';
 
 const {
@@ -31,73 +33,17 @@ const {
 
 const excludeTables: string[] = [LUBE_MIGRATE_TABLE_NAME];
 
-export async function load(provider: DbProvider): Promise<DatabaseSchema>;
-export async function load(
+export async function loadDatabaseSchema(provider: DbProvider): Promise<DatabaseSchema>;
+export async function loadDatabaseSchema(
   provider: DbProvider,
   type: 'TABLE',
   name: string
 ): Promise<TableSchema>;
-export async function load(
+export async function loadDatabaseSchema(
   provider: DbProvider,
   type?: 'TABLE',
-  name?: string
+  dbName?: string
 ): Promise<DatabaseSchema | TableSchema> {
-  async function getForeignKeys(tableId: number): Promise<ForeignKeySchema[]> {
-    const fk = table({ name: 'foreign_keys', schema: 'sys' }).as('fk');
-    const rt = table({ name: 'tables', schema: 'sys' }).as('rt');
-    const d = table({ name: 'extended_properties', schema: 'sys' }).as('d');
-
-    const sql = select({
-      id: fk.object_id,
-      name: fk.name,
-      isCascade: fk.delete_referential_action.to(DbType.boolean),
-      referenceTable: rt.name,
-      comment: d.value,
-    })
-      .from(fk)
-      .join(rt, rt.object_id.eq(fk.referenced_object_id))
-      .leftJoin(
-        d,
-        d.name
-          .eq('MS_Description')
-          .and(d.major_id.eq(fk.object_id))
-          .and(d.minor_id.eq(0))
-      )
-      .where(fk.parent_object_id.eq(tableId));
-    const foreignKeys: ForeignKeySchema[] = (await provider.lube.query(sql))
-      .rows as any;
-
-    for (const foreignKey of foreignKeys) {
-      const foreignKeyId = Reflect.get(foreignKey, 'id');
-      Reflect.deleteProperty(foreignKey, 'id');
-      const fkc = table({ name: 'foreign_key_columns', schema: 'sys' }).as('fkc');
-      const fc = table({ name: 'columns', schema: 'sys' }).as('fc');
-      const rc = table({ name: 'columns', schema: 'sys' }).as('rc');
-
-      const colSql = select({
-        fcolumn: fc.name,
-        rcolumn: rc.name,
-      })
-        .from(fkc)
-        .join(
-          fc,
-          fc.object_id
-            .eq(fkc.parent_object_id)
-            .and(fc.column_id.eq(fkc.parent_column_id))
-        )
-        .join(
-          rc,
-          rc.object_id
-            .eq(fkc.referenced_object_id)
-            .and(rc.column_id.eq(fkc.referenced_column_id))
-        )
-        .where(fkc.constraint_object_id.eq(foreignKeyId));
-      const rows = (await provider.lube.query(colSql)).rows!;
-      foreignKey.columns = rows.map(p => p.fcolumn);
-      foreignKey.referenceColumns = rows.map(p => p.rcolumn);
-    }
-    return foreignKeys;
-  }
 
   /**
    * 获取 表格及视图
@@ -105,12 +51,15 @@ export async function load(
   async function getTables(atable?: string) {
     const t = table({ name: 'tables', schema: 'sys' }).as('t');
     const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
     const sql = select({
       id: t.object_id,
       name: t.name,
+      schema: s.name,
       comment: p.value,
     })
       .from(t)
+      .join(s, s.schema_id.eq(t.schema_id))
       .leftJoin(
         p,
         p.major_id
@@ -139,6 +88,28 @@ export async function load(
     return tables;
   }
 
+  async function getSchemas(): Promise<SchemaSchema[]> {
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
+    const sql = select({
+      name: s.name,
+      comment: p.value,
+    })
+      .from(s)
+      .leftJoin(
+        p,
+        p.major_id
+          .eq(s.schema_id)
+          .and(p.class.eq(3))
+          .and(p.minor_id.eq(0))
+          .and(p.name.eq('MS_Description'))
+      )
+      .where(s.principal_id.eq(database_principal_id(dbName!)));
+    const result = (await provider.lube.query(sql)).rows;
+    const schemas: SchemaSchema[] = result;
+    return schemas;
+  }
+
   async function getViews(): Promise<ViewSchema[]> {
     const v = table({ name: 'views', schema: 'sys' }).as('v');
     const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
@@ -151,6 +122,7 @@ export async function load(
       comment: p.value,
     })
       .from(v)
+      .join(s, s.schema_id.eq(v.schema_id))
       .leftJoin(
         p,
         p.major_id
@@ -164,19 +136,122 @@ export async function load(
     const views: ViewSchema[] = result;
 
     for (const view of views) {
-      // const cmd = provider.sqlUtil.sqlify(execute('sp_helptext', [view.name]));
-      // const code = (await provider.query(cmd.sql, cmd.params)).rows.join('\n');
-
-      const rows = (
-        await provider.lube.execute<number, [{ Text: string }]>('sp_helptext', [
-          view.name,
-        ])
-      ).rows!;
-      const key = Object.keys(rows[0])[0];
-      const code = rows.map(row => Reflect.get(row, key)).join('\n');
-      view.scripts = code;
+      view.scripts = await getCode(view.name);
     }
     return views;
+  }
+
+  async function getProcedures(): Promise<ProcedureSchema[]> {
+    const proc = table({ name: 'procedures', schema: 'sys' }).as('proc');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
+    const sql = select({
+      id: proc.object_id,
+      name: proc.name,
+      schema: s.name,
+      scripts: '',
+      comment: p.value,
+    })
+      .from(proc)
+      .join(s, s.schema_id.eq(proc.schema_id))
+      .leftJoin(
+        p,
+        p.major_id
+          .eq(proc.object_id)
+          .and(p.minor_id.eq(0))
+          .and(p.class.eq(1))
+          .and(p.name.eq('MS_Description'))
+      )
+      .where(proc.name.notIn(...excludeTables));
+    const result = (await provider.lube.query(sql)).rows;
+    const procedures: ProcedureSchema[] = result;
+
+    for (const procedure of procedures) {
+      procedure.scripts = await getCode(procedure.name);
+    }
+    return procedures;
+  }
+
+  async function getCode(objname: string): Promise<string> {
+    const rows = (
+      await provider.lube.execute<number, [{ Text: string }]>('sp_helptext', [
+        objname,
+      ])
+    ).rows;
+    const key = Object.keys(rows[0])[0];
+    const code = rows.map(row => Reflect.get(row, key)).join('\n');
+    return code;
+  }
+
+  async function getFunctions(): Promise<FunctionSchema[]> {
+    const fn = table({ name: 'objects', schema: 'sys' }).as('fn');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
+    const sql = select({
+      id: fn.object_id,
+      name: fn.name,
+      schema: s.name,
+      scripts: '',
+      comment: p.value,
+    })
+      .from(fn)
+      .join(s, s.schema_id.eq(fn.schema_id))
+      .leftJoin(
+        p,
+        p.major_id
+          .eq(fn.object_id)
+          .and(p.minor_id.eq(0))
+          .and(p.class.eq(1))
+          .and(p.name.eq('MS_Description'))
+      )
+      .where(fn.type.eq('FN'));
+    const result = (await provider.lube.query(sql)).rows;
+    const functions: FunctionSchema[] = result;
+
+    for (const funciton of functions) {
+      funciton.scripts = await getCode(funciton.name);
+    }
+    return functions;
+  }
+
+  async function getSequences(): Promise<SequenceSchema[]> {
+    const seq = table({ name: 'sequences', schema: 'sys' }).as('fn');
+    const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
+    const s = table({ name: 'schemas', schema: 'sys' });
+    const t = table({ name: 'types', schema: 'sys' }).as('t');
+    const sql = select({
+      id: seq.object_id,
+      name: seq.name,
+      type_name: t.name,
+      type_precision: seq.precision,
+      type_scale: seq.scale,
+      startValue: seq.start_value,
+      increment: seq.increment,
+      schema: s.name,
+      scripts: '',
+      comment: p.value,
+    })
+      .from(seq)
+      .join(t, seq.user_type_id.eq(t.user_type_id))
+      .join(s, s.schema_id.eq(seq.schema_id))
+      .leftJoin(
+        p,
+        p.major_id
+          .eq(seq.object_id)
+          .and(p.minor_id.eq(0))
+          .and(p.class.eq(1))
+          .and(p.name.eq('MS_Description'))
+      )
+      .where(seq.type.eq('FN'));
+    const result = (await provider.lube.query(sql)).rows;
+    const functions: SequenceSchema[] = result.map(row => {
+      const { type_name, type_precision, type_scale, ...datas } = row;
+      return {
+        ...datas,
+        type: fullType(type_name, 0, type_precision, type_scale)
+      }
+    });
+    return functions;
   }
 
   async function getColumns(tableId: number): Promise<ColumnSchema[]> {
@@ -232,36 +307,22 @@ export async function load(
     const columns: ColumnSchema[] = [];
     for (const row of rows) {
       const {
-        name,
-        isNullable,
-        isIdentity,
-        identityStartValue,
-        identityIncrement,
-        isCalculate,
-        calculateExpression,
         defaultValue,
-        comment,
         type_name,
         type_length,
         type_precision,
         type_scale,
+        ...datas
       } = row;
       const isRowflag = ['ROWVERSION', 'TIMESTAMP'].includes((type_name as string).toUpperCase());
       const column: ColumnSchema = {
-        name,
         // 统一行标记类型
         type: isRowflag ? 'BINARY(8)' : fullType(type_name, type_length, type_precision, type_scale),
-        isNullable,
-        isIdentity,
         isRowflag,
-        identityStartValue,
-        identityIncrement,
-        isCalculate,
-        calculateExpression,
         defaultValue: defaultValue
           ? defaultValue.substr(1, defaultValue.length - 2)
           : null,
-        comment,
+        ...datas
       };
       columns.push(column);
     }
@@ -312,6 +373,63 @@ export async function load(
       pk.columns = colRows.map(p => ({ name: p.name, isAscending: !p.isDesc }));
     }
     return pk;
+  }
+
+  async function getForeignKeys(tableId: number): Promise<ForeignKeySchema[]> {
+    const fk = table({ name: 'foreign_keys', schema: 'sys' }).as('fk');
+    const rt = table({ name: 'tables', schema: 'sys' }).as('rt');
+    const d = table({ name: 'extended_properties', schema: 'sys' }).as('d');
+
+    const sql = select({
+      id: fk.object_id,
+      name: fk.name,
+      isCascade: fk.delete_referential_action.to(DbType.boolean),
+      referenceTable: rt.name,
+      comment: d.value,
+    })
+      .from(fk)
+      .join(rt, rt.object_id.eq(fk.referenced_object_id))
+      .leftJoin(
+        d,
+        d.name
+          .eq('MS_Description')
+          .and(d.major_id.eq(fk.object_id))
+          .and(d.minor_id.eq(0))
+      )
+      .where(fk.parent_object_id.eq(tableId));
+    const foreignKeys: ForeignKeySchema[] = (await provider.lube.query(sql))
+      .rows as any;
+
+    for (const foreignKey of foreignKeys) {
+      const foreignKeyId = Reflect.get(foreignKey, 'id');
+      Reflect.deleteProperty(foreignKey, 'id');
+      const fkc = table({ name: 'foreign_key_columns', schema: 'sys' }).as('fkc');
+      const fc = table({ name: 'columns', schema: 'sys' }).as('fc');
+      const rc = table({ name: 'columns', schema: 'sys' }).as('rc');
+
+      const colSql = select({
+        fcolumn: fc.name,
+        rcolumn: rc.name,
+      })
+        .from(fkc)
+        .join(
+          fc,
+          fc.object_id
+            .eq(fkc.parent_object_id)
+            .and(fc.column_id.eq(fkc.parent_column_id))
+        )
+        .join(
+          rc,
+          rc.object_id
+            .eq(fkc.referenced_object_id)
+            .and(rc.column_id.eq(fkc.referenced_column_id))
+        )
+        .where(fkc.constraint_object_id.eq(foreignKeyId));
+      const rows = (await provider.lube.query(colSql)).rows!;
+      foreignKey.columns = rows.map(p => p.fcolumn);
+      foreignKey.referenceColumns = rows.map(p => p.rcolumn);
+    }
+    return foreignKeys;
   }
 
   async function getUniqueConstraints(
@@ -468,21 +586,37 @@ export async function load(
     return indexes;
   }
 
+  if (!dbName) {
+    dbName = await provider.getCurrentDatabase();
+  }
+
+  const d = table('sys.databases');
+  const sql = select({
+    name: d.name,
+    collate: d.collation_name,
+    comment: 'mssql not all comment to database.'
+  }).from(d).where(d.name.eq(dbName))
+  const { rows: [row] } = await provider.lube.query(sql);
+
   if (type === 'TABLE') {
-    const [table] = await getTables(name);
+    const [table] = await getTables(dbName);
     return table;
   }
 
   const tables = await getTables();
   const views = await getViews();
+  const procedures = await getProcedures();
+  const functions = await getFunctions();
+  const sequences = await getSequences();
+  const schemas = await getSchemas();
 
   return {
-    name: 'data',
+    ...row,
     tables,
     views,
-    procedures: [],
-    functions: [],
-    sequences: [],
-    schemas: []
+    procedures,
+    functions,
+    sequences,
+    schemas
   };
 }

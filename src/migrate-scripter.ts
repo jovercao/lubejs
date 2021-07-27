@@ -131,7 +131,7 @@ export class StatementMigrateScripter extends MigrateScripter {
       return row;
     });
     const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = this.builder.insert(table.name).values(rows);
+    let sql = this.builder.insert(table).values(rows);
     if (identityColumn) {
       sql.withIdentity();
     }
@@ -259,7 +259,7 @@ export class StatementMigrateScripter extends MigrateScripter {
 
   createTable(table: TableSchema): void {
     this.middleCodes.push(
-      this.builder.createTable(table.name).as(g => [
+      this.builder.createTable(table).as(g => [
         ...table.columns.map(schema =>
           this.tableColumnForAdd(g.column, schema)
         ),
@@ -276,39 +276,39 @@ export class StatementMigrateScripter extends MigrateScripter {
     );
 
     table.indexes.forEach(index => {
-      this.createIndex(table.name, index);
+      this.createIndex(table, index);
     });
 
     table.foreignKeys.forEach(fk => {
-      this.addForeignKey(table.name, fk);
+      this.addForeignKey(table, fk);
     });
 
     table.constraints.forEach(constraint => {
-      this.addConstraint(table.name, constraint);
+      this.addConstraint(table, constraint);
     });
 
     if (table.comment) {
-      this.commentTable(table.name, table.comment);
+      this.commentTable(table, table.comment);
     }
 
     table.columns.forEach(column => {
       if (column.isRowflag) {
-        this.setAutoRowflag(table.name, column.name);
+        this.setAutoRowflag(table, column.name);
       }
       if (column.comment) {
-        this.commentColumn(table.name, column.name, column.comment);
+        this.commentColumn(table, column.name, column.comment);
       }
     });
 
     table.indexes.forEach(index => {
       if (index.comment) {
-        this.commentIndex(table.name, index.name, index.comment);
+        this.commentIndex(table, index.name, index.comment);
       }
     });
 
     table.foreignKeys.forEach(fk => {
       if (fk.comment) {
-        this.commentForeignKey(table.name, fk.comment);
+        this.commentForeignKey(table, fk.comment);
       }
     });
 
@@ -405,7 +405,6 @@ export class StatementMigrateScripter extends MigrateScripter {
           changes.identityIncrement ||
           changes.identityIncrement
         ) {
-          console.debug(source, target);
           if (!source!.isIdentity) {
             this.middleCodes.push(
               SQL.note('// 敬告：因为需要重建表，在mssql中尚未实现该功能。')
@@ -536,7 +535,7 @@ export class StatementMigrateScripter extends MigrateScripter {
   createSequence(sequence: SequenceSchema): void {
     this.middleCodes.push(
       this.builder
-        .createSequence(sequence.name)
+        .createSequence(sequence)
         .as(SQL.raw(sequence.type))
         .startWith(sequence.startValue ?? 0)
         .incrementBy(sequence.increment ?? 1)
@@ -748,11 +747,6 @@ export class ProgramMigrateScripter implements MigrateScripter {
     if (column.defaultValue) {
       sql += `.default(${JSON.stringify(column.defaultValue)})`;
     }
-    if (!column.isNullable) {
-      sql += '.notNull()';
-    } else {
-      sql += '.null()';
-    }
     if (column.isCalculate) {
       sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`;
     }
@@ -824,38 +818,38 @@ export class ProgramMigrateScripter implements MigrateScripter {
       table.constraints.map(cst => this.constraint(cst));
     }
     let sql = `builder.createTable(${this.namify(
-      table.name
+      table
     )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
     if (table.foreignKeys?.length > 0) {
-      table.foreignKeys.map(fk => this.addForeignKey(table.name, fk));
+      table.foreignKeys.map(fk => this.addForeignKey(table, fk));
     }
     for (const index of table.indexes) {
-      this.createIndex(table.name, index);
+      this.createIndex(table, index);
     }
 
     if (table.comment) {
-      this.comment('Table', table.name, table.comment);
+      this.comment('Table', table, table.comment);
     }
 
     for (const column of table.columns) {
       if (column.isRowflag) {
-        this.setAutoFlag(table.name, column.name);
+        this.setAutoFlag(table, column.name);
       }
       if (column.comment) {
-        this.comment('Column', table.name, column.name, column.comment);
+        this.comment('Column', table, column.name, column.comment);
       }
     }
 
     for (const cst of table.constraints || []) {
       if (cst.comment) {
-        this.comment('Constraint', table.name, cst.name, cst.comment);
+        this.comment('Constraint', table, cst.name, cst.comment);
       }
     }
 
     for (const index of table.indexes || []) {
       if (index.comment) {
-        this.comment('Index', table.name, index.name, index.comment);
+        this.comment('Index', table, index.name, index.comment);
       }
     }
     if (table.seedData?.length) {
@@ -864,16 +858,16 @@ export class ProgramMigrateScripter implements MigrateScripter {
   }
 
   alterTable(tableChanges: ObjectDifference<TableSchema>): void {
-    const tableName = tableChanges.target!.name;
+    const target = tableChanges.target!;
     // PRIMARY KEY
     if (tableChanges.changes?.primaryKey) {
       if (tableChanges.changes.primaryKey.added) {
-        this.addPrimaryKey(tableName, tableChanges.changes.primaryKey.added);
+        this.addPrimaryKey(target, tableChanges.changes.primaryKey.added);
       }
 
       if (tableChanges.changes.primaryKey.removed) {
         this.dropPrimaryKey(
-          tableName,
+          target,
           tableChanges.changes.primaryKey.removed.name
         );
       }
@@ -886,11 +880,11 @@ export class ProgramMigrateScripter implements MigrateScripter {
           )
         ) {
           this.dropPrimaryKey(
-            tableName,
+            target,
             tableChanges.changes.primaryKey.target!.name
           );
           this.addPrimaryKey(
-            tableName,
+            target,
             tableChanges.changes.primaryKey.source!
           );
         }
@@ -898,7 +892,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
         if (tableChanges.changes?.primaryKey.changes.comment) {
           this.comment(
             'Constraint',
-            tableName,
+            target,
             tableChanges.changes.primaryKey.source!.name,
             tableChanges.changes.primaryKey.source!.comment
           );
@@ -910,15 +904,15 @@ export class ProgramMigrateScripter implements MigrateScripter {
     if (tableChanges.changes?.columns) {
       for (const col of tableChanges.changes.columns.removeds || []) {
         // const fk = findTargetForeignKey(({ table, foreignKey }) => isNameEquals(tableName, name))
-        this.dropColumn(tableName, col.name);
+        this.dropColumn(target, col.name);
       }
       for (const column of tableChanges.changes.columns.addeds || []) {
-        this.addColumn(tableName, column);
+        this.addColumn(target, column);
         if (column.isRowflag) {
-          this.setAutoFlag(tableName, column.name);
+          this.setAutoFlag(target, column.name);
         }
         if (column.comment) {
-          this.comment('Column', tableName, column.name, column.comment);
+          this.comment('Column', target, column.name, column.comment);
         }
       }
 
@@ -927,21 +921,21 @@ export class ProgramMigrateScripter implements MigrateScripter {
         if (!changes) continue;
         // 如果类型或者是否可空变化
         if (changes.type || changes.isNullable) {
-          this.alterColumn(tableName, source!);
+          this.alterColumn(target!, source!);
         }
         if (changes.isRowflag) {
           if (source!.isRowflag) {
-            this.setAutoFlag(tableName, source!.name);
+            this.setAutoFlag(target!, source!.name);
           } else {
-            this.dropAutoFlag(tableName, source!.name);
+            this.dropAutoFlag(target!, source!.name);
           }
         }
         if (changes.defaultValue) {
           if (!changes.defaultValue.source) {
-            this.dropDefaultValue(tableName, target!.name);
+            this.dropDefaultValue(target!, target!.name);
           } else {
             this.setDefaultValue(
-              tableName,
+              target!,
               source!.name,
               changes.defaultValue.source
             );
@@ -953,19 +947,18 @@ export class ProgramMigrateScripter implements MigrateScripter {
           changes.identityIncrement ||
           changes.identityIncrement
         ) {
-          console.debug(source, target);
           if (!source!.isIdentity) {
             this.middleCodes.push(
               '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
             );
-            this.dropIdentity(tableName, target!.name);
+            this.dropIdentity(target!, target!.name);
           } else {
             this.middleCodes.push(
               '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
             );
 
             this.setIdentity(
-              tableName,
+              target!,
               source!.name,
               source!.identityStartValue!,
               source!.identityIncrement!
@@ -976,7 +969,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
         if (changes.comment) {
           this.comment(
             'Column',
-            tableName,
+            target!,
             source!.name,
             changes.comment.source
           );
@@ -987,25 +980,25 @@ export class ProgramMigrateScripter implements MigrateScripter {
     // FOREIGN KEY
     if (tableChanges.changes?.foreignKeys) {
       for (const fk of tableChanges.changes?.foreignKeys?.addeds || []) {
-        this.addForeignKey(tableName, fk);
+        this.addForeignKey(target, fk);
         if (fk.comment) {
-          this.comment('Constraint', tableName, fk.name, fk.comment);
+          this.comment('Constraint', target, fk.name, fk.comment);
         }
       }
 
       for (const { name } of tableChanges.changes?.foreignKeys?.removeds ||
         []) {
-        this.dropForeignKey(tableName, name);
+        this.dropForeignKey(target, name);
       }
 
       for (const { source, target, changes } of tableChanges.changes
         ?.foreignKeys?.changes || []) {
-        this.dropForeignKey(tableName, target!.name);
-        this.addForeignKey(tableName, source!);
+        this.dropForeignKey(target!, target!.name);
+        this.addForeignKey(target!, source!);
         if (changes?.comment) {
           this.comment(
             'Constraint',
-            tableName,
+            target!,
             target!.name,
             changes.comment.source
           );
@@ -1017,12 +1010,12 @@ export class ProgramMigrateScripter implements MigrateScripter {
     if (tableChanges.changes?.constraints) {
       for (const constraint of tableChanges.changes.constraints.addeds ||
         []) {
-        this.addConstraint(tableName, constraint);
+        this.addConstraint(target, constraint);
 
         if (constraint.comment) {
           this.comment(
             'Constraint',
-            tableName,
+            target,
             constraint.name,
             constraint.comment
           );
@@ -1031,17 +1024,17 @@ export class ProgramMigrateScripter implements MigrateScripter {
 
       for (const constraint of tableChanges.changes.constraints.removeds ||
         []) {
-        this.dropConstraint(tableName, constraint);
+        this.dropConstraint(target, constraint);
       }
 
       for (const { source, target, changes } of tableChanges.changes
         .constraints.changes || []) {
-        this.dropConstraint(tableName, target!);
-        this.addConstraint(tableName, source!);
+        this.dropConstraint(target!, target!);
+        this.addConstraint(target!, source!);
         if (changes?.comment) {
           this.comment(
             'Constraint',
-            tableName,
+            target!,
             target!.name,
             changes.comment.source
           );
@@ -1052,24 +1045,24 @@ export class ProgramMigrateScripter implements MigrateScripter {
     // INDEXES
     if (tableChanges.changes?.indexes) {
       for (const index of tableChanges.changes.indexes.addeds || []) {
-        this.createIndex(tableName, index);
+        this.createIndex(target, index);
         if (index.comment) {
-          this.comment('Index', tableName, index.name, index.comment);
+          this.comment('Index', target, index.name, index.comment);
         }
       }
 
       for (const index of tableChanges.changes.indexes.removeds || []) {
-        this.dropIndex(tableName, index.name);
+        this.dropIndex(target, index.name);
       }
 
       for (const { source, target, changes } of tableChanges.changes.indexes
         .changes || []) {
-        this.dropIndex(tableName, target!.name);
-        this.createIndex(tableName, source!);
+        this.dropIndex(target!, target!.name);
+        this.createIndex(target!, source!);
         if (changes?.comment) {
           this.comment(
             'Index',
-            tableName,
+            target!,
             source!.name,
             changes.comment.source
           );
@@ -1078,16 +1071,17 @@ export class ProgramMigrateScripter implements MigrateScripter {
     }
 
     if (tableChanges.changes?.comment) {
-      this.comment('Table', tableName, tableChanges.changes.comment.source);
+      this.comment('Table', target, tableChanges.changes.comment.source);
     }
   }
 
-  namify(name: CompatiableObjectName): string {
-    const objName = this.sqlUtil.parseObjectName(name);
-    if (!objName.database && !objName.schema) {
-      return objName.name;
+  namify(objName: CompatiableObjectName): string {
+    const nameobj = this.sqlUtil.parseObjectName(objName);
+    if (!nameobj.schema) {
+      return JSON.stringify(nameobj.name);
     }
-    return JSON.stringify(objName);
+    const { name, schema } = nameobj;
+    return JSON.stringify({ name, schema });
   }
 
   dropPrimaryKey(table: CompatiableObjectName<string>, name: string) {
@@ -1300,7 +1294,7 @@ export class ProgramMigrateScripter implements MigrateScripter {
       return row;
     });
     const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = `builder.insert(${this.namify(table.name)}).values(${JSON.stringify(
+    let sql = `builder.insert(${this.namify(table)}).values(${JSON.stringify(
       rows
     )})`;
     if (identityColumn) {
@@ -1348,10 +1342,10 @@ export function generateScripts(
       for (const table of differences.changes.tables.removeds) {
         // 删除表之前本表外键，以免多表删除时造成依赖问题
         table.foreignKeys.forEach(fk => {
-          scripter.dropForeignKey(table.name, fk.name);
+          scripter.dropForeignKey(table, fk.name);
         });
 
-        scripter.dropTable(table.name);
+        scripter.dropTable(table);
       }
 
       differences.changes.tables.addeds.forEach(addedTable =>
@@ -1364,8 +1358,8 @@ export function generateScripts(
       for (const sequence of differences.changes.sequences.addeds || []) {
         scripter.createSequence(sequence);
       }
-      for (const { name } of differences.changes.sequences.removeds || []) {
-        scripter.dropSequence(name);
+      for (const sequence of differences.changes.sequences.removeds || []) {
+        scripter.dropSequence(sequence);
       }
     }
   }

@@ -240,15 +240,15 @@ export class MigrateCli {
       `Generate migrate file successed, and output to file ${filePath}`.green
     );
     const snapshotPath = resolve(join(this.migrateDir, `${id}.snapshot.ts`));
-    // 创建快照文件
-    await writeFile(
-      snapshotPath,
-      `
-import { DatabaseSchema } from 'lubejs';
-export const schema: DatabaseSchema = ${JSON.stringify(entityScheam)};
-export default schema;
-`
-    );
+//     // 创建快照文件
+//     await writeFile(
+//       snapshotPath,
+//       `
+// import { DatabaseSchema } from 'lubejs';
+// export const schema: DatabaseSchema = ${JSON.stringify(entityScheam)};
+// export default schema;
+// `
+//     );
     const info: MigrateInfo = {
       id,
       name,
@@ -290,17 +290,14 @@ export default schema;
    * @param name
    */
   async update(name?: string): Promise<void> {
-    const source = name
+    const target = name
       ? await this.getMigrate(name)
       : await this.getLastMigrate();
-    if (!source) {
+    if (!target) {
       throw new Error(`无法更新数据库，因为继续更新将删除数据库。`);
     }
-    const target = await this.getCurrentMigrate();
-    const scripts = await this._script({
-      end: source?.name,
-      start: target?.name,
-    });
+    const current = await this.getCurrentMigrate();
+    const scripts = await this._script(current, target);
     await this.dbContext.trans(async instance => {
       for (const cmd of scripts) {
         outputCommand(cmd);
@@ -308,31 +305,14 @@ export default schema;
         console.info(`----------------------------------------------------`);
       }
     });
-    console.info(`------------执行成功，已更新到${source.id}.----------------`);
+    console.info(`------------执行成功，已更新到${target.id}.----------------`);
   }
 
-  async _script(options: {
-    end?: string;
-    start?: string;
-    outputPath?: string;
-  }): Promise<Command[]> {
-    let end: MigrateInfo | undefined;
-    if (!options?.end || options?.end === '*') {
-      end = await this.getLastMigrate();
-    } else if (options?.end === '@') {
-      end = await this.getCurrentMigrate();
-    } else {
-      end = await this.getMigrate(options.end);
-    }
+  async _script(current: MigrateInfo | undefined, target: MigrateInfo | undefined): Promise<Command[]> {
+    const startIndex = current?.index ?? -1;
+    const endIndex = target?.index ?? -1;
+
     const migrates = await this._list();
-    let start: MigrateInfo | undefined;
-    if (!options?.start || options?.start === '@') {
-      start = await this.getCurrentMigrate();
-    } else if (options?.start !== '*') {
-      start = await this.getMigrate(options?.start);
-    }
-    const startIndex = start?.index ?? -1;
-    const endIndex = end?.index ?? -1;
 
     if (startIndex === endIndex) {
       console.log(`源和目标版本一致或未找到可供生成的的迁移文件。`.yellow);
@@ -369,8 +349,8 @@ export default schema;
       );
     }
     statements.push(SQL.delete(LUBE_MIGRATE_TABLE_NAME));
-    if (end) {
-      statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([end.id]));
+    if (target) {
+      statements.push(SQL.insert(LUBE_MIGRATE_TABLE_NAME).values([target.id]));
     }
     const scripts = statements.map(statement =>
       this.dbContext.lube.sqlUtil.sqlify(statement)
@@ -383,7 +363,22 @@ export default schema;
     source?: string;
     outputPath?: string;
   }): Promise<void> {
-    const scripts = await this._script(options);
+    let end: MigrateInfo | undefined;
+    if (!options?.target || options?.target === '*') {
+      end = await this.getLastMigrate();
+    } else if (options?.target === '@') {
+      end = await this.getCurrentMigrate();
+    } else {
+      end = await this.getMigrate(options.target);
+    }
+    const migrates = await this._list();
+    let start: MigrateInfo | undefined;
+    if (!options?.source || options?.source === '@') {
+      start = await this.getCurrentMigrate();
+    } else if (options?.source !== '*') {
+      start = await this.getMigrate(options?.source);
+    }
+    const scripts = await this._script(start, end);
     const text = this.dbContext.lube.sqlUtil.joinBatchSql(
       ...scripts.map(cmd => cmd.sql)
     );
@@ -428,7 +423,7 @@ export default schema;
           name: match[2],
           path: fullPath,
           snapshotPath: resolve(
-            join(this.migrateDir, `${match[1]}_${match[2]}.snapshot.${extname}`)
+            join(this.migrateDir, `${match[1]}_${match[2]}.${this.dbContext.lube.provider.dialect}.snapshot.${extname}`)
           ),
           kind: extname === 'js' ? 'javascript' : 'typescript',
           index: 0,
@@ -453,10 +448,7 @@ export default schema;
   /**
    * 同步架构
    */
-  async sync(): Promise<void> {
-    const metadata = metadataStore.getContext(
-      this.dbContext.constructor as Constructor<DbContext>
-    );
+  async sync(outputPath?: string): Promise<void> {
     const metadataSchema = await  generateSchema(
       this.dbContext.executor.sqlUtil,
       this.dbContext
@@ -474,6 +466,19 @@ export default schema;
 
     console.info(`*************************************************`);
     console.info(`开始开新数据库架构，请稍候......`);
+    if (outputPath) {
+      const filePath = resolve(outputPath);
+      const dir = dirname(filePath);
+      if (!existsSync(dir)) {
+        await mkdir(dir);
+      }
+      const text = commands.map(cmd => cmd.sql).join('\n---------------------------------------------\n');
+      await writeFile(outputPath, text, 'utf-8');
+      console.log(
+        `Generate scripts successed, and output to file ${filePath}`.green
+      );
+      return;
+    }
     await this.dbContext.trans(async instance => {
       for (const cmd of commands) {
         outputCommand(cmd);
@@ -498,7 +503,7 @@ export default schema;
     const defaultSchema = await this.dbContext.lube.provider.getDefaultSchema();
     for (const item of list) {
       if (!currentHash) {
-        currentHash = await getFileHash((await readFile(item.path)).toString('utf-8'));
+        currentHash = await getFileHash(item.path);
       } else {
         currentHash = md5(currentHash + (await readFile(item.path)).toString('utf-8')).toString();
       }
@@ -508,8 +513,8 @@ export default schema;
         }
       }
       if (!needRetrace) {
-        // 较难哈希码
-        const { hash, schema: snapshot } = await import(item.snapshotPath);
+        // 较准哈希码
+        const { hash, default: snapshot } = await import(item.snapshotPath);
         if (!currentHash !== hash) {
           needRetrace = true;
         } else {
@@ -529,9 +534,10 @@ export default schema;
         await writeFile(
           item.snapshotPath,
           `
-import { DatabaseSchema } from 'lubejs';
-export const schema: DatabaseSchema = ${JSON.stringify(lastSchema)};
-export const hash: '${currentHash}';
+import { DatabaseSchema } from "lubejs";
+export const schema: DatabaseSchema = ${JSON.stringify(lastSchema, undefined, 2)};
+export const dialect = '${this.dbContext.lube.provider.dialect}';
+export const hash = "${currentHash}";
 export default schema;
 `
         );
@@ -549,7 +555,7 @@ async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
   }
   const migrate = imported?.default || imported?.[info.name] || imported;
   if (!migrate)
-    throw new Error(`Migrate 文件 ${info.path} ，无法找到迁移实例类。`);
+    throw new Error(`Migrate file ${info.path} not found.`);
   return migrate;
 }
 
