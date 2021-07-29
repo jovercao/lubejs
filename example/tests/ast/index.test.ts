@@ -1,4 +1,4 @@
-import { connect, Lube, SqlBuilder } from 'lubejs';
+import { createLube, Lube, SqlBuilder } from 'lubejs';
 import assert from 'assert';
 
 const {
@@ -18,7 +18,7 @@ const {
 describe.skip('AST测试', function () {
   let db: Lube;
   before(async () => {
-    db = await connect();
+    db = await createLube();
   })
 
   after(async() => {

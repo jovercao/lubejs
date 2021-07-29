@@ -39,6 +39,7 @@ async function createMigrateCli(options?: {
   const db = await createContext(Ctr);
   db.lube.on('command', outputCommand);
   const cli = await new MigrateCli(db, migrateDir);
+  await cli.connect();
   return cli;
 }
 

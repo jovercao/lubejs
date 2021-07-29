@@ -343,11 +343,10 @@ export interface TableEntityMetadata extends EntityMetadata {
 
   key: KeyMetadata;
 
-  // TODO: metdata 需要添加数据架构支持
-  // /**
-  //  * 架构
-  //  */
-  // schema: string;
+  /**
+   * 架构
+   */
+  schema?: string;
 }
 
 /**

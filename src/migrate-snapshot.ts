@@ -13,7 +13,7 @@ import {
   TableSchema,
   ViewSchema,
 } from './schema';
-import { assertAst, isSameObject } from './util';
+import { assertAst, ensureExpression, isSameObject } from './util';
 import {
   AllStatement,
   AlterTable,
@@ -83,7 +83,7 @@ export class SnapshotMigrateBuilder extends MigrateBuilder {
     return StandardStatement.create(this.setDefaultValue.name, [
       table,
       column,
-      defaultValue,
+      ensureExpression(defaultValue),
     ]);
   }
 
@@ -209,342 +209,6 @@ export class SnapshotMigrateTracker {
     private defaultSchema: string,
   ) {}
 
-  assertDatabaseExists(schema: DatabaseSchema | undefined): asserts schema {
-    if (!schema) {
-      throw new Error('Database is not exists.');
-    }
-  }
-
-  private getTable(name: CompatiableObjectName): TableSchema {
-    const table = this.findTable(name);
-    if (!table) {
-      throw new Error(`Table ${name} not exists in database.`);
-    }
-    return table;
-  }
-
-  private findTable(name: CompatiableObjectName): TableSchema | undefined {
-    this.assertDatabaseExists(this.database);
-    return this.database.tables.find(p => isSameObject(name, p.name));
-  }
-
-  private findView(name: CompatiableObjectName): ViewSchema | undefined {
-    this.assertDatabaseExists(this.database);
-    return this.database.views.find(p => isSameObject(name, p.name));
-  }
-
-  private assertTableNotExists(name: CompatiableObjectName): void {
-    this.assertDatabaseExists(this.database);
-    const table = this.database.tables.find(p => isSameObject(p.name, name));
-    if (table)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} is exists.`
-      );
-  }
-
-  private assertViewNotExists(name: CompatiableObjectName): void {
-    this.assertDatabaseExists(this.database);
-    const view = this.database.views.find(p => isSameObject(p.name, name));
-    if (view)
-      throw new Error(`View ${this.sqlUtil.sqlifyObjectName(view.name)} is exists.`);
-  }
-
-  private assertProcedureNotExists(name: CompatiableObjectName): void {
-    this.assertDatabaseExists(this.database);
-    const proc = this.database.procedures.find(p => isSameObject(p.name, name));
-    if (proc)
-      throw new Error(
-        `Procedure ${this.sqlUtil.sqlifyObjectName(proc.name)} is exists.`
-      );
-  }
-
-  private assertFunctionNotExists(name: CompatiableObjectName): void {
-    this.assertDatabaseExists(this.database);
-    const func = this.database.functions.find(p => isSameObject(p.name, name));
-    if (func)
-      throw new Error(
-        `Procedure ${this.sqlUtil.sqlifyObjectName(func.name)} is exists.`
-      );
-  }
-
-  private assertSequenceNotExists(name: CompatiableObjectName): void {
-    this.assertDatabaseExists(this.database);
-    const sequence = this.database.sequences.find(p =>
-      isSameObject(p.name, name)
-    );
-    if (sequence)
-      throw new Error(
-        `Sequence ${this.sqlUtil.sqlifyObjectName(sequence.name)} is exists.`
-      );
-  }
-
-  private assertSchemaNotExists(name: string): void {
-    this.assertDatabaseExists(this.database);
-    const schema = this.database.schemas.find(p => p.name === name);
-    if (schema)
-      throw new Error(
-        `Schema ${this.sqlUtil.sqlifyObjectName(schema.name)} is exists.`
-      );
-  }
-
-  private assertColumnNotExists(tableName: CompatiableObjectName, columnName: string): void {
-    const table = this.getTable(tableName);
-    const column = table.columns.find(col => col.name === columnName);
-    if (column)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(
-          table.name
-        )} Column ${this.sqlUtil.sqlifyObjectName(columnName)} is exists.`
-      );
-  }
-
-  private assertIndexNotExists(tableName: CompatiableObjectName, name: string): void {
-    const table = this.getTable(tableName);
-    const index = table.indexes.find(idx => idx.name === name);
-    if (index)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(
-          table.name
-        )} Index ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
-      );
-  }
-
-  private assertPrimaryNotExists(tableName: CompatiableObjectName, name: string): void {
-    const table = this.getTable(tableName);
-    if (table.primaryKey)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} PrimaryKey is exists.`
-      );
-  }
-
-  private assertForeignKeyExists(tableName: CompatiableObjectName, name: string): void {
-    const table = this.getTable(tableName);
-    const fk = table.foreignKeys.find(idx => idx.name === name);
-    if (fk)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(
-          table.name
-        )} ForeignKey ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
-      );
-  }
-
-  private assertConstraintNotExists(tableName: CompatiableObjectName, name: string): void {
-    const table = this.getTable(tableName);
-    const constraint = table.constraints.find(ct => ct.name === name);
-    if (constraint)
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(
-          table.name
-        )} Constraint ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
-      );
-  }
-
-  private addTableMembers(table: TableSchema, members: CreateTableMember[]) {
-    members.forEach(item => {
-      switch (item.$type) {
-        case SQL_SYMBOLE.PRIMARY_KEY: {
-          if (table.primaryKey)
-            throw new Error(`Table ${table.name} primary key is exists.`);
-          assertAst(item.$name, 'CreateTable statement name not found.');
-          assertAst(item.$columns, 'Primary key columns not found.');
-          table.primaryKey = {
-            name: item.$name!,
-            columns: item.$columns.map(col => ({
-              name: col.name,
-              isAscending: col.sort === 'ASC',
-            })),
-            isNonclustered: item.$nonclustered,
-          };
-          break;
-        }
-        case SQL_SYMBOLE.CREATE_TABLE_COLUMN: {
-          if (table.columns.find(col => col.name === item.$name)) {
-            throw new Error(
-              `Table ${this.sqlUtil.sqlifyObjectName(
-                table.name
-              )} column ${this.sqlUtil.sqlifyObjectName(item.$name)} is exists.`
-            );
-          }
-          table.columns.push({
-            name: item.$name,
-            type: this.sqlUtil.sqlifyType(item.$dbType),
-            isNullable: item.$nullable ?? false,
-            isIdentity: !!item.$identity,
-            identityStartValue: item.$identity?.startValue,
-            identityIncrement: item.$identity?.increment,
-            isCalculate: !!item.$calculate,
-            defaultValue:
-              item.$default && this.sqlUtil.sqlifyExpression(item.$default),
-            calculateExpression:
-              item.$calculate && this.sqlUtil.sqlifyExpression(item.$calculate),
-            isRowflag: false,
-          });
-          break;
-        }
-        case SQL_SYMBOLE.FOREIGN_KEY: {
-          assertAst(item.$name, 'Foreign key name not found.');
-          assertAst(item.$columns, 'Foreign key columns not found.');
-          assertAst(
-            item.$referenceColumns,
-            'Foreign key referenceColumns not found.'
-          );
-          assertAst(
-            item.$referenceTable,
-            'Foreign key ReferenceTable not found.'
-          );
-          const objName = this.sqlUtil.parseObjectName(item.$name);
-          table.foreignKeys.push({
-            name: item.$name!,
-            columns: item.$columns,
-            referenceColumns: item.$referenceColumns,
-            referenceTable: objName.name,
-            referenceSchema: objName.schema ?? this.defaultSchema
-          });
-          break;
-        }
-        case SQL_SYMBOLE.UNIQUE_KEY: {
-          assertAst(item.$columns, 'Unique key name not found.');
-          assertAst(item.$name, 'Unique key name not found.');
-          table.constraints.push({
-            name: item.$name,
-            kind: 'UNIQUE',
-            columns: item.$columns.map(c => ({
-              name: c.name,
-              isAscending: c.sort === 'ASC',
-            })),
-          });
-          break;
-        }
-        case SQL_SYMBOLE.CHECK_CONSTRAINT: {
-          assertAst(item.$name, 'Unique key name not found.');
-          table.constraints.push({
-            kind: 'CHECK',
-            name: item.$name,
-            sql: this.sqlUtil.sqlifyCondition(item.$sql),
-          });
-          break;
-        }
-      }
-    });
-  }
-
-  private createTable(statement: CreateTable): void {
-    this.assertDatabaseExists(this.database);
-    if (this.findTable(statement.$name)) {
-      throw new Error(
-        `Table ${this.sqlUtil.sqlifyObjectName(statement.$name)} is exists.`
-      );
-    }
-    assertAst(statement.$members, 'CreateTable statement member not found.');
-    const objName = this.sqlUtil.parseObjectName(statement.$name);
-    const table: TableSchema = {
-      name: objName.name,
-      schema: objName.schema ?? this.defaultSchema,
-      indexes: [],
-      columns: [],
-      foreignKeys: [],
-      constraints: [],
-    };
-
-    this.addTableMembers(table, statement.$members);
-
-    this.database.tables.push(table);
-  }
-
-  private alterTable(statement: AlterTable): void {
-    this.assertDatabaseExists(this.database);
-    const table = this.getTable(statement.$name);
-    assertAst(
-      statement.$adds || statement.$drop || statement.$alterColumn,
-      'AlterTable statement action not found.'
-    );
-
-    if (statement.$adds) {
-      this.addTableMembers(table, statement.$adds);
-    } else if (statement.$alterColumn) {
-      const column = table.columns.find(
-        p => p.name === statement.$alterColumn?.$name
-      );
-      if (!column)
-        throw new Error(
-          `Table ${this.sqlUtil.sqlifyObjectName(
-            table.name
-          )} Column ${this.sqlUtil.sqlifyObjectName(
-            statement.$alterColumn.$name
-          )} not found.`
-        );
-      column.type = this.sqlUtil.sqlifyType(statement.$alterColumn.$dbType);
-      assertAst(
-        statement.$alterColumn.$nullable !== undefined,
-        'Column nullable not found.'
-      );
-      column.isNullable = statement.$alterColumn.$nullable;
-    } else if (statement.$drop) {
-      switch (statement.$drop.$kind) {
-        case SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT:
-        case SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY: {
-          const index = table.constraints.findIndex(
-            p => p.name === statement.$drop!.$kind
-          );
-          if (index < 0) {
-            throw new Error(
-              `Table ${this.sqlUtil.sqlifyObjectName(
-                table.name
-              )} Constraint ${this.sqlUtil.sqlifyObjectName(
-                statement.$drop.$name
-              )} not found.`
-            );
-          }
-          table.constraints.splice(index, 1);
-          break;
-        }
-        case SQL_SYMBOLE_TABLE_MEMBER.COLUMN: {
-          const index = table.columns.findIndex(
-            p => p.name === statement.$drop!.$kind
-          );
-          if (index < 0) {
-            throw new Error(
-              `Table ${this.sqlUtil.sqlifyObjectName(
-                table.name
-              )} Column ${this.sqlUtil.sqlifyObjectName(
-                statement.$drop.$name
-              )} not found.`
-            );
-          }
-          table.columns.splice(index, 1);
-          break;
-        }
-        case SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY: {
-          if (table.primaryKey?.name !== statement.$drop.$name) {
-            throw new Error(
-              `Table ${this.sqlUtil.sqlifyObjectName(
-                table.name
-              )} Primary key ${this.sqlUtil.sqlifyObjectName(
-                statement.$drop.$name
-              )} not found.`
-            );
-          }
-          table.primaryKey = undefined;
-          break;
-        }
-        case SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY:
-          const index = table.foreignKeys.findIndex(
-            p => p.name === statement.$drop!.$kind
-          );
-          if (index < 0) {
-            throw new Error(
-              `Table ${this.sqlUtil.sqlifyObjectName(
-                table.name
-              )} ForeignKey ${this.sqlUtil.sqlifyObjectName(
-                statement.$drop.$name
-              )} not found.`
-            );
-          }
-          table.foreignKeys.splice(index, 1);
-          break;
-      }
-    }
-  }
 
   run(statements: Statement[]) {
     for (const statement of statements as AllStatement[]) {
@@ -837,13 +501,27 @@ export class SnapshotMigrateTracker {
             case 'setDefaultValue': {
               const [tableName, columnName, defaultValue] = statement.$datas;
               const column = this.getColumn(tableName, columnName);
-              column.defaultValue = defaultValue;
+              column.defaultValue = this.sqlUtil.sqlifyExpression(defaultValue);
               break;
             }
             case 'dropDefaultValue': {
               const [tableName, columnName] = statement.$datas;
               const column = this.getColumn(tableName, columnName);
               column.defaultValue = undefined;
+              break;
+            }
+
+            case 'setAutoRowflag': {
+              const [tableName, columnName] = statement.$datas;
+              const column = this.getColumn(tableName, columnName);
+              column.isRowflag = true;
+              break;
+            }
+
+            case 'dropAutoRowflag': {
+              const [tableName, columnName] = statement.$datas;
+              const column = this.getColumn(tableName, columnName);
+              column.isRowflag = false;
               break;
             }
             case 'setTableComment': {
@@ -949,6 +627,343 @@ export class SnapshotMigrateTracker {
               break;
             }
           }
+      }
+    }
+  }
+
+  assertDatabaseExists(schema: DatabaseSchema | undefined): asserts schema {
+    if (!schema) {
+      throw new Error('Database is not exists.');
+    }
+  }
+
+  private getTable(name: CompatiableObjectName): TableSchema {
+    const table = this.findTable(name);
+    if (!table) {
+      throw new Error(`Table ${name} not exists in database.`);
+    }
+    return table;
+  }
+
+  private findTable(name: CompatiableObjectName): TableSchema | undefined {
+    this.assertDatabaseExists(this.database);
+    return this.database.tables.find(p => isSameObject(name, p.name));
+  }
+
+  private findView(name: CompatiableObjectName): ViewSchema | undefined {
+    this.assertDatabaseExists(this.database);
+    return this.database.views.find(p => isSameObject(name, p.name));
+  }
+
+  private assertTableNotExists(name: CompatiableObjectName): void {
+    this.assertDatabaseExists(this.database);
+    const table = this.database.tables.find(p => isSameObject(p.name, name));
+    if (table)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} is exists.`
+      );
+  }
+
+  private assertViewNotExists(name: CompatiableObjectName): void {
+    this.assertDatabaseExists(this.database);
+    const view = this.database.views.find(p => isSameObject(p.name, name));
+    if (view)
+      throw new Error(`View ${this.sqlUtil.sqlifyObjectName(view.name)} is exists.`);
+  }
+
+  private assertProcedureNotExists(name: CompatiableObjectName): void {
+    this.assertDatabaseExists(this.database);
+    const proc = this.database.procedures.find(p => isSameObject(p.name, name));
+    if (proc)
+      throw new Error(
+        `Procedure ${this.sqlUtil.sqlifyObjectName(proc.name)} is exists.`
+      );
+  }
+
+  private assertFunctionNotExists(name: CompatiableObjectName): void {
+    this.assertDatabaseExists(this.database);
+    const func = this.database.functions.find(p => isSameObject(p.name, name));
+    if (func)
+      throw new Error(
+        `Procedure ${this.sqlUtil.sqlifyObjectName(func.name)} is exists.`
+      );
+  }
+
+  private assertSequenceNotExists(name: CompatiableObjectName): void {
+    this.assertDatabaseExists(this.database);
+    const sequence = this.database.sequences.find(p =>
+      isSameObject(p.name, name)
+    );
+    if (sequence)
+      throw new Error(
+        `Sequence ${this.sqlUtil.sqlifyObjectName(sequence.name)} is exists.`
+      );
+  }
+
+  private assertSchemaNotExists(name: string): void {
+    this.assertDatabaseExists(this.database);
+    const schema = this.database.schemas.find(p => p.name === name);
+    if (schema)
+      throw new Error(
+        `Schema ${this.sqlUtil.sqlifyObjectName(schema.name)} is exists.`
+      );
+  }
+
+  private assertColumnNotExists(tableName: CompatiableObjectName, columnName: string): void {
+    const table = this.getTable(tableName);
+    const column = table.columns.find(col => col.name === columnName);
+    if (column)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(
+          table.name
+        )} Column ${this.sqlUtil.sqlifyObjectName(columnName)} is exists.`
+      );
+  }
+
+  private assertIndexNotExists(tableName: CompatiableObjectName, name: string): void {
+    const table = this.getTable(tableName);
+    const index = table.indexes.find(idx => idx.name === name);
+    if (index)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(
+          table.name
+        )} Index ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
+      );
+  }
+
+  private assertPrimaryNotExists(tableName: CompatiableObjectName, name: string): void {
+    const table = this.getTable(tableName);
+    if (table.primaryKey)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(table.name)} PrimaryKey is exists.`
+      );
+  }
+
+  private assertForeignKeyExists(tableName: CompatiableObjectName, name: string): void {
+    const table = this.getTable(tableName);
+    const fk = table.foreignKeys.find(idx => idx.name === name);
+    if (fk)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(
+          table.name
+        )} ForeignKey ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
+      );
+  }
+
+  private assertConstraintNotExists(tableName: CompatiableObjectName, name: string): void {
+    const table = this.getTable(tableName);
+    const constraint = table.constraints.find(ct => ct.name === name);
+    if (constraint)
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(
+          table.name
+        )} Constraint ${this.sqlUtil.sqlifyObjectName(name)} is exists.`
+      );
+  }
+
+  private addTableMembers(table: TableSchema, members: CreateTableMember[]) {
+    members.forEach(item => {
+      switch (item.$type) {
+        case SQL_SYMBOLE.PRIMARY_KEY: {
+          if (table.primaryKey)
+            throw new Error(`Table ${table.name} primary key is exists.`);
+          assertAst(item.$name, 'CreateTable statement name not found.');
+          assertAst(item.$columns, 'Primary key columns not found.');
+          table.primaryKey = {
+            name: item.$name!,
+            columns: item.$columns.map(col => ({
+              name: col.name,
+              isAscending: col.sort === 'ASC',
+            })),
+            isNonclustered: item.$nonclustered,
+          };
+          break;
+        }
+        case SQL_SYMBOLE.CREATE_TABLE_COLUMN: {
+          if (table.columns.find(col => col.name === item.$name)) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyObjectName(
+                table.name
+              )} column ${this.sqlUtil.sqlifyObjectName(item.$name)} is exists.`
+            );
+          }
+          table.columns.push({
+            name: item.$name,
+            type: this.sqlUtil.sqlifyType(item.$dbType),
+            isNullable: item.$nullable ?? false,
+            isIdentity: !!item.$identity,
+            identityStartValue: item.$identity?.startValue,
+            identityIncrement: item.$identity?.increment,
+            isCalculate: !!item.$calculate,
+            defaultValue:
+              item.$default && this.sqlUtil.sqlifyExpression(item.$default),
+            calculateExpression:
+              item.$calculate && this.sqlUtil.sqlifyExpression(item.$calculate),
+            isRowflag: false,
+          });
+          break;
+        }
+        case SQL_SYMBOLE.FOREIGN_KEY: {
+          assertAst(item.$name, 'Foreign key name not found.');
+          assertAst(item.$columns, 'Foreign key columns not found.');
+          assertAst(
+            item.$referenceColumns,
+            'Foreign key referenceColumns not found.'
+          );
+          assertAst(
+            item.$referenceTable,
+            'Foreign key ReferenceTable not found.'
+          );
+          const objName = this.sqlUtil.parseObjectName(item.$referenceTable);
+          table.foreignKeys.push({
+            name: item.$name!,
+            columns: item.$columns,
+            referenceColumns: item.$referenceColumns,
+            referenceTable: objName.name,
+            referenceSchema: objName.schema ?? this.defaultSchema,
+          });
+          break;
+        }
+        case SQL_SYMBOLE.UNIQUE_KEY: {
+          assertAst(item.$columns, 'Unique key name not found.');
+          assertAst(item.$name, 'Unique key name not found.');
+          table.constraints.push({
+            name: item.$name,
+            kind: 'UNIQUE',
+            columns: item.$columns.map(c => ({
+              name: c.name,
+              isAscending: c.sort === 'ASC',
+            })),
+          });
+          break;
+        }
+        case SQL_SYMBOLE.CHECK_CONSTRAINT: {
+          assertAst(item.$name, 'Unique key name not found.');
+          table.constraints.push({
+            kind: 'CHECK',
+            name: item.$name,
+            sql: this.sqlUtil.sqlifyCondition(item.$sql),
+          });
+          break;
+        }
+      }
+    });
+  }
+
+  private createTable(statement: CreateTable): void {
+    this.assertDatabaseExists(this.database);
+    if (this.findTable(statement.$name)) {
+      throw new Error(
+        `Table ${this.sqlUtil.sqlifyObjectName(statement.$name)} is exists.`
+      );
+    }
+    assertAst(statement.$members, 'CreateTable statement member not found.');
+    const objName = this.sqlUtil.parseObjectName(statement.$name);
+    const table: TableSchema = {
+      name: objName.name,
+      schema: objName.schema ?? this.defaultSchema,
+      indexes: [],
+      columns: [],
+      foreignKeys: [],
+      constraints: [],
+    };
+
+    this.addTableMembers(table, statement.$members);
+
+    this.database.tables.push(table);
+  }
+
+  private alterTable(statement: AlterTable): void {
+    this.assertDatabaseExists(this.database);
+    const table = this.getTable(statement.$name);
+    assertAst(
+      statement.$adds || statement.$drop || statement.$alterColumn,
+      'AlterTable statement action not found.'
+    );
+
+    if (statement.$adds) {
+      this.addTableMembers(table, statement.$adds);
+    } else if (statement.$alterColumn) {
+      const column = table.columns.find(
+        p => p.name === statement.$alterColumn?.$name
+      );
+      if (!column)
+        throw new Error(
+          `Table ${this.sqlUtil.sqlifyObjectName(
+            table.name
+          )} Column ${this.sqlUtil.sqlifyObjectName(
+            statement.$alterColumn.$name
+          )} not found.`
+        );
+      column.type = this.sqlUtil.sqlifyType(statement.$alterColumn.$dbType);
+      assertAst(
+        statement.$alterColumn.$nullable !== undefined,
+        'Column nullable not found.'
+      );
+      column.isNullable = statement.$alterColumn.$nullable;
+    } else if (statement.$drop) {
+      switch (statement.$drop.$kind) {
+        case SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT:
+        case SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY: {
+          const index = table.constraints.findIndex(
+            p => p.name === statement.$drop!.$kind
+          );
+          if (index < 0) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyObjectName(
+                table.name
+              )} Constraint ${this.sqlUtil.sqlifyObjectName(
+                statement.$drop.$name
+              )} not found.`
+            );
+          }
+          table.constraints.splice(index, 1);
+          break;
+        }
+        case SQL_SYMBOLE_TABLE_MEMBER.COLUMN: {
+          const index = table.columns.findIndex(
+            p => p.name === statement.$drop!.$kind
+          );
+          if (index < 0) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyObjectName(
+                table.name
+              )} Column ${this.sqlUtil.sqlifyObjectName(
+                statement.$drop.$name
+              )} not found.`
+            );
+          }
+          table.columns.splice(index, 1);
+          break;
+        }
+        case SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY: {
+          if (table.primaryKey?.name !== statement.$drop.$name) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyObjectName(
+                table.name
+              )} Primary key ${this.sqlUtil.sqlifyObjectName(
+                statement.$drop.$name
+              )} not found.`
+            );
+          }
+          table.primaryKey = undefined;
+          break;
+        }
+        case SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY:
+          const index = table.foreignKeys.findIndex(
+            p => p.name === statement.$drop!.$kind
+          );
+          if (index < 0) {
+            throw new Error(
+              `Table ${this.sqlUtil.sqlifyObjectName(
+                table.name
+              )} ForeignKey ${this.sqlUtil.sqlifyObjectName(
+                statement.$drop.$name
+              )} not found.`
+            );
+          }
+          table.foreignKeys.splice(index, 1);
+          break;
       }
     }
   }

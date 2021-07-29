@@ -16,6 +16,8 @@ import {
   FunctionSchema,
   SequenceSchema,
   SchemaSchema,
+  ISOLATION_LEVEL,
+  Executor
 } from 'lubejs';
 import { database_principal_id, isNull, schema_name } from './build-in';
 import { fullType } from './types';
@@ -33,22 +35,15 @@ const {
 
 const excludeTables: string[] = [LUBE_MIGRATE_TABLE_NAME];
 
-export async function loadDatabaseSchema(provider: DbProvider): Promise<DatabaseSchema>;
 export async function loadDatabaseSchema(
   provider: DbProvider,
-  type: 'TABLE',
-  name: string
-): Promise<TableSchema>;
-export async function loadDatabaseSchema(
-  provider: DbProvider,
-  type?: 'TABLE',
   dbName?: string
-): Promise<DatabaseSchema | TableSchema> {
+): Promise<DatabaseSchema | undefined> {
 
   /**
    * 获取 表格及视图
    */
-  async function getTables(atable?: string) {
+  async function getTables() {
     const t = table({ name: 'tables', schema: 'sys' }).as('t');
     const p = table({ name: 'extended_properties', schema: 'sys' }).as('p');
     const s = table({ name: 'schemas', schema: 'sys' });
@@ -69,9 +64,8 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(t.name.notIn(...excludeTables));
-    if (atable) sql.andWhere(t.name.eq(atable));
 
-    const tables: TableSchema[] = (await provider.lube.query(sql)).rows as any;
+    const tables: TableSchema[] = (await runner.query(sql)).rows as any;
 
     for (const table of tables) {
       const tableId = Reflect.get(table, 'id');
@@ -105,7 +99,7 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(s.principal_id.eq(database_principal_id(dbName!)));
-    const result = (await provider.lube.query(sql)).rows;
+    const result = (await runner.query(sql)).rows;
     const schemas: SchemaSchema[] = result;
     return schemas;
   }
@@ -132,7 +126,7 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(v.name.notIn(...excludeTables));
-    const result = (await provider.lube.query(sql)).rows;
+    const result = (await runner.query(sql)).rows;
     const views: ViewSchema[] = result;
 
     for (const view of views) {
@@ -163,7 +157,7 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(proc.name.notIn(...excludeTables));
-    const result = (await provider.lube.query(sql)).rows;
+    const result = (await runner.query(sql)).rows;
     const procedures: ProcedureSchema[] = result;
 
     for (const procedure of procedures) {
@@ -174,7 +168,7 @@ export async function loadDatabaseSchema(
 
   async function getCode(objname: string): Promise<string> {
     const rows = (
-      await provider.lube.execute<number, [{ Text: string }]>('sp_helptext', [
+      await runner.execute<number, [{ Text: string }]>('sp_helptext', [
         objname,
       ])
     ).rows;
@@ -205,7 +199,7 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(fn.type.eq('FN'));
-    const result = (await provider.lube.query(sql)).rows;
+    const result = (await runner.query(sql)).rows;
     const functions: FunctionSchema[] = result;
 
     for (const funciton of functions) {
@@ -243,7 +237,7 @@ export async function loadDatabaseSchema(
           .and(p.name.eq('MS_Description'))
       )
       .where(seq.type.eq('FN'));
-    const result = (await provider.lube.query(sql)).rows;
+    const result = (await runner.query(sql)).rows;
     const functions: SequenceSchema[] = result.map(row => {
       const { type_name, type_precision, type_scale, ...datas } = row;
       return {
@@ -302,7 +296,7 @@ export async function loadDatabaseSchema(
         )
       )
       .where(c.object_id.eq(tableId));
-    const { rows } = await provider.lube.query(sql);
+    const { rows } = await runner.query(sql);
 
     const columns: ColumnSchema[] = [];
     for (const row of rows) {
@@ -317,7 +311,7 @@ export async function loadDatabaseSchema(
       const isRowflag = ['ROWVERSION', 'TIMESTAMP'].includes((type_name as string).toUpperCase());
       const column: ColumnSchema = {
         // 统一行标记类型
-        type: isRowflag ? 'BINARY(8)' : fullType(type_name, type_length, type_precision, type_scale),
+        type: fullType(type_name, type_length, type_precision, type_scale),
         isRowflag,
         defaultValue: defaultValue
           ? defaultValue.substr(1, defaultValue.length - 2)
@@ -349,7 +343,7 @@ export async function loadDatabaseSchema(
         and(p.class.eq(1), p.major_id.eq(k.object_id), p.minor_id.eq(0))
       )
       .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
-    const rows = (await provider.lube.query(sql)).rows;
+    const rows = (await runner.query(sql)).rows;
     const pk: PrimaryKeySchema = rows[0];
 
     if (pk) {
@@ -369,7 +363,7 @@ export async function loadDatabaseSchema(
         .join(i, and(ic.object_id.eq(i.object_id), ic.index_id.eq(i.index_id)))
         .where(and(i.object_id.eq(tableId), i.is_primary_key.eq(true)));
 
-      const { rows: colRows } = await provider.lube.query(colSql);
+      const { rows: colRows } = await runner.query(colSql);
       pk.columns = colRows.map(p => ({ name: p.name, isAscending: !p.isDesc }));
     }
     return pk;
@@ -397,7 +391,7 @@ export async function loadDatabaseSchema(
           .and(d.minor_id.eq(0))
       )
       .where(fk.parent_object_id.eq(tableId));
-    const foreignKeys: ForeignKeySchema[] = (await provider.lube.query(sql))
+    const foreignKeys: ForeignKeySchema[] = (await runner.query(sql))
       .rows as any;
 
     for (const foreignKey of foreignKeys) {
@@ -425,7 +419,7 @@ export async function loadDatabaseSchema(
             .and(rc.column_id.eq(fkc.referenced_column_id))
         )
         .where(fkc.constraint_object_id.eq(foreignKeyId));
-      const rows = (await provider.lube.query(colSql)).rows!;
+      const rows = (await runner.query(colSql)).rows!;
       foreignKey.columns = rows.map(p => p.fcolumn);
       foreignKey.referenceColumns = rows.map(p => p.rcolumn);
     }
@@ -457,7 +451,7 @@ export async function loadDatabaseSchema(
         and(p.class.eq(1), p.major_id.eq(k.object_id), p.minor_id.eq(0))
       )
       .where(and(i.is_unique.eq(false), i.object_id.eq(tableId)));
-    const { rows } = await provider.lube.query(sql);
+    const { rows } = await runner.query(sql);
     const uniques: UniqueConstraintSchema[] = rows.map(p => ({
       kind: 'UNIQUE',
       name: p.name,
@@ -479,7 +473,7 @@ export async function loadDatabaseSchema(
       .join(i, and(ic.object_id.eq(i.object_id), ic.index_id.eq(i.index_id)))
       .where(and(i.is_unique.eq(false), i.object_id.eq(tableId)));
 
-    const { rows: colRows } = await provider.lube.query(colSql);
+    const { rows: colRows } = await runner.query(colSql);
     for (const unique of uniques) {
       unique.columns = colRows
         .filter(p => p.indexName === Reflect.get(unique, 'indexName'))
@@ -512,7 +506,7 @@ export async function loadDatabaseSchema(
       .where(
         and(c.parent_object_id.eq(tableId), c.type_desc.eq('CHECK_CONSTRAINT'))
       );
-    const { rows } = await provider.lube.query(sql);
+    const { rows } = await runner.query(sql);
     return rows;
   }
 
@@ -547,7 +541,7 @@ export async function loadDatabaseSchema(
         )
       );
     // const st = provider.sqlUtil.sqlify(sql);
-    const { rows } = await provider.lube.query(sql);
+    const { rows } = await runner.query(sql);
     const indexes: IndexSchema[] = rows.map(
       ({ name, isUnique, isClustered, comment }) => ({
         name,
@@ -597,26 +591,33 @@ export async function loadDatabaseSchema(
     comment: 'mssql not all comment to database.'
   }).from(d).where(d.name.eq(dbName))
   const { rows: [row] } = await provider.lube.query(sql);
-
-  if (type === 'TABLE') {
-    const [table] = await getTables(dbName);
-    return table;
+  if (!row) {
+    return;
   }
 
-  const tables = await getTables();
-  const views = await getViews();
-  const procedures = await getProcedures();
-  const functions = await getFunctions();
-  const sequences = await getSequences();
-  const schemas = await getSchemas();
+  let runner: Executor
+  return await provider.lube.trans(async (executor) => {
+    runner = executor;
+    // 切换数据库
+    if (dbName) {
+      await runner.query(SqlBuilder.use(dbName));
+    }
+    const tables = await getTables();
+    const views = await getViews();
+    const procedures = await getProcedures();
+    const functions = await getFunctions();
+    const sequences = await getSequences();
+    const schemas = await getSchemas();
+    return {
+      ...row,
+      tables,
+      views,
+      procedures,
+      functions,
+      sequences,
+      schemas
+    } as DatabaseSchema;
+  });
 
-  return {
-    ...row,
-    tables,
-    views,
-    procedures,
-    functions,
-    sequences,
-    schemas
-  };
+
 }

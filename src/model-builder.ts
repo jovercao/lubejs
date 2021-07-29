@@ -8,35 +8,67 @@ import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
 import {
   DbContext,
   DbContextConstructor,
-  EntityConstructor
+  EntityConstructor,
 } from './db-context';
 import {
-  columnKey,
-  ColumnOptions,
-  columnsKey,
-  connectionKey,
-  contextOptionsKey,
-  DbContextOptions,
-  EntityOptions,
-  entityOptionsKey,
-  keyKey,
-  KeyOptions
+  getAmong,
+  getColumnOptions,
+  getComment,
+  getConnectionOptions,
+  getContextOptions,
+  getDecorateContexts,
+  getDecorateEntities,
+  getEntityColumns,
+  getEntityKeyOptions,
+  getEntityOptions,
+  getEntityRelations,
+  getRelationOptions,
 } from './decorators';
 import { ConnectOptions } from './lube';
 import {
-  ColumnMetadata, DbContextMetadata, EntityMetadata, ForeignOneToOneMetadata, ForeignRelation, HasManyMetadata, HasOneMetadata, IndexMetadata, isForeignOneToOne, isManyToMany, isManyToOne, isOneToMany, isPrimaryOneToOne, isTableEntity, KeyMetadata, ManyToManyMetadata, ManyToOneMetadata, metadataStore, OneToManyMetadata, OneToOneMetadata, PrimaryOneToOneMetadata, RelationMetadata, TableEntityMetadata
+  ColumnMetadata,
+  DbContextMetadata,
+  EntityMetadata,
+  ForeignOneToOneMetadata,
+  ForeignRelation,
+  HasManyMetadata,
+  HasOneMetadata,
+  IndexMetadata,
+  isForeignOneToOne,
+  isManyToMany,
+  isManyToOne,
+  isOneToMany,
+  isPrimaryOneToOne,
+  isTableEntity,
+  KeyMetadata,
+  ManyToManyMetadata,
+  ManyToOneMetadata,
+  metadataStore,
+  OneToManyMetadata,
+  OneToOneMetadata,
+  PrimaryOneToOneMetadata,
+  RelationMetadata,
+  TableEntityMetadata,
 } from './metadata';
 import {
   Constructor,
-  DataType, DataTypeOf, DbType,
+  DataType,
+  DataTypeOf,
+  DbType,
   Entity,
-  EntityType, isSameDbType, Scalar, ScalarType, Uuid, UuidConstructor
+  EntityType,
+  isSameDbType,
+  Scalar,
+  ScalarType,
+  Uuid,
+  UuidConstructor,
 } from './types';
 import {
   assign,
   complex,
-  ensureExpression, lowerFirst,
-  selectProperty
+  ensureExpression,
+  lowerFirst,
+  selectProperty,
 } from './util';
 
 export type HasManyKeyOf<T extends Entity> = {
@@ -679,6 +711,9 @@ export class ContextBuilder<T extends DbContext = DbContext> {
   connectWith(connectionOptions: ConnectOptions) {
     this.metadata.connection = connectionOptions;
   }
+  hasComment(comment: string) {
+    this.metadata.comment = comment;
+  }
 
   /**
    * 声明实体
@@ -890,48 +925,36 @@ function dataTypeToDbType(dataType: DataType): DbType {
 export class ModelBuilder {
   private constructor() {}
 
-  private decoratorEntities: Set<EntityConstructor> = new Set();
-  private decoratorContexts: Set<DbContextConstructor> = new Set();
-
   private buildDecoratorDbContext(target: DbContextConstructor) {
-    const connectionOptions = Reflect.getMetadata(
-      connectionKey,
-      target
-    )
+    const connectionOptions = getConnectionOptions(target);
     if (connectionOptions) {
       this.context(target).metadata.connection = connectionOptions;
     }
-    const contextOptions: DbContextOptions = Reflect.getMetadata(
-      contextOptionsKey,
-      target
-    );
+    const contextOptions = getContextOptions(target);
     if (contextOptions) {
       Object.assign(this.context(target).metadata, contextOptions);
     }
+    const comment = getComment(target);
+    if (comment) {
+      this.context(target).hasComment(comment);
+    }
   }
 
-  private buildDecoratorEntity(target: EntityConstructor<Entity>) {
-    const entityOptions: EntityOptions = Reflect.getMetadata(
-      entityOptionsKey,
-      target
-    );
+  private buildDecoratorEntity(target: EntityConstructor<any>) {
+    const entityOptions = getEntityOptions(target)!;
     const { contextGetter, ...assignable } = entityOptions;
     const entityBuilder = this.context(contextGetter?.() || DbContext).entity(
       target
     );
     Object.assign(entityBuilder.metadata, assignable);
 
-    const properties: string[] = Reflect.getMetadata(columnsKey, target);
-    if (properties) {
-      for (const property of properties) {
-        const columnOptions: ColumnOptions = Reflect.getMetadata(
-          columnKey,
-          target,
-          property
-        );
+    const columnProperties = getEntityColumns(target);
+    if (columnProperties) {
+      for (const property of columnProperties) {
+        const columnOptions = getColumnOptions(target, property);
         if (columnOptions) {
           const columnBuilder = entityBuilder.property(
-            (p: any) => p[property],
+            p => p[property],
             columnOptions.type as any
           );
           Object.assign(columnBuilder.metadata, columnOptions);
@@ -939,23 +962,147 @@ export class ModelBuilder {
       }
     }
 
-    const keyOptions: KeyOptions = Reflect.getMetadata(keyKey, target);
+    const keyOptions = getEntityKeyOptions(target);
     if (keyOptions) {
-      const keyBuilder = entityBuilder.hasKey(
-        (p: any) => p[keyOptions.property!]
-      );
+      const keyBuilder = entityBuilder.hasKey(p => p[keyOptions.property!]);
       Object.assign(keyBuilder.metadata, keyOptions);
     }
-  }
 
-  decoratorEntity(constructor: EntityConstructor): this {
-    this.decoratorEntities.add(constructor);
-    return this;
-  }
+    const relationProperties = getEntityRelations(target);
+    if (relationProperties) {
+      for (const property of relationProperties) {
+        const relationOptions = getRelationOptions(target, property)!;
+        let builder:
+          | OneToOneBuilder<any, any>
+          | OneToManyBuilder<any, any>
+          | ManyToOneBuilder<any, any>
+          | ManyToManyBuilder<any, any>;
+        switch (relationOptions.kind) {
+          case 'ONE_TO_ONE': {
+            const map = entityBuilder
+              .hasOne(p => p[property], relationOptions.referenceEntityGetter())
+              .withOne(
+                relationOptions.referenceProperty
+                  ? p => p[relationOptions.referenceProperty!]
+                  : undefined
+              );
+            if (relationOptions.isPrimary) {
+              builder = map.isPrimary();
+            } else {
+              builder = map.hasForeignKey(
+                relationOptions.foreignProperty
+                  ? p => p[relationOptions.foreignProperty!]
+                  : undefined
+              );
+            }
+            const comment = getComment(target, property);
+            if (comment) {
+              builder.hasComment(comment);
+            }
+            break;
+          }
+          case 'ONE_TO_MANY': {
+            builder = entityBuilder
+              .hasMany(
+                p => p[property],
+                relationOptions.referenceEntityGetter()
+              )
+              .withOne(
+                relationOptions.referenceProperty
+                  ? p => p[relationOptions.referenceProperty!]
+                  : undefined
+              );
+            break;
+          }
+          case 'MANY_TO_ONE': {
+            builder = entityBuilder
+              .hasOne(p => p[property], relationOptions.referenceEntityGetter())
+              .withMany(
+                relationOptions.referenceProperty
+                  ? p => p[relationOptions.referenceProperty!]
+                  : undefined
+              );
+            if (relationOptions.foreignProperty) {
+              builder.hasForeignKey(p => p[relationOptions.foreignProperty!]);
+            }
+            const comment = getComment(target, property);
+            if (comment) {
+              builder.hasComment(comment);
+            }
+            break;
+          }
+          case 'MANY_TO_MANY': {
+            builder = entityBuilder
+              .hasMany(
+                p => p[property],
+                relationOptions.referenceEntityGetter()
+              )
+              .withMany(
+                relationOptions.referenceProperty
+                  ? p => p[relationOptions.referenceProperty!]
+                  : undefined
+              );
+            // 查找中间表声明
+            for (const relationEntity of getDecorateEntities()!) {
+              const among = getAmong(relationEntity);
+              if (!among) continue;
 
-  decoratorContext(constructor: DbContextConstructor): this {
-    this.decoratorContexts.add(constructor);
-    return this;
+              const leftMatch =
+                among.leftEntityGetter() === target &&
+                among.rightEngityGetter() ===
+                  relationOptions.referenceEntityGetter();
+              const rightMatch =
+                among.rightEngityGetter() === target &&
+                among.leftEntityGetter() ===
+                  relationOptions.referenceEntityGetter();
+              if (leftMatch || rightMatch) {
+                // 声明表
+                builder.hasRelationTable(
+                  relationEntity,
+                  relationOptions.relationProperty
+                    ? p => p[relationOptions.relationProperty!]
+                    : undefined
+                );
+
+                if (relationOptions.relationProperty) {
+                  if (leftMatch && among.leftProperty) {
+                    entityBuilder
+                      .hasMany(
+                        p => p[relationOptions.relationProperty!],
+                        relationEntity
+                      )
+                      .withOne(p => p[among.leftProperty!]);
+                  } else if (rightMatch && among.rightProperty) {
+                    entityBuilder
+                      .hasMany(
+                        p => p[relationOptions.relationProperty!],
+                        relationEntity
+                      )
+                      .withOne(p => p[among.rightProperty!]);
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    const among = getAmong(target);
+    if (among) {
+      if (among.leftProperty) {
+        entityBuilder
+          .hasOne(p => p[among.leftProperty!], among.leftEntityGetter())
+          .withMany();
+      }
+      if (among.rightProperty) {
+        entityBuilder.hasOne(
+          p => p[among.rightProperty!],
+          among.rightEngityGetter()
+        );
+      }
+    }
   }
 
   static readonly instance = new ModelBuilder();
@@ -993,12 +1140,18 @@ export class ModelBuilder {
    * 此方法请在ORM准备完毕时调用
    */
   ready() {
-    for (const context of this.decoratorContexts) {
-      this.buildDecoratorDbContext(context);
+    const decorateContexts = getDecorateContexts();
+    if (decorateContexts) {
+      for (const context of decorateContexts) {
+        this.buildDecoratorDbContext(context);
+      }
     }
 
-    for (const entity of this.decoratorEntities) {
-      this.buildDecoratorEntity(entity);
+    const decoratorEntities = getDecorateEntities();
+    if (decoratorEntities) {
+      for (const entity of decoratorEntities) {
+        this.buildDecoratorEntity(entity);
+      }
     }
 
     for (const ctxBuilder of this.contextMap.values()) {
@@ -1522,7 +1675,9 @@ export class EntityBuilder<T extends Entity> {
     if (!property) {
       throw new Error(`Please select a property`);
     }
-    let columnBuilder: PropertyBuilder<T, P> | undefined = this.columnMaps.get(property) as PropertyBuilder<T, P>;
+    let columnBuilder: PropertyBuilder<T, P> | undefined = this.columnMaps.get(
+      property
+    ) as PropertyBuilder<T, P>;
     if (!columnBuilder) {
       const metadata: ColumnMetadata<P> = {
         kind: 'COLUMN',
@@ -2045,24 +2200,14 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
    */
   hasRelationTable<T extends Entity>(
     ctr: Constructor<T>,
-    build?: (builder: EntityBuilder<T>) => void
-  ): EntityBuilder<T>;
-  hasRelationTable<T extends Entity>(
-    ctr: Constructor<T>,
-    name: string,
-    build?: (builder: EntityBuilder<T>) => void
-  ): EntityBuilder<T>;
-  hasRelationTable<T extends Entity>(
-    ctr: Constructor<T>,
-    nameOrBuild?: string | ((builder: EntityBuilder<T>) => void),
+    /**
+     * 中间表导航属性
+     */
+    relationPropertySelector?: (p: Required<S>) => T[],
     build?: (builder: EntityBuilder<T>) => void
   ): EntityBuilder<T> {
-    let name: string | undefined;
-
-    if (typeof nameOrBuild === 'string') {
-      name = nameOrBuild;
-    } else {
-      build = nameOrBuild;
+    if (relationPropertySelector) {
+      this.metadata.relationProperty = selectProperty(relationPropertySelector);
     }
     const builder: EntityBuilder<T> = this.contextBuilder.entity(ctr);
     if (build) {

@@ -12,6 +12,8 @@ import {
   DropDatabase,
   AlterDatabase,
   CompatiableObjectName,
+  isExpression,
+  DbProvider,
 } from 'lubejs';
 import { sp_rename } from './build-in';
 import { MssqlProvider } from './provider';
@@ -87,7 +89,7 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
       ),
       SQL.alterTable(table).dropColumn(column),
       SQL.alterTable(table).add(({ column: c }) =>
-        c(column, DbType.raw('ROWVERSION'))
+        c(column, DbType.raw('TIMESTAMP'))
       )
       // SQL.alterTable(table).alterColumn(c =>
       //   c(column, DbType.raw('ROWVERSION'))
@@ -120,7 +122,7 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
 
   private readonly lube: Lube;
   private readonly sqlUtil: SqlUtil;
-  constructor(private readonly provider: MssqlProvider) {
+  constructor(private readonly provider: DbProvider) {
     super();
 
     this.lube = provider.lube;
@@ -149,7 +151,7 @@ END
 
 ALTER TABLE ${this.sqlUtil.sqlifyObjectName(
       table
-    )} ADD DEFAULT (${defaultValue}) FOR ${this.sqlUtil.quoted(column)}
+    )} ADD DEFAULT (${isExpression(defaultValue) ? this.sqlUtil.sqlifyExpression(defaultValue) : defaultValue}) FOR ${this.sqlUtil.quoted(column)}
 `);
   }
 
@@ -237,7 +239,7 @@ END
     increment: number
   ): Statement {
     return SQL.block(
-      SQL.comments(
+      SQL.annotation(
         '警告: 由于mssql特性原因，setIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
         `操作信息： setIdentity(table: ${this.sqlUtil.sqlifyObjectName(
           table
@@ -255,7 +257,7 @@ END
   ): Statement {
     // const sql = this.copyNewColumn(table, column)
     return SQL.block(
-      SQL.comments(
+      SQL.annotation(
         '警告: 由于mssql特性原因，dropIdentity操作需要重建表，暂不支持identity属性变更，请手动处理，带来不便敬请谅解。',
         `操作信息： dropIdentity(table: ${this.sqlUtil.sqlifyObjectName(
           table

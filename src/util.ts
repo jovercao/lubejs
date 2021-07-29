@@ -251,8 +251,7 @@ export function ensureCondition<T extends RowObject>(
   let makeField: (name: string) => Field;
   if (rowset) {
     if (typeof rowset === 'string' || Array.isArray(rowset)) {
-      makeField = (key: string) =>
-        SqlBuilder.field(key, rowset);
+      makeField = (key: string) => SqlBuilder.field(key, rowset);
     } else if (isRowset(rowset)) {
       makeField = (key: string) => (rowset as any).field(key);
     }
@@ -466,11 +465,13 @@ export function isProxiedRowset<T extends RowObject>(
 //   return name;
 // }
 
-export function ensureFieldName<N extends string>(name: CompatiableFieldName<N>): FieldName<N> {
+export function ensureFieldName<N extends string>(
+  name: CompatiableFieldName<N>
+): FieldName<N> {
   if (typeof name === 'string') {
     return {
-      name
-    }
+      name,
+    };
   }
   return name;
 }
@@ -769,7 +770,7 @@ export function isScalarFuncInvoke(value: any): value is ScalarFuncInvoke {
 }
 
 export function isTableVariant(value: any): value is TableVariant {
-  return  value.$type === SQL_SYMBOLE.TABLE_VARIANT;
+  return value.$type === SQL_SYMBOLE.TABLE_VARIANT;
 }
 
 export function isVariantDeclare(value: any): value is VariantDeclare {
@@ -798,7 +799,7 @@ export function isRowset<T extends RowObject = {}>(
 }
 
 export function isExpression(value: any): value is Expression {
-  return value?.$tag === SQL_SYMBOLE.EXPRESSION;
+  return value?.$tag === SQL_SYMBOLE.EXPRESSION || isRaw(value);
 }
 
 export function isCase(value: any): value is Case {
@@ -848,7 +849,7 @@ export function isSelectColumn(value: any): value is SelectColumn {
 }
 
 export function isCondition(value: any): value is Condition {
-  return value?.$type === SQL_SYMBOLE.CONDITION;
+  return value?.$type === SQL_SYMBOLE.CONDITION || isRaw(value);
 }
 
 export function isUnaryCompareCondition(
@@ -1084,7 +1085,7 @@ export function parseValueType(value: Scalar): DbType {
  * 是否列表类型
  */
 export function isListType(type: any): type is ListType {
-  return type?.kind === 'LIST';
+  return type?.$kind === 'LIST';
 }
 
 /**
@@ -1175,7 +1176,7 @@ export function isContinue(value: any): value is Continue {
 export function isCreateDatabase(value: any): value is CreateDatabase {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
-    value?.kind === STATEMENT_KIND.CREATE_DATABASE
+    value?.$kind === STATEMENT_KIND.CREATE_DATABASE
   );
 }
 
@@ -1183,20 +1184,20 @@ export function isUse(value: any): value is Use {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
     value?.$kind === STATEMENT_KIND.USE
-  )
+  );
 }
 
 export function isAlterDatabase(value: any): value is AlterDatabase {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
-    value.kind === STATEMENT_KIND.ALTER_DATABASE
+    value?.$kind === STATEMENT_KIND.ALTER_DATABASE
   );
 }
 
 export function isDropDatabase(value: any): value is DropDatabase {
   return (
     value?.$type === SQL_SYMBOLE.STATEMENT &&
-    value.kind === STATEMENT_KIND.DROP_DATABASE
+    value?.$kind === STATEMENT_KIND.DROP_DATABASE
   );
 }
 
@@ -1225,7 +1226,10 @@ export function outputCommand(cmd: Command): void {
  * @param name2
  * @returns
  */
-export function isSameObject(name1: CompatiableObjectName, name2: CompatiableObjectName): boolean {
+export function isSameObject(
+  name1: CompatiableObjectName,
+  name2: CompatiableObjectName
+): boolean {
   let schema1: string | undefined;
   let table1: string;
   let schema2: string | undefined;
@@ -1238,14 +1242,17 @@ export function isSameObject(name1: CompatiableObjectName, name2: CompatiableObj
     table1 = name1;
   }
 
-  if (typeof name2 ==='object') {
+  if (typeof name2 === 'object') {
     schema2 = name2.schema;
     table2 = name2.name;
   } else {
     table2 = name2;
   }
 
-  return (schema1 === schema2 || schema1 === undefined || schema2 === undefined) && table1 === table2;
+  return (
+    (schema1 === schema2 || schema1 === undefined || schema2 === undefined) &&
+    table1 === table2
+  );
 }
 
 export function isUrl(str: string): boolean {
@@ -1351,4 +1358,26 @@ export function parseConnectionUrl(url: string): ConnectOptions {
     ...urlOptions,
   };
   return options;
+}
+
+export function sortByDependency<T>(
+  source: T[],
+  dependencies: (item: T) => T[],
+  throwOnCycle = false
+): T[] {
+  const sorted: T[] = [];
+  const visited = new Set<T>();
+  function visit(item: T) {
+    if (!visited.has(item)) {
+      visited.add(item);
+      for (const dep of dependencies(item)) visit(dep);
+      sorted.push(item);
+    } else {
+      if (throwOnCycle && !sorted.includes(item))
+        throw new Error('Cyclic dependency found');
+    }
+  }
+
+  for (const item of source) visit(item);
+  return sorted;
 }

@@ -3,7 +3,7 @@ import mock from 'mockjs';
 import _ from 'lodash';
 import '../../orm-configure';
 
-import { Lube, connect, SqlBuilder as SQL, SortObject, Decimal } from 'lubejs';
+import { Lube, createLube, SqlBuilder as SQL, SortObject, Decimal } from 'lubejs';
 
 const {
   table,
@@ -37,14 +37,14 @@ interface IItem {
   FParentId: number;
 }
 
-describe('MSSQL TESTS', function () {
+describe('Lube Test', function () {
   this.timeout(0);
   let db: Lube;
   const sqlLogs = true;
 
   before(async function () {
     // db = await connect('mssql://sa:!crgd-2019@jover.wicp.net:2443/TEST?poolMin=0&poolMax=5&idelTimeout=30000&connectTimeout=15000&requestTimeout=15000');
-    db = await connect();
+    db = await createLube();
     if (sqlLogs) {
       db.on('command', cmd => {
         console.debug('sql:', cmd.sql);

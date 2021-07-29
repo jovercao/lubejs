@@ -212,7 +212,7 @@ modelBuilder.context(DB, context => {
         .withOne(p => p.employee)
         .hasForeignKey()
         .isRequired();
-      builder.hasData([{ id: 0, name: '管理员职员', userId: 0 }]);
+      builder.hasData([{ id: 0, name: '管理员职员', userId: 0, organizationId: 0 }]);
     })
     .entity(Order)
     .asTable(builder => {
@@ -247,4 +247,5 @@ modelBuilder.context(DB, context => {
         .isRequired();
       builder.hasKey(p => p.id);
     });
-});
+})
+.ready();

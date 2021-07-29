@@ -1,5 +1,5 @@
 import mssql, { ISqlType, TYPES } from 'mssql';
-import { ConnectOptions, DbType, ISOLATION_LEVEL, isRaw } from 'lubejs';
+import { ConnectOptions, DbType, ISOLATION_LEVEL, isRaw, Raw } from 'lubejs';
 import { MssqlSqlOptions } from './sql-util'
 
 const strTypeMapps: Record<string, any> = {};
@@ -114,7 +114,7 @@ export function toMssqlIsolationLevel(level: ISOLATION_LEVEL): number {
   return result;
 }
 
-export function dbTypeToRaw(type: DbType): string {
+export function dbTypeToRaw(type: DbType | Raw): string {
   if (isRaw(type)) return type.$sql;
   switch (type.name) {
     case 'STRING':
@@ -182,6 +182,8 @@ const raw2DbTypeMap: Record<string, keyof typeof DbType> = {
   BINARY: 'binary',
   VARBINARY: 'binary',
   IMAGE: 'binary',
+  TIMESTAMP: 'rowflag',
+  ROWVERSION: 'rowflag'
 };
 
 export function rawToDbType(type: string): DbType {

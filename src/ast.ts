@@ -5258,7 +5258,7 @@ export interface SqlBuilder extends Standard {
 
   dropIndex<N extends string>(table: CompatiableObjectName, name: N): DropIndex<N>;
 
-  comments(...text: string[]): Annotation;
+  annotation(...text: string[]): Annotation;
   note(text: string): Annotation;
 
   /**
@@ -5929,7 +5929,7 @@ export const SqlBuilder: SqlBuilder = {
   dropIndex<N extends string>(table: CompatiableObjectName, name: N): DropIndex<N> {
     return new DropIndex(table, name);
   },
-  comments(...text: string[]): Annotation {
+  annotation(...text: string[]): Annotation {
     return new Annotation('BLOCK', text.join('\n'));
   },
   note(text: string): Annotation {

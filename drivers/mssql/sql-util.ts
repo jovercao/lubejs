@@ -95,6 +95,7 @@ import {
   DropIndex,
   CompatiableObjectName,
   ObjectName,
+  Raw,
 } from 'lubejs';
 import { dbTypeToRaw, rawToDbType } from './types';
 import {
@@ -750,7 +751,10 @@ export class MssqlSqlUtil extends SqlUtil {
     );
   }
 
-  public sqlifyLiteral(literal: Scalar): string {
+  public sqlifyLiteral(literal: Scalar | Raw): string {
+    if (isRaw(literal)) {
+      return literal.$sql;
+    }
     return sqlifyLiteral(literal);
   }
 
@@ -1021,7 +1025,10 @@ SET IDENTITY_INSERT ${this.sqlifyObjectName(insert.$table.$name)} OFF
     return sql;
   }
 
-  sqlifyType(type: DbType): string {
+  sqlifyType(type: DbType | Raw): string {
+    if (isRaw(type)) {
+      return type.$sql;
+    }
     return dbTypeToRaw(type);
   }
 

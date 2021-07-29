@@ -25,9 +25,10 @@ import {
 } from './metadata';
 import {
   compareObject,
-  EqulsCompartor,
-  isChanged,
+  ObjectKeyCompartor,
+  isScalarEquals,
   ObjectDifference,
+  EqulsCompartor,
 } from './util/compare';
 import { DbContext } from './db-context';
 
@@ -406,7 +407,7 @@ export async function generateSchema(
   sqlUtil: SqlUtil,
   context: DbContext
 ): Promise<DatabaseSchema> {
-  const databaseName  = await context.lube.provider.getCurrentDatabase();
+  // const databaseName  = await context.lube.provider.getCurrentDatabase();
   const defaultSchema = await context.lube.provider.getDefaultSchema();
   function genDbSchema(context: DbContext): DatabaseSchema {
     // const tables = context.entities.filter(p => isTableEntity(p)).map(entity => genTableSchema(entity as TableEntityMetadata));
@@ -478,7 +479,7 @@ export async function generateSchema(
 
   function genColumnSchema(column: ColumnMetadata): ColumnSchema {
     const col: ColumnSchema = {
-      type: sqlUtil.sqlifyType(column.dbType).replace(/ /g, ''),
+      type: sqlUtil.sqlifyType(column.dbType),
       name: column.columnName,
       isNullable: column.isNullable,
       isIdentity: column.isIdentity,
@@ -567,17 +568,32 @@ export type ObjectSchema =
 
 export type SchemaDifference = ObjectDifference<DatabaseSchema>;
 
-export const isSameSchemaObject: EqulsCompartor = (
-  left: SchemaObject,
-  right: SchemaObject,
+export const isSameSchemaObject: ObjectKeyCompartor = (
+  left: any,
+  right: any,
   path: string
 ): boolean => {
-  return !isChanged(left.name, right.name);
+  if (
+  ['schemas[]', 'tables[].foreightKeys[]', 'tables[].indexes[]', 'tables[].constraints[]'].includes(path)) {
+    return left.name === right.name;
+  }
+
+  if (['tables[]', 'views[]', 'sequences[]', 'procedures[]', 'functions[]'].includes(path)) {
+    return left.name === right.name && left.schema === right.schema;
+  }
+  throw new Error(`Path error.`)
 };
+
+export const isEquals: EqulsCompartor = (left: any, right: any, path: string) => {
+  // 比较类型
+  if (path = 'tables[].columns[].type') {
+    return left.replace(/ /g, '').toUpperCase() === right.replace(/ /g, '').toUpperCase();
+  }
+}
 
 export function compareSchema(
   source: DatabaseSchema | undefined,
   target: DatabaseSchema | undefined
 ): SchemaDifference | null {
-  return compareObject(source, target, isSameSchemaObject);
+  return compareObject(source, target, isSameSchemaObject, isEquals);
 }

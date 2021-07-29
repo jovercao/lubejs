@@ -67,9 +67,9 @@ export class MssqlProvider implements DbProvider {
     return this._database || this.options.database;
   }
 
-  getSchema(): Promise<DatabaseSchema> {
+  getSchema(database: string): Promise<DatabaseSchema | undefined> {
     this._assertConnection();
-    return loadDatabaseSchema(this);
+    return loadDatabaseSchema(this, database);
   }
 
   private _assertConnection(): void {
@@ -85,7 +85,7 @@ export class MssqlProvider implements DbProvider {
   }
 
   async beginTrans(
-    isolationLevel: ISOLATION_LEVEL = 'READ_COMMIT'
+    isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<Transaction> {
     this._assertConnection();
     const trans = this._pool!.transaction();
@@ -117,11 +117,14 @@ export class MssqlProvider implements DbProvider {
   }
 
   async change(database: string | undefined): Promise<void> {
+    if (this.mssqlOptions.database === database) {
+      return
+    }
     let opened = this.opened;
     if (opened) {
       await this.close();
     }
-    this.options.database = database;
+    this.mssqlOptions.database = database;
     if (opened) {
       await this.open();
     }
@@ -138,12 +141,19 @@ export class MssqlProvider implements DbProvider {
     this._database = undefined;
   }
 
+  private _mssqlOptions?: mssql.config;
+  private get mssqlOptions(): mssql.config {
+    if (!this._mssqlOptions) {
+      this._mssqlOptions = parseMssqlConfig(this.options);
+    }
+    return this._mssqlOptions;
+  }
+
   async open(): Promise<void> {
     if (this._pool) {
       throw new Error(`Connection is opened.`)
     }
-    const sqlconfig = parseMssqlConfig(this.options);
-    const pool = new mssql.ConnectionPool(sqlconfig);
+    const pool = new mssql.ConnectionPool(this.mssqlOptions);
     await pool.connect();
     this._pool = pool;
     const result = await this._pool.query(`sp_who  @@SPID`);

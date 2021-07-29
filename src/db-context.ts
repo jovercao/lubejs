@@ -257,10 +257,12 @@ export class DbInstance {
   }
 }
 
-export interface EntityConstructor<T extends Entity = Entity> {
+export interface EntityConstructor<T extends Entity = any> {
   new (...args: any): T;
+  // prototype: {
+  //   constructor: EntityConstructor<T>
+  // }
 }
-
 export interface DbContextConstructor<T extends DbContext = DbContext> {
   new (lube: Lube): T;
 }

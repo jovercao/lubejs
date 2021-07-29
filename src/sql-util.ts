@@ -268,7 +268,9 @@ export abstract class SqlUtil {
 
   sqlifyObjectName(name: CompatiableObjectName, builtIn = false): string {
     // TIPS: buildIn 使用小写原因是数据库默认值会被自动转换为小写从而产生结果差异，造成不必要的数据架构变化。
-
+    if (isRaw(name)) {
+      return name.$sql;
+    }
     if (typeof name === 'string') {
       name = this.parseObjectName(name);
     }
@@ -282,13 +284,17 @@ export abstract class SqlUtil {
     return str;
   }
 
-  sqlifyField(field: Field): string {
+  sqlifyField(field: Field | Raw): string {
+    if (isRaw(field)) {
+      return field.$sql;
+    }
     let sql: string = '';
     if (field.$table) {
       sql = this.sqlifyRowsetName(field.$table);
+      sql += '.' + this.quoted(field.$name);
+      return sql;
     }
-    sql += '.' + this.quoted(field.$name);
-    return sql;
+    return this.quoted(field.$name);
   }
 
   /**
@@ -304,7 +310,7 @@ export abstract class SqlUtil {
     return sql;
   }
 
-  abstract sqlifyType(type: DbType): string;
+  abstract sqlifyType(type: DbType | Raw): string;
 
   /**
    * 将原始SQL类型转换为DbType
@@ -410,14 +416,20 @@ export abstract class SqlUtil {
   /**
    * 编译字面量
    */
-  public abstract sqlifyLiteral(literal: Scalar): string;
+  public abstract sqlifyLiteral(literal: Scalar | Raw): string;
 
   /**
    * 将AST编译成一个可供执行的命令
    */
-  public sqlify(ast: Statement | Document): Command {
+  public sqlify(ast: Statement | Document | Raw): Command {
     const params = new Set<Parameter<Scalar, string>>();
     let sql: string;
+    if (isRaw(ast)) {
+      return {
+        sql: ast.$sql
+      };
+    }
+
     if (isDocument(ast)) {
       sql = this.sqlifyDocument(ast, params);
     } else {
@@ -687,10 +699,13 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyColumn(
-    column: SelectColumn<Scalar, string> | Star | Expression<Scalar>,
+    column: SelectColumn<Scalar, string> | Star | Expression<Scalar> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     parent?: AST
   ): string {
+    if (isRaw(column)) {
+      return column.$sql;
+    }
     if (isBuiltIn(column)) {
       return this.sqlifyBuildIn(column);
     }
@@ -971,10 +986,9 @@ export abstract class SqlUtil {
   protected sqlifyStar(arg: Star<any>): string {
     let sql = '';
     if (arg.$table) {
-      sql += this.sqlifyRowsetName(arg.$table);
+      return `${this.sqlifyRowsetName(arg.$table)}.*`;
     }
-    sql += '.*';
-    return sql;
+    return '*';
   }
   /**
    * 函数调用

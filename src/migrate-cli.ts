@@ -1,12 +1,7 @@
-import { existsSync, promises, readFileSync } from 'fs';
-import path, { basename, dirname, extname, join, resolve } from 'path';
-import { Statement, SqlBuilder, SqlBuilder as SQL } from './ast';
+import { existsSync, promises } from 'fs';
+import { dirname, join, resolve } from 'path';
+import { Statement, SqlBuilder as SQL } from './ast';
 import { DbContext } from './db-context';
-import { DbContextMetadata, metadataStore } from './metadata';
-import {
-  generateMigrate as generateMigrate,
-  generateMigrateClass,
-} from './migrate-gen';
 import { DatabaseSchema, generateSchema as generateSchema } from './schema';
 import { Constructor, DbType } from './types';
 import { Command } from './execute';
@@ -15,9 +10,14 @@ import { MigrateBuilder } from './migrate-builder';
 import { mkdir, readFile } from 'fs/promises';
 import 'colors';
 import { ConnectOptions } from './lube';
-import { generateUpdateStatements } from './migrate-scripter';
 import md5 from 'crypto-js/md5';
-import { SnapshotMigrateBuilder, SnapshotMigrateTracker } from './migrate-snapshot';
+import {
+  SnapshotMigrateBuilder,
+  SnapshotMigrateTracker,
+} from './migrate-snapshot';
+import { StatementMigrateScripter } from './migrate-scripter';
+import { MssqlMigrateBuilder } from 'lubejs-mssql/migrate-builder';
+import { ProgramMigrateScripter } from './migrate-programmer';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -91,10 +91,7 @@ export class MigrateCli {
   ): Promise<Statement[]> {
     const instance = new Ctr();
     const statements: Statement[] = [];
-    const scripter = createMigrateBuilder(
-      builder,
-      statements
-    );
+    const scripter = createMigrateBuilder(builder, statements);
     if (action === 'up') {
       await instance.up(scripter, this.dbContext.lube.provider.dialect);
     } else {
@@ -107,14 +104,15 @@ export class MigrateCli {
     private readonly dbContext: DbContext,
     private migrateDir: string
   ) {
+    // 设置为默认数据库
   }
 
   async dispose(): Promise<void> {
     await this.dbContext.lube.close();
   }
 
-  private async connect() {
-    if (this.dbContext.lube.provider.opened) return;
+  async connect() {
+    await this.dbContext.lube.change(undefined);
     try {
       await this.dbContext.lube.provider.open();
     } catch {
@@ -124,13 +122,7 @@ export class MigrateCli {
     }
   }
 
-  private async loadSchema() {
-    await this.connect();
-    return this.dbContext.lube.provider.getSchema();
-  }
-
   private async getCurrentMigrate(): Promise<MigrateInfo | undefined> {
-    await this.connect();
     try {
       const [item] = await this.dbContext.executor.select(
         LUBE_MIGRATE_TABLE_NAME,
@@ -189,7 +181,7 @@ export class MigrateCli {
     }
 
     const id = `${timestamp}_${name}`;
-    const codes = generateMigrateClass(name);
+    const codes = this.generateMigrateClass(name);
     if (!existsSync(this.migrateDir)) {
       await promises.mkdir(this.migrateDir);
     }
@@ -223,14 +215,11 @@ export class MigrateCli {
       this.dbContext.executor.sqlUtil,
       this.dbContext
     );
-    const code = generateMigrate(
+    const code = this.generateMigrate(
       name,
       entityScheam,
       lastSchema,
-      this.dbContext.lube.sqlUtil,
       notResolverType
-        ? undefined
-        : this.dbContext.lube.provider.sqlUtil.parseRawType
     );
 
     const id = `${timestamp}_${name}`;
@@ -240,15 +229,15 @@ export class MigrateCli {
       `Generate migrate file successed, and output to file ${filePath}`.green
     );
     const snapshotPath = resolve(join(this.migrateDir, `${id}.snapshot.ts`));
-//     // 创建快照文件
-//     await writeFile(
-//       snapshotPath,
-//       `
-// import { DatabaseSchema } from 'lubejs';
-// export const schema: DatabaseSchema = ${JSON.stringify(entityScheam)};
-// export default schema;
-// `
-//     );
+    //     // 创建快照文件
+    //     await writeFile(
+    //       snapshotPath,
+    //       `
+    // import { DatabaseSchema } from 'lubejs';
+    // export const schema: DatabaseSchema = ${JSON.stringify(entityScheam)};
+    // export default schema;
+    // `
+    //     );
     const info: MigrateInfo = {
       id,
       name,
@@ -308,7 +297,10 @@ export class MigrateCli {
     console.info(`------------执行成功，已更新到${target.id}.----------------`);
   }
 
-  async _script(current: MigrateInfo | undefined, target: MigrateInfo | undefined): Promise<Command[]> {
+  async _script(
+    current: MigrateInfo | undefined,
+    target: MigrateInfo | undefined
+  ): Promise<Command[]> {
     const startIndex = current?.index ?? -1;
     const endIndex = target?.index ?? -1;
 
@@ -327,7 +319,11 @@ export class MigrateCli {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate up script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(Migrate, 'up', this.dbContext.lube.provider.migrateBuilder);
+        const codes = await this.runMigrate(
+          Migrate,
+          'up',
+          this.dbContext.lube.provider.migrateBuilder
+        );
         statements.push(...codes);
       }
     }
@@ -336,7 +332,11 @@ export class MigrateCli {
         const info = migrates[i];
         statements.push(SQL.note(`Migrate down script from "${info.path}"`));
         const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(Migrate, 'down', this.dbContext.lube.provider.migrateBuilder);
+        const codes = await this.runMigrate(
+          Migrate,
+          'down',
+          this.dbContext.lube.provider.migrateBuilder
+        );
         statements.push(...codes);
       }
     }
@@ -423,7 +423,10 @@ export class MigrateCli {
           name: match[2],
           path: fullPath,
           snapshotPath: resolve(
-            join(this.migrateDir, `${match[1]}_${match[2]}.${this.dbContext.lube.provider.dialect}.snapshot.${extname}`)
+            join(
+              this.migrateDir,
+              `${match[1]}_${match[2]}.${this.dbContext.lube.provider.dialect}.snapshot.${extname}`
+            )
           ),
           kind: extname === 'js' ? 'javascript' : 'typescript',
           index: 0,
@@ -446,41 +449,105 @@ export class MigrateCli {
   }
 
   /**
+   * 生成迁移文件代码
+   * @param name
+   * @param source
+   * @param target
+   * @param metadata
+   * @returns
+   */
+  private generateMigrate(
+    name: string,
+    source: DatabaseSchema,
+    target: DatabaseSchema | undefined,
+    notResolverType: boolean
+  ): string {
+    const scripter = new ProgramMigrateScripter(this.dbContext.lube.sqlUtil, notResolverType);
+    scripter.migrate(source, target);
+    const upCodes = scripter.getScripts();
+    scripter.clear();
+    scripter.migrate(target, source);
+    const downCodes = scripter.getScripts();
+    return this.generateMigrateClass(name, upCodes, downCodes);
+  }
+
+  private generateMigrateClass(
+    name: string,
+    upcodes?: string[],
+    downcodes?: string[]
+  ): string {
+    return `import { Migrate, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
+
+export class ${name} implements Migrate {
+
+  async up(
+    builder: MigrateBuilder,
+    dialect: string
+  ): Promise<void> {
+    ${(upcodes && upcodes.map(line => line + ';').join('\n    ')) || ''}
+  }
+
+  async down(
+    builder: MigrateBuilder,
+    dialect: string
+  ): Promise<void> {
+    ${(downcodes && downcodes.map(line => line + ';').join(';\n    ')) || ''}
+  }
+
+}
+
+export default ${name};
+  `;
+  }
+  /**
    * 同步架构
    */
   async sync(outputPath?: string): Promise<void> {
-    const metadataSchema = await  generateSchema(
+    const metadataSchema = await generateSchema(
       this.dbContext.executor.sqlUtil,
       this.dbContext
     );
 
-    const dbSchema = await this.loadSchema();
-
-    const statements = generateUpdateStatements(
-      this.dbContext.lube.provider.migrateBuilder,
-      metadataSchema,
-      dbSchema
+    // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
+    const targetDatabase =
+      this.dbContext.lube.provider.options.database || metadataSchema.name;
+    const dbSchema = await this.dbContext.lube.provider.getSchema(
+      targetDatabase
     );
+    // 如果数据库不存在，先创建数据库
+    if (!dbSchema) {
+      await this.dbContext.lube.query(SQL.createDatabase(targetDatabase));
+    }
+    await this.dbContext.lube.change(targetDatabase);
+    const scripter = new StatementMigrateScripter(
+      new MssqlMigrateBuilder(this.dbContext.lube.provider)
+    );
+    scripter.migrate(metadataSchema, dbSchema);
+    const statements: Statement[] = scripter.getScripts();
 
-    const commands = statements.map(p => this.dbContext.lube.sqlUtil.sqlify(p));
-
-    console.info(`*************************************************`);
-    console.info(`开始开新数据库架构，请稍候......`);
     if (outputPath) {
+      const commands = statements.map(p =>
+        this.dbContext.lube.sqlUtil.sqlify(p)
+      );
       const filePath = resolve(outputPath);
       const dir = dirname(filePath);
       if (!existsSync(dir)) {
         await mkdir(dir);
       }
-      const text = commands.map(cmd => cmd.sql).join('\n---------------------------------------------\n');
+      const text = commands
+        .map(cmd => cmd.sql)
+        .join('\n---------------------------------------------\n');
       await writeFile(outputPath, text, 'utf-8');
       console.log(
         `Generate scripts successed, and output to file ${filePath}`.green
       );
       return;
     }
+    console.info(`*************************************************`);
+    console.info(`开始开新数据库架构，请稍候......`);
     await this.dbContext.trans(async instance => {
-      for (const cmd of commands) {
+      for (const statement of statements) {
+        const cmd = this.dbContext.lube.sqlUtil.sqlify(statement);
         outputCommand(cmd);
         await instance.executor.query(cmd);
         console.info(`----------------------------------------------------`);
@@ -505,7 +572,9 @@ export class MigrateCli {
       if (!currentHash) {
         currentHash = await getFileHash(item.path);
       } else {
-        currentHash = md5(currentHash + (await readFile(item.path)).toString('utf-8')).toString();
+        currentHash = md5(
+          currentHash + (await readFile(item.path)).toString('utf-8')
+        ).toString();
       }
       if (!needRetrace) {
         if (!existsSync(item.snapshotPath)) {
@@ -524,18 +593,38 @@ export class MigrateCli {
       }
 
       if (needRetrace) {
-        const tracker = new SnapshotMigrateTracker(lastSchema, this.dbContext.lube.provider.sqlUtil, defaultSchema);
+        if (!lastSchema) {
+          lastSchema = {
+            name: this.dbContext.lube.provider.options.database || this.dbContext.metadata.database,
+            tables: [],
+            schemas: [],
+            views: [],
+            sequences: [],
+            procedures: [],
+            functions: [],
+            comment: this.dbContext.metadata.comment
+          }
+        }
+        const tracker = new SnapshotMigrateTracker(
+          lastSchema,
+          this.dbContext.lube.provider.sqlUtil,
+          defaultSchema
+        );
         const builder = new SnapshotMigrateBuilder();
         const migrate = (await import(item.path)).default;
         const statements = await this.runMigrate(migrate, 'up', builder);
-        tracker.run(statements)
+        tracker.run(statements);
         lastSchema = tracker.database;
         // 生成快照文件
         await writeFile(
           item.snapshotPath,
           `
 import { DatabaseSchema } from "lubejs";
-export const schema: DatabaseSchema = ${JSON.stringify(lastSchema, undefined, 2)};
+export const schema: DatabaseSchema = ${JSON.stringify(
+            lastSchema,
+            undefined,
+            2
+          )};
 export const dialect = '${this.dbContext.lube.provider.dialect}';
 export const hash = "${currentHash}";
 export default schema;
@@ -554,8 +643,7 @@ async function importMigrate(info: MigrateInfo): Promise<Constructor<Migrate>> {
     imported = require(info.path);
   }
   const migrate = imported?.default || imported?.[info.name] || imported;
-  if (!migrate)
-    throw new Error(`Migrate file ${info.path} not found.`);
+  if (!migrate) throw new Error(`Migrate file ${info.path} not found.`);
   return migrate;
 }
 

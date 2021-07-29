@@ -89,6 +89,7 @@ export interface DbProvider {
    * lube对象
    */
   lube: Lube;
+  readonly options: ConnectOptions;
   readonly sqlUtil: SqlUtil;
   readonly migrateBuilder: MigrateBuilder;
   query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
@@ -134,7 +135,7 @@ export interface DbProvider {
   /**
    * 获取数据库架构
    */
-  getSchema(): Promise<DatabaseSchema>;
+  getSchema(database: string): Promise<DatabaseSchema | undefined>;
 
   /**
    * 获取当前连接的数据库名称
@@ -181,7 +182,7 @@ export class Lube extends Executor {
    */
   async trans<T>(
     handler: TransactionHandler<T>,
-    isolationLevel: ISOLATION_LEVEL = 'READ_COMMIT'
+    isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<T> {
     if (this.isTrans) {
       throw new Error('is in transaction now');
@@ -224,7 +225,7 @@ export class Lube extends Executor {
     return this.provider.opened;
   }
 
-  async change(database: string): Promise<void> {
+  async change(database: string | undefined): Promise<void> {
     await this.provider.change(database);
   }
 
@@ -241,20 +242,19 @@ export class Lube extends Executor {
  * 连接数据库并返回一个连接池
  * @param {*} config
  */
-export async function connect(cfgOrUrl?: string): Promise<Lube>;
-export async function connect(options: ConnectOptions): Promise<Lube>;
-export async function connect(
+export async function createLube(cfgOrUrl?: string): Promise<Lube>;
+export async function createLube(options: ConnectOptions): Promise<Lube>;
+export async function createLube(
   optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube>;
-export async function connect(
+export async function createLube(
   optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube> {
   let options: ConnectOptions;
   options = await getConnectOptions(optOrUrlOrCfg);
   const provider: DbProvider = options.driver!(options);
   const lube = new Lube(provider);
-  await lube.open();
-  provider.lube = lube;
+  // await lube.open();
   return lube;
 }
 
@@ -354,17 +354,17 @@ export async function createContext(
     // if (!options) {
     //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`)
     // }
-    lube = await connect(options);
+    lube = await createLube(options);
   } else if (typeof optOrCfgOrUrlOrLubeOrCtr === 'function') {
     Ctr = optOrCfgOrUrlOrLubeOrCtr;
     if (!optOrCfgOrUrlOrLube) {
       const options = await getConnectOptions(Ctr)
-      lube = await connect(options);
+      lube = await createLube(options);
     } else if (optOrCfgOrUrlOrLube instanceof Lube) {
       lube = optOrCfgOrUrlOrLube
     } else {
       const options = await getConnectOptions(optOrCfgOrUrlOrLube);
-      lube = await connect(options);
+      lube = await createLube(options);
     }
   } else if (optOrCfgOrUrlOrLubeOrCtr instanceof Lube) {
     Ctr = metadataStore.defaultContext.class;
@@ -372,7 +372,7 @@ export async function createContext(
   } else {
     Ctr = metadataStore.defaultContext.class;
     const options = await getConnectOptions(optOrCfgOrUrlOrLubeOrCtr)
-    lube = await connect(options);
+    lube = await createLube(options);
   }
 
   return new Ctr(lube);
