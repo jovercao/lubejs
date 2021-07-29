@@ -574,22 +574,48 @@ export const isSameSchemaObject: ObjectKeyCompartor = (
   path: string
 ): boolean => {
   if (
-  ['schemas[]', 'tables[].foreightKeys[]', 'tables[].indexes[]', 'tables[].constraints[]'].includes(path)) {
+    [
+      'schemas',
+      'tables[].columns',
+      'tables[].foreignKeys',
+      'tables[].indexes',
+      'tables[].constraints',
+      'tables[].primaryKey.columns',
+      'tables[].foreignKeys[].columns',
+      'tables[].indexes[].columns',
+      'tables[].constraints[].columns',
+    ].includes(path)
+  ) {
     return left.name === right.name;
   }
 
-  if (['tables[]', 'views[]', 'sequences[]', 'procedures[]', 'functions[]'].includes(path)) {
+  if (
+    [
+      'tables',
+      'views',
+      'sequences',
+      'procedures',
+      'functions',
+    ].includes(path)
+  ) {
     return left.name === right.name && left.schema === right.schema;
   }
-  throw new Error(`Path error.`)
+  throw new Error(`Path error.`);
 };
 
-export const isEquals: EqulsCompartor = (left: any, right: any, path: string) => {
+export const isEquals: EqulsCompartor = (
+  left: any,
+  right: any,
+  path: string
+) => {
   // 比较类型
-  if (path = 'tables[].columns[].type') {
-    return left.replace(/ /g, '').toUpperCase() === right.replace(/ /g, '').toUpperCase();
+  if (path === 'tables[].columns[].type') {
+    return (
+      left.replace(/ /g, '').toUpperCase() ===
+      right.replace(/ /g, '').toUpperCase()
+    );
   }
-}
+};
 
 export function compareSchema(
   source: DatabaseSchema | undefined,

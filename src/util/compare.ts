@@ -37,7 +37,6 @@ export type ObjectDifference<T extends object> = {
   };
 };
 
-
 export type ListDifference<T extends object> = {
   source: T[] | undefined;
   target: T[] | undefined;
@@ -45,7 +44,6 @@ export type ListDifference<T extends object> = {
   removeds: T[];
   changes: ObjectDifference<T>[];
 };
-
 
 export enum ValueType {
   scalar = 0,
@@ -87,7 +85,10 @@ export function getType(value: any): ValueType {
  * @param value2
  * @returns
  */
-export function isScalarEquals<T extends ScalarType>(value1: T | null | undefined, value2: T | null | undefined): boolean {
+export function isScalarEquals<T extends ScalarType>(
+  value1: T | null | undefined,
+  value2: T | null | undefined
+): boolean {
   if (value1 === undefined) value1 = null;
   if (value2 === undefined) value2 = null;
   if (value1 === value2) return true;
@@ -120,7 +121,11 @@ export function isScalarEquals<T extends ScalarType>(value1: T | null | undefine
 export function compareScalar<T extends ScalarType>(
   source: any,
   target: any,
-  equalsComparator?: (left: ScalarType, right: ScalarType, path: string) => boolean | undefined,
+  equalsComparator?: (
+    left: ScalarType,
+    right: ScalarType,
+    path: string
+  ) => boolean | undefined,
   path: string = ''
 ): ScalarDifference<T> | null {
   // 优先使用指定的比较器
@@ -141,7 +146,7 @@ export function compareScalar<T extends ScalarType>(
       target,
     };
   }
-  return null
+  return null;
 }
 
 export function compareObject<T extends object>(
@@ -166,14 +171,14 @@ export function compareObject<T extends object>(
     return {
       source,
       target,
-      added: source
+      added: source,
     };
   }
   if (!source && target) {
     return {
       source,
       target,
-      removed: target
+      removed: target,
     };
   }
 
@@ -192,7 +197,12 @@ export function compareObject<T extends object>(
     const propTarget = Reflect.get(target!, key);
 
     if (type === ValueType.scalar) {
-      const ch = compareScalar(propSource, propTarget);
+      const ch = compareScalar(
+        propSource,
+        propTarget,
+        isEquals,
+        [path, key].filter(p => p).join('.')
+      );
       if (ch) {
         changes[key] = ch;
       }
@@ -206,7 +216,7 @@ export function compareObject<T extends object>(
         propTarget,
         isKeyEquals,
         isEquals,
-        [path, key + '[]'].filter(p => p).join('.')
+        [path, key].filter(p => p).join('.')
       );
       if (compareResult) {
         changes[key] = compareResult;
@@ -239,9 +249,17 @@ export function compareObject<T extends object>(
 /**
  * 用于确定是否同一对象
  */
-export type ObjectKeyCompartor = (left: any, right: any, path: string) => boolean;
+export type ObjectKeyCompartor = (
+  left: any,
+  right: any,
+  path: string
+) => boolean;
 
-export type EqulsCompartor = (left: any, right: any, path: string) => boolean | undefined;
+export type EqulsCompartor = (
+  left: any,
+  right: any,
+  path: string
+) => boolean | undefined;
 
 export function compareList<T extends object>(
   source: T[] | undefined,
@@ -267,8 +285,8 @@ export function compareList<T extends object>(
       target,
       addeds: [],
       removeds: target,
-      changes: []
-    }
+      changes: [],
+    };
   }
   if (!target && source) {
     return {
@@ -276,15 +294,16 @@ export function compareList<T extends object>(
       target,
       addeds: source,
       removeds: [],
-      changes: []
-    }
+      changes: [],
+    };
   }
 
-  const addeds: T[] = source!.filter(left =>
-    !target!.find(right => isKeyEquals(left, right, path))
+
+  const addeds: T[] = source!.filter(
+    left => !target!.find(right => isKeyEquals(left, right, path))
   );
-  const removeds: T[] = target!.filter(left =>
-    !source!.find(right => isKeyEquals(left, right, path))
+  const removeds: T[] = target!.filter(
+    left => !source!.find(right => isKeyEquals(left, right, path))
   );
 
   const changes: ObjectDifference<T>[] = [];
@@ -292,7 +311,13 @@ export function compareList<T extends object>(
   source!.forEach(source =>
     target!.forEach(target => {
       if (isKeyEquals(source, target, path)) {
-        const itemChanges = compareObject(source, target, isKeyEquals, isEquals, path);
+        const itemChanges = compareObject(
+          source,
+          target,
+          isKeyEquals,
+          isEquals,
+          path + '[]'
+        );
         if (itemChanges) {
           changes.push(itemChanges);
         }
@@ -312,24 +337,44 @@ export function compareList<T extends object>(
   };
 }
 
-export type CompareResult<T> = T extends ScalarType ? ScalarDifference<T>
-  : T extends (infer E)[] ? E extends object ? ListDifference<E> : never
-  : T extends object ? ObjectDifference<T>
+export type CompareResult<T> = T extends ScalarType
+  ? ScalarDifference<T>
+  : T extends (infer E)[]
+  ? E extends object
+    ? ListDifference<E>
+    : never
+  : T extends object
+  ? ObjectDifference<T>
   : never;
 
-export function compare<T extends ScalarType>(source: T, target: T): ScalarDifference<T> | null;
-export function compare<T extends ListType>(source: T, target: T, isSameObject: ObjectKeyCompartor): ListDifference<T> | null;
-export function compare<T extends ObjectType>(source: T, target: T, isSameObject: ObjectKeyCompartor): ObjectDifference<T> | null;
-export function compare(source: any, target: any, isSameObject?: ObjectKeyCompartor): ScalarDifference<any> | ListDifference<any> | ObjectDifference<any> | null {
-  const type = Math.max(getType(source), getType(target));
-  if (type === ValueType.scalar) {
-    return compareScalar(source, target);
-  }
-  if (type === ValueType.list) {
-    if (!isSameObject) {
-      throw new Error(`Compare list must provide argument: 'isSanmeObject'`);
-    }
-    return compareList(source, target, isSameObject!);
-  }
-  return compareObject(source, target, isSameObject);
-}
+// export function compare<T extends ScalarType>(
+//   source: T,
+//   target: T
+// ): ScalarDifference<T> | null;
+// export function compare<T extends ListType>(
+//   source: T,
+//   target: T,
+//   isSameObject: ObjectKeyCompartor
+// ): ListDifference<T> | null;
+// export function compare<T extends ObjectType>(
+//   source: T,
+//   target: T,
+//   isSameObject: ObjectKeyCompartor
+// ): ObjectDifference<T> | null;
+// export function compare(
+//   source: any,
+//   target: any,
+//   isSameObject?: ObjectKeyCompartor
+// ): ScalarDifference<any> | ListDifference<any> | ObjectDifference<any> | null {
+//   const type = Math.max(getType(source), getType(target));
+//   if (type === ValueType.scalar) {
+//     return compareScalar(source, target);
+//   }
+//   if (type === ValueType.list) {
+//     if (!isSameObject) {
+//       throw new Error(`Compare list must provide argument: 'isSanmeObject'`);
+//     }
+//     return compareList(source, target, isSameObject!);
+//   }
+//   return compareObject(source, target, isSameObject);
+// }
