@@ -821,6 +821,7 @@ export class SnapshotMigrateTracker {
             referenceColumns: item.$referenceColumns,
             referenceTable: objName.name,
             referenceSchema: objName.schema ?? this.defaultSchema,
+            isCascade: item.$deleteCascade || false
           });
           break;
         }

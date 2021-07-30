@@ -563,7 +563,7 @@ export interface ColumnMetadata<T extends Scalar = Scalar> {
    */
   generator?: (
     rowset: ProxiedRowset<any>,
-    item: object,
+    item: any,
     context: DbInstance
   ) => CompatibleExpression<T>;
 }

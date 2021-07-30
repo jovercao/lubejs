@@ -94,13 +94,12 @@ export interface DbProvider {
   readonly migrateBuilder: MigrateBuilder;
   query(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
   beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<Transaction>;
-  readonly database: string | undefined;
   /**
    * 重新选择数据库
    * 注意：如果数据连接已经打开，则此操作会重新连接数据库。
    * @param database
    */
-  change(database: string | undefined): Promise<void>;
+  changeDatabase(database: string | null): void;
   open(): Promise<void>;
   close(): Promise<void>;
   readonly opened: boolean;
@@ -135,7 +134,7 @@ export interface DbProvider {
   /**
    * 获取数据库架构
    */
-  getSchema(database: string): Promise<DatabaseSchema | undefined>;
+  getSchema(dbname?: string): Promise<DatabaseSchema | undefined>;
 
   /**
    * 获取当前连接的数据库名称
@@ -145,7 +144,7 @@ export interface DbProvider {
   /**
    * 获取当前连接的默认架构
    */
-  getDefaultSchema(): Promise<string>;
+  getDefaultSchema(database?: string): Promise<string>;
 }
 
 /**
@@ -210,6 +209,10 @@ export class Lube extends Executor {
       }
       return res;
     } catch (ex) {
+      // HACK: 本该写在mssql库中的，但是由于这是mssql库的bug只能写在这里
+      if (ex?.code === 'EREQINPROG') {
+        throw new Error(`mssql driver error.`);
+      }
       if (!canceled) {
         await abort();
       }
@@ -217,24 +220,28 @@ export class Lube extends Executor {
     }
   }
 
-  get database() {
-    return this.provider.database;
-  }
-
   get opened() {
     return this.provider.opened;
   }
 
-  async change(database: string | undefined): Promise<void> {
-    await this.provider.change(database);
+  getCurrentDatabase(): Promise<string> {
+    return this.provider.getCurrentDatabase();
   }
 
-  async open(): Promise<void> {
-    await this.provider.open();
+  /**
+   * 变更所在数据库
+   * 当为null时表示登录用户默认数据库
+   */
+  changeDatabase(database: string | null): void {
+    return this.provider.changeDatabase(database);
   }
 
-  async close(): Promise<void> {
-    await this.provider.close();
+  open(): Promise<void> {
+    return this.provider.open();
+  }
+
+  close(): Promise<void> {
+    return this.provider.close();
   }
 }
 

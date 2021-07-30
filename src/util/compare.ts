@@ -1,3 +1,4 @@
+import { trimEnd } from 'lodash';
 import { isBinary, isScalar } from '../util';
 
 export type ScalarType =
@@ -15,8 +16,8 @@ export type ListType = object[];
 export type ObjectType = object;
 
 export type ScalarDifference<T extends ScalarType> = {
-  source: T;
-  target: T;
+  source: T | null | undefined;
+  target: T | null | undefined;
 };
 
 export type ObjectDifference<T extends object> = {
@@ -81,44 +82,65 @@ export function getType(value: any): ValueType {
 
 /**
  * 对比标量类型值是否相同
- * @param value1
- * @param value2
+ * @param source
+ * @param target
  * @returns
  */
-export function isScalarEquals<T extends ScalarType>(
-  value1: T | null | undefined,
-  value2: T | null | undefined
-): boolean {
-  if (value1 === undefined) value1 = null;
-  if (value2 === undefined) value2 = null;
-  if (value1 === value2) return true;
-
-  if (Array.isArray(value1) && Array.isArray(value2)) {
-    if (value1.length !== value2.length) {
-      return false;
+export function compareScalar<T extends ScalarType>(
+  source: T | null | undefined,
+  target: T | null | undefined,
+  equalsComparator?: (
+    left: ScalarType,
+    right: ScalarType,
+    path: string
+  ) => boolean | undefined,
+  path: string = ''
+): ScalarDifference<T> | null {
+  if (source === undefined) source = null;
+  if (target === undefined) target = null;
+  if (source === target) return null;
+  // 优先使用指定的比较器
+  let changed = equalsComparator?.(source, target, path);
+  if (changed !== undefined) {
+    if (changed) {
+      return null;
+    } else {
+      return {
+        source,
+        target,
+      };
     }
-    for (let i = 0; i < value1.length; i++) {
-      if (!isScalarEquals(value1[i], value2[i])) {
-        return false;
+  }
+  if (changed !== undefined) {
+    if (Array.isArray(source) && Array.isArray(target)) {
+      if (source.length !== target.length) {
+        changed = true;
+      } else {
+        for (let i = 0; i < source.length; i++) {
+          if (!compareScalar(source[i], target[i], equalsComparator, path + '[]')) {
+            changed = true;
+            break;
+          }
+        }
+        changed = false;
       }
+    } else if (isBinary(source)) {
+      changed =
+        Buffer.compare(Buffer.from(source), Buffer.from(target as any)) === 0;
+    } else if (source instanceof Date && target instanceof Date) {
+      changed = source.getTime() === target.getTime();
     }
-    return true;
   }
-
-  if (isBinary(value1)) {
-    return (
-      Buffer.compare(Buffer.from(value1), Buffer.from(value2 as any)) === 0
-    );
+  if (changed) {
+    return {
+      target,
+      source,
+    };
   }
-
-  if (value1 instanceof Date && value2 instanceof Date) {
-    return value1.getTime() === value2.getTime();
-  }
-
-  return false;
+  return null;
 }
 
-export function compareScalar<T extends ScalarType>(
+export function compareScalar1<T extends ScalarType>(
   source: any,
   target: any,
   equalsComparator?: (
@@ -128,6 +150,14 @@ export function compareScalar<T extends ScalarType>(
   ) => boolean | undefined,
   path: string = ''
 ): ScalarDifference<T> | null {
+  if (source === null) source = undefined;
+  if (target === null) target = undefined;
+  if (source === target) return null;
+  if (source === undefined || target === undefined)
+    return {
+      source,
+      target,
+    };
   // 优先使用指定的比较器
   const comparatorResult = equalsComparator?.(source, target, path);
   if (comparatorResult !== undefined) {
@@ -140,7 +170,7 @@ export function compareScalar<T extends ScalarType>(
       };
     }
   }
-  if (!isScalarEquals(source, target)) {
+  if (!compareScalar(source, target)) {
     return {
       source,
       target,
@@ -297,7 +327,6 @@ export function compareList<T extends object>(
       changes: [],
     };
   }
-
 
   const addeds: T[] = source!.filter(
     left => !target!.find(right => isKeyEquals(left, right, path))

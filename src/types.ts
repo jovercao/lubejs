@@ -13,6 +13,7 @@ import { parse, stringify, v4 } from 'uuid';
 import { EntityConstructor } from './db-context';
 import { metadataStore } from './metadata';
 import { Decimal } from 'decimal.js-light';
+import { RelationKeyOf } from './repository';
 
 export const EntitySymble = Symbol('LUBEJS#Entity');
 
@@ -23,18 +24,18 @@ export const EntitySymble = Symbol('LUBEJS#Entity');
 export class Entity {
   constructor() {}
 
-  static create<T extends EntityConstructor<any>>(
-    this: T,
-    data: EntityTypeOf<T>
-  ): EntityInstance<EntityTypeOf<T>>;
-  static create<T extends EntityConstructor<any>>(
-    this: T,
-    data: EntityTypeOf<T>[]
-  ): EntityInstance<EntityTypeOf<T>>[];
-  static create<T extends EntityConstructor<any>>(
-    this: T,
-    data: EntityTypeOf<T> | EntityTypeOf<T>[]
-  ): EntityInstance<EntityTypeOf<T>> | EntityInstance<EntityTypeOf<T>>[] {
+  static create<T extends Entity>(
+    this: EntityConstructor<T>,
+    data: T
+  ): EntityInstance<T>;
+  static create<T extends Entity>(
+    this: EntityConstructor<T>,
+    data: T[]
+  ): EntityInstance<T>[];
+  static create<T extends Entity>(
+    this: EntityConstructor<T>,
+    data: T | T[]
+  ): EntityInstance<T> | EntityInstance<T>[] {
     const metadata = metadataStore.getEntity(this);
     if (!metadata) {
       throw new Error(`Entity ${this.name} not register.`);
@@ -61,6 +62,9 @@ export class Entity {
 }
 
 export type EntityInstance<T extends Entity> = T & {
+  [P in RelationKeyOf<T>]:
+    T[P] extends (infer M)[] ? EntityInstance<NonNullable<M>>[] : EntityInstance<NonNullable<T[P]>>;
+} & {
   constructor: EntityConstructor<T>;
 };
 
@@ -88,6 +92,18 @@ export type DbContextEventHandler = (
 // **********************************类型声明******************************************
 
 export type Binary = ArrayBuffer | SharedArrayBuffer | Buffer;
+
+
+export abstract class AsyncClass implements PromiseLike<any> {
+  constructor(init: () => Promise<void>) {
+    this.then = (async () => {
+      await init.call(this);
+      return this;
+    })().then;
+  }
+
+  readonly then: <TResult1 = any, TResult2 = never>(onfulfilled?: ((value: any) => TResult1 | PromiseLike<TResult1>) | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null) => PromiseLike<TResult1 | TResult2>;
+}
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type RowObject = object;

@@ -1,6 +1,6 @@
 import assert from 'assert';
 import '../../orm-configure';
-import { User, DB, OrderDetail } from '../../orm-configure';
+import { User, DB, OrderDetail, Order, Employee, Organization } from '../../orm-configure';
 import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
 const { star, count } = SQL;
@@ -19,14 +19,14 @@ describe('Repository: insert', function () {
     db.lube.close();
   });
 
-  it('单条记录插入 - User', async () => {
+  it('Single: User', async () => {
     const { count: beforeCount } = (await db.User.map(p => ({
       count: count(star),
     })).fetchFirst())!;
     const user: User = User.create({
-      name: 'user1',
+      name: 'single test: user',
       password: '123456',
-      description: '这是一个默认描述',
+      description: 'this is a description',
     });
     await db.User.insert(user);
 
@@ -39,9 +39,9 @@ describe('Repository: insert', function () {
     assert.deepStrictEqual(user, newUser);
   });
 
-  it('多对一关系插入测试 - OrderDetail -> Order', async () => {
-    await db.getRepository(OrderDetail).insert({
-      product: '产品1',
+  it('ManyToOne: OrderDetail -> Order', async () => {
+    const item = OrderDetail.create({
+      product: 'product1',
       count: 1,
       price: new Decimal(100.0),
       amount: new Decimal(100.0),
@@ -50,94 +50,119 @@ describe('Repository: insert', function () {
         orderNo: '202001010001',
       },
     });
+    await db.getRepository(OrderDetail).insert(item);
+    assert(item.id);
+    assert(item.order?.id);
   });
 
-  it('一对多关系插入测试 - Order <- OrderDetail[]', async () => {
-    await db.Order.insert({
+  it('OneToMany: Order <- OrderDetail[]', async () => {
+    const item = Order.create({
       date: new Date(),
-      description: '这是一个默认描述',
+      description: 'this is a order',
       details: [
         {
-          product: '产品1',
+          product: 'product1',
           count: 1,
           price: new Decimal(100),
           amount: new Decimal(100),
         },
         {
-          product: '产品2',
+          product: 'product2',
           count: 2,
           price: new Decimal(200),
           amount: new Decimal(400),
         },
       ],
     });
+    await db.Order.insert(item);
+    assert(item.id)
+    assert(item.details?.[0].id);
+    assert(item.details?.[1].id);
   });
 
-  it('一对一关系(副)插入测试 - Employee -> User', async () => {
+  it('ForeignOneToOne: Organization <- Employee -> User', async () => {
     const organization = await db.Organization.get(0n);
-    await db.Employee.insert({
-      name: '职员2',
-      description: '测试',
+    const employee = Employee.create({
+      name: 'emp',
+      description: 'test',
       organization,
       user: {
         name: 'newUser2',
         password: '123456',
-        description: '这是一个默认描述',
+        description: 'this is a description',
       },
     });
+    await db.Employee.insert(employee);
+
+    assert(employee.id);
+    assert(employee.user?.id);
+    assert(Reflect.get(employee, 'organizationId') === organization?.id);
   });
 
-  it('一对一关系(主)插入测试 - User <- Employee', async () => {
+  it('PrimaryOneToOne: User <- Employee', async () => {
     const organization = await db.Organization.get(0n);
-    await db.User.insert({
+    const item = User.create({
       name: 'user1',
       password: '123456',
-      description: '这是一个默认描述',
+      description: 'default description',
       employee: {
-        name: '一对一关系(主)',
+        name: 'PrimaryOneToOneTest: employee',
         organization,
       },
     });
+    await db.User.insert(item);
+
+    assert(item.id);
+    assert(item.employee?.id);
   });
 
-  it('同表多对一关系插入测试 - Organization[] -> Organization', async () => {
+  it('TreeRelation ChildToParent: Organization[] -> Organization', async () => {
     const organization = await db.Organization.get(0n);
-    await db.Organization.insert([
+    const items = Organization.create([
       {
-        name: '关联公司的部门',
-        description: '关联原有记录',
+        name: 'level1: department1',
+        description: 'parent is level0 company',
         parent: organization,
       },
       {
-        name: '关联新组织职员',
-        description: '新建父记录并关联',
+        name: 'level1',
+        description: 'parent is level0: new org',
         parent: {
-          name: '新部门',
+          name: 'level0: new org',
         },
       },
     ]);
+    await db.Organization.insert(items);
+    assert(items[0].id);
+    assert(items[0].parent?.id === organization?.id);
+    assert(items[1].id);
+    assert(items[1].parent?.id);
   });
 
-  it('同表一对多关系插入测试 - Organization <- Organization[]', async () => {
-    await db.Organization.insert({
-      name: '同表一对多关系插入测试 - 部门',
-      description: '这是一个默认描述',
+  it('TreeRelation ParentToChild: Organization <- Organization[]', async () => {
+    const item = Organization.create({
+      name: 'level0: New Org',
+      description: 'parent is null',
       children: [
         {
-          name: '同表一对多关系插入测试 - 子部门1',
-          description: '这是一个默认描述',
+          name: 'level1: org1',
+          description: 'parent is level0: New Org',
         },
         {
-          name: '同表一对多关系插入测试 - 子部门2',
-          description: '这是一个默认描述',
+          name: 'level1: org2',
+          description: 'parent is level0: New Org',
         },
       ],
     });
+    await db.Organization.insert(item);
+    assert(item.id);
+    assert(item.children[0].id);
+    assert(item.children[1].id);
   });
 
   it('多对多关系插入测试 - Employee <- EmployeePosition -> Position', async () => {
     const organization = await db.Organization.get(0n);
-    await db.Employee.insert({
+    const item = Employee.create({
       name: '多对多关系插入测试 - 职员',
       description:
         '多对多关系插入测试 - Employee <- EmployeePosition -> Position',
@@ -155,6 +180,11 @@ describe('Repository: insert', function () {
         },
       ],
     });
+    await db.Employee.insert(item);
+    assert(item.id);
+    assert(item.user.id);
+    assert(item.positions[0].id);
+    assert(item.positions[1].id);
   });
 
   // it('主从表插入测试 - Order', async () => {

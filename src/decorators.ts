@@ -507,7 +507,7 @@ export function autogen<T extends Entity = any>(
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
-      generator: generator,
+      generator,
     });
   };
 }
@@ -544,49 +544,69 @@ export function type(type: ScalarType): PropertyDecorator {
 
 export function column<T extends Entity>(name?: string): PropertyDecorator;
 export function column<T extends Entity>(
-  type: DbType | ScalarType
+  type: ScalarType
+): PropertyDecorator;
+export function column<T extends Entity>(
+  dbType: DbType
+): PropertyDecorator;
+export function column<T extends Entity>(
+  type: ScalarType,
+  dbType: DbType
 ): PropertyDecorator;
 export function column<T extends Entity>(
   name: string,
-  type: DbType | ScalarType
+  type?: ScalarType
 ): PropertyDecorator;
 export function column<T extends Entity>(
-  nameOrType?: string | DbType | ScalarType,
-  type?: DbType | ScalarType
+  name: string,
+  dbType?: DbType
+): PropertyDecorator;
+export function column<T extends Entity>(
+  name: string,
+  type: ScalarType,
+  dbType: DbType
+): PropertyDecorator;
+export function column<T extends Entity>(
+  nameOrTypeOrDbType?: string | DbType | ScalarType,
+  typeOrDbType?: DbType | ScalarType,
+  dbType?: DbType
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     let name: string | undefined;
-    if (!nameOrType) {
-      name = key;
-    } else if (typeof nameOrType === 'string') {
-      name = nameOrType;
-    } else {
-      type = nameOrType;
+    let dbType: DbType | undefined ;
+    let type: ScalarType | undefined;
+    // 无参数
+    if (typeof nameOrTypeOrDbType === 'string') {
+      name = nameOrTypeOrDbType;
+      if (typeof typeOrDbType  === 'object') {
+        dbType = typeOrDbType
+      } else {
+        type = typeOrDbType
+      }
+    } else if (typeof nameOrTypeOrDbType === 'object') {
+      dbType = nameOrTypeOrDbType;
+    } else if (typeof nameOrTypeOrDbType === 'function') {
+      type = nameOrTypeOrDbType;
+      if (typeof typeOrDbType === 'object') {
+        dbType = typeOrDbType;
+      }
+    }
+    if (!name) {
       name = key;
     }
-    if (name) {
-      setColumnOptions(target.constructor as EntityConstructor, key, {
-        columnName: name,
-      });
-    }
+
     if (!type) {
       type = Reflect.getMetadata('design:type', target, key);
       if (type === Array || type === Object) {
         throw new Error('Object type must specil type(like Date、Decimal); Becuase typescript is donot metadata them.')
       }
     }
-    if (type) {
-      // 指定
-      if (typeof type === 'function') {
-        setColumnOptions(target.constructor as EntityConstructor, key, {
-          type,
-        });
-      } else {
-        setColumnOptions(target.constructor as EntityConstructor, key, {
-          dbType: type,
-        });
-      }
-    }
+
+    setColumnOptions(target.constructor as EntityConstructor, key, {
+      type: type!,
+      dbType,
+      columnName: name
+    });
     addEntitiyColumn(target.constructor as EntityConstructor, key);
   };
 }

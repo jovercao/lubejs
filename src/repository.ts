@@ -24,6 +24,7 @@ import {
   DbEvents,
   RepositoryEventHandler,
   EntityInstance,
+  Scalar,
 } from './types';
 import { Condition, SqlBuilder } from './ast';
 import { isScalar } from './util';
@@ -38,7 +39,7 @@ import { DbContext, DbInstance, EntityConstructor } from './db-context';
  * 过滤关联关系属性列表
  */
 export type RelationKeyOf<T> = {
-  [P in keyof T]: NonNullable<T[P]> extends Entity | Entity[] ? P : never;
+  [P in keyof T]: NonNullable<T[P]> extends Scalar | Scalar[] ? never : P;
 }[keyof T];
 
 export type SingleReferenceKeyOf<T> = {
@@ -199,6 +200,19 @@ export class Repository<T extends Entity> extends Queryable<T> {
     let condition: Condition = this.rowset
       .$(this.metadata.key.property as any)
       .eq(keyValue);
+    return condition;
+  }
+
+  protected getWhereForUpdate(item: T): Condition {
+    const keyValue = Reflect.get(item, this.metadata.key.property);
+    if (keyValue === undefined) {
+      throw new Error(
+        `Key property ${this.metadata.key.property} is undefined.`
+      );
+    }
+    let condition: Condition = this.rowset
+      .$(this.metadata.key.property as any)
+      .eq(keyValue);
     if (this.metadata.rowflagColumn) {
       const rowflagValue = Reflect.get(
         item,
@@ -264,7 +278,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         if (column.isImplicit && !Reflect.has(item, column.property)) continue;
         changes[column.columnName] = this.toDbValue(item, column);
       }
-      const where = this.getWhere(item);
+      const where = this.getWhereForUpdate(item);
       const lines = await this.executor.update(this.rowset, changes, where);
       if (lines === 0) {
         throw new Error(
@@ -272,7 +286,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         );
       }
 
-      const updated = await this.executor.find(this.rowset, where);
+      const updated = await this.executor.find(this.rowset, this.getWhere(item));
       this.toEntity(updated, item);
 
       if (options?.withoutRelations !== true) {

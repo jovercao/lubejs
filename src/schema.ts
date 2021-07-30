@@ -12,7 +12,6 @@
  **********************************/
 
 import { SqlBuilder } from './ast';
-import { SqlUtil } from './sql-util';
 import {
   ColumnMetadata,
   ForeignRelation,
@@ -26,7 +25,6 @@ import {
 import {
   compareObject,
   ObjectKeyCompartor,
-  isScalarEquals,
   ObjectDifference,
   EqulsCompartor,
 } from './util/compare';
@@ -53,7 +51,7 @@ export interface ForeignKeySchema {
   /**
    * 主键表所在架构
    */
-  referenceSchema: string;
+  referenceSchema?: string;
   /**
    * 引用列（主键列）
    */
@@ -128,7 +126,7 @@ export interface DatabaseSchema {
 export interface FunctionSchema {
   comment?: string;
   name: string;
-  schema: string;
+  schema?: string;
   scripts: string;
 }
 
@@ -141,7 +139,7 @@ export interface FunctionSchema {
 
 export interface ProcedureSchema {
   name: string;
-  schema: string;
+  schema?: string;
   scripts: string;
   comment?: string;
 }
@@ -217,7 +215,7 @@ export interface TableSchema {
   /**
    * 所在架构
    */
-  schema: string;
+  schema?: string;
 
   /**
    * 摘要说明
@@ -261,7 +259,7 @@ export interface SequenceSchema {
   comment?: string;
   type: string;
   name: string;
-  schema: string;
+  schema?: string;
   startValue: number;
   increment: number;
 }
@@ -308,7 +306,7 @@ export interface ViewSchema {
   /**
    * 所在架构
    */
-  schema: string;
+  schema?: string;
   /**
    * 声明语句
    */
@@ -398,17 +396,16 @@ export interface IndexSchema {
 
 /**
  * 从Metadata生成架构
- * TODO: 添加快照，用于数据库差异对比
  * @param sqlUtil
  * @param context
  * @returns
  */
-export async function generateSchema(
-  sqlUtil: SqlUtil,
+export function generateSchema(
   context: DbContext
-): Promise<DatabaseSchema> {
+): DatabaseSchema {
+  const sqlUtil = context.lube.sqlUtil;
   // const databaseName  = await context.lube.provider.getCurrentDatabase();
-  const defaultSchema = await context.lube.provider.getDefaultSchema();
+  // const defaultSchema = await context.lube.provider.getDefaultSchema();
   function genDbSchema(context: DbContext): DatabaseSchema {
     // const tables = context.entities.filter(p => isTableEntity(p)).map(entity => genTableSchema(entity as TableEntityMetadata));
     const db: DatabaseSchema = {
@@ -455,7 +452,7 @@ export async function generateSchema(
       .map(p => genForeignKeySchema(entity, p as ForeignRelation));
     const table: TableSchema = {
       name: entity.tableName,
-      schema: entity.schema ?? defaultSchema,
+      schema: entity.schema, //?? defaultSchema,
       primaryKey: {
         name: entity.key.constraintName,
         isNonclustered: entity.key.isNonclustered,
@@ -503,7 +500,7 @@ export async function generateSchema(
   ): ForeignKeySchema {
     const fk: ForeignKeySchema = {
       name: relation.constraintName,
-      referenceSchema: relation.referenceEntity.schema ?? defaultSchema,
+      referenceSchema: relation.referenceEntity.schema, // ?? defaultSchema,
       referenceTable: relation.referenceEntity.tableName,
       columns: [relation.foreignColumn.columnName],
       referenceColumns: [relation.referenceEntity.key.column.columnName],
@@ -568,58 +565,66 @@ export type ObjectSchema =
 
 export type SchemaDifference = ObjectDifference<DatabaseSchema>;
 
-export const isSameSchemaObject: ObjectKeyCompartor = (
-  left: any,
-  right: any,
-  path: string
-): boolean => {
-  if (
-    [
-      'schemas',
-      'tables[].columns',
-      'tables[].foreignKeys',
-      'tables[].indexes',
-      'tables[].constraints',
-      'tables[].primaryKey.columns',
-      'tables[].foreignKeys[].columns',
-      'tables[].indexes[].columns',
-      'tables[].constraints[].columns',
-    ].includes(path)
-  ) {
-    return left.name === right.name;
-  }
-
-  if (
-    [
-      'tables',
-      'views',
-      'sequences',
-      'procedures',
-      'functions',
-    ].includes(path)
-  ) {
-    return left.name === right.name && left.schema === right.schema;
-  }
-  throw new Error(`Path error.`);
-};
-
-export const isEquals: EqulsCompartor = (
-  left: any,
-  right: any,
-  path: string
-) => {
-  // 比较类型
-  if (path === 'tables[].columns[].type') {
-    return (
-      left.replace(/ /g, '').toUpperCase() ===
-      right.replace(/ /g, '').toUpperCase()
-    );
-  }
-};
-
 export function compareSchema(
+  defaultSchema: string,
   source: DatabaseSchema | undefined,
   target: DatabaseSchema | undefined
 ): SchemaDifference | null {
+  const isSameSchemaObject: ObjectKeyCompartor = (
+    left: any,
+    right: any,
+    path: string
+  ): boolean => {
+    if (
+      [
+        'schemas',
+        'tables[].columns',
+        'tables[].foreignKeys',
+        'tables[].indexes',
+        'tables[].constraints',
+        'tables[].primaryKey.columns',
+        'tables[].foreignKeys[].columns',
+        'tables[].indexes[].columns',
+        'tables[].constraints[].columns',
+      ].includes(path)
+    ) {
+      return left.name === right.name;
+    }
+
+    if (
+      [
+        'tables',
+        'views',
+        'sequences',
+        'procedures',
+        'functions',
+      ].includes(path)
+    ) {
+      return left.name === right.name && (left.schema || defaultSchema) === (right.schema || defaultSchema);
+    }
+    throw new Error(`Path error.`);
+  };
+
+  const isEquals: EqulsCompartor = (
+    left: any,
+    right: any,
+    path: string
+  ) => {
+    // 比较类型
+    if (path === 'tables[].columns[].type') {
+      return (
+        left.replace(/ /g, '').toUpperCase() ===
+        right.replace(/ /g, '').toUpperCase()
+      );
+    }
+    if (path === 'tables[].columns[].defaultValue') {
+      return left.toLowerCase() === right.toLowerCase();
+    }
+    // 不比较种子数据等属性
+    if (['name', 'collate', 'comment', 'tables[].seedData'].includes(path)) {
+      return true;
+    }
+  };
+
   return compareObject(source, target, isSameSchemaObject, isEquals);
 }

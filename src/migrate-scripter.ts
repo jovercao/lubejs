@@ -46,6 +46,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
    * 生成迁移代码
    */
   migrate(
+    defaultSchema: string,
     source: DatabaseSchema | undefined,
     target: DatabaseSchema | undefined
   ): void {
@@ -61,7 +62,8 @@ export abstract class MigrateScripter<T extends string | Statement> {
       target.tables.forEach(table => this.dropTable(table));
       target.sequences.forEach(sequence => this.dropSequence(sequence));
     } else {
-      const differences = compareSchema(source, target)!;
+      const differences = compareSchema(defaultSchema, source, target);
+      if (!differences) return;
       if (differences.changes?.tables) {
         differences.changes.tables.removeds.forEach(dropTable =>
           this.dropTableAndMembers(dropTable)
@@ -361,7 +363,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
         }
 
         if (changes.comment) {
-          this.commentColumn(table, source!.name, changes.comment.source);
+          this.commentColumn(table, source!.name, source?.comment);
         }
       }
     }
@@ -389,7 +391,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
           this.commentConstraint(
             table,
             pk.source!.name,
-            pk.changes.comment.source
+            pk.source?.comment
           );
         }
       }
@@ -423,7 +425,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
             this.commentConstraint(table, source!.name, source!.comment);
           }
         } else if (changes?.comment) {
-          this.commentConstraint(table, target!.name, changes.comment.source);
+          this.commentConstraint(table, target!.name, source?.comment);
         }
       }
     }
@@ -458,7 +460,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
             this.commentConstraint(table, target!.name, source.comment);
           }
         } else if (changes?.comment) {
-          this.commentConstraint(table, target!.name, changes.comment.source);
+          this.commentConstraint(table, target!.name, source?.comment);
         }
       }
     }
@@ -480,13 +482,13 @@ export abstract class MigrateScripter<T extends string | Statement> {
             this.commentIndex(table, source.name, source.comment);
           }
         } else if (changes?.comment) {
-          this.commentIndex(table, source!.name, changes.comment.source);
+          this.commentIndex(table, source!.name, source?.comment);
         }
       }
     }
 
     if (tableChanges.changes?.comment) {
-      this.commentTable(table, tableChanges.changes.comment.source);
+      this.commentTable(table, tableChanges.source?.comment);
     }
 
     // WARN: 修改表名无法追踪。
@@ -631,19 +633,21 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
   }
 
   addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema) {
-    this.afterCodes.push(
-      this.builder
-        .alterTable(table)
-        .add(g =>
-          g
-            .foreignKey(fk.name)
-            .on(fk.columns)
-            .reference(
-              { name: fk.referenceTable, schema: fk.referenceSchema },
-              fk.referenceColumns
-            )
-        )
-    );
+    const sql = this.builder.alterTable(table).add($ => {
+      const v = $
+        .foreignKey(fk.name)
+        .on(fk.columns)
+        .reference(
+          { name: fk.referenceTable, schema: fk.referenceSchema },
+          fk.referenceColumns
+        );
+      if (fk.isCascade) {
+        v.deleteCascade();
+      }
+      return v;
+    });
+
+    this.afterCodes.push(sql);
   }
 
   dropForeignKey(table: CompatiableObjectName, name: string) {

@@ -9,18 +9,18 @@ import { outputCommand } from './util';
 
 const OPTIONS_FILE = '.lubejs';
 
-async function createMigrateCli(options?: {
+async function initCli(options?: {
   context?: string;
   migrateDir?: string;
   require?: string;
 }): Promise<MigrateCli> {
-  let { context, migrateDir, require: importFile } = options || {};
-  if (importFile) {
-    const lowerPath = importFile.toLowerCase();
-    if (lowerPath.endsWith('.ts')) {
-      await import(resolve(importFile));
-    } else if (lowerPath.endsWith('.js')) {
-      await require(lowerPath);
+  let { context, migrateDir, require: importModule } = options || {};
+  if (importModule) {
+    const file = require.resolve(importModule);
+    if (file.endsWith('.ts')) {
+      await import(importModule);
+    } else if (file.endsWith('.js')) {
+      await require(importModule);
     } else {
       throw new Error(`Option --require is only support .ts and .js file.`)
     }
@@ -30,16 +30,9 @@ async function createMigrateCli(options?: {
   }
   // 加载配置，以便导入ORM Metadata
   await loadConfig();
-  let Ctr: DbContextConstructor;
-  if (context) {
-    Ctr = metadataStore.getContext(context).class;
-  } else {
-    Ctr = metadataStore.defaultContext.class;
-  }
-  const db = await createContext(Ctr);
-  db.lube.on('command', outputCommand);
-  const cli = await new MigrateCli(db, migrateDir);
-  await cli.connect();
+  const cli = new MigrateCli(context, migrateDir);
+  // const db = await cli.getDbContext();
+  // db.lube.on('command', outputCommand);
   return cli;
 }
 
@@ -79,7 +72,7 @@ const migrateAdd = migrate
   .action(async name => {
     const opts = migrate.opts();
     const addOpts = migrateAdd.opts();
-    const cli = await createMigrateCli(opts);
+    const cli = await initCli(opts);
     try {
       const migrateInfo = await cli.add(name, addOpts.notResolverType);
       if (addOpts.update) {
@@ -96,7 +89,7 @@ migrate
   .command('list')
   .description('列出所有迁移.')
   .action(async () => {
-    const cli = await createMigrateCli(migrate.opts());
+    const cli = await initCli(migrate.opts());
     try {
       await cli.list();
     } catch (error) {
@@ -111,24 +104,28 @@ const migrateScript = migrate
   .description('生成数据库更新脚本，脚本更新方向为: <source> ==> <target>')
   .option('-o, --output-path <outputPath>', '输出路径.')
   .option(
+    '-s, --source <source>',
+    `源迁移版本名称：\n  ${'*'.yellow} ---- 表示使用最新版本\n  ${
+      '@'.yellow
+    } ---- 表未当前数据库版本\n   不传递时使用当前数据库版本\n  ${
+      '?'.yellow
+    } ---- 表未尚未初始化版本\n   不传递时使用当前数据库版本`
+  )
+  .option(
     '-t, --target <target>',
     `目标迁移版本名称：\n  ${'*'.yellow} ---- 表示使用最新版本\n  ${
       '@'.yellow
-    } ---- 表未当前数据库版本\n  不传递时使用最新版本`
-  )
-  .option(
-    '-s, --source <source>',
-    `源迁移版本名称：\n  ${'*'.yellow} ---- 表示使用尚未初始化版本\n  ${
-      '@'.yellow
-    } ---- 表未当前数据库版本\n   不传递时使用当前数据库版本`
+    } ---- 表未当前数据库版本\n  不传递时使用最新版本\n  ${
+      '?'.yellow
+    } ---- 表未尚未初始化版本\n   不传递时使用当前数据库版本`
   )
   .action(async () => {
     const opts = migrateScript.opts();
-    const cli = await createMigrateCli(migrate.opts());
+    const cli = await initCli(migrate.opts());
     try {
       await cli.script({
-        target: opts.target,
-        source: opts.source,
+        start: opts.source,
+        end: opts.target,
         outputPath: opts.outputPath,
       });
     } catch (error) {
@@ -148,7 +145,7 @@ const migrateUpdate = migrate
         `错误的目标版本，为了数据安全起见，请明确指定版本名称，且不支持使用*/@指定版本。`
       );
     }
-    const cli = await createMigrateCli(migrate.opts());
+    const cli = await initCli(migrate.opts());
     try {
       await cli.update(targetName);
     } catch (error) {
@@ -166,7 +163,7 @@ const migrateSync = migrate
 进行更新，否则可能造成数据丢失！`)
   .action(async () => {
     const opts = migrateSync.opts();
-    const cli = await createMigrateCli(migrate.opts());
+    const cli = await initCli(migrate.opts());
     try {
       await cli.sync(opts?.outputPath);
     } catch (error) {

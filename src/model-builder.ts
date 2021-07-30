@@ -8,6 +8,7 @@ import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
 import {
   DbContext,
   DbContextConstructor,
+  DbInstance,
   EntityConstructor,
 } from './db-context';
 import {
@@ -957,7 +958,39 @@ export class ModelBuilder {
             p => p[property],
             columnOptions.type as any
           );
-          Object.assign(columnBuilder.metadata, columnOptions);
+          if (columnOptions.columnName) {
+            columnBuilder.hasColumnName(columnOptions.columnName);
+          }
+          if (columnOptions.dbType) {
+            columnBuilder.hasType(columnOptions.dbType);
+          }
+          if (columnOptions.defaultValue) {
+            columnBuilder.hasDefaultValue(columnOptions.defaultValue);
+          }
+          if (columnOptions.isNullable !== undefined) {
+            if (columnOptions.isNullable) {
+              columnBuilder.isNullable();
+            } else {
+              columnBuilder.isRequired();
+            }
+          }
+          if (columnOptions.generator) {
+            columnBuilder.isAutogen(columnOptions.generator);
+          }
+          if (columnOptions.isIdentity) {
+            columnBuilder.isIdentity(columnOptions.identityStartValue, columnOptions.identityIncrement);
+          }
+          if (columnOptions.isCalculate) {
+            columnBuilder.isCalculated(columnOptions.calculateExpression!);
+          }
+          if (columnOptions.isRowflag) {
+            columnBuilder.isRowflag();
+          }
+
+          const comment = getComment(target, property);
+          if (comment) {
+            columnBuilder.hasComment(comment);
+          }
         }
       }
     }
@@ -1796,7 +1829,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    * @returns
    */
   isAutogen(
-    generator: (rowset: ProxiedRowset<T>, item: T) => CompatibleExpression<V>
+    generator: (rowset: ProxiedRowset<T>, item: T, context: DbInstance) => CompatibleExpression<V>
   ): Omit<this, 'isAutogen'> {
     this.metadata.generator = generator as any;
     return this;
@@ -1810,17 +1843,22 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
     return this;
   }
 
+  isRequired(): this {
+    this.metadata.isNullable = false;
+    return this;
+  }
+
   /**
    * 行标记列，每次更新时自动变换值
    */
   isRowflag(): Omit<this, 'isRowflag'> {
-    if (this.metadata.dbType) {
-      if (this.metadata.dbType.name !== 'ROWFLAG') {
-        throw new Error('Rowflag column must type of ROWFLAG.');
-      }
-    } else {
-      this.metadata.dbType = DbType.rowflag;
-    }
+    // if (this.metadata.dbType) {
+    //   if (this.metadata.dbType.name !== 'ROWFLAG') {
+    //     throw new Error('Rowflag column must type of ROWFLAG.');
+    //   }
+    // } else {
+    this.metadata.dbType = DbType.rowflag;
+    // }
     this.metadata.isRowflag = true;
     return this;
   }

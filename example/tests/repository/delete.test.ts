@@ -12,7 +12,7 @@ import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs
 
 const { star, count } = SQL;
 
-describe.only('Repository: delete', function () {
+describe('Repository: delete', function () {
   this.timeout(0);
   let db: DB;
   let outputSql: boolean = false;
@@ -27,22 +27,22 @@ describe.only('Repository: delete', function () {
     await db.lube.close();
   });
 
-  it('一对一(主）关系删除 - User <- Employee', async () => {
+  it('PrimaryOneToOne: User <- Employee', async () => {
     const employee = Employee.create({
-      name: '一对一（主）关系更新测试 - 职员',
+      name: 'PrimaryOneToOne: employee',
       organization: await db.Organization.get(0n),
     });
 
     const user = User.create({
-      name: '一对一（主）关系更新测试 - 用户',
-      password: '嘿咻',
+      name: 'PrimaryOneToOne: user',
+      password: 'pwd',
       employee,
     });
 
     await db.save(user);
 
-    user.description = '更新后的用户';
-    user.employee!.description = '更新后的职员';
+    user.description = 'updated user';
+    user.employee!.description = 'updated employee';
 
     await db.User.delete(user, { withDetail: true });
 
@@ -52,19 +52,19 @@ describe.only('Repository: delete', function () {
     assert(!deletedEmployee);
   });
 
-  it('一对多关系删除 - Order <- OrderDetail', async () => {
+  it('OneToMany: Order <- OrderDetail', async () => {
     const order = Order.create({
-      orderNo: '订单号',
+      orderNo: 'OrderNo',
       date: new Date(),
       details: [
         {
-          product: '产品1',
+          product: 'product1',
           count: 1,
           price: new Decimal(100),
           amount: new Decimal(100),
         },
         {
-          product: '产品2',
+          product: 'product2',
           count: 2,
           price: new Decimal(100),
           amount: new Decimal(200),
@@ -92,20 +92,20 @@ describe.only('Repository: delete', function () {
     assert(deletedDetails.length == 0);
   });
 
-  it('ManyToMany 子项增删除改测试', async () => {
+  it('ManyToMany: Employee <- EmployeePosition -> Position', async () => {
     const employee: Employee = {
       user: {
-        name: 'abcx',
+        name: 'ManyToManyDelete: user',
         password: 'hehe',
       },
       name: 'repository.update ManyToMany1',
       organization: await db.User.get(0n),
       positions: [
         {
-          name: 'ManyToMany职位1',
+          name: 'position1',
         },
         {
-          name: 'ManyToMany职位2',
+          name: 'position2',
         },
       ],
     };

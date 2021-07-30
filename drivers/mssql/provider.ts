@@ -16,7 +16,7 @@ import {
 } from 'lubejs';
 import { loadDatabaseSchema } from './schema-loader';
 import { MssqlMigrateBuilder } from './migrate-builder';
-import { parseMssqlConfig } from './util'
+import { parseMssqlConfig } from './util';
 import { db_name, schema_name } from './build-in';
 
 export const DIALECT = 'mssql';
@@ -43,16 +43,33 @@ export class MssqlProvider implements DbProvider {
     const translator = new MssqlStandardTranslator(this);
     this.sqlUtil = new MssqlSqlUtil(options.sqlOptions, translator);
   }
+
   getCurrentDatabase(): Promise<string> {
     return this.lube.queryScalar(SqlBuilder.select(db_name()));
   }
-  getDefaultSchema(): Promise<string> {
-    return this.lube.queryScalar(SqlBuilder.select(schema_name()));
+
+  getDefaultSchema(database?: string): Promise<string> {
+    return this.lube.trans(async trans => {
+      const currentDatabase = await this.getCurrentDatabase();
+      if (database && currentDatabase !== database) {
+        trans.query(SqlBuilder.use(database));
+      }
+      const defaultSchema = await trans.queryScalar(
+        SqlBuilder.select(schema_name())
+      );
+      if (database && currentDatabase !== database) {
+        await trans.query(SqlBuilder.use(currentDatabase));
+      }
+      return defaultSchema;
+    });
   }
+
   private _pool?: mssql.ConnectionPool;
+
   lube!: Lube;
   readonly sqlUtil: MssqlSqlUtil;
   private _migrateBuilder?: MssqlMigrateBuilder;
+
   get migrateBuilder(): MigrateBuilder {
     if (!this._migrateBuilder) {
       this._migrateBuilder = new MssqlMigrateBuilder(this);
@@ -62,24 +79,19 @@ export class MssqlProvider implements DbProvider {
 
   dialect: string = DIALECT;
 
-  private _database?: string;
-  get database(): string | undefined {
-    return this._database || this.options.database;
+  async getSchema(dbname?: string): Promise<DatabaseSchema | undefined> {
+    await this._autoOpen();
+    return loadDatabaseSchema(this, dbname);
   }
 
-  getSchema(database: string): Promise<DatabaseSchema | undefined> {
-    this._assertConnection();
-    return loadDatabaseSchema(this, database);
-  }
-
-  private _assertConnection(): void {
-    if (!this._pool) {
-      throw new Error(`Connection is not opened yet.`)
+  private async _autoOpen(): Promise<void> {
+    if (!this.opened) {
+      await this.open();
     }
   }
 
   async query(sql: string, params: Parameter<any, string>[]) {
-    this._assertConnection();
+    await this._autoOpen();
     const res = await doQuery(this._pool!, sql, params, this.sqlUtil.options);
     return res;
   }
@@ -87,24 +99,24 @@ export class MssqlProvider implements DbProvider {
   async beginTrans(
     isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<Transaction> {
-    this._assertConnection();
+    await this._autoOpen();
     const trans = this._pool!.transaction();
     let rolledBack = false;
     trans.on('rollback', aborted => {
       // emited with aborted === true
-
-      rolledBack = true
-    })
+      rolledBack = true;
+    });
     await trans.begin(toMssqlIsolationLevel(isolationLevel));
     return {
       query: async (sql, params) => {
         const res = await doQuery(trans, sql, params, this.sqlUtil.options);
         return res;
       },
-      commit: async() => {
+      commit: async () => {
         await trans.commit();
       },
-      rollback: async() => {
+      rollback: async () => {
+        // fix: 解决mssql库自动rollback导致重复调用rollback的bug
         if (!rolledBack) {
           await trans.rollback();
         }
@@ -116,18 +128,21 @@ export class MssqlProvider implements DbProvider {
     return !!this._pool;
   }
 
-  async change(database: string | undefined): Promise<void> {
+  changeDatabase(database: string | null): void {
+    if (this.opened) {
+      throw new Error(`Not allow change database when connection is opened.`);
+    }
     if (this.mssqlOptions.database === database) {
-      return
+      return;
     }
-    let opened = this.opened;
-    if (opened) {
-      await this.close();
-    }
-    this.mssqlOptions.database = database;
-    if (opened) {
-      await this.open();
-    }
+    // let opened = this.opened;
+    // if (opened) {
+    //   await this.close();
+    // }
+    this.mssqlOptions.database = database === null ? undefined : database;
+    // if (opened) {
+    //   await this.open();
+    // }
   }
 
   /**
@@ -135,10 +150,11 @@ export class MssqlProvider implements DbProvider {
    * @memberof Pool
    */
   async close(): Promise<void> {
-    this._assertConnection();
+    if (!this.opened) {
+      throw new Error(`Connection pool is not opened yet.`);
+    }
     await this._pool!.close();
     this._pool = undefined;
-    this._database = undefined;
   }
 
   private _mssqlOptions?: mssql.config;
@@ -151,12 +167,10 @@ export class MssqlProvider implements DbProvider {
 
   async open(): Promise<void> {
     if (this._pool) {
-      throw new Error(`Connection is opened.`)
+      throw new Error(`Connection pool is opened.`);
     }
     const pool = new mssql.ConnectionPool(this.mssqlOptions);
     await pool.connect();
     this._pool = pool;
-    const result = await this._pool.query(`sp_who  @@SPID`);
-    this._database = result.recordset[0].dbname;
   }
 }

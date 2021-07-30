@@ -311,7 +311,7 @@ export async function loadDatabaseSchema(
       const isRowflag = ['ROWVERSION', 'TIMESTAMP'].includes((type_name as string).toUpperCase());
       const column: ColumnSchema = {
         // 统一行标记类型
-        type: fullType(type_name, type_length, type_precision, type_scale),
+        type: isRowflag ? provider.sqlUtil.sqlifyType(DbType.rowflag) : fullType(type_name, type_length, type_precision, type_scale),
         isRowflag,
         defaultValue: defaultValue
           ? defaultValue.substr(1, defaultValue.length - 2)
@@ -373,16 +373,19 @@ export async function loadDatabaseSchema(
     const fk = table({ name: 'foreign_keys', schema: 'sys' }).as('fk');
     const rt = table({ name: 'tables', schema: 'sys' }).as('rt');
     const d = table({ name: 'extended_properties', schema: 'sys' }).as('d');
+    const s = table({ name: 'schemas', schema: 'sys' }).as('s');
 
     const sql = select({
       id: fk.object_id,
       name: fk.name,
       isCascade: fk.delete_referential_action.to(DbType.boolean),
       referenceTable: rt.name,
+      referenceSchema: s.name,
       comment: d.value,
     })
       .from(fk)
       .join(rt, rt.object_id.eq(fk.referenced_object_id))
+      .leftJoin(s, rt.schema_id.eq(s.schema_id))
       .leftJoin(
         d,
         d.name
@@ -580,8 +583,9 @@ export async function loadDatabaseSchema(
     return indexes;
   }
 
+  const connectionDbName = await provider.getCurrentDatabase();
   if (!dbName) {
-    dbName = await provider.getCurrentDatabase();
+    dbName = connectionDbName;
   }
 
   const d = table('sys.databases');
@@ -596,11 +600,15 @@ export async function loadDatabaseSchema(
   }
 
   let runner: Executor
+
   return await provider.lube.trans(async (executor) => {
     runner = executor;
+
     // 切换数据库
-    if (dbName) {
-      await runner.query(SqlBuilder.use(dbName));
+    if (dbName !== connectionDbName) {
+      // 由于数据连接池的原因，极有可能产生一个巨坑，后续任务使用到该连接时，导致数据库与连接字符串不对的错误。
+      // 因此在执行完成后，切换回原数据库
+      await runner.query(SqlBuilder.use(dbName!));
     }
     const tables = await getTables();
     const views = await getViews();
@@ -608,6 +616,9 @@ export async function loadDatabaseSchema(
     const functions = await getFunctions();
     const sequences = await getSequences();
     const schemas = await getSchemas();
+    if (dbName !== connectionDbName) {
+      await runner.query(SqlBuilder.use(connectionDbName));
+    }
     return {
       ...row,
       tables,

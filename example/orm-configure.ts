@@ -123,50 +123,50 @@ modelBuilder.context(DB, context => {
   context
     .entity(User)
     .asTable(table => {
-      table.hasComment('职员');
+      table.hasComment('Employee');
       table
         .property(p => p.id, BigInt)
         .isIdentity()
         .hasComment('ID');
-      table.property(p => p.name, String).hasComment('职员姓名');
+      table.property(p => p.name, String).hasComment('EmployeeName');
       table
         .property(p => p.password, String)
         .isNullable()
-        .hasComment('密码');
+        .hasComment('Password');
       table
         .property(p => p.description, String)
         .isNullable()
-        .hasComment('摘要说明');
+        .hasComment('Description');
       table
         .hasOne(p => p.employee, Employee)
         .withOne(p => p.user)
         .isPrimary()
-        .hasComment('绑定职员')
+        .hasComment('BindEmployee')
         .isDetail();
-      table.hasKey(p => p.id).hasComment('主键');
+      table.hasKey(p => p.id).hasComment('PrimaryKey');
       table.hasData([{ id: 0, name: 'admin' }]);
     })
     .entity(Position)
     .asTable(table => {
-      table.hasComment('职员');
+      table.hasComment('Position');
       table
         .property(p => p.id, BigInt)
         .isIdentity()
         .hasComment('ID');
-      table.property(p => p.name, String).hasComment('职位名称');
+      table.property(p => p.name, String).hasComment('PositionName');
       table
         .property(p => p.description, String)
         .isNullable()
-        .hasComment('摘要说明');
-      table.hasKey(p => p.id).hasComment('主键');
+        .hasComment('Description');
+      table.hasKey(p => p.id).hasComment('PrimaryKey');
       table
         .hasMany(p => p.employees, Employee)
         .withMany(p => p.positions)
         .hasRelationTable(EmployeePosition);
       table.hasData([
-        { id: 1, name: '总经理', description: '无' },
-        { id: 2, name: '总监', description: '无' },
-        { id: 3, name: '普通职员', description: '无' },
+        { id: 1, name: 'general manager', description: 'none' },
+        { id: 2, name: 'chief inspector', description: 'none' },
+        { id: 3, name: 'clerk', description: 'none' },
       ]);
     })
     .entity(Organization)
@@ -182,9 +182,9 @@ modelBuilder.context(DB, context => {
       builder.hasMany(p => p.children, Organization).withOne(p => p.parent);
 
       builder.hasData([
-        { id: 0, name: '公司', description: '没啥' },
-        { id: 1, name: '信息部', parentId: 0 },
-        { id: 2, name: '行政部', parentId: 0 },
+        { id: 0, name: 'Company', description: 'none' },
+        { id: 1, name: 'IT', parentId: 0 },
+        { id: 2, name: 'Administration', parentId: 0 },
       ]);
     })
     .entity(Employee)
@@ -212,7 +212,7 @@ modelBuilder.context(DB, context => {
         .withOne(p => p.employee)
         .hasForeignKey()
         .isRequired();
-      builder.hasData([{ id: 0, name: '管理员职员', userId: 0, organizationId: 0 }]);
+      builder.hasData([{ id: 0, name: 'Administrator', userId: 0, organizationId: 0 }]);
     })
     .entity(Order)
     .asTable(builder => {

@@ -1,10 +1,31 @@
-import { CompatiableObjectName, DbType } from "lubejs/types";
-import { AllStatement, AlterDatabase, AlterTableAddMember, CreateDatabase, CreateTable, CreateTableMember, DropDatabase, Statement } from "./ast";
-import { STATEMENT_KIND } from "./constants";
-import { MigrateScripter } from "./migrate-scripter";
-import { CheckConstraintSchema, ColumnSchema, ConstraintSchema, DatabaseSchema, ForeignKeySchema, IndexSchema, KeyColumnSchema, PrimaryKeySchema, SequenceSchema, TableSchema, UniqueConstraintSchema } from "./schema";
-import { SqlUtil } from "./sql-util";
-import { assertAst, isCreateTableColumn } from "./util";
+import { CompatiableObjectName, DbType } from 'lubejs/types';
+import {
+  AllStatement,
+  AlterDatabase,
+  AlterTableAddMember,
+  CreateDatabase,
+  CreateTable,
+  CreateTableMember,
+  DropDatabase,
+  Statement,
+} from './ast';
+import { STATEMENT_KIND } from './constants';
+import { MigrateScripter } from './migrate-scripter';
+import {
+  CheckConstraintSchema,
+  ColumnSchema,
+  ConstraintSchema,
+  DatabaseSchema,
+  ForeignKeySchema,
+  IndexSchema,
+  KeyColumnSchema,
+  PrimaryKeySchema,
+  SequenceSchema,
+  TableSchema,
+  UniqueConstraintSchema,
+} from './schema';
+import { SqlUtil } from './sql-util';
+import { assertAst, isCreateTableColumn } from './util';
 
 // export class MigrateProgrammer {
 //   constructor(private sqlUtil: SqlUtil, private builderName: string) {
@@ -12,7 +33,6 @@ import { assertAst, isCreateTableColumn } from "./util";
 //   }
 
 //   private _codes: string[] = [];
-
 
 //   coding(...statements: Statement[]) {
 //     for (const statement of statements as AllStatement[]) {
@@ -423,7 +443,6 @@ import { assertAst, isCreateTableColumn } from "./util";
 //     this._codes.push(`${this.builderName}.dropDatabase(${this.objectName(statement.$name)})`);
 //   }
 
-
 //   private codingTableMember(member: AlterTableAddMember | CreateTableMember) {
 //     if (isCreateTableColumn(member)) {
 //       let sql = `${this.objectName(member.$name)} ${this.sqlifyType(
@@ -624,9 +643,6 @@ import { assertAst, isCreateTableColumn } from "./util";
 //   }
 // }
 
-
-
-
 export class ProgramMigrateScripter extends MigrateScripter<string> {
   constructor(
     private sqlUtil: SqlUtil,
@@ -636,9 +652,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   annotation(note: string): void {
-    this.middleCodes.push(
-      `builder.annotation(${JSON.stringify(note)})`
-    );
+    this.middleCodes.push(`builder.annotation(${JSON.stringify(note)})`);
   }
 
   alterDatabase(database: DatabaseSchema): void {
@@ -700,9 +714,9 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     column: ColumnSchema,
     prefix: string = 'builder.'
   ): string {
-    let sql = `${prefix}column(${JSON.stringify(
-      column.name
-    )}, ${this.stringifyType(column.type)})`;
+    let sql = `${prefix}column(${JSON.stringify(column.name)}, ${
+      column.isRowflag ? 'DbType.rowflag' : this.stringifyType(column.type)
+    })`;
     if (column.isNullable) {
       sql += '.null()';
     } else {
@@ -1163,11 +1177,13 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema): void {
-    this.afterCodes.push(
-      `builder.alterTable(${this.namify(
-        table
-      )}).add(builder => ${this.foreignKey(fk)})`
-    );
+    let sql = `builder.alterTable(${this.namify(
+      table
+    )}).add(builder => ${this.foreignKey(fk)})`;
+    if (fk.isCascade) {
+      sql += '.deleteCascade()';
+    }
+    this.afterCodes.push(sql);
   }
 
   dropForeignKey(table: CompatiableObjectName, name: string): void {

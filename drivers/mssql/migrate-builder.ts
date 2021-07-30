@@ -16,7 +16,6 @@ import {
   DbProvider,
 } from 'lubejs';
 import { sp_rename } from './build-in';
-import { MssqlProvider } from './provider';
 import { formatSql } from './util';
 
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
@@ -85,7 +84,7 @@ export class MssqlMigrateBuilder extends MigrateBuilder {
   ): Statement {
     return SQL.block(
       SQL.note(
-        '=========================注意：MSSQL 自带标记列，仅通过修改类型来达成========================'
+        '=========================注意：MSSQL 自带行标记列类型，仅可通过修改类型来达成========================'
       ),
       SQL.alterTable(table).dropColumn(column),
       SQL.alterTable(table).add(({ column: c }) =>
