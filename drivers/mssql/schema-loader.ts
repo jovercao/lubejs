@@ -573,8 +573,7 @@ export async function loadDatabaseSchema(
           i.is_unique_constraint.eq(false)
         )
       );
-    const sqlTxt = provider.sqlUtil.sqlify(colSql).sql;
-    const { rows: colRows } = await provider.query(sqlTxt);
+    const { rows: colRows } = await runner.query(colSql);
     for (const index of indexes) {
       index.columns = colRows
         .filter(p => p.indexName === index.name)

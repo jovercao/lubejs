@@ -7,7 +7,7 @@ import { DbContext } from 'lubejs/db-context';
 import { SqlBuilder } from 'lubejs/ast';
 import { join } from 'path';
 
-describe.only('Migrate add', function () {
+describe.only('Migrate', function () {
   let cli: MigrateCli;
   let dbContext: DbContext;
   let database: string;
@@ -29,20 +29,17 @@ describe.only('Migrate add', function () {
   });
 
   after(async () => {
-    if (dbContext.lube.opened) {
-      await dbContext.lube.close();
-    }
-    dbContext.lube.changeDatabase(null);
-    await dbContext.lube.query(SqlBuilder.dropDatabase(database));
+    await cli.dbContext.lube.close()
+    await cli.dropDatabase();
     await cli.dispose();
   });
 
   it('Add & Snapshot', async () => {
     const initMigrate = await cli.add('Init');
-    await cli.snapshot();
+    await cli.snapshotAll();
     const initSchema: DatabaseSchema = (await import(initMigrate.snapshotPath))
       .default;
-    const metadataSchema = await generateSchema(dbContext);
+    const metadataSchema = generateSchema(dbContext);
     // metadataSchema.tables.forEach(table => table.seedData = undefined);
     // if (initDiff) {
     //   const databaseChanged = Object.keys(initDiff.changes!);
@@ -56,17 +53,18 @@ describe.only('Migrate add', function () {
     const initDiff = compareSchema(defaultSchema, initSchema, metadataSchema);
     assert(!initDiff);
     const addedMigrate = await cli.add();
-    await cli.snapshot();
+    await cli.snapshotAll();
     const addSchema = (await import(addedMigrate.snapshotPath)).default;
     const addDiff = compareSchema(defaultSchema, initSchema, addSchema);
     assert(!addDiff);
   });
 
   it('Sync', async () => {
+    await cli.dropDatabase();
     await cli.sync();
-    const dbSchema = await dbContext.lube.provider.getSchema();
+    const dbSchema = await cli.getDbSchema();
     assert(dbSchema);
-    const metadataSchema = await generateSchema(dbContext);
+    const metadataSchema = generateSchema(dbContext);
     // metadataSchema.tables.forEach(table => table.seedData = undefined);
     const difference = compareSchema(defaultSchema, metadataSchema, dbSchema);
     assert(!difference);
@@ -75,12 +73,12 @@ describe.only('Migrate add', function () {
   it('Update', async () => {
     await cli.dropDatabase();
     await cli.update('Init');
-    const migrate = await cli.getCurrentMigrate();
+    const migrate = await cli.getDbMigrate();
 
     assert(migrate?.name === 'Init');
-    const dbSchema = await dbContext.lube.provider.getSchema();
+    const dbSchema = await cli.getDbSchema();
     assert(dbSchema);
-    const metadataSchema = await generateSchema(dbContext);
+    const metadataSchema = generateSchema(dbContext);
     // metadataSchema.tables.forEach(table => table.seedData = undefined);
     const difference = compareSchema(defaultSchema, metadataSchema, dbSchema);
     assert(!difference);
@@ -91,5 +89,7 @@ describe.only('Migrate add', function () {
       start: '?',
       end: '*',
     });
+    await cli.dropDatabase();
+
   });
 });

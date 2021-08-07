@@ -749,7 +749,7 @@ export abstract class SqlUtil {
   }
 
   /**
-   * 将多段SQL合成一个文件
+   * 将多段SQL合成一个字符串
    * @param sqls
    */
   public abstract joinBatchSql(...sqls: string[]): string;

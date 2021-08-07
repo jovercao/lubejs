@@ -52,7 +52,7 @@ export class MssqlProvider implements DbProvider {
     return this.lube.trans(async trans => {
       const currentDatabase = await this.getCurrentDatabase();
       if (database && currentDatabase !== database) {
-        trans.query(SqlBuilder.use(database));
+        await trans.query(SqlBuilder.use(database));
       }
       const defaultSchema = await trans.queryScalar(
         SqlBuilder.select(schema_name())
@@ -153,7 +153,11 @@ export class MssqlProvider implements DbProvider {
     if (!this.opened) {
       throw new Error(`Connection pool is not opened yet.`);
     }
-    await this._pool!.close();
+    try {
+      await this._pool!.close();
+    } catch (error) {
+      console.log(error);
+    }
     this._pool = undefined;
   }
 

@@ -643,7 +643,7 @@ export type LogicCondition = UnaryLogicCondition | BinaryLogicCondition;
  * 一元逻辑查询条件
  */
 export class UnaryLogicCondition extends Condition {
-  $operator: LOGIC_OPERATOR;
+  $operator: LOGIC_OPERATOR.NOT = LOGIC_OPERATOR.NOT;
   $condition: Condition;
   $kind: CONDITION_KIND.UNARY_LOGIC = CONDITION_KIND.UNARY_LOGIC;
 
@@ -652,7 +652,7 @@ export class UnaryLogicCondition extends Condition {
    * @param operator
    * @param next
    */
-  constructor(operator: LOGIC_OPERATOR, next: CompatibleCondition<any>) {
+  constructor(operator: LOGIC_OPERATOR.NOT, next: CompatibleCondition<any>) {
     super();
     this.$operator = operator;
     this.$condition = ensureCondition(next);
@@ -4415,6 +4415,7 @@ export class Continue extends Statement {
 }
 
 export interface SqlBuilder extends Standard {
+  // throw(errorMsg: CompatibleExpression<string>): Statement
   alterDatabase(name: string): AlterDatabase;
   dropDatabase(name: string): DropDatabase;
   createDatabase(name: string): CreateDatabase;

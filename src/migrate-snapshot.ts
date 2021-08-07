@@ -31,11 +31,16 @@ import {
 import { SqlUtil } from './sql-util';
 
 export class SnapshotMigrateBuilder extends MigrateBuilder {
+
   constructor() {
     super();
   }
 
   readonly statements: Statement[] = [];
+
+  throw(msg: string): Statement {
+    return StandardStatement.create(this.throw.name, [msg]);
+  }
 
   renameSequence(name: CompatiableObjectName, newName: string): Statement {
     return StandardStatement.create(this.renameSequence.name, [name, newName]);

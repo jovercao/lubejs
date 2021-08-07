@@ -21,9 +21,20 @@ import { formatSql } from './util';
 const COMMENT_EXTEND_PROPERTY_NAME = 'MS_Description';
 
 export class MssqlMigrateBuilder extends MigrateBuilder {
+  throw(errmsg: CompatibleExpression<string>): Statement {
+    return SQL.raw(
+      `RAISERROR(${
+        typeof errmsg === 'string'
+          ? this.sqlUtil.sqlifyLiteral(errmsg)
+          : this.sqlUtil.sqlifyExpression(errmsg)
+      }, 10, 1)`
+    );
+  }
+
   renameSequence(name: CompatiableObjectName, newName: string): Statement {
     return sp_rename(this.sqlUtil.sqlifyObjectName(name), newName, 'OBJECT');
   }
+
   renameDatabase(name: string, newName: string): Statement {
     return SQL.raw(`
     USE master;
@@ -148,9 +159,11 @@ BEGIN
  )} DROP CONSTRAINT ' + @ConstaintName)
 END
 
-ALTER TABLE ${this.sqlUtil.sqlifyObjectName(
-      table
-    )} ADD DEFAULT (${isExpression(defaultValue) ? this.sqlUtil.sqlifyExpression(defaultValue) : defaultValue}) FOR ${this.sqlUtil.quoted(column)}
+ALTER TABLE ${this.sqlUtil.sqlifyObjectName(table)} ADD DEFAULT (${
+      isExpression(defaultValue)
+        ? this.sqlUtil.sqlifyExpression(defaultValue)
+        : defaultValue
+    }) FOR ${this.sqlUtil.quoted(column)}
 `);
   }
 

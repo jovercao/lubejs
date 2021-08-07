@@ -212,6 +212,12 @@ export abstract class MigrateBuilder {
   // 移除字段自增属性
   abstract dropIdentity(table: CompatiableObjectName, column: string): Statement;
 
+  /**
+   * 抛出一个异常
+   * @param msg 异常消息
+   */
+  abstract throw(errmsg: string): Statement;
+
   // /**
   //  * 复制一个新列
   //  * @param table
