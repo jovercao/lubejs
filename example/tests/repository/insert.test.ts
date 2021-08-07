@@ -1,7 +1,19 @@
 import assert from 'assert';
 import '../../orm-configure';
-import { User, DB, OrderDetail, Order, Employee, Organization } from '../../orm-configure';
-import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
+import {
+  User,
+  DB,
+  OrderDetail,
+  Order,
+  Employee,
+  Organization,
+} from '../../orm-configure';
+import {
+  createContext,
+  Decimal,
+  outputCommand,
+  SqlBuilder as SQL,
+} from 'lubejs';
 
 const { star, count } = SQL;
 
@@ -51,7 +63,7 @@ describe('Repository: insert', function () {
       },
     });
     await db.getRepository(OrderDetail).insert(item);
-    assert(item.id);
+    assert(item.id !== undefined);
     assert(item.order?.id);
   });
 
@@ -75,7 +87,7 @@ describe('Repository: insert', function () {
       ],
     });
     await db.Order.insert(item);
-    assert(item.id)
+    assert(item.id !== undefined);
     assert(item.details?.[0].id);
     assert(item.details?.[1].id);
   });
@@ -94,8 +106,8 @@ describe('Repository: insert', function () {
     });
     await db.Employee.insert(employee);
 
-    assert(employee.id);
-    assert(employee.user?.id);
+    assert(employee.id !== undefined);
+    assert(employee.user?.id !== undefined);
     assert(Reflect.get(employee, 'organizationId') === organization?.id);
   });
 
@@ -112,8 +124,8 @@ describe('Repository: insert', function () {
     });
     await db.User.insert(item);
 
-    assert(item.id);
-    assert(item.employee?.id);
+    assert(item.id !== undefined);
+    assert(item.employee?.id !== undefined);
   });
 
   it('TreeRelation ChildToParent: Organization[] -> Organization', async () => {
@@ -133,10 +145,10 @@ describe('Repository: insert', function () {
       },
     ]);
     await db.Organization.insert(items);
-    assert(items[0].id);
+    assert(items[0].id !== undefined);
     assert(items[0].parent?.id === organization?.id);
-    assert(items[1].id);
-    assert(items[1].parent?.id);
+    assert(items[1].id !== undefined);
+    assert(items[1].parent?.id !== undefined);
   });
 
   it('TreeRelation ParentToChild: Organization <- Organization[]', async () => {
@@ -155,9 +167,9 @@ describe('Repository: insert', function () {
       ],
     });
     await db.Organization.insert(item);
-    assert(item.id);
-    assert(item.children[0].id);
-    assert(item.children[1].id);
+    assert(item.id !== undefined);
+    assert(item.children[0].id !== undefined);
+    assert(item.children[1].id !== undefined);
   });
 
   it('多对多关系插入测试 - Employee <- EmployeePosition -> Position', async () => {
@@ -181,10 +193,10 @@ describe('Repository: insert', function () {
       ],
     });
     await db.Employee.insert(item);
-    assert(item.id);
-    assert(item.user.id);
-    assert(item.positions[0].id);
-    assert(item.positions[1].id);
+    assert(item.id !== undefined);
+    assert(item.user.id !== undefined);
+    assert(item.positions[0].id !== undefined);
+    assert(item.positions[1].id !== undefined);
   });
 
   // it('主从表插入测试 - Order', async () => {

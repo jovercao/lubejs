@@ -262,7 +262,7 @@ describe('Lube Test', function () {
     const lines = await db.update<any>(
       'Items',
       {
-        FName: '冷蒙',
+        FName: 'LIX',
         FAge: 21,
         FSex: false,
       },
@@ -316,7 +316,7 @@ describe('Lube Test', function () {
       limit: 1,
     });
     assert.strictEqual(rows.length, 1);
-    assert.strictEqual(rows[0].FName, '冷蒙');
+    assert.strictEqual(rows[0].FName, 'LIX');
     assert.strictEqual(rows[0].FSex, false);
   });
 
@@ -336,7 +336,7 @@ describe('Lube Test', function () {
       .as('x');
 
     const sql = select({
-      性别: SQL.case<string>(a.FSex).when(true, '男').else('女'),
+      Sex: SQL.case<string>(a.FSex).when(true, 'Man').else('Woman'),
       Now: now(),
       SomeThingResult: makeFunc<number, number>('scalar', { name: 'dosomething', schema: 'dbo' })(100),
       // 子查询
@@ -357,7 +357,7 @@ describe('Lube Test', function () {
     let { rows: rows1 } = await db.query(sql);
     assert(_.isDate(rows1[0].Now), '不是日期类型');
     assert(rows1[0].aid === 51, '数据不是预期结果');
-    assert(['男', '女'].includes(rows1[0]['性别']), '性别不正确');
+    assert(['Man', 'Woman'].includes(rows1[0]['Sex']), '性别不正确');
     assert(rows1.length === 10, '查询到的数据不正确');
 
     const sql2 = select(a.FId, a.FSex).from(a).distinct();
@@ -411,7 +411,7 @@ describe('Lube Test', function () {
         let lines = await executor.delete('Items');
         assert(lines > 0);
         const row = {
-          FName: '中华人民共和国',
+          FName: 'China',
           FAge: 70,
           FSex: false,
         };

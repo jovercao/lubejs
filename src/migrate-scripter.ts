@@ -72,7 +72,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
           this.createTableAndMembers(addedTable)
         );
         differences.changes.tables.changes.forEach(tableDifference =>
-          this.alterTableAndMember(tableDifference)
+          this.alterTableAndMembers(tableDifference)
         );
       }
 
@@ -232,7 +232,7 @@ export abstract class MigrateScripter<T extends string | Statement> {
     }
   }
 
-  alterTableAndMember(tableChanges: ObjectDifference<TableSchema>): void {
+  alterTableAndMembers(tableChanges: ObjectDifference<TableSchema>): void {
     const table = tableChanges.target!;
     // DROP PRIMARY KEY
     if (tableChanges.changes?.primaryKey) {
@@ -882,6 +882,9 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
     }
     if (schema.isCalculate) {
       col.as(SQL.raw(schema.calculateExpression!));
+    }
+    if (schema.defaultValue !== null && schema.defaultValue !== undefined) {
+      col.default(SQL.raw(schema.defaultValue));
     }
     return col;
   }

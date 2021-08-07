@@ -400,9 +400,7 @@ export interface IndexSchema {
  * @param context
  * @returns
  */
-export function generateSchema(
-  context: DbContext
-): DatabaseSchema {
+export function generateSchema(context: DbContext): DatabaseSchema {
   const sqlUtil = context.lube.sqlUtil;
   // const databaseName  = await context.lube.provider.getCurrentDatabase();
   // const defaultSchema = await context.lube.provider.getDefaultSchema();
@@ -566,7 +564,7 @@ export type ObjectSchema =
 export type SchemaDifference = ObjectDifference<DatabaseSchema>;
 
 export function compareSchema(
-  defaultSchema: string,
+  defaultSchema: string | undefined,
   source: DatabaseSchema | undefined,
   target: DatabaseSchema | undefined
 ): SchemaDifference | null {
@@ -592,35 +590,53 @@ export function compareSchema(
     }
 
     if (
-      [
-        'tables',
-        'views',
-        'sequences',
-        'procedures',
-        'functions',
-      ].includes(path)
+      ['tables', 'views', 'sequences', 'procedures', 'functions'].includes(path)
     ) {
-      return left.name === right.name && (left.schema || defaultSchema) === (right.schema || defaultSchema);
+      return (
+        left.name === right.name &&
+        (defaultSchema
+          ? (left.schema || defaultSchema) === (right.schema || defaultSchema)
+          : !left.schema || !right.schema || left.schema === right.schema)
+      );
     }
     throw new Error(`Path error.`);
   };
 
-  const isEquals: EqulsCompartor = (
-    left: any,
-    right: any,
-    path: string
-  ) => {
+  const isEquals: EqulsCompartor = (left: any, right: any, path: string) => {
     // 比较类型
     if (path === 'tables[].columns[].type') {
       return (
-        left.replace(/ /g, '').toUpperCase() ===
-        right.replace(/ /g, '').toUpperCase()
+        left?.replace(/ /g, '').toUpperCase() ===
+        right?.replace(/ /g, '').toUpperCase()
       );
     }
     if (path === 'tables[].columns[].defaultValue') {
-      return left.toLowerCase() === right.toLowerCase();
+      return left?.toLowerCase() === right?.toLowerCase();
     }
-    // 不比较种子数据等属性
+    if (
+      [
+        'tables[].schema',
+        'views[].schema',
+        'sequences[].schema',
+        'procedures[].schema',
+        'functions[].schema',
+        'tables[].foreignKeys[].referenceSchema',
+      ].includes(path)
+    ) {
+      return defaultSchema
+        ? left || defaultSchema === right || defaultSchema
+        : !left || !right || left === right;
+      // if (
+      //   left === null ||
+      //   left === undefined ||
+      //   right === null ||
+      //   right === undefined
+      // ) {
+      //   return true;
+      // }
+      // return left === right;
+    }
+    // 不比较种子数据、数据库名、排序规则、数据库批注等属性
     if (['name', 'collate', 'comment', 'tables[].seedData'].includes(path)) {
       return true;
     }

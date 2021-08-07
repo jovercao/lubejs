@@ -7,34 +7,32 @@ import { DbContext } from 'lubejs/db-context';
 import { SqlBuilder } from 'lubejs/ast';
 import { join } from 'path';
 
-describe.only('Migrate', function () {
+describe('Migrate', function () {
   let cli: MigrateCli;
   let dbContext: DbContext;
   let database: string;
-  let defaultSchema: string;
+  // let defaultSchema: string;
   this.timeout(0);
   before(async () => {
     cli = await new MigrateCli();
-    const files = await readdir(cli.migrateDir);
-    for (const file of files) {
-      await rm(join(cli.migrateDir, file));
-    }
     dbContext = cli.dbContext;
     database = cli.targetDatabase;
-    try {
-      defaultSchema = await cli.getDefaultSchema();
-    } catch (error) {
-      console.error(error);
-    }
+    // try {
+    //   defaultSchema = await cli.getDefaultSchema();
+    // } catch (error) {
+    //   console.error(error);
+    // }
   });
 
   after(async () => {
-    await cli.dbContext.lube.close()
-    await cli.dropDatabase();
     await cli.dispose();
   });
 
   it('Add & Snapshot', async () => {
+    const files = await readdir(cli.migrateDir);
+    for (const file of files) {
+      await rm(join(cli.migrateDir, file));
+    }
     const initMigrate = await cli.add('Init');
     await cli.snapshotAll();
     const initSchema: DatabaseSchema = (await import(initMigrate.snapshotPath))
@@ -50,28 +48,19 @@ describe.only('Migrate', function () {
     //   assert(tableChanged.length = 1 && tableChanged[0] === 'seedData');
     // }
 
-    const initDiff = compareSchema(defaultSchema, initSchema, metadataSchema);
+    const initDiff = compareSchema(undefined, initSchema, metadataSchema);
     assert(!initDiff);
     const addedMigrate = await cli.add();
     await cli.snapshotAll();
     const addSchema = (await import(addedMigrate.snapshotPath)).default;
-    const addDiff = compareSchema(defaultSchema, initSchema, addSchema);
+    const addDiff = compareSchema(undefined, initSchema, addSchema);
     assert(!addDiff);
   });
 
-  it('Sync', async () => {
-    await cli.dropDatabase();
-    await cli.sync();
-    const dbSchema = await cli.getDbSchema();
-    assert(dbSchema);
-    const metadataSchema = generateSchema(dbContext);
-    // metadataSchema.tables.forEach(table => table.seedData = undefined);
-    const difference = compareSchema(defaultSchema, metadataSchema, dbSchema);
-    assert(!difference);
-  });
-
   it('Update', async () => {
-    await cli.dropDatabase();
+    if (await cli.existsDatabase()) {
+      await cli.dropDatabase();
+    }
     await cli.update('Init');
     const migrate = await cli.getDbMigrate();
 
@@ -79,6 +68,21 @@ describe.only('Migrate', function () {
     const dbSchema = await cli.getDbSchema();
     assert(dbSchema);
     const metadataSchema = generateSchema(dbContext);
+    const defaultSchema = await cli.getDefaultSchema();
+    // metadataSchema.tables.forEach(table => table.seedData = undefined);
+    const difference = compareSchema(defaultSchema, metadataSchema, dbSchema);
+    assert(!difference);
+  });
+
+  it('Sync', async () => {
+    if (await cli.existsDatabase()) {
+      await cli.dropDatabase();
+    }
+    await cli.sync();
+    const dbSchema = await cli.getDbSchema();
+    assert(dbSchema);
+    const metadataSchema = generateSchema(dbContext);
+    const defaultSchema = await cli.getDefaultSchema();
     // metadataSchema.tables.forEach(table => table.seedData = undefined);
     const difference = compareSchema(defaultSchema, metadataSchema, dbSchema);
     assert(!difference);
@@ -89,7 +93,6 @@ describe.only('Migrate', function () {
       start: '?',
       end: '*',
     });
-    await cli.dropDatabase();
-
+    // await cli.dropDatabase();
   });
 });

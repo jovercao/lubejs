@@ -732,11 +732,11 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     let sql = this.columnForAlter(column, prefix);
     if (column.isIdentity)
       sql += `.identity(${column.identityStartValue}, ${column.identityIncrement})`;
-    if (column.defaultValue) {
-      sql += `.default(SQL.raw(${JSON.stringify(column.defaultValue)}))`;
-    }
     if (column.isCalculate) {
       sql += `.as(SQL.raw(${JSON.stringify(column.calculateExpression)}))`;
+    }
+    if (column.defaultValue) {
+      sql += `.default(SQL.raw(${JSON.stringify(column.defaultValue)}))`;
     }
     return sql;
   }

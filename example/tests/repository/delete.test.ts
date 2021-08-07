@@ -12,7 +12,7 @@ import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs
 
 const { star, count } = SQL;
 
-describe('Repository: delete', function () {
+describe.only('Repository: delete', function () {
   this.timeout(0);
   let db: DB;
   let outputSql: boolean = false;

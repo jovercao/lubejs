@@ -18,6 +18,7 @@ import {
   AllStatement,
   AlterTable,
   CompatibleExpression,
+  Condition,
   CreateTable,
   CreateTableMember,
   StandardStatement,
@@ -31,6 +32,24 @@ import {
 import { SqlUtil } from './sql-util';
 
 export class SnapshotMigrateBuilder extends MigrateBuilder {
+  // existsTable(table: CompatiableObjectName<string>): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
+  // existsDatabase(database: string): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
+  // existsView(name: string): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
+  // existsFunction(name: CompatiableObjectName<string>): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
+  // existsProcedure(name: CompatiableObjectName<string>): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
+  // existsSequence(name: CompatiableObjectName<string>): Condition {
+  //   throw new Error('Method not implemented.')
+  // }
 
   constructor() {
     super();

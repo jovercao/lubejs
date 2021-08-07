@@ -96,8 +96,6 @@ export function compareScalar<T extends ScalarType>(
   ) => boolean | undefined,
   path: string = ''
 ): ScalarDifference<T> | null {
-  if (source === undefined) source = null;
-  if (target === undefined) target = null;
   if (source === target) return null;
   // 优先使用指定的比较器
   let changed = equalsComparator?.(source, target, path);
@@ -111,13 +109,34 @@ export function compareScalar<T extends ScalarType>(
       };
     }
   }
+
+  if (
+    (source === null || source === undefined) &&
+    (target === null || target === undefined)
+  ) {
+    return null;
+  }
+
+  if (
+    source === null ||
+    source === undefined ||
+    target === null ||
+    target === undefined
+  )
+    return {
+      source,
+      target,
+    };
+
   if (changed !== undefined) {
     if (Array.isArray(source) && Array.isArray(target)) {
       if (source.length !== target.length) {
         changed = true;
       } else {
         for (let i = 0; i < source.length; i++) {
-          if (!compareScalar(source[i], target[i], equalsComparator, path + '[]')) {
+          if (
+            !compareScalar(source[i], target[i], equalsComparator, path + '[]')
+          ) {
             changed = true;
             break;
           }
@@ -140,44 +159,44 @@ export function compareScalar<T extends ScalarType>(
   return null;
 }
 
-export function compareScalar1<T extends ScalarType>(
-  source: any,
-  target: any,
-  equalsComparator?: (
-    left: ScalarType,
-    right: ScalarType,
-    path: string
-  ) => boolean | undefined,
-  path: string = ''
-): ScalarDifference<T> | null {
-  if (source === null) source = undefined;
-  if (target === null) target = undefined;
-  if (source === target) return null;
-  if (source === undefined || target === undefined)
-    return {
-      source,
-      target,
-    };
-  // 优先使用指定的比较器
-  const comparatorResult = equalsComparator?.(source, target, path);
-  if (comparatorResult !== undefined) {
-    if (comparatorResult) {
-      return null;
-    } else {
-      return {
-        source,
-        target,
-      };
-    }
-  }
-  if (!compareScalar(source, target)) {
-    return {
-      source,
-      target,
-    };
-  }
-  return null;
-}
+// export function compareScalar1<T extends ScalarType>(
+//   source: any,
+//   target: any,
+//   equalsComparator?: (
+//     left: ScalarType,
+//     right: ScalarType,
+//     path: string
+//   ) => boolean | undefined,
+//   path: string = ''
+// ): ScalarDifference<T> | null {
+//   if (source === null) source = undefined;
+//   if (target === null) target = undefined;
+//   if (source === target) return null;
+//   if (source === undefined || target === undefined)
+//     return {
+//       source,
+//       target,
+//     };
+//   // 优先使用指定的比较器
+//   const comparatorResult = equalsComparator?.(source, target, path);
+//   if (comparatorResult !== undefined) {
+//     if (comparatorResult) {
+//       return null;
+//     } else {
+//       return {
+//         source,
+//         target,
+//       };
+//     }
+//   }
+//   if (!compareScalar(source, target)) {
+//     return {
+//       source,
+//       target,
+//     };
+//   }
+//   return null;
+// }
 
 export function compareObject<T extends object>(
   source: T | undefined,

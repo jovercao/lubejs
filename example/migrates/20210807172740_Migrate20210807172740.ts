@@ -1,6 +1,6 @@
 import { Migrate, SqlBuilder as SQL, DbType, MigrateBuilder } from 'lubejs';
 
-export class Migrate20210801220819 implements Migrate {
+export class Migrate20210807172740 implements Migrate {
 
   async up(
     builder: MigrateBuilder,
@@ -18,5 +18,5 @@ export class Migrate20210801220819 implements Migrate {
 
 }
 
-export default Migrate20210801220819;
+export default Migrate20210807172740;
   

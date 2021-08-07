@@ -191,7 +191,6 @@ export abstract class MigrateBuilder {
    */
   abstract dropAutoRowflag(table: CompatiableObjectName, column: string): Statement;
 
-  // abstract existsTable(name: CompatiableObjectName): Expression;
   // 为列添加或修改默认值
   abstract setDefaultValue(
     table: CompatiableObjectName,
@@ -200,6 +199,18 @@ export abstract class MigrateBuilder {
   ): Statement;
   // 删除列默认值约束
   abstract dropDefaultValue(table: CompatiableObjectName, column: string): Statement;
+
+  // abstract existsTable(table: CompatiableObjectName): Condition;
+
+  // abstract existsDatabase(database: string): Condition;
+
+  // abstract existsView(name: string): Condition;
+
+  // abstract existsFunction(name: CompatiableObjectName): Condition;
+
+  // abstract existsProcedure(name: CompatiableObjectName): Condition;
+
+  // abstract existsSequence(name: CompatiableObjectName): Condition;
 
   // 给字段增加自增属性
   abstract setIdentity(

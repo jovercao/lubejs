@@ -15,10 +15,11 @@ const {
   field,
 } = SqlBuilder;
 
-describe.skip('AST测试', function () {
+describe('AST测试', function () {
   let db: Lube;
   before(async () => {
     db = await createLube();
+    await db.open();
   })
 
   after(async() => {
@@ -29,7 +30,7 @@ describe.skip('AST测试', function () {
     const abc = table('abc');
     const abcCopied = abc.clone();
 
-    assert.deepStrictEqual(abcCopied.abc.$name, ['abc', 'abc']);
+    assert.deepStrictEqual(abcCopied.abc.$name, 'abc');
 
     let offset: number = 0,
       limit: number = 50,
@@ -147,10 +148,7 @@ describe.skip('AST测试', function () {
     const copiedCountSql = countSql.clone();
 
     assert(countView !== copiedCountSql.$froms![0]);
-    assert.deepStrictEqual((copiedCountSql.$froms![0] as any).abc.$name, [
-      'abc',
-      'countView',
-    ]);
+    assert.deepStrictEqual((copiedCountSql.$froms![0] as any).abc.$name, 'abc');
 
     const sql = db.sqlUtil.sqlify(countSql);
     const copiedSql = db.sqlUtil.sqlify(copiedCountSql);
@@ -179,7 +177,7 @@ describe.skip('AST测试', function () {
     console.log(cmd);
     assert(
       cmd.sql ===
-        'SELECT 1 WHERE (1 = 1 AND (1 = 1 OR 1 = 1) AND (1 = 1 OR (1 = 1 OR 1 = 1) OR [name] IN (1,2,3,4) OR [name] IN (1,2,3,4) OR [name] IN (SELECT 1)));'
+        'SELECT 1 WHERE (1 = 1 AND (1 = 1 OR 1 = 1) AND (1 = 1 OR (1 = 1 OR 1 = 1) OR [name] IN (1,2,3,4) OR [name] IN (1,2,3,4) OR [name] IN (SELECT 1)))'
     );
   });
 });

@@ -150,7 +150,7 @@ export class MigrateCli {
   public async getDbMigrate(): Promise<MigrateInfo | undefined> {
     try {
       const migrate = await this.dbContext.trans(async instance => {
-        instance.executor.query(SQL.use(this.targetDatabase));
+        await instance.executor.query(SQL.use(this.targetDatabase));
         const [item] = await instance.executor.select(LUBE_MIGRATE_TABLE_NAME, {
           offset: 0,
           limit: 1,
@@ -161,7 +161,8 @@ export class MigrateCli {
         return this.getMigrate(id);
       });
       return migrate;
-    } catch {
+    } catch (error) {
+      // console.log(error);
       return;
     }
   }
@@ -175,9 +176,7 @@ export class MigrateCli {
    * 创建数据库
    */
   async ensureDatabase(): Promise<void> {
-    try {
-      await this.dbContext.lube.query(SqlBuilder.use(this.targetDatabase));
-    } catch {
+    if (!await this.existsDatabase()) {
       await this.dbContext.lube.query(
         SqlBuilder.createDatabase(this.targetDatabase)
       );
@@ -363,6 +362,17 @@ export class MigrateCli {
   //   }
   // }
 
+  async existsDatabase(): Promise<boolean> {
+    const currentDb = await this.dbContext.lube.getCurrentDatabase();
+    try {
+      await this.dbContext.lube.query(SQL.use(this.targetDatabase));
+      await this.dbContext.lube.query(SQL.use(currentDb));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * 更新到指定迁移
    * 无论是否比指定迁移更新
@@ -375,9 +385,10 @@ export class MigrateCli {
     if (!target) {
       throw new Error(`无法更新数据库，因为继续更新将删除数据库。`);
     }
+    // const exists = await this.existsDatabase();
+    await this.ensureDatabase();
     const current = await this.getDbMigrate();
     const scripts = await this._script(current, target);
-    await this.ensureDatabase();
     const db = await this.dbContext.lube.provider.getCurrentDatabase();
     await this.dbContext.trans(async instance => {
       await instance.executor.query(SqlBuilder.use(this.targetDatabase));
@@ -414,38 +425,38 @@ export class MigrateCli {
         const info = migrates[i];
         statements.push(SQL.note(`===============Migrate up script from "${info.path}"====================`));
 
-        statements.push(SQL.note('Check last migration exists in database?'));
-        const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
-        if (i >= 1) {
-          const lastInfo = migrates[i - 1];
-          statements.push(
-            SQL.if(
-              SQL.not(
-                SQL.exists(
-                  SQL.select(1)
-                    .from(t)
-                    .where(
-                      t.migrate_id.eq(lastInfo.id).and(t.hash.eq(lastInfo.hash!))
-                    )
-                )
-              )
-            ).then(
-              this.dbContext.lube.provider.migrateBuilder.throw(
-                `Migration ${lastInfo.id} must upped before ${info.id}.`
-              )
-            )
-          );
-        }
-        statements.push(SQL.note('Check last migration exists in database?'));
-        statements.push(
-          SQL.if(
-            SQL.exists(SQL.select(1).from(t).where(t.migrate_id.eq(info.id)))
-          ).then(
-            this.dbContext.lube.provider.migrateBuilder.throw(
-              `Migration ${info.id} upped in database.`
-            )
-          )
-        );
+        // statements.push(SQL.note('Check last migration exists in database?'));
+        // const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
+        // if (i >= 1) {
+        //   const lastInfo = migrates[i - 1];
+        //   statements.push(
+        //     SQL.if(
+        //       SQL.not(
+        //         SQL.exists(
+        //           SQL.select(1)
+        //             .from(t)
+        //             .where(
+        //               t.migrate_id.eq(lastInfo.id).and(t.hash.eq(lastInfo.hash!))
+        //             )
+        //         )
+        //       )
+        //     ).then(
+        //       this.dbContext.lube.provider.migrateBuilder.throw(
+        //         `Migration ${lastInfo.id} must upped before ${info.id}.`
+        //       )
+        //     )
+        //   );
+        // }
+        // statements.push(SQL.note('Check last migration exists in database?'));
+        // statements.push(
+        //   SQL.if(
+        //     SQL.exists(SQL.select(1).from(t).where(t.migrate_id.eq(info.id)))
+        //   ).then(
+        //     this.dbContext.lube.provider.migrateBuilder.throw(
+        //       `Migration ${info.id} upped in database.`
+        //     )
+        //   )
+        // );
         const Migrate = await importMigrate(info);
         const codes = await this.runMigrate(
           Migrate,
