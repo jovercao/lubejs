@@ -1,7 +1,11 @@
-import '../../orm-configure';
-import { DB, Employee, Order, OrderDetail, User } from '../../orm-configure';
+import { DB, Employee, Order, OrderDetail, User } from 'orm';
 import assert from 'assert';
-import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
+import {
+  createContext,
+  Decimal,
+  outputCommand,
+  SqlBuilder as SQL,
+} from 'lubejs';
 
 const { star, count } = SQL;
 
@@ -36,7 +40,9 @@ describe('Repository: update', function () {
 
     await db.User.save(user);
 
-    const updated = await db.User.get(user.id!, { includes: { employee: true } });
+    const updated = await db.User.get(user.id!, {
+      includes: { employee: true },
+    });
     assert(updated?.description === 'updated user');
     assert(updated?.employee?.description === 'updated employee');
   });
@@ -47,8 +53,8 @@ describe('Repository: update', function () {
       organization: (await db.Organization.get(0n))!,
       user: {
         name: 'ForeignOneToOneTest - User',
-        password: '嘿咻'
-      }
+        password: '嘿咻',
+      },
     };
     await db.Employee.save(employee);
 
@@ -57,7 +63,9 @@ describe('Repository: update', function () {
 
     await db.Employee.save(employee);
 
-    const updated = await db.Employee.get(employee.id!, { includes: { user: true } });
+    const updated = await db.Employee.get(employee.id!, {
+      includes: { user: true },
+    });
     assert(updated?.description === 'updated employee');
     assert(updated?.user?.description === 'updated user');
   });
@@ -105,8 +113,14 @@ describe('Repository: update', function () {
     });
     assert(updated?.description === 'updated order', '订单更新失败');
     assert(updated?.details?.length === 2, '更新后的子项数量不正确');
-    assert(updated?.details?.[0]?.description === 'updated product2', '更新子项失败');
-    assert(updated?.details?.[1]?.description === 'new product3', '新增子项失败');
+    assert(
+      updated?.details?.[0]?.description === 'updated product2',
+      '更新子项失败'
+    );
+    assert(
+      updated?.details?.[1]?.description === 'new product3',
+      '新增子项失败'
+    );
   });
 
   it('ManyToMany 子项增删除改测试', async () => {

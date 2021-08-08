@@ -18,6 +18,13 @@ import { loadDatabaseSchema } from './schema-loader';
 import { MssqlMigrateBuilder } from './migrate-builder';
 import { parseMssqlConfig } from './util';
 import { db_name, schema_name } from './build-in';
+import tedious from 'tedious';
+
+declare module 'mssql' {
+  export interface ConnectionPool {
+    acquire (): Promise<tedious.Connection>
+  }
+}
 
 export const DIALECT = 'mssql';
 
@@ -101,6 +108,11 @@ export class MssqlProvider implements DbProvider {
   ): Promise<Transaction> {
     await this._autoOpen();
     const trans = this._pool!.transaction();
+    // const x = await this._pool!.acquire();
+    // x.execSql(new tedious.Request('abc'));
+    // x.on('end', () => {
+    //   x
+    // })
     let rolledBack = false;
     trans.on('rollback', aborted => {
       // emited with aborted === true

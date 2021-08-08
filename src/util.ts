@@ -118,6 +118,7 @@ import {
   ObjectName,
   RowObject,
   Scalar,
+  ScalarType,
   Uuid,
 } from './types';
 
@@ -349,6 +350,23 @@ export function isScalar(value: any): value is Scalar {
     value instanceof Uuid ||
     value instanceof Decimal ||
     isBinary(value)
+  );
+}
+
+export function isScalarType(value: any): value is ScalarType {
+  return (
+    value === String ||
+    value === Date ||
+    value === Boolean ||
+    value === Number ||
+    value === Decimal ||
+    value === BigInt ||
+    value === ArrayBuffer ||
+    value === Buffer ||
+    value === SharedArrayBuffer ||
+    value === Object ||
+    value === Array ||
+    value === Uuid
   );
 }
 

@@ -1,10 +1,10 @@
 import { existsSync, promises } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { Statement, SqlBuilder as SQL, SqlBuilder } from './ast';
-import { DbContext, DbContextConstructor } from './db-context';
+import { DbContext, DbContextConstructor, DbInstance } from './db-context';
 import { DatabaseSchema, generateSchema, PrimaryKeySchema } from './schema';
 import { AsyncClass, Constructor, DbType } from './types';
-import { Command } from './execute';
+import { Command, Executor } from './execute';
 import { isRaw, isStatement, outputCommand } from './util';
 import { MigrateBuilder } from './migrate-builder';
 import { mkdir, readFile } from 'fs/promises';
@@ -110,6 +110,24 @@ export class MigrateCli {
     this.dbContext.lube.changeDatabase(null);
   }
 
+  private async runInTargetDatabase<T>(
+    handler: (instance: DbInstance) => Promise<T>
+  ): Promise<T> {
+    const currentDb = await this.dbContext.lube.getCurrentDatabase();
+    const result = await this.dbContext.trans(async instance => {
+      await instance.executor.query(SQL.use(this.targetDatabase));
+      try {
+        const result = await handler(instance);
+        await instance.executor.query(SQL.use(currentDb));
+        return result;
+      } catch (error) {
+        await instance.executor.query(SQL.use(currentDb));
+        throw error;
+      }
+    });
+    return result;
+  }
+
   private async runMigrate(
     Ctr: Constructor<Migrate>,
     action: 'up' | 'down',
@@ -149,8 +167,7 @@ export class MigrateCli {
    */
   public async getDbMigrate(): Promise<MigrateInfo | undefined> {
     try {
-      const migrate = await this.dbContext.trans(async instance => {
-        await instance.executor.query(SQL.use(this.targetDatabase));
+      const migrate = await this.runInTargetDatabase(async instance => {
         const [item] = await instance.executor.select(LUBE_MIGRATE_TABLE_NAME, {
           offset: 0,
           limit: 1,
@@ -176,7 +193,7 @@ export class MigrateCli {
    * 创建数据库
    */
   async ensureDatabase(): Promise<void> {
-    if (!await this.existsDatabase()) {
+    if (!(await this.existsDatabase())) {
       await this.dbContext.lube.query(
         SqlBuilder.createDatabase(this.targetDatabase)
       );
@@ -365,9 +382,10 @@ export class MigrateCli {
   async existsDatabase(): Promise<boolean> {
     const currentDb = await this.dbContext.lube.getCurrentDatabase();
     try {
-      await this.dbContext.lube.query(SQL.use(this.targetDatabase));
-      await this.dbContext.lube.query(SQL.use(currentDb));
-      return true;
+      const result = await this.runInTargetDatabase(async instance => {
+        return true;
+      });
+      return result;
     } catch {
       return false;
     }
@@ -389,15 +407,12 @@ export class MigrateCli {
     await this.ensureDatabase();
     const current = await this.getDbMigrate();
     const scripts = await this._script(current, target);
-    const db = await this.dbContext.lube.provider.getCurrentDatabase();
-    await this.dbContext.trans(async instance => {
-      await instance.executor.query(SqlBuilder.use(this.targetDatabase));
+    await this.runInTargetDatabase(async instance => {
       for (const cmd of scripts) {
         outputCommand(cmd);
         await instance.executor.query(cmd);
         console.info(`----------------------------------------------------`);
       }
-      await instance.executor.query(SqlBuilder.use(db));
     });
     console.info(`------------执行成功，已更新到${target.id}.----------------`);
   }
@@ -423,7 +438,11 @@ export class MigrateCli {
     if (isUpgrade) {
       for (let i = startIndex + 1; i <= endIndex; i++) {
         const info = migrates[i];
-        statements.push(SQL.note(`===============Migrate up script from "${info.path}"====================`));
+        statements.push(
+          SQL.note(
+            `===============Migrate up script from "${info.path}"====================`
+          )
+        );
 
         // statements.push(SQL.note('Check last migration exists in database?'));
         // const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
@@ -727,18 +746,13 @@ export default ${name};
     }
     console.info(`*************************************************`);
     console.info(`开始开新数据库架构，请稍候......`);
-    const db = await this.dbContext.lube.provider.getCurrentDatabase();
-    await this.dbContext.trans(async instance => {
-      // 使用目标数据库
-      await instance.executor.query(SqlBuilder.use(this.targetDatabase));
+    await this.runInTargetDatabase(async instance => {
       for (const statement of statements) {
         const cmd = this.dbContext.lube.sqlUtil.sqlify(statement);
         outputCommand(cmd);
         await instance.executor.query(cmd);
         console.info(`----------------------------------------------------`);
       }
-
-      await instance.executor.query(SqlBuilder.use(db));
     });
     console.info(`更新数据库架构完成，数据库架构已经更新到与实体一致。`);
     console.info(

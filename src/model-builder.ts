@@ -23,6 +23,7 @@ import {
   getEntityKeyOptions,
   getEntityOptions,
   getEntityRelations,
+  getIndexOptions,
   getRelationOptions,
 } from './decorators';
 import { ConnectOptions } from './lube';
@@ -132,11 +133,20 @@ function fixColumn(
 
 function fixEntityIndexes(entity: TableEntityMetadata) {
   for (const index of entity.indexes) {
-    if (!index.name) {
-      index.name = `IX_${entity.tableName}_${index.columns
-        .map(col => col.column.columnName)
-        .join('_')}`;
-    }
+    fixIndex(entity, index);
+  }
+}
+
+function fixIndex(entity: TableEntityMetadata, index: IndexMetadata) {
+  if (!index.name) {
+    index.name = `IX_${entity.tableName}_${index.columns
+      .map(col => col.column.columnName)
+      .join('_')}`;
+  }
+  if (!index.properties) {
+    throw new Error(`Index must specify properties.`);
+  }
+  if (Array.isArray(index.properties)) {
     index.columns = index.properties.map(property => {
       const column = entity.getColumn(property);
       if (!column) {
@@ -147,6 +157,27 @@ function fixEntityIndexes(entity: TableEntityMetadata) {
         sort: 'ASC',
       };
     });
+  } else {
+    index.columns = Object.entries(index.properties).map(
+      ([property, direction]) => {
+        const column = entity.getColumn(property);
+        if (!column) {
+          throw new Error(`Column ${property} not found.`);
+        }
+        return {
+          column,
+          sort: direction,
+        };
+      }
+    );
+  }
+
+  if (index.isUnique === undefined) {
+    index.isUnique = false;
+  }
+
+  if (index.isClustered === undefined) {
+    index.isClustered = false;
   }
 }
 
@@ -159,6 +190,7 @@ function fixRelationIndex(
       entity.tableName
     }_${relation.foreignColumn.columnName}`;
   }
+  // 为关系追加索引
   let index = entity.getIndex(relation.indexName);
   if (!index) {
     index = {
@@ -166,11 +198,14 @@ function fixRelationIndex(
     } as IndexMetadata;
     entity.addIndex(index);
   } else {
-    if (
-      index.properties &&
-      (index.properties.length !== 1 ||
-        index.properties[0] !== relation.foreignProperty)
-    ) {
+    let props: string[];
+    if (Array.isArray(index.properties)) {
+      props = index.properties;
+    } else {
+      props = Object.keys(index.properties);
+    }
+
+    if (!props || props.length !== 1 || props[0] !== relation.foreignProperty) {
       throw new Error(
         `Entity ${entity.className} index ${index.name} not satisfied for relation ${relation.property}`
       );
@@ -180,28 +215,10 @@ function fixRelationIndex(
   if (!index.properties) {
     index.properties = [relation.foreignProperty];
   }
-  if (!index.columns) {
-    index.columns = index.properties.map(prop => {
-      const column = entity.getColumn(prop);
-      if (!column) {
-        throw new Error(
-          `Index ${index?.name} property ${prop} column not found.`
-        );
-      }
-      return {
-        column,
-        sort: 'ASC',
-      };
-    });
-  }
-
-  if (!Reflect.has(index, 'isUnique')) {
+  if (index.isUnique === undefined) {
     index.isUnique = isForeignOneToOne(relation);
   }
-
-  if (!Reflect.has(index, 'isClustered')) {
-    index.isClustered = false;
-  }
+  fixIndex(entity, index);
 }
 
 /**
@@ -215,14 +232,14 @@ function fixManyToOne(
   entity: TableEntityMetadata,
   relation: ManyToOneMetadata
 ) {
-  if (!Reflect.has(relation, 'isRequired')) {
+  if (relation.isRequired === undefined) {
     relation.isRequired = false;
   }
-  if (!Reflect.has(relation, 'comment')) {
+  if (relation.comment === undefined) {
     relation.comment = undefined;
   }
 
-  if (!Reflect.has(relation, 'isCascade')) {
+  if (relation.isCascade === undefined) {
     relation.isCascade = false;
   }
 
@@ -488,7 +505,7 @@ function fixPrimaryOneToOne(
   entity: TableEntityMetadata,
   relation: PrimaryOneToOneMetadata
 ) {
-  if (!Reflect.has(relation, 'comment')) {
+  if (relation.comment === undefined) {
     relation.comment = undefined;
   }
   fixReferenceEntity(ctx, entity, relation);
@@ -531,14 +548,14 @@ function fixForeignOneToOne(
   entity: TableEntityMetadata,
   relation: ForeignOneToOneMetadata
 ) {
-  if (!Reflect.has(relation, 'comment')) {
+  if (relation.comment === undefined) {
     relation.comment = undefined;
   }
   fixReferenceEntity(ctx, entity, relation);
-  if (!Reflect.has(relation, 'isRequired')) {
+  if (relation.isRequired === undefined) {
     relation.isRequired = false;
   }
-  if (!Reflect.has(relation, 'isCascade')) {
+  if (relation.isCascade === undefined) {
     relation.isCascade = false;
   }
 
@@ -615,7 +632,7 @@ function fixForeignProperty(
     //   console.warn(`Conflict Foreign column  isRequired is 'true`)
     //   // throw new Error(`Foreign column nullable must 'false' when relation isRequired is 'true'.`)
     // }
-    // if (!Reflect.has(column, 'isNullable')) {
+    // if (column.isNullable === undefined) {
     column.isNullable = !relation.isRequired;
     // }
     // 外键类型兼容检查
@@ -964,8 +981,8 @@ export class ModelBuilder {
           if (columnOptions.dbType) {
             columnBuilder.hasType(columnOptions.dbType);
           }
-          if (columnOptions.defaultValue) {
-            columnBuilder.hasDefaultValue(columnOptions.defaultValue);
+          if (columnOptions.defaultValueGetter) {
+            columnBuilder.hasDefaultValue(columnOptions.defaultValueGetter());
           }
           if (columnOptions.isNullable !== undefined) {
             if (columnOptions.isNullable) {
@@ -978,10 +995,15 @@ export class ModelBuilder {
             columnBuilder.isAutogen(columnOptions.generator);
           }
           if (columnOptions.isIdentity) {
-            columnBuilder.isIdentity(columnOptions.identityStartValue, columnOptions.identityIncrement);
+            columnBuilder.isIdentity(
+              columnOptions.identityStartValue,
+              columnOptions.identityIncrement
+            );
           }
           if (columnOptions.isCalculate) {
-            columnBuilder.isCalculated(columnOptions.calculateExpression!);
+            columnBuilder.isCalculated(
+              columnOptions.calculateExpressionGetter!()
+            );
           }
           if (columnOptions.isRowflag) {
             columnBuilder.isRowflag();
@@ -992,8 +1014,25 @@ export class ModelBuilder {
             columnBuilder.hasComment(comment);
           }
         }
+
+        const indexOptions = getIndexOptions(target, property);
+        if (indexOptions) {
+          entityOptions.indexes.push(indexOptions);
+        }
       }
     }
+
+    entityOptions.indexes.forEach(indexOptions => {
+      const indexBuilder = entityBuilder.hasIndex(indexOptions.name!);
+      indexBuilder.withProperties(
+        Array.isArray(indexOptions.properties)
+          ? p => indexOptions.properties as any
+          : indexOptions.properties!
+      );
+      if (indexOptions.isUnique !== undefined) {
+        indexBuilder.isUnique(indexOptions.isUnique);
+      }
+    });
 
     const keyOptions = getEntityKeyOptions(target);
     if (keyOptions) {
@@ -1022,11 +1061,15 @@ export class ModelBuilder {
             if (relationOptions.isPrimary) {
               builder = map.isPrimary();
             } else {
-              builder = map.hasForeignKey(
+              let bd: ForeignOneToOneBuilder<any, any>;
+              builder = bd = map.hasForeignKey(
                 relationOptions.foreignProperty
                   ? p => p[relationOptions.foreignProperty!]
                   : undefined
               );
+              if (relationOptions.isRequired) {
+                bd.isRequired();
+              }
             }
             const comment = getComment(target, property);
             if (comment) {
@@ -1057,6 +1100,9 @@ export class ModelBuilder {
               );
             if (relationOptions.foreignProperty) {
               builder.hasForeignKey(p => p[relationOptions.foreignProperty!]);
+            }
+            if (relationOptions.isRequired) {
+              builder.isRequired();
             }
             const comment = getComment(target, property);
             if (comment) {
@@ -1555,20 +1601,17 @@ export class EntityBuilder<T extends Entity> {
     return new TableKeyBuilder(this, this.metadata.key);
   }
 
-  hasIndex(
-    name: string,
-    selector: (p: Required<T>) => Scalar[],
-    isUnique: boolean = false,
-    isClustered: boolean = false
-  ): this {
-    const properties: string[] = selectProperty(selector);
-    this.metadata.addIndex!({
-      name,
-      properties,
-      isUnique,
-      isClustered,
-    } as IndexMetadata);
-    return this;
+  hasIndex(name: string): IndexBuilder<T> {
+    // if (!name) {
+    //   name = `IX_${this.metadata.tableName || this.metadata.className}_${index}`
+    // }
+    let metadata = this.metadata.getIndex(name);
+    if (!metadata) {
+      metadata = { name } as IndexMetadata;
+      this.metadata.addIndex(metadata);
+    }
+    const builder = new IndexBuilder(this.contextBuilder, this, metadata);
+    return builder;
   }
 
   /**
@@ -1778,6 +1821,54 @@ export class TableKeyBuilder {
   }
 }
 
+export class IndexBuilder<T extends Entity> {
+  constructor(
+    contextBuilder: ContextBuilder,
+    entityBuilder: EntityBuilder<T>,
+    public readonly metadata: IndexMetadata
+  ) {}
+
+  hasName(name: string): this {
+    this.metadata.name = name;
+    return this;
+  }
+
+  isUnique(unique: false): this;
+  isUnique(unique: true, clustered: boolean): this;
+  isUnique(unique?: boolean): this;
+  isUnique(unique: boolean = true, clustered?: boolean): this {
+    this.metadata.isUnique = unique;
+    if (unique) {
+      this.metadata.isClustered = clustered!;
+    } else {
+      this.metadata.isClustered = false;
+    }
+    return this;
+  }
+
+  // isClustered(clustered: boolean = true): this {
+  //   this.metadata.isClustered = clustered;
+  //   return this;
+  // }
+
+  hasComment(comment: string): this {
+    this.metadata.comment = comment;
+    return this;
+  }
+
+  // withProperties(selector: (p: Required<T>) => Scalar[]): this;
+  // withProperties(selector: { [K in keyof T]?: 'ASC' | 'DESC' }): this;
+  withProperties(
+    selector:
+      | { [K in keyof T]?: 'ASC' | 'DESC' }
+      | ((p: Required<T>) => Scalar[])
+  ): this {
+    this.metadata.properties =
+      typeof selector === 'function' ? selectProperty(selector) : selector;
+    return this;
+  }
+}
+
 // /**
 //  * 表实体构造器
 //  */
@@ -1829,7 +1920,11 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    * @returns
    */
   isAutogen(
-    generator: (rowset: ProxiedRowset<T>, item: T, context: DbInstance) => CompatibleExpression<V>
+    generator: (
+      rowset: ProxiedRowset<T>,
+      item: T,
+      context: DbInstance
+    ) => CompatibleExpression<V>
   ): Omit<this, 'isAutogen'> {
     this.metadata.generator = generator as any;
     return this;
@@ -1894,9 +1989,9 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   /**
    * 将列声明为计算列
    */
-  isCalculated(expr: Expression<V>): this {
+  isCalculated(expr: CompatibleExpression<V>): this {
     this.metadata.isCalculate = true;
-    this.metadata.calculateExpression = expr;
+    this.metadata.calculateExpression = ensureExpression(expr);
     return this;
   }
 }

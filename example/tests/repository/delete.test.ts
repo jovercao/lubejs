@@ -1,4 +1,3 @@
-import '../../orm-configure';
 import {
   DB,
   Employee,
@@ -6,13 +5,11 @@ import {
   Order,
   OrderDetail,
   User,
-} from '../../orm-configure';
+} from 'orm';
 import assert from 'assert';
 import { createContext, Decimal, outputCommand, SqlBuilder as SQL } from 'lubejs';
 
-const { star, count } = SQL;
-
-describe.only('Repository: delete', function () {
+describe('Repository: delete', function () {
   this.timeout(0);
   let db: DB;
   let outputSql: boolean = false;

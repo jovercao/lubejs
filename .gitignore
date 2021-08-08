@@ -4,3 +4,4 @@ logs
 lib/
 doc/
 lubejs-*.tgz
+example/migrates/

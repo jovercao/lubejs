@@ -1,7 +1,7 @@
 import { LubeConfig } from 'lubejs';
 import 'lubejs-mssql';
-import './orm-configure'
-// import './orm-decorator';
+// import './orm-configure'
+import 'orm';
 
 export const config: LubeConfig = {
   default: 'DB',

@@ -6,6 +6,7 @@ import {
   CommonEntityMetadata,
   DbContextMetadata,
   ForeignOneToOneMetadata,
+  IndexMetadata,
   KeyMetadata,
   ManyToManyMetadata,
   ManyToOneMetadata,
@@ -29,11 +30,13 @@ import {
   ensureExpression,
   isDbType,
   isExtendsOf,
+  isScalarType,
   parseConnectionUrl,
   selectProperty,
 } from './util';
 import { LubeConfig } from './migrate-cli';
 import { ConnectOptions } from './lube';
+import { Repository } from './repository';
 
 export interface EntityOptions
   extends Partial<
@@ -44,6 +47,7 @@ export interface EntityOptions
     >
   > {
   contextGetter?: () => DbContextConstructor;
+  indexes: IndexOptions[];
 }
 
 /**
@@ -57,27 +61,35 @@ export type DbContextOptions = Partial<
   >
 >;
 
-export interface ColumnOptions extends Partial<
-  Pick<
-    ColumnMetadata,
-    | 'columnName'
-    // | 'comment'
-    | 'defaultValue'
-    | 'generator'
-    | 'isRowflag'
-    | 'isCalculate'
-    | 'isIdentity'
-    | 'isNullable'
-    | 'dbType'
-    | 'calculateExpression'
-    | 'identityIncrement'
-    | 'identityStartValue'
-  >
-> {
-  type: ScalarType
-};
+export interface ColumnOptions
+  extends Partial<
+    Pick<
+      ColumnMetadata,
+      | 'columnName'
+      // | 'comment'
+      | 'generator'
+      | 'isRowflag'
+      | 'isCalculate'
+      | 'isIdentity'
+      | 'isNullable'
+      | 'dbType'
+      | 'identityIncrement'
+      | 'identityStartValue'
+    >
+  > {
+  type: ScalarType;
+  defaultValueGetter?: () => CompatibleExpression;
+  calculateExpressionGetter?: () => CompatibleExpression;
+}
 
 export type KeyOptions = Partial<KeyMetadata>;
+
+export type IndexOptions = {
+  name: string;
+  isUnique?: boolean;
+  isClustered?: boolean;
+  properties?: string[] | { [prop: string]: 'ASC' | 'DESC' };
+};
 
 const ENTITY_KEY = Symbol('lubejs:entity');
 const CONTEXT_KEY = Symbol('lubejs:context');
@@ -86,13 +98,14 @@ const COLUMN_KEY = Symbol('lubejs:column');
 const ENTITY_RELATIONS_KEY = Symbol('lubejs:entity:relations');
 const RELATION_KEY = Symbol('lubejs:relation');
 const ENTITY_KEY_KEY = Symbol('lubejs:entity:key');
+const INDEX_KEY = Symbol('lubejs:index');
+const ENTITY_INDEXES_KEY = Symbol('lubejs:entity:indexes');
 const CONNECTION_KEY = Symbol('lubejs:connection');
 const AMONG_KEY = Symbol('lubejs:among');
 const COMMENT_KEY = Symbol('lubejs:comment');
 const DECORATE_CONTEXTS_KEY = Symbol('lubejs:decorate:contexts');
 const DECORATE_ENTITIES_KEY = Symbol('lubejs:decorate:entities');
 // const CONTEXT_DATABASE_KEY = Symbol('lubejs:context:database');
-
 
 export function getDecorateEntities(): EntityConstructor[] | undefined {
   return Reflect.getMetadata(DECORATE_ENTITIES_KEY, DbContext);
@@ -127,6 +140,13 @@ export function getColumnOptions(
   return Reflect.getMetadata(COLUMN_KEY, target, key);
 }
 
+export function getIndexOptions(
+  target: EntityConstructor,
+  key: string
+): IndexOptions | undefined {
+  return Reflect.getMetadata(INDEX_KEY, target, key);
+}
+
 export function getRelationOptions(
   target: EntityConstructor,
   key: string
@@ -138,6 +158,12 @@ export function getEntityColumns(
   target: EntityConstructor
 ): string[] | undefined {
   return Reflect.getMetadata(ENTITY_COLUMNS_KEY, target);
+}
+
+export function getEntityIndexs(
+  target: EntityConstructor
+): string[] | undefined {
+  return Reflect.getMetadata(ENTITY_INDEXES_KEY, target);
 }
 
 export function getEntityRelations(
@@ -189,9 +215,26 @@ function addEntitiyColumn(target: EntityConstructor, key: string): void {
     Reflect.defineMetadata(ENTITY_COLUMNS_KEY, columns, target);
   }
   if (columns.includes(key) || relations?.includes(key)) {
-    throw new Error('Column or relation is allowed decorate once only on property.')
+    throw new Error(
+      'Column or relation is allowed decorate once only on property.'
+    );
   }
   columns.push(key);
+}
+
+function addEntitiyIndex(target: EntityConstructor, key: string): void {
+  let indexs = getEntityIndexs(target);
+  let relations = getEntityRelations(target);
+  if (!indexs) {
+    indexs = [];
+    Reflect.defineMetadata(ENTITY_INDEXES_KEY, indexs, target);
+  }
+  if (indexs.includes(key)) {
+    throw new Error(
+      'Index or relation is allowed decorate once only on property.'
+    );
+  }
+  indexs.push(key);
 }
 
 function addEntitiyRelation(target: EntityConstructor, key: string): void {
@@ -202,7 +245,9 @@ function addEntitiyRelation(target: EntityConstructor, key: string): void {
     Reflect.defineMetadata(ENTITY_RELATIONS_KEY, relations, target);
   }
   if (relations.includes(key) || columns?.includes(key)) {
-    throw new Error('Column or relation is allowed decorate once only on property.')
+    throw new Error(
+      'Column or relation is allowed decorate once only on property.'
+    );
   }
   relations.push(key);
 }
@@ -222,14 +267,14 @@ function setContextOptions(
 
 function setEntityOptions(
   target: EntityConstructor,
-  options: EntityOptions
+  options: Partial<EntityOptions>
 ): void {
   let entityOptions = getEntityOptions(target);
   if (!entityOptions) {
     entityOptions = {
       kind: 'TABLE',
+      indexes: []
     };
-    addDecorateEntities(target);
     Reflect.defineMetadata(ENTITY_KEY, entityOptions, target);
   }
   Object.assign(entityOptions, options);
@@ -294,6 +339,7 @@ export function table<T extends Entity>(
   name?: string
 ): (target: EntityConstructor<T>) => void {
   return function (target: EntityConstructor): void {
+    addDecorateEntities(target);
     setEntityOptions(target, {
       kind: 'TABLE',
       tableName: name || target.name,
@@ -319,6 +365,7 @@ export function view<T extends Entity>(
     body = nameOrBody;
   }
   return function (target: EntityConstructor<T>): void {
+    addDecorateEntities(target);
     setEntityOptions(target, {
       kind: 'VIEW',
       viewName: name,
@@ -331,6 +378,7 @@ export function query<T extends Entity>(
   sql: Select<T>
 ): (constructor: EntityConstructor<T>) => void {
   return function (target: EntityConstructor<T>): void {
+    addDecorateEntities(target);
     setEntityOptions(target, {
       kind: 'QUERY',
       sql,
@@ -396,11 +444,23 @@ function setColumnOptions(
 ): void {
   let columnOptions = getColumnOptions(target, key);
   if (!columnOptions) {
-    columnOptions = {
-    } as ColumnOptions;
+    columnOptions = {} as ColumnOptions;
     Reflect.defineMetadata(COLUMN_KEY, columnOptions, target, key);
   }
   Object.assign(columnOptions, options);
+}
+
+function setIndexOptions(
+  target: EntityConstructor,
+  key: string,
+  options: Partial<IndexOptions>
+): void {
+  let indexOptions = getIndexOptions(target, key);
+  if (!indexOptions) {
+    indexOptions = {} as IndexOptions;
+    Reflect.defineMetadata(INDEX_KEY, indexOptions, target, key);
+  }
+  Object.assign(indexOptions, options);
 }
 
 function setRelationOptions(
@@ -408,10 +468,7 @@ function setRelationOptions(
   key: string,
   options: Partial<RelationOptions>
 ): void {
-  let relationOptions = getRelationOptions(
-    target,
-    key
-  );
+  let relationOptions = getRelationOptions(target, key);
   if (!relationOptions) {
     relationOptions = {} as RelationOptions;
     Reflect.defineMetadata(RELATION_KEY, relationOptions, target, key);
@@ -459,6 +516,63 @@ export function key(
   };
 }
 
+export function index(name?: string): PropertyDecorator;
+export function index(
+  name: string,
+  properties: string[] | { [prop: string]: 'ASC' | 'DESC' },
+  isUnique?: boolean,
+  isClustered?: boolean
+): ClassDecorator;
+export function index(
+  name?: string,
+  properties?: string[] | { [prop: string]: 'ASC' | 'DESC' },
+  isUnique?: boolean,
+  isClustered?: boolean
+): PropertyDecorator | ClassDecorator {
+  if (properties) {
+    return function (target: Object): void {
+      const entityOption = getEntityOptions(
+        target.constructor as EntityConstructor
+      );
+      const indexOptions: IndexOptions = {
+        name: name!,
+        properties,
+        isUnique,
+        isClustered,
+      };
+
+      if (!entityOption) {
+        setEntityOptions(target.constructor as EntityConstructor, {
+          indexes: [
+          ],
+        });
+      } else {
+        entityOption.indexes.push(indexOptions);
+      }
+    };
+  }
+
+  return function (target: Object, key: string): void {
+    if (!name) {
+      name = `IX_${target.constructor.name}_${key}`;
+    }
+    addEntitiyIndex(target.constructor as EntityConstructor, key);
+    setIndexOptions(target.constructor as EntityConstructor, key, {
+      name,
+      properties: [key],
+    });
+  };
+}
+
+export function unique(isClustered: boolean = false): PropertyDecorator {
+  return function (target: Object, key: string): void {
+    setIndexOptions(target.constructor as EntityConstructor, key, {
+      isUnique: true,
+      isClustered,
+    });
+  };
+}
+
 export function rowflag(): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
@@ -489,11 +603,13 @@ export function nullable(nullable: boolean = true): PropertyDecorator {
   };
 }
 
-export function calculate(expr: Expression): PropertyDecorator {
+export function calculate(
+  exprGetter: () => CompatibleExpression
+): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
       isCalculate: true,
-      calculateExpression: expr,
+      calculateExpressionGetter: exprGetter,
     });
   };
 }
@@ -513,11 +629,11 @@ export function autogen<T extends Entity = any>(
 }
 
 export function defaultValue(
-  expr: () => CompatibleExpression
+  exprGetter: () => CompatibleExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
-      defaultValue: ensureExpression(expr()),
+      defaultValueGetter: exprGetter,
     });
   };
 }
@@ -543,12 +659,8 @@ export function type(type: ScalarType): PropertyDecorator {
 // }
 
 export function column<T extends Entity>(name?: string): PropertyDecorator;
-export function column<T extends Entity>(
-  type: ScalarType
-): PropertyDecorator;
-export function column<T extends Entity>(
-  dbType: DbType
-): PropertyDecorator;
+export function column<T extends Entity>(type: ScalarType): PropertyDecorator;
+export function column<T extends Entity>(dbType: DbType): PropertyDecorator;
 export function column<T extends Entity>(
   type: ScalarType,
   dbType: DbType
@@ -573,15 +685,15 @@ export function column<T extends Entity>(
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     let name: string | undefined;
-    let dbType: DbType | undefined ;
+    let dbType: DbType | undefined;
     let type: ScalarType | undefined;
     // 无参数
     if (typeof nameOrTypeOrDbType === 'string') {
       name = nameOrTypeOrDbType;
-      if (typeof typeOrDbType  === 'object') {
-        dbType = typeOrDbType
+      if (typeof typeOrDbType === 'object') {
+        dbType = typeOrDbType;
       } else {
-        type = typeOrDbType
+        type = typeOrDbType;
       }
     } else if (typeof nameOrTypeOrDbType === 'object') {
       dbType = nameOrTypeOrDbType;
@@ -595,38 +707,46 @@ export function column<T extends Entity>(
       name = key;
     }
 
+    let designType = Reflect.getMetadata('design:type', target, key);
     if (!type) {
-      type = Reflect.getMetadata('design:type', target, key);
-      if (type === Array || type === Object) {
-        throw new Error('Object type must specil type(like Date、Decimal); Becuase typescript is donot metadata them.')
-      }
+      type = designType;
+    }
+    if (!isScalarType(type)) {
+      throw new Error(
+        'Unsupport column type, you must declare property with ScalarType.'
+      );
     }
 
     setColumnOptions(target.constructor as EntityConstructor, key, {
       type: type!,
       dbType,
-      columnName: name
+      columnName: name,
     });
     addEntitiyColumn(target.constructor as EntityConstructor, key);
   };
 }
 
 export interface RelationOptions {
-  kind: OneToOneMetadata['kind'] | ManyToOneMetadata['kind'] | OneToManyMetadata['kind'] | ManyToManyMetadata['kind'];
+  kind:
+    | OneToOneMetadata['kind']
+    | ManyToOneMetadata['kind']
+    | OneToManyMetadata['kind']
+    | ManyToManyMetadata['kind'];
   referenceEntityGetter: () => EntityConstructor;
   referenceProperty?: string;
   relationProperty?: string;
   foreignProperty?: string;
-  isPrimary?: true
+  isRequired?: boolean;
+  isPrimary?: true;
 }
 
 export function oneToOne<T extends object>(
   referenceEntityGetter: () => EntityConstructor<T>,
-  referenceProperty?: (p: Required<T>) => Scalar
+  referenceProperty?: (p: Required<T>) => object
 ): PropertyDecorator {
   return function (target: Object, key: string): void {
     const type = Reflect.getMetadata('design:type', target, key);
-    if (type !== Array) {
+    if (isScalarType(type)) {
       throw new Error(
         `One to one relation property ${key} type error, property must type of reference entity array.`
       );
@@ -660,11 +780,26 @@ export function principal(): PropertyDecorator {
 /**
  * 用于关系字段中，指定外键字段，注意，该装饰器仅可用在导航属性中。
  */
+export function foreignKey<T extends Entity>(
+  /**
+   * 导航属性名称
+   */
+  foreignProperty: (p: Required<T>) => Scalar,
+  required?: boolean
+): PropertyDecorator;
 export function foreignKey(
   /**
    * 导航属性名称
    */
-  foreignProperty: string
+  foreignProperty: string,
+  required?: boolean
+): PropertyDecorator;
+export function foreignKey<T extends Entity>(
+  /**
+   * 导航属性名称
+   */
+  foreignProperty: string | ((p: Required<T>) => Scalar),
+  required: boolean = false
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     // const relationOptions = getRelationOptions(target.constructor as EntityConstructor, key);
@@ -672,14 +807,18 @@ export function foreignKey(
     //   throw Error(`No foreign key on relation ${relationOptions.kind}`)
     // }
     setRelationOptions(target.constructor as EntityConstructor, key, {
-      foreignProperty,
+      foreignProperty:
+        typeof foreignProperty === 'function'
+          ? selectProperty(foreignProperty)
+          : foreignProperty,
+      isRequired: required,
     });
   };
 }
 
-export function oneToMany<T extends Entity>(
-  referenceEntityGetter: () => EntityConstructor<T>,
-  referenceProperty: (p: Required<T>) => any
+export function oneToMany<R extends Entity>(
+  referenceEntityGetter: () => EntityConstructor<R>,
+  referenceProperty: (p: Required<R>) => object
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     const type = Reflect.getMetadata('design:type', target, key);
@@ -700,13 +839,13 @@ export function oneToMany<T extends Entity>(
   };
 }
 
-export function manyToOne<T extends Entity>(
-  referenceEntityGetter: () => EntityConstructor<T>,
-  referenceProperty?: (p: Required<T>) => any
+export function manyToOne<R extends Entity>(
+  referenceEntityGetter: () => EntityConstructor<R>,
+  referenceProperty?: (p: Required<R>) => object[]
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     const type = Reflect.getMetadata('design:type', target, key);
-    if (type !== Object) {
+    if (isScalarType(type)) {
       throw new Error(
         `Many to one relation property ${key} type error, property must type of reference entity.`
       );
@@ -722,9 +861,9 @@ export function manyToOne<T extends Entity>(
   };
 }
 
-export function manyToMany<T extends Entity, R extends Entity>(
+export function manyToMany<R extends Entity>(
   referenceEntityGetter: () => EntityConstructor<R>,
-  referenceProperty?: (p: Required<R>) => T[],
+  referenceProperty?: (p: Required<R>) => object[],
   relationProperty?: string
 ): PropertyDecorator {
   return function (target: Object, key: string) {
@@ -740,7 +879,7 @@ export function manyToMany<T extends Entity, R extends Entity>(
       referenceProperty: referenceProperty
         ? selectProperty(referenceProperty)
         : undefined,
-      relationProperty
+      relationProperty,
     });
     addEntitiyRelation(target.constructor as EntityConstructor, key);
   };
@@ -767,7 +906,7 @@ export function among<T extends Entity, L extends Entity, R extends Entity>(
   /**
    * 引用表2
    */
-  rightGetter: () => EntityConstructor<L>,
+  rightGetter: () => EntityConstructor<R>,
   /**
    * 引用表1的导航属性
    */
@@ -775,24 +914,68 @@ export function among<T extends Entity, L extends Entity, R extends Entity>(
   /**
    * 引用表2的导航属性
    */
-  rightProperty?: (p: Required<R>) => R
-): (target: EntityConstructor<T>) => void {
-  return function (target: EntityConstructor<T>): void {
+  rightProperty?: (p: Required<T>) => R
+): (target: EntityConstructor<T>) => void;
+export function among(
+  /**
+   * 引用表1
+   */
+  leftGetter: () => EntityConstructor,
+  /**
+   * 引用表2
+   */
+  rightGetter: () => EntityConstructor,
+  /**
+   * 引用表1的导航属性
+   */
+  leftProperty?: string, // (p: Required<T>) => L,
+  /**
+   * 引用表2的导航属性
+   */
+  rightProperty?: string //(p: Required<T>) => R
+): (target: EntityConstructor) => void;
+export function among<T extends Entity, L extends Entity, R extends Entity>(
+  /**
+   * 引用表1
+   */
+  leftGetter: () => EntityConstructor<L>,
+  /**
+   * 引用表2
+   */
+  rightGetter: () => EntityConstructor<R>,
+  /**
+   * 引用表1的导航属性
+   */
+  leftProperty?: string | ((p: Required<T>) => L),
+  /**
+   * 引用表2的导航属性
+   */
+  rightProperty?: string | ((p: Required<T>) => R)
+): <T extends Entity>(target: EntityConstructor<T>) => void {
+  return function <T extends Entity>(target: EntityConstructor<T>): void {
     const opt = getAmong(target);
     if (opt) {
-      throw new Error(`Among is only allow decorate once.`)
+      throw new Error(`Among is only allow decorate once.`);
     }
     Reflect.defineMetadata(
       AMONG_KEY,
       <AmongOptions>{
         leftEntityGetter: leftGetter,
         rightEngityGetter: rightGetter,
-        leftProperty: leftProperty
-          ? selectProperty(leftProperty)
-          : undefined,
-        rightProperty: rightProperty
-          ? selectProperty(rightProperty)
-          : undefined,
+        leftProperty:
+          typeof leftProperty === 'function'
+            ? selectProperty(leftProperty)
+            : leftProperty,
+        // : leftProperty
+        //   ? selectProperty(leftProperty)
+        //   : undefined,
+        rightProperty:
+          typeof rightProperty === 'function'
+            ? selectProperty(rightProperty)
+            : rightProperty,
+        // : rightProperty
+        //   ? selectProperty(rightProperty)
+        //   : undefined,
       },
       target
     );
@@ -801,6 +984,19 @@ export function among<T extends Entity, L extends Entity, R extends Entity>(
 
 export function getAmong(target: EntityConstructor): AmongOptions {
   return Reflect.getMetadata(AMONG_KEY, target);
+}
+
+export function repository<T extends Entity>(
+  typegetter: () => EntityConstructor<T>
+): PropertyDecorator {
+  return function (target: Object, key: string): any {
+    return {
+      enumerable: false,
+      get(this: DbInstance) {
+        return this.getRepository(typegetter());
+      },
+    };
+  };
 }
 
 // export interface RelationOptions<T extends Entity, S extends Entity> {

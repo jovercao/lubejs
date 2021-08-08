@@ -1,5 +1,4 @@
 import assert from 'assert';
-import '../../orm-configure';
 import {
   User,
   DB,
@@ -7,7 +6,7 @@ import {
   Order,
   Employee,
   Organization,
-} from '../../orm-configure';
+} from 'orm';
 import {
   createContext,
   Decimal,

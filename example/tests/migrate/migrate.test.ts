@@ -1,13 +1,11 @@
 import { readdir, rm } from 'fs/promises';
-import { createContext } from 'lubejs/lube';
 import { MigrateCli } from 'lubejs/migrate-cli';
 import { compareSchema, DatabaseSchema, generateSchema } from 'lubejs/schema';
 import assert from 'assert';
 import { DbContext } from 'lubejs/db-context';
-import { SqlBuilder } from 'lubejs/ast';
 import { join } from 'path';
 
-describe('Migrate', function () {
+describe.only('Migrate', function () {
   let cli: MigrateCli;
   let dbContext: DbContext;
   let database: string;

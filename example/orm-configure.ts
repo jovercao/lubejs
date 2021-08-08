@@ -230,6 +230,8 @@ modelBuilder.context(DB, context => {
 
       builder.property(p => p.rowflag, Buffer).isRowflag();
       builder.hasKey(p => p.id);
+
+      builder.hasIndex('IX_Order_OrderNo').withProperties(p => [p.orderNo]).hasComment('OrderNo Index');
     })
     .entity(OrderDetail)
     .asTable(builder => {

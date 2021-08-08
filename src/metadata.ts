@@ -36,7 +36,9 @@ import { isClass, isProxiedRowset } from './util';
 
 export interface IndexMetadata {
   name: string;
-  properties: string[];
+  properties: string[] | {
+    [key: string]: 'ASC' | 'DESC'
+  };
   columns: { column: ColumnMetadata; sort: 'ASC' | 'DESC' }[];
 
   /**
