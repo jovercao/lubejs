@@ -449,7 +449,7 @@ export function generateSchema(context: DbContext): DatabaseSchema {
       .filter(p => isForeignRelation(p))
       .map(p => genForeignKeySchema(entity, p as ForeignRelation));
     const table: TableSchema = {
-      name: entity.tableName,
+      name: entity.dbName,
       schema: entity.schema, //?? defaultSchema,
       primaryKey: {
         name: entity.key.constraintName,
@@ -499,7 +499,7 @@ export function generateSchema(context: DbContext): DatabaseSchema {
     const fk: ForeignKeySchema = {
       name: relation.constraintName,
       referenceSchema: relation.referenceEntity.schema, // ?? defaultSchema,
-      referenceTable: relation.referenceEntity.tableName,
+      referenceTable: relation.referenceEntity.dbName,
       columns: [relation.foreignColumn.columnName],
       referenceColumns: [relation.referenceEntity.key.column.columnName],
       isCascade: relation.isCascade,
@@ -523,10 +523,10 @@ export function generateSchema(context: DbContext): DatabaseSchema {
 
   function genViewSchema(view: ViewEntityMetadata): ViewSchema {
     const v: ViewSchema = {
-      name: view.viewName,
+      name: view.dbName,
       schema: view.schema ?? sqlUtil.options.defaultSchema,
       scripts: sqlUtil.sqlify(
-        SqlBuilder.createView(view.viewName).as(view.body)
+        SqlBuilder.createView(view.dbName).as(view.body)
       ).sql,
       comment: view.comment,
     };

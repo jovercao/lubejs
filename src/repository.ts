@@ -163,7 +163,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
 
       const key = this.metadata.key.column.isIdentity
         ? SqlBuilder.identityValue(
-            this.metadata.tableName,
+            this.metadata.dbName,
             this.metadata.key.column.columnName
           )
         : Reflect.get(item, this.metadata.key.property);
@@ -197,7 +197,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         `Key property ${this.metadata.key.property} is undefined.`
       );
     }
-    let condition: Condition = this.rowset
+    const condition: Condition = this.rowset
       .$(this.metadata.key.property as any)
       .eq(keyValue);
     return condition;
@@ -574,7 +574,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     item: T,
     relation: PrimaryOneToOneMetadata
   ): Promise<void> {
-    let subItem: any = Reflect.get(item, relation.property);
+    const subItem: any = Reflect.get(item, relation.property);
     const itemKey = Reflect.get(item, this.metadata.key.property);
     const repo = this.context.getRepository(
       relation.referenceClass as EntityConstructor<any>
@@ -594,7 +594,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     relation: OneToManyMetadata,
     skipCompare: boolean = false
   ): Promise<void> {
-    let subItems: any[] = Reflect.get(item, relation.property) || [];
+    const subItems: any[] = Reflect.get(item, relation.property) || [];
     const itemKey = Reflect.get(item, this.metadata.key.property);
     const repo = this.context.getRepository(
       relation.referenceClass as EntityConstructor<any>

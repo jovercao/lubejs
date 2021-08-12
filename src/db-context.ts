@@ -29,7 +29,7 @@ export class DbInstance {
 
   public get metadata(): DbContextMetadata {
     return this._metadata;
-  };
+  }
 
   protected set metadata(value: DbContextMetadata) {
     this._metadata = value;

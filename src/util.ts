@@ -1129,8 +1129,8 @@ export function deepthEqual(left: any, right: any): boolean {
   }
 
   if (!right) return false;
-  let leftKeys = Object.getOwnPropertyNames(left);
-  let rightKeys = Object.getOwnPropertyNames(right);
+  const leftKeys = Object.getOwnPropertyNames(left);
+  const rightKeys = Object.getOwnPropertyNames(right);
   if (leftKeys.length !== rightKeys.length) return false;
   for (const key of leftKeys) {
     if (!deepthEqual(left[key], right[key])) {

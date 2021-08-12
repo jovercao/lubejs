@@ -22,8 +22,6 @@ export const EntitySymble = Symbol('LUBEJS#Entity');
  * 不一定非得从此继承
  */
 export class Entity {
-  constructor() {}
-
   static create<T extends Entity>(
     this: EntityConstructor<T>,
     data: T
@@ -550,6 +548,7 @@ export const DbType = {
  * 用于做实体主键类型
  * 用户可自行使用 合并声明扩展
  */
+// @eslint-ignore
 export interface EntityKey {}
 
 /**

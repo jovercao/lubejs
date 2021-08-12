@@ -17,6 +17,11 @@ module.exports = {
   ],
   "rules": {
     "@typescript-eslint/no-inferrable-types": "off",
-    "prefer-const": "warn"
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": "off",
+    "@typescript-eslint/ban-types": "off",
+    "prefer-const": "warn",
+    "@typescript-eslint/no-empty-function": "warn",
+    "@typescript-eslint/no-empty-interface": "warn"
   }
 };

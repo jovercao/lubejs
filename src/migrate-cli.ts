@@ -2,9 +2,9 @@ import { existsSync, promises } from 'fs';
 import { dirname, join, resolve } from 'path';
 import { Statement, SqlBuilder as SQL, SqlBuilder } from './ast';
 import { DbContext, DbContextConstructor, DbInstance } from './db-context';
-import { DatabaseSchema, generateSchema, PrimaryKeySchema } from './schema';
-import { AsyncClass, Constructor, DbType } from './types';
-import { Command, Executor } from './execute';
+import { DatabaseSchema, generateSchema } from './schema';
+import { Constructor, DbType } from './types';
+import { Command } from './execute';
 import { isRaw, isStatement, outputCommand } from './util';
 import { MigrateBuilder } from './migrate-builder';
 import { mkdir, readFile } from 'fs/promises';
@@ -110,22 +110,24 @@ export class MigrateCli {
     this.dbContext.lube.changeDatabase(null);
   }
 
+  /**
+   * 确保在目标数据库中运行
+   */
   private async runInTargetDatabase<T>(
     handler: (instance: DbInstance) => Promise<T>
   ): Promise<T> {
     const currentDb = await this.dbContext.lube.getCurrentDatabase();
-    const result = await this.dbContext.trans(async instance => {
-      await instance.executor.query(SQL.use(this.targetDatabase));
+    if (currentDb !== this.targetDatabase) {
+      await this.dbContext.lube.query(SQL.use(this.targetDatabase));
       try {
-        const result = await handler(instance);
-        await instance.executor.query(SQL.use(currentDb));
+        const result = await handler(this.dbContext);
+        await this.dbContext.lube.query(SQL.use(currentDb));
         return result;
-      } catch (error) {
-        await instance.executor.query(SQL.use(currentDb));
-        throw error;
+      } finally {
+        await this.dbContext.lube.query(SQL.use(currentDb));
       }
-    });
-    return result;
+    }
+    return handler(this.dbContext)
   }
 
   private async runMigrate(
@@ -214,7 +216,10 @@ export class MigrateCli {
     }
   }
 
-  private async ensureSchema(): Promise<void> {}
+  // todo 待实现
+  private async ensureSchema(): Promise<void> {
+    throw new Error("尚未实现")
+  }
 
   // private async ensureMigrateTable(): Promise<void> {
   //   if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
@@ -275,7 +280,7 @@ export class MigrateCli {
     if (exists) {
       throw new Error(`迁移文件${name}已经存在：${exists.path}`);
     }
-    let lastMigrate = await this.getLastMigrate();
+    const lastMigrate = await this.getLastMigrate();
     let lastSchema: DatabaseSchema | undefined;
     if (lastMigrate) {
       lastSchema = (await import(lastMigrate.snapshotPath)).default;
@@ -714,7 +719,7 @@ export default ${name};
 
     const defaultSchema = await this.dbContext.lube.provider.getDefaultSchema();
     // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
-    let dbSchema: DatabaseSchema | undefined = await this.getDbSchema();
+    const dbSchema: DatabaseSchema | undefined = await this.getDbSchema();
     // 如果数据库不存在，先创建数据库
     if (!dbSchema) {
       await this.dbContext.lube.query(SQL.createDatabase(this.targetDatabase));

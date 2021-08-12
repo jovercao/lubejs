@@ -1,15 +1,4 @@
-import { CompatiableObjectName, DbType } from 'lubejs/types';
-import {
-  AllStatement,
-  AlterDatabase,
-  AlterTableAddMember,
-  CreateDatabase,
-  CreateTable,
-  CreateTableMember,
-  DropDatabase,
-  Statement,
-} from './ast';
-import { STATEMENT_KIND } from './constants';
+import { CompatiableObjectName, DbType } from './types';
 import { MigrateScripter } from './migrate-scripter';
 import {
   CheckConstraintSchema,
@@ -25,7 +14,6 @@ import {
   UniqueConstraintSchema,
 } from './schema';
 import { SqlUtil } from './sql-util';
-import { assertAst, isCreateTableColumn } from './util';
 
 // export class MigrateProgrammer {
 //   constructor(private sqlUtil: SqlUtil, private builderName: string) {
@@ -809,7 +797,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     if (table.constraints?.length > 0) {
       table.constraints.map(cst => this.constraint(cst));
     }
-    let sql = `builder.createTable(${this.namify(
+    const sql = `builder.createTable(${this.namify(
       table
     )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);

@@ -27,6 +27,7 @@ import { DbType, Entity, EntityKeyType, Scalar, ScalarType } from './types';
 import { modelBuilder } from './model-builder';
 import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
 import {
+  assert,
   ensureExpression,
   isDbType,
   isExtendsOf,
@@ -42,7 +43,7 @@ export interface EntityOptions
   extends Partial<
     Pick<
       CommonEntityMetadata,
-      'kind' | 'body' | 'tableName' | 'sql' | 'viewName' | 'readonly'
+      'kind' | 'body' | 'dbName' | 'sql' | 'readonly'
       // | 'comment'
     >
   > {
@@ -209,7 +210,7 @@ function addDecorateEntities(ctr: EntityConstructor): void {
 
 function addEntitiyColumn(target: EntityConstructor, key: string): void {
   let columns = getEntityColumns(target);
-  let relations = getEntityRelations(target);
+  const relations = getEntityRelations(target);
   if (!columns) {
     columns = [];
     Reflect.defineMetadata(ENTITY_COLUMNS_KEY, columns, target);
@@ -224,7 +225,7 @@ function addEntitiyColumn(target: EntityConstructor, key: string): void {
 
 function addEntitiyIndex(target: EntityConstructor, key: string): void {
   let indexs = getEntityIndexs(target);
-  let relations = getEntityRelations(target);
+  const relations = getEntityRelations(target);
   if (!indexs) {
     indexs = [];
     Reflect.defineMetadata(ENTITY_INDEXES_KEY, indexs, target);
@@ -237,9 +238,10 @@ function addEntitiyIndex(target: EntityConstructor, key: string): void {
   indexs.push(key);
 }
 
-function addEntitiyRelation(target: EntityConstructor, key: string): void {
+function addEntitiyRelation(target: EntityConstructor, key: string | symbol): void {
+  assert(typeof key === 'string', 'Relation property key must typeof string')
   let relations = getEntityRelations(target);
-  let columns = getEntityColumns(target);
+  const columns = getEntityColumns(target);
   if (!relations) {
     relations = [];
     Reflect.defineMetadata(ENTITY_RELATIONS_KEY, relations, target);
@@ -342,7 +344,7 @@ export function table<T extends Entity>(
     addDecorateEntities(target);
     setEntityOptions(target, {
       kind: 'TABLE',
-      tableName: name || target.name,
+      dbName: name || target.name,
     });
   };
 }
@@ -368,7 +370,7 @@ export function view<T extends Entity>(
     addDecorateEntities(target);
     setEntityOptions(target, {
       kind: 'VIEW',
-      viewName: name,
+      dbName: name,
       body: body!(),
     });
   };
@@ -465,9 +467,12 @@ function setIndexOptions(
 
 function setRelationOptions(
   target: EntityConstructor,
-  key: string,
+  key: string | symbol,
   options: Partial<RelationOptions>
 ): void {
+  if (typeof key === 'symbol') {
+    throw new Error(`Column is not allow use to symbol property.`)
+  }
   let relationOptions = getRelationOptions(target, key);
   if (!relationOptions) {
     relationOptions = {} as RelationOptions;
@@ -707,7 +712,7 @@ export function column<T extends Entity>(
       name = key;
     }
 
-    let designType = Reflect.getMetadata('design:type', target, key);
+    const designType = Reflect.getMetadata('design:type', target, key);
     if (!type) {
       type = designType;
     }
@@ -866,11 +871,11 @@ export function manyToMany<R extends Entity>(
   referenceProperty?: (p: Required<R>) => object[],
   relationProperty?: string
 ): PropertyDecorator {
-  return function (target: Object, key: string) {
+  return function (target: Object, key: string | symbol) {
     const type = Reflect.getMetadata('design:type', target, key);
     if (type !== Array) {
       throw new Error(
-        `Many to many relation property ${key} type error, property must type of reference entity array.`
+        `Many to many relation property ${key.toString()} type error, property must type of reference entity array.`
       );
     }
     setRelationOptions(target.constructor as EntityConstructor, key, {
@@ -989,7 +994,7 @@ export function getAmong(target: EntityConstructor): AmongOptions {
 export function repository<T extends Entity>(
   typegetter: () => EntityConstructor<T>
 ): PropertyDecorator {
-  return function (target: Object, key: string): any {
+  return function (target: Object, key: string | symbol): any {
     return {
       enumerable: false,
       get(this: DbInstance) {

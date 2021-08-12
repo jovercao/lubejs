@@ -1,4 +1,3 @@
-import { trimEnd } from 'lodash';
 import { isBinary, isScalar } from '../util';
 
 export type ScalarType =

@@ -984,7 +984,7 @@ export abstract class SqlUtil {
     return this.sqlifyExpression(arg, params, parent);
   }
   protected sqlifyStar(arg: Star<any>): string {
-    let sql = '';
+    const sql = '';
     if (arg.$table) {
       return `${this.sqlifyRowsetName(arg.$table)}.*`;
     }

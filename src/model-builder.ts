@@ -139,7 +139,7 @@ function fixEntityIndexes(entity: TableEntityMetadata) {
 
 function fixIndex(entity: TableEntityMetadata, index: IndexMetadata) {
   if (!index.name) {
-    index.name = `IX_${entity.tableName}_${index.columns
+    index.name = `IX_${entity.dbName}_${index.columns
       .map(col => col.column.columnName)
       .join('_')}`;
   }
@@ -187,7 +187,7 @@ function fixRelationIndex(
 ) {
   if (!relation.indexName) {
     relation.indexName = `${isForeignOneToOne(relation) ? 'UX' : 'IX'}_${
-      entity.tableName
+      entity.dbName
     }_${relation.foreignColumn.columnName}`;
   }
   // 为关系追加索引
@@ -310,8 +310,8 @@ function fixOneToMany(
         property: relation.referenceProperty,
         // dbName: relation.referenceProperty,
         constraintName: `FK_${
-          relation.referenceEntity.tableName
-        }_${foreignProperty}_TO_${entity.tableName}_${entity.key!.property}`,
+          relation.referenceEntity.dbName
+        }_${foreignProperty}_TO_${entity.dbName}_${entity.key!.property}`,
         kind: 'MANY_TO_ONE',
         isImplicit: true,
         referenceClass: entity.class,
@@ -368,7 +368,7 @@ function fixEntityKey(builder: ContextBuilder, entity: EntityMetadata): void {
     entity.key.column = keyColumn;
   }
   if (!entity.key.constraintName) {
-    entity.key.constraintName = `PK_${entity.tableName}_${entity.key.column.columnName}`;
+    entity.key.constraintName = `PK_${entity.dbName}_${entity.key.column.columnName}`;
   }
   if (entity.key.isNonclustered === undefined) {
     entity.key.isNonclustered = false;
@@ -651,9 +651,9 @@ function fixForeignProperty(
   }
 
   if (!relation.constraintName) {
-    relation.constraintName = `FK_${entity.tableName}_${
+    relation.constraintName = `FK_${entity.dbName}_${
       relation.foreignColumn.columnName
-    }_${relation.referenceEntity.tableName}_${
+    }_${relation.referenceEntity.dbName}_${
       relation.referenceEntity.key!.column.columnName
     }`;
   }
@@ -751,7 +751,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       const metadata: EntityMetadata = new EntityMetadata();
       assign(metadata, {
         kind: 'TABLE',
-        tableName: ctr.name,
+        dbName: ctr.name,
         className: ctr.name,
         class: ctr,
         contextClass: this.metadata.class,
@@ -964,7 +964,15 @@ export class ModelBuilder {
     const entityBuilder = this.context(contextGetter?.() || DbContext).entity(
       target
     );
-    Object.assign(entityBuilder.metadata, assignable);
+
+    // Object.assign(entityBuilder.metadata, assignable);
+    if (assignable.dbName) {
+      entityBuilder.hasName(assignable.dbName);
+    }
+
+    // if (assignable.readonly) {
+    //   entityBuilder.isReadonly()
+    // }
 
     const columnProperties = getEntityColumns(target);
     if (columnProperties) {
@@ -1021,166 +1029,177 @@ export class ModelBuilder {
         }
       }
     }
-
-    entityOptions.indexes.forEach(indexOptions => {
-      const indexBuilder = entityBuilder.hasIndex(indexOptions.name!);
-      indexBuilder.withProperties(
-        Array.isArray(indexOptions.properties)
-          ? p => indexOptions.properties as any
-          : indexOptions.properties!
-      );
-      if (indexOptions.isUnique !== undefined) {
-        indexBuilder.isUnique(indexOptions.isUnique);
+    if (assignable.kind === 'TABLE') {
+      entityBuilder.asTable()
+      const keyOptions = getEntityKeyOptions(target);
+      if (keyOptions) {
+        const keyBuilder = entityBuilder.hasKey(p => p[keyOptions.property!]);
+        Object.assign(keyBuilder.metadata, keyOptions);
       }
-    });
 
-    const keyOptions = getEntityKeyOptions(target);
-    if (keyOptions) {
-      const keyBuilder = entityBuilder.hasKey(p => p[keyOptions.property!]);
-      Object.assign(keyBuilder.metadata, keyOptions);
-    }
-
-    const relationProperties = getEntityRelations(target);
-    if (relationProperties) {
-      for (const property of relationProperties) {
-        const relationOptions = getRelationOptions(target, property)!;
-        let builder:
-          | OneToOneBuilder<any, any>
-          | OneToManyBuilder<any, any>
-          | ManyToOneBuilder<any, any>
-          | ManyToManyBuilder<any, any>;
-        switch (relationOptions.kind) {
-          case 'ONE_TO_ONE': {
-            const map = entityBuilder
-              .hasOne(p => p[property], relationOptions.referenceEntityGetter())
-              .withOne(
-                relationOptions.referenceProperty
-                  ? p => p[relationOptions.referenceProperty!]
-                  : undefined
-              );
-            if (relationOptions.isPrimary) {
-              builder = map.isPrimary();
-            } else {
-              let bd: ForeignOneToOneBuilder<any, any>;
-              builder = bd = map.hasForeignKey(
-                relationOptions.foreignProperty
-                  ? p => p[relationOptions.foreignProperty!]
-                  : undefined
-              );
-              if (relationOptions.isRequired) {
-                bd.isRequired();
-              }
-            }
-            const comment = getComment(target, property);
-            if (comment) {
-              builder.hasComment(comment);
-            }
-            break;
-          }
-          case 'ONE_TO_MANY': {
-            builder = entityBuilder
-              .hasMany(
-                p => p[property],
-                relationOptions.referenceEntityGetter()
-              )
-              .withOne(
-                relationOptions.referenceProperty
-                  ? p => p[relationOptions.referenceProperty!]
-                  : undefined
-              );
-            break;
-          }
-          case 'MANY_TO_ONE': {
-            builder = entityBuilder
-              .hasOne(p => p[property], relationOptions.referenceEntityGetter())
-              .withMany(
-                relationOptions.referenceProperty
-                  ? p => p[relationOptions.referenceProperty!]
-                  : undefined
-              );
-            if (relationOptions.foreignProperty) {
-              builder.hasForeignKey(p => p[relationOptions.foreignProperty!]);
-            }
-            if (relationOptions.isRequired) {
-              builder.isRequired();
-            }
-            const comment = getComment(target, property);
-            if (comment) {
-              builder.hasComment(comment);
-            }
-            break;
-          }
-          case 'MANY_TO_MANY': {
-            builder = entityBuilder
-              .hasMany(
-                p => p[property],
-                relationOptions.referenceEntityGetter()
-              )
-              .withMany(
-                relationOptions.referenceProperty
-                  ? p => p[relationOptions.referenceProperty!]
-                  : undefined
-              );
-            // 查找中间表声明
-            for (const relationEntity of getDecorateEntities()!) {
-              const among = getAmong(relationEntity);
-              if (!among) continue;
-
-              const leftMatch =
-                among.leftEntityGetter() === target &&
-                among.rightEngityGetter() ===
-                  relationOptions.referenceEntityGetter();
-              const rightMatch =
-                among.rightEngityGetter() === target &&
-                among.leftEntityGetter() ===
-                  relationOptions.referenceEntityGetter();
-              if (leftMatch || rightMatch) {
-                // 声明表
-                builder.hasRelationTable(
-                  relationEntity,
-                  relationOptions.relationProperty
-                    ? p => p[relationOptions.relationProperty!]
+      const relationProperties = getEntityRelations(target);
+      if (relationProperties) {
+        for (const property of relationProperties) {
+          const relationOptions = getRelationOptions(target, property)!;
+          let builder:
+            | OneToOneBuilder<any, any>
+            | OneToManyBuilder<any, any>
+            | ManyToOneBuilder<any, any>
+            | ManyToManyBuilder<any, any>;
+          switch (relationOptions.kind) {
+            case 'ONE_TO_ONE': {
+              const map = entityBuilder
+                .hasOne(p => p[property], relationOptions.referenceEntityGetter())
+                .withOne(
+                  relationOptions.referenceProperty
+                    ? p => p[relationOptions.referenceProperty!]
                     : undefined
                 );
+              if (relationOptions.isPrimary) {
+                builder = map.isPrimary();
+              } else {
+                let bd: ForeignOneToOneBuilder<any, any>;
+                builder = bd = map.hasForeignKey(
+                  relationOptions.foreignProperty
+                    ? p => p[relationOptions.foreignProperty!]
+                    : undefined
+                );
+                if (relationOptions.isRequired) {
+                  bd.isRequired();
+                }
+              }
+              const comment = getComment(target, property);
+              if (comment) {
+                builder.hasComment(comment);
+              }
+              break;
+            }
+            case 'ONE_TO_MANY': {
+              builder = entityBuilder
+                .hasMany(
+                  p => p[property],
+                  relationOptions.referenceEntityGetter()
+                )
+                .withOne(
+                  relationOptions.referenceProperty
+                    ? p => p[relationOptions.referenceProperty!]
+                    : undefined
+                );
+              break;
+            }
+            case 'MANY_TO_ONE': {
+              builder = entityBuilder
+                .hasOne(p => p[property], relationOptions.referenceEntityGetter())
+                .withMany(
+                  relationOptions.referenceProperty
+                    ? p => p[relationOptions.referenceProperty!]
+                    : undefined
+                );
+              if (relationOptions.foreignProperty) {
+                builder.hasForeignKey(p => p[relationOptions.foreignProperty!]);
+              }
+              if (relationOptions.isRequired) {
+                builder.isRequired();
+              }
+              const comment = getComment(target, property);
+              if (comment) {
+                builder.hasComment(comment);
+              }
+              break;
+            }
+            case 'MANY_TO_MANY': {
+              builder = entityBuilder
+                .hasMany(
+                  p => p[property],
+                  relationOptions.referenceEntityGetter()
+                )
+                .withMany(
+                  relationOptions.referenceProperty
+                    ? p => p[relationOptions.referenceProperty!]
+                    : undefined
+                );
+              // 查找中间表声明
+              for (const relationEntity of getDecorateEntities()!) {
+                const among = getAmong(relationEntity);
+                if (!among) continue;
 
-                if (relationOptions.relationProperty) {
-                  if (leftMatch && among.leftProperty) {
-                    entityBuilder
-                      .hasMany(
-                        p => p[relationOptions.relationProperty!],
-                        relationEntity
-                      )
-                      .withOne(p => p[among.leftProperty!]);
-                  } else if (rightMatch && among.rightProperty) {
-                    entityBuilder
-                      .hasMany(
-                        p => p[relationOptions.relationProperty!],
-                        relationEntity
-                      )
-                      .withOne(p => p[among.rightProperty!]);
+                const leftMatch =
+                  among.leftEntityGetter() === target &&
+                  among.rightEngityGetter() ===
+                    relationOptions.referenceEntityGetter();
+                const rightMatch =
+                  among.rightEngityGetter() === target &&
+                  among.leftEntityGetter() ===
+                    relationOptions.referenceEntityGetter();
+                if (leftMatch || rightMatch) {
+                  // 声明表
+                  builder.hasRelationTable(
+                    relationEntity,
+                    relationOptions.relationProperty
+                      ? p => p[relationOptions.relationProperty!]
+                      : undefined
+                  );
+
+                  if (relationOptions.relationProperty) {
+                    if (leftMatch && among.leftProperty) {
+                      entityBuilder
+                        .hasMany(
+                          p => p[relationOptions.relationProperty!],
+                          relationEntity
+                        )
+                        .withOne(p => p[among.leftProperty!]);
+                    } else if (rightMatch && among.rightProperty) {
+                      entityBuilder
+                        .hasMany(
+                          p => p[relationOptions.relationProperty!],
+                          relationEntity
+                        )
+                        .withOne(p => p[among.rightProperty!]);
+                    }
                   }
                 }
               }
+              break;
             }
-            break;
           }
         }
       }
-    }
 
-    const among = getAmong(target);
-    if (among) {
-      if (among.leftProperty) {
-        entityBuilder
-          .hasOne(p => p[among.leftProperty!], among.leftEntityGetter())
-          .withMany();
+      const among = getAmong(target);
+      if (among) {
+        if (among.leftProperty) {
+          entityBuilder
+            .hasOne(p => p[among.leftProperty!], among.leftEntityGetter())
+            .withMany();
+        }
+        if (among.rightProperty) {
+          entityBuilder.hasOne(
+            p => p[among.rightProperty!],
+            among.rightEngityGetter()
+          );
+        }
       }
-      if (among.rightProperty) {
-        entityBuilder.hasOne(
-          p => p[among.rightProperty!],
-          among.rightEngityGetter()
+      entityOptions.indexes.forEach(indexOptions => {
+        const indexBuilder = entityBuilder.hasIndex(indexOptions.name!);
+        indexBuilder.withProperties(
+          Array.isArray(indexOptions.properties)
+            ? p => indexOptions.properties as any
+            : indexOptions.properties!
         );
+        if (indexOptions.isUnique !== undefined) {
+          indexBuilder.isUnique(indexOptions.isUnique);
+        }
+      });
+    } else if (assignable.kind === 'VIEW') {
+      if (!assignable.body) {
+        throw new Error(`View entity must specify body statement.`)
       }
+      entityBuilder.asView(assignable.body);
+    } else if (assignable.kind === 'QUERY') {
+      if (!assignable.sql) {
+        throw new Error(`Query entity must specify body statement.`)
+      }
+      entityBuilder.asQuery(assignable.sql);
     }
   }
 
@@ -1431,7 +1450,7 @@ export class EntityBuilder<T extends Entity> {
 
     const tableMetadata = this.metadata as TableEntityMetadata;
     this.metadata.kind = 'TABLE';
-    tableMetadata.tableName = tableName || this.metadata.className;
+    tableMetadata.dbName = tableName || this.metadata.className;
     this.metadata.readonly = false;
     if (build) {
       build(this);
@@ -1516,7 +1535,7 @@ export class EntityBuilder<T extends Entity> {
     }
 
     this.metadata.kind = 'VIEW';
-    this.metadata.viewName = name || this.metadata.className;
+    this.metadata.dbName = name || this.metadata.className;
     this.metadata.readonly = true;
     this.metadata.body = body;
     if (build) {
@@ -1542,6 +1561,11 @@ export class EntityBuilder<T extends Entity> {
       build(this);
       return this.contextBuilder;
     }
+    return this;
+  }
+
+  hasName(name: string): this {
+    this.metadata.dbName = name;
     return this;
   }
 
@@ -1578,7 +1602,7 @@ export class EntityBuilder<T extends Entity> {
       constraintName = nameOrSelector;
     }
 
-    let property: string = selectProperty(selector!);
+    const property: string = selectProperty(selector!);
     if (!property) {
       throw new Error('Please select a property');
     }
@@ -1632,7 +1656,7 @@ export class EntityBuilder<T extends Entity> {
     propertyOrSelector: string | ((p: Required<T>) => D),
     type: Constructor<D>
   ): HasOneBuilder<T, D> {
-    let property: string =
+    const property: string =
       typeof propertyOrSelector === 'function'
         ? selectProperty(propertyOrSelector)
         : propertyOrSelector;
@@ -1671,7 +1695,7 @@ export class EntityBuilder<T extends Entity> {
     selector: (p: Required<T>) => D[],
     type: Constructor<D>
   ): HasManyBuilder<T, D> {
-    let property: string = selectProperty(selector);
+    const property: string = selectProperty(selector);
     if (!property)
       throw new Error(
         `Entity ${
@@ -1744,7 +1768,7 @@ export class EntityBuilder<T extends Entity> {
     type: DataTypeOf<P>,
     build?: (builder: PropertyBuilder<T>) => void
   ): PropertyBuilder<T, P> | this {
-    let property: string =
+    const property: string =
       typeof propertyOrselector === 'function'
         ? selectProperty(propertyOrselector)
         : propertyOrselector;
@@ -2293,7 +2317,7 @@ export class ManyToOneBuilder<S extends Entity, D extends Entity> {
    */
   hasForeignKey<P extends Scalar>(selector: (p: Required<S>) => P): this {
     if (selector) {
-      let property: string = selectProperty(selector);
+      const property: string = selectProperty(selector);
       if (!property) throw new Error(`Please select a property.`);
       this.metadata.foreignProperty = property;
       // const foreingColumn = this.entityBuilder.metadata.getColumn(property);

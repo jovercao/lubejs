@@ -7,7 +7,6 @@ import {
   ColumnDeclareForAdd,
   ColumnDeclareForAlter,
   KeyColumn,
-  CheckConstraint,
 } from './ast';
 import { MigrateBuilder } from './migrate-builder';
 import {
@@ -18,15 +17,12 @@ import {
   DatabaseSchema,
   ForeignKeySchema,
   IndexSchema,
-  KeyColumnSchema,
   PrimaryKeySchema,
   SequenceSchema,
   TableSchema,
   UniqueConstraintSchema,
 } from './schema';
 import { ObjectDifference } from './util/compare';
-import { SqlUtil } from './sql-util';
-import { constant, indexOf, sortBy } from 'lodash';
 import { sortByDependency } from './util';
 
 export abstract class MigrateScripter<T extends string | Statement> {
@@ -576,7 +572,7 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
     this.beforeCodes.push(this.builder.use(name));
   }
   createDatabase(database: DatabaseSchema): void {
-    let sql = this.builder.createDatabase(database.name);
+    const sql = this.builder.createDatabase(database.name);
     if (database.collate) {
       sql.collate(database.collate);
     }
@@ -601,7 +597,7 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
       return row;
     });
     const identityColumn = table.columns.find(col => col.isIdentity);
-    let sql = this.builder.insert(table).values(rows);
+    const sql = this.builder.insert(table).values(rows);
     if (identityColumn) {
       sql.withIdentity();
     }

@@ -16,18 +16,18 @@
       "ES2017"
     ],
     "paths": {
-      "lubejs-mssql/*": ["./drivers/mssql/*"],
-      "lubejs/*": ["./src/*"],
-      "lubejs-mssql": ["./drivers/mssql"],
-      "lubejs": ["./src"],
-      "orm": ["./example/orm-decorator"]
+      // "lubejs": ["./src"],
+      // "lubejs/*": ["./src/*"],
+      // "lubejs-mssql": ["./drivers/mssql"],
+      // "lubejs-mssql/*": ["./drivers/mssql/*"],
+      // "orm": ["./example/orm-configure"],
+      // "orm/*": ["./example/orm-configure/*"],
+      // "mssql": ["./node_modules/@jovercao/mssql"],
+      // "mssql/*": ["@jovercao/mssql/*"]
     }
   },
   "include": [
-    "./example/.lubejs.ts",
-    "./src/**/*.ts",
-    "./example/**/*.ts",
-    "./drivers/**/*.ts"
+    "./src/**/*.ts"
   ],
   "exclude": [
     "node_modules",

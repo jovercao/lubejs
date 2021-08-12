@@ -67,13 +67,9 @@ export interface CommonEntityMetadata {
    */
   kind: 'TABLE' | 'VIEW' | 'QUERY';
   /**
-  * 表名
+  * 表/视图名
   */
-  tableName?: string;
-  /**
-  * 表名
-  */
-  viewName?: string;
+  dbName?: string;
   /**
   * 视图的SELECT语句
   */
@@ -188,13 +184,9 @@ export class EntityMetadata implements CommonEntityMetadata {
   key?: KeyMetadata;
 
   /**
-   * 表名
+   * 表/视图 名称
    */
-  tableName?: string;
-  /**
-   * 视图名称
-   */
-  viewName?: string;
+  dbName?: string;
   /**
    * 视图主体语句
    */
@@ -341,7 +333,7 @@ export interface TableEntityMetadata extends EntityMetadata {
   /**
    * 表名
    */
-  tableName: string;
+  dbName: string;
 
   key: KeyMetadata;
 
@@ -362,7 +354,7 @@ export interface ViewEntityMetadata extends EntityMetadata {
   /**
    * 表名
    */
-  viewName: string;
+  dbName: string;
   /**
    * 架构名称
    */
@@ -462,7 +454,7 @@ export class DbContextMetadata {
    */
   findTableEntityByName(tableName: string): EntityMetadata | undefined {
     return this.entities.find(
-      entity => isTableEntity(entity) && entity.tableName === tableName
+      entity => isTableEntity(entity) && entity.dbName === tableName
     );
   }
 
@@ -1715,10 +1707,10 @@ export function makeRowset<T extends Entity = any>(
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_');
   } else if (isTableEntity(metadata)) {
-    rowset = new Table(metadata.tableName);
+    rowset = new Table(metadata.dbName);
     // SQL.table(metadata.tableName);
   } else {
-    rowset = new Table(metadata.viewName!);
+    rowset = new Table(metadata.dbName!);
     // rowset = SQL.table(metadata.viewName);
   }
   return aroundRowset<T>(rowset, metadata);
