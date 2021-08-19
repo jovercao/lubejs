@@ -174,7 +174,7 @@ export enum SQL_SYMBOLE {
    * 表变量
    */
   TABLE_VARIANT = 'TABLE_VARIANT',
-  OBJECT = "OBJECT"
+  OBJECT = "OBJECT",
 }
 
 
@@ -305,6 +305,7 @@ export enum CONDITION_KIND {
   BINARY_LOGIC = 'BINARY_LOGIC',
   UNARY_LOGIC = 'UNARY_LOGIC',
   EXISTS = 'EXISTS',
+  STANDARD = "STANDARD"
 }
 
 export enum OPERATION_KIND {

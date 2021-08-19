@@ -93,6 +93,7 @@ import {
   AlterDatabase,
   DropDatabase,
   Use,
+  StandardCondition,
 } from './ast';
 
 import {
@@ -146,7 +147,7 @@ export function ensureLiteral<T extends Scalar>(
 export function ensureExpression<T extends Scalar>(
   expr: CompatibleExpression<T> | undefined
 ): Expression<T> {
-  if (!(expr instanceof AST)) {
+  if (!isExpression(expr)) {
     return SqlBuilder.literal(expr === undefined ? null : expr);
   }
   return expr;
@@ -519,6 +520,10 @@ export function ensureFieldName<N extends string>(
 
 export function isPlainObject(obj: any): boolean {
   return [Object.prototype, null].includes(Object.getPrototypeOf(obj));
+}
+
+export function isStandardCondition(value: any): value is StandardCondition {
+  return isCondition(value) && value.$kind === CONDITION_KIND.STANDARD;
 }
 
 export function isStandardExpression(value: any): value is StandardExpression {
@@ -1366,13 +1371,23 @@ export function parseConnectionUrl(url: string): ConnectOptions {
     }
   }
   const dialect = uri.protocol.substr(0, uri.protocol.length - 1).toLowerCase();
+  const paths = uri.pathname.split('/');
+  let database: string | undefined;
+  if (!paths[0]) {
+    database = paths[1]
+  } else {
+    database = paths[0]
+  }
+  if (!database) {
+    throw new Error('Database must specify.')
+  }
   const options = {
     dialect,
     host: uri.host,
     port: uri.port ? parseInt(uri.port) : undefined,
     user: uri.username,
     password: uri.password,
-    database: uri.pathname.split('|')[0],
+    database,
     ...urlOptions,
   };
   return options;

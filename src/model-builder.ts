@@ -1,8 +1,3 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-types */
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import Decimal from 'decimal.js-light';
 import { CompatibleExpression, Expression, ProxiedRowset, Select } from './ast';
 import {
@@ -941,6 +936,7 @@ function dataTypeToDbType(dataType: DataType): DbType {
 }
 
 export class ModelBuilder {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   private constructor() {}
 
   private buildDecoratorDbContext(target: DbContextConstructor) {
@@ -2212,8 +2208,7 @@ export class OneToOneMapBuilder<S extends Entity, D extends Entity> {
     this.assertPrimary();
     this.metadata.isPrimary = false;
     if (selector) {
-      let foreignProperty: string;
-      foreignProperty = selectProperty(selector);
+      const foreignProperty: string = selectProperty(selector);
       if (!foreignProperty) {
         throw new Error(`Pls select a property`);
       }

@@ -1,6 +1,6 @@
 {
   "name": "lubejs",
-  "version": "3.0.0-preview01",
+  "version": "3.0.0-preview02",
   "description": "An easy-to-use nodejs oracledb client",
   "main": "dist/index.js",
   "directories": {
@@ -14,7 +14,7 @@
     "dist/**/*.d.ts"
   ],
   "scripts": {
-    "build": "npm run clean && npm run lint && tsc",
+    "build": "npm run clean && npm run lint && tsc && npm pack",
     "clean": "pwsh -c 'rm -r -force dist'",
     "lint": "eslint --fix ./src --ext .ts",
     "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src",
@@ -53,7 +53,7 @@
     "eslint-plugin-node": "^10.0.0",
     "eslint-plugin-promise": "^4.2.1",
     "eslint-plugin-standard": "^4.0.1",
-    "tsconfig-paths": "^3.9.0",
+    "tsconfig-paths": "^3.10.1",
     "typedoc": "^0.17.8",
     "typedoc-plugin-markdown": "^2.3.1",
     "typescript": "^4.3.5"
@@ -68,6 +68,7 @@
     "crypto-js": "^4.1.1",
     "decimal.js-light": "^2.5.1",
     "reflect-metadata": "^0.1.13",
+    "ts-node": "^10.2.0",
     "uuid": "^8.3.2"
   }
 }

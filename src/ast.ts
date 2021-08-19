@@ -20,6 +20,8 @@ import {
   isCondition,
   joinConditions,
   ensureRowset,
+  isSelectColumn,
+  isStar,
 } from './util';
 
 import {
@@ -46,6 +48,9 @@ import {
   Entity,
   ObjectName,
   CompatiableObjectName,
+  Decimal,
+  Numeric,
+  Interger,
 } from './types';
 import { Scalar } from './types';
 import { TableSchema } from './schema';
@@ -289,12 +294,283 @@ export abstract class AST {
 
 // export type ModelClass<T extends RowObject = any> = new (...args: any) => T;
 
+// export interface Expression<T extends Scalar = Scalar> {
+//   $tag: SQL_SYMBOLE.EXPRESSION
+//   /**
+//    * 比较是否相等 =
+//    * @param expr 要与当前表达式相比较的表达式
+//    * @returns 返回对比条件表达式
+//    */;
+//    eq(expr: CompatibleExpression<T>): Condition;
+
+//    /**
+//     * 比较是否不等于 <>
+//     * @param expr 要与当前表达式相比较的表达式
+//     * @returns 返回对比条件表达式
+//     */
+//    neq(expr: CompatibleExpression<T>): Condition;
+//    /**
+//     * 比较是否不包含于 IN
+//     * @param values 要与当前表达式相比较的表达式数组
+//     * @returns 返回对比条件表达式
+//     */
+//    in(select: Select<any>): Condition;
+//    in(values: CompatibleExpression<T>[]): Condition;
+//    in(...values: CompatibleExpression<T>[]): Condition;
+
+//    /**
+//     * 比较是否不包含于 NOT IN
+//     * @param values 要与当前表达式相比较的表达式
+//     * @returns 返回对比条件表达式
+//     */
+//    notIn(select: Select<any>): Condition;
+//    notIn(values: CompatibleExpression<T>[]): Condition;
+//    notIn(...values: CompatibleExpression<T>[]): Condition;
+
+//    /**
+//     * 比较是否为空 IS NULL
+//     * @returns 返回对比条件表达式
+//     */
+//    isNull(): Condition;
+
+//    /**
+//     * 比较是否为空 IS NOT NULL
+//     * @returns 返回对比条件表达式
+//     */
+//    isNotNull(): Condition;
+
+//    /**
+//     * 正序
+//     * @returns 返回对比条件表达式
+//     */
+//    asc(): SortInfo;
+
+//    /**
+//     * 倒序
+//     * @returns 返回对比条件表达式
+//     */
+//    desc(): SortInfo;
+
+//    /**
+//     * 将表达式转换为列，并指定列名
+//     */
+//    as<N extends string>(name: N): SelectColumn<T, N>;
+
+//    /**
+//     * 将本表达式括起来
+//     */
+//    group(): Expression<T>;
+
+//    /**
+//     * 将当前表达式转换为指定的类型
+//     */
+//    to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
+// }
+
+// export type Expression<T extends Scalar = Scalar> = {
+//   $tag: SQL_SYMBOLE.EXPRESSION
+//   /**
+//    * 比较是否相等 =
+//    * @param expr 要与当前表达式相比较的表达式
+//    * @returns 返回对比条件表达式
+//    */;
+//    eq(expr: CompatibleExpression<T>): Condition;
+
+//    /**
+//     * 比较是否不等于 <>
+//     * @param expr 要与当前表达式相比较的表达式
+//     * @returns 返回对比条件表达式
+//     */
+//    neq(expr: CompatibleExpression<T>): Condition;
+//    /**
+//     * 比较是否不包含于 IN
+//     * @param values 要与当前表达式相比较的表达式数组
+//     * @returns 返回对比条件表达式
+//     */
+//    in(select: Select<any>): Condition;
+//    in(values: CompatibleExpression<T>[]): Condition;
+//    in(...values: CompatibleExpression<T>[]): Condition;
+
+//    /**
+//     * 比较是否不包含于 NOT IN
+//     * @param values 要与当前表达式相比较的表达式
+//     * @returns 返回对比条件表达式
+//     */
+//    notIn(select: Select<any>): Condition;
+//    notIn(values: CompatibleExpression<T>[]): Condition;
+//    notIn(...values: CompatibleExpression<T>[]): Condition;
+
+//    /**
+//     * 比较是否为空 IS NULL
+//     * @returns 返回对比条件表达式
+//     */
+//    isNull(): Condition;
+
+//    /**
+//     * 比较是否为空 IS NOT NULL
+//     * @returns 返回对比条件表达式
+//     */
+//    isNotNull(): Condition;
+
+//    /**
+//     * 正序
+//     * @returns 返回对比条件表达式
+//     */
+//    asc(): SortInfo;
+
+//    /**
+//     * 倒序
+//     * @returns 返回对比条件表达式
+//     */
+//    desc(): SortInfo;
+
+//    /**
+//     * 将表达式转换为列，并指定列名
+//     */
+//    as<N extends string>(name: N): SelectColumn<T, N>;
+
+//    /**
+//     * 将本表达式括起来
+//     */
+//    group(): Expression<T>;
+
+//    /**
+//     * 将当前表达式转换为指定的类型
+//     */
+//    to<T extends DbType>(type: T): Expression<TsTypeOf<T>>;
+// } & T extends string
+//   ? {
+//       /**
+//        * 字符串连接运算
+//        */
+//       concat(expr: CompatibleExpression<string>): Expression<string>;
+//       /**
+//        * 比较是相像 LIKE
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       like(expr: CompatibleExpression<string>): Condition;
+
+//       /**
+//        * 比较是否不想像 NOT LIKE
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       notLike(expr: CompatibleExpression<string>): Condition;
+//     }
+//   : {} & T extends number | Decimal | bigint
+//   ? {
+//       /**
+//        * 加法运算，返回数值，如果是字符串相连接，请使用join函数
+//        */
+//       add<T extends Interger | Decimal>(
+//         expr: CompatibleExpression<T>
+//       ): Expression<T>;
+
+//       /**
+//        * 减法运算
+//        */
+//       sub(expr: CompatibleExpression<T>): Expression<number>;
+//       /**
+//        * 乘法运算
+//        * @param expr 要与当前表达式相乘的表达式
+//        */
+//       mul(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 除法运算
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       div(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 算术运算 %
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       mod(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 比较是否小于 <
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       lt(expr: CompatibleExpression<T>): Condition;
+
+//       /**
+//        * 比较是否小于等于 <=
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       lte(expr: CompatibleExpression<T>): Condition;
+
+//       /**
+//        * 比较是否大于 >
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       gt(expr: CompatibleExpression<T>): Condition;
+
+//       /**
+//        * 比较是否小于等于 >=
+//        * @param expr 要与当前表达式相比较的表达式
+//        * @returns 返回对比条件表达式
+//        */
+//       gte(expr: CompatibleExpression<T>): Condition;
+//     }
+//   : {} & T extends Interger
+//   ? {
+//       /**
+//        * 位运算 &
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       and(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 位运算 |
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       or(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 位运算 ~
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       not(): Expression<number>;
+
+//       /**
+//        * 位运算 ^
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       xor(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 位运算 <<
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       shl(expr: CompatibleExpression<number>): Expression<number>;
+
+//       /**
+//        * 位运算 >>
+//        * @param expr 要与当前表达式相除的表达式
+//        * @returns 返回运算后的表达式
+//        */
+//       shr(expr: CompatibleExpression<number>): Expression<number>;
+//     }
+//   : {};
+
 /**
  * 表达式基类，抽象类，
  * 所有表达式类均从该类型继承，
  * 可以直接使用 instanceof 来判断是否为expression
  */
-export abstract class Expression<T extends Scalar = Scalar> extends AST {
+export abstract class Expression<T extends Scalar = Scalar> extends AST implements Expression {
   $tag: SQL_SYMBOLE.EXPRESSION = SQL_SYMBOLE.EXPRESSION;
   /**
    * 字符串连接运算
@@ -304,25 +580,27 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
   }
 
   /**
-   * 加法运算，返回数值，如果是字符串相加，请使用join函数连接
+   * 加法运算，返回数值，如果是字符串相连接，请使用join函数
    */
-  add(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.add(this as CompatibleExpression<number>, expr);
+  add(
+    expr: CompatibleExpression<T>
+  ): Expression<T> {
+    return SqlBuilder.add(this as any, expr as any);
   }
 
   /**
    * 减法运算
    */
-  sub(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.sub(this as CompatibleExpression<number>, expr);
+  sub(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.sub(this as any, expr as any);
   }
 
   /**
    * 乘法运算
    * @param expr 要与当前表达式相乘的表达式
    */
-  mul(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.mul(this as CompatibleExpression<number>, expr);
+  mul(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.mul(this as any, expr as any);
   }
 
   /**
@@ -330,8 +608,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  div(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.div(this as CompatibleExpression<number>, expr);
+  div(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.div(this as any, expr as any);
   }
 
   /**
@@ -339,8 +617,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  mod(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.mod(this as CompatibleExpression<number>, expr);
+  mod(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.mod(this as any, expr as any);
   }
 
   /**
@@ -348,8 +626,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  and(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.and(this as CompatibleExpression<number>, expr);
+  and(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.and(this as any, expr as any);
   }
 
   /**
@@ -357,8 +635,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  or(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.or(this as CompatibleExpression<number>, expr);
+  or(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.or(this as any, expr as any);
   }
 
   /**
@@ -366,8 +644,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  not(): Expression<number> {
-    return SqlBuilder.not(this as CompatibleExpression<number>);
+  not(): Expression<T> {
+    return SqlBuilder.not(this as any);
   }
 
   /**
@@ -375,8 +653,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  xor(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.xor(this as CompatibleExpression<number>, expr);
+  xor(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.xor(this as any, expr as any);
   }
 
   /**
@@ -384,8 +662,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  shl(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.shl(this as CompatibleExpression<number>, expr);
+  shl(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.shl(this as any, expr as any);
   }
 
   /**
@@ -393,8 +671,8 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  shr(expr: CompatibleExpression<number>): Expression<number> {
-    return SqlBuilder.shr(this as CompatibleExpression<number>, expr);
+  shr(expr: CompatibleExpression<T>): Expression<T> {
+    return SqlBuilder.shr(this as any, expr as any);
   }
 
   /**
@@ -569,16 +847,6 @@ export abstract class Expression<T extends Scalar = Scalar> extends AST {
   }
 }
 
-// /**
-//  * 获取当前新增的标识列值
-//  */
-// export class IdentityValue extends Expression<number> {
-//   constructor(public readonly $table: string, public readonly $column: string) {
-//     super();
-//   }
-//   readonly $type = SQL_SYMBOLE.IDENTITY_VALUE;
-// }
-
 /**
  * 查询条件
  */
@@ -745,7 +1013,11 @@ export class Join extends AST {
    * @param on 关联条件
    * @param left 是否左联接
    */
-  constructor(table: CompatiableObjectName | ProxiedRowset, on: Condition, left = false) {
+  constructor(
+    table: CompatiableObjectName | ProxiedRowset,
+    on: Condition,
+    left = false
+  ) {
     super();
 
     this.$table = ensureRowset(table);
@@ -753,8 +1025,6 @@ export class Join extends AST {
     this.$left = left;
   }
 }
-
-
 
 /**
  * 标识符，可以多级，如表名等
@@ -836,9 +1106,10 @@ export abstract class Assignable<T extends Scalar = any> extends Expression<T> {
   }
 }
 
-export class Field<T extends Scalar = any, N extends string = string>
-  extends Assignable<T>
-{
+export class Field<
+  T extends Scalar = any,
+  N extends string = string
+> extends Assignable<T> {
   constructor(name: N, parent?: CompatibleRowset) {
     super();
     this.$name = name;
@@ -1009,9 +1280,10 @@ export class Table<
 /**
  * 标量变量引用，暂不支持表变量
  */
-export class Variant<T extends Scalar = any, N extends string = string>
-  extends Assignable<T>
-{
+export class Variant<
+  T extends Scalar = any,
+  N extends string = string
+> extends Assignable<T> {
   $type: SQL_SYMBOLE.VARIANT = SQL_SYMBOLE.VARIANT;
   constructor(name: N) {
     super();
@@ -1026,9 +1298,10 @@ export class Variant<T extends Scalar = any, N extends string = string>
 // TODO 表变量支持
 
 // TODO: 完成表变量功能
-export class TableVariant<T extends RowObject = any, N extends string = string>
-  extends Rowset<T>
-{
+export class TableVariant<
+  T extends RowObject = any,
+  N extends string = string
+> extends Rowset<T> {
   $type: SQL_SYMBOLE.IDENTIFIER = SQL_SYMBOLE.IDENTIFIER;
   $builtin!: boolean;
   $name: N;
@@ -2118,7 +2391,12 @@ export type AllStatement =
 /**
  * 功能性语句
  */
-export type FunctionStatement = Use | Assignment | Declare | CrudStatement | StandardStatement;
+export type FunctionStatement =
+  | Use
+  | Assignment
+  | Declare
+  | CrudStatement
+  | StandardStatement;
 
 /**
  * When语句
@@ -2133,7 +2411,7 @@ export class When<T extends Scalar = any> extends AST {
     then: CompatibleExpression<T>
   ) {
     super();
-    if (expr instanceof Expression || expr instanceof Condition) {
+    if (isExpression(expr) || isCondition(expr)) {
       this.$expr = expr;
     }
     if (isScalar(expr)) {
@@ -2259,9 +2537,6 @@ export class BinaryOperation<T extends Scalar = Scalar> extends Operation<T> {
 
   /**
    * 名称
-   * @param operator 运算符
-   * @param left 左值
-   * @param right 右值
    */
   constructor(
     operator: BINARY_OPERATION_OPERATOR,
@@ -2461,7 +2736,7 @@ export class Select<T extends RowObject = any> extends Fromable {
     this.$columns = (
       columns as (CompatibleExpression<Scalar> | SelectColumn<Scalar, string>)[]
     ).map(item => {
-      if (item instanceof AST) return item;
+      if (isExpression(item) || isSelectColumn(item) || isStar(item)) return item;
       return ensureExpression(item);
     });
   }
@@ -2552,10 +2827,8 @@ export class Select<T extends RowObject = any> extends Fromable {
   having(condition: CompatibleCondition<T>) {
     assert(!this.$having, 'having is declared');
     assert(this.$groups, 'Syntax error, group by is not declared.');
-    if (!(condition instanceof Condition)) {
-      condition = ensureCondition(condition);
-    }
-    this.$having = condition as Condition;
+    condition = ensureCondition(condition);
+    this.$having = condition;
     return this;
   }
 
@@ -3053,9 +3326,10 @@ export class Declare extends Statement {
 /**
  * 程序与数据库间传递值所使用的参数
  */
-export class Parameter<T extends Scalar = any, N extends string = string>
-  extends Expression<T>
-{
+export class Parameter<
+  T extends Scalar = any,
+  N extends string = string
+> extends Expression<T> {
   $name: N;
   $builtin = false;
   $type: SQL_SYMBOLE.PARAMETER = SQL_SYMBOLE.PARAMETER;
@@ -3544,7 +3818,10 @@ export class CreateIndex extends Statement {
     return this;
   }
 
-  on(table: CompatiableObjectName, columns: KeyColumns | string[] | KeyColumnsObject): this {
+  on(
+    table: CompatiableObjectName,
+    columns: KeyColumns | string[] | KeyColumnsObject
+  ): this {
     if (this.$table) {
       throw new Error(`Table & Columns is defined.`);
     }
@@ -4266,9 +4543,9 @@ export class Annotation extends Statement {
 export class StandardExpression<
   T extends Scalar = Scalar
 > extends Expression<T> {
-  constructor(kind: string, datas: any[]) {
+  constructor(name: string, datas: any[]) {
     super();
-    this.$name = kind;
+    this.$name = name;
     this.$datas = datas;
   }
 
@@ -4280,10 +4557,33 @@ export class StandardExpression<
   readonly $datas: any[];
 
   static create<T extends Scalar>(
-    kind: string,
+    name: string,
     datas: any[]
   ): StandardExpression<T> {
-    return new StandardExpression(kind, datas);
+    return new StandardExpression(name, datas);
+  }
+}
+
+/**
+ * 标准操作，用于存放标准操作未转换前的标准操作
+ * 用于定义一套多数据库兼容的标准
+ * 如，类型转换、获取日期 等操作
+ */
+export class StandardCondition extends Condition {
+  constructor(name: string, datas: any[]) {
+    super();
+    this.$name = name;
+    this.$datas = datas;
+  }
+
+  readonly $kind: CONDITION_KIND.STANDARD = CONDITION_KIND.STANDARD;
+
+  readonly $name: string;
+
+  readonly $datas: any[];
+
+  static create(name: string, datas: any[]): StandardCondition {
+    return new StandardCondition(name, datas);
   }
 }
 
@@ -4476,10 +4776,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  add(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  add<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 算术运算 -
@@ -4487,10 +4787,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  sub(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  sub<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 算术运算 *
@@ -4498,10 +4798,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  mul(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  mul<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 算术运算 /
@@ -4509,10 +4809,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  div(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  div<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 算术运算 %
@@ -4520,10 +4820,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  mod(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  mod<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 位算术运算 ^
@@ -4531,10 +4831,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  xor(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  xor<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 位算术运算 <<
@@ -4542,10 +4842,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  shl(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  shl<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 位算术运算 >>
@@ -4553,10 +4853,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  shr(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  shr<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   literal<T extends Scalar>(value: T): Literal<T>;
 
@@ -4579,10 +4879,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  and(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  and<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * 将多个查询条件通过 OR 合并成一个
@@ -4603,10 +4903,10 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  or(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number>;
+  or<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T>;
 
   /**
    * Not 逻辑运算
@@ -4619,7 +4919,7 @@ export interface SqlBuilder extends Standard {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  not(value: CompatibleExpression<number>): Expression<number>;
+  not<T extends Interger>(value: CompatibleExpression<T>): Expression<T>;
 
   /**
    * 判断是否存在
@@ -4779,7 +5079,10 @@ export interface SqlBuilder extends Standard {
   /**
    * 声明一个函数
    */
-  func<N extends string>(name: CompatiableObjectName<N>, builtIn?: boolean): Func<N>;
+  func<N extends string>(
+    name: CompatiableObjectName<N>,
+    builtIn?: boolean
+  ): Func<N>;
 
   /**
    * 创建一个可供调用的存储过程函数
@@ -4796,7 +5099,10 @@ export interface SqlBuilder extends Standard {
   /**
    * 创建一个字段
    */
-  field<T extends Scalar, N extends string>(name: N, rowset?: CompatibleRowset): Field<T, N>;
+  field<T extends Scalar, N extends string>(
+    name: N,
+    rowset?: CompatibleRowset
+  ): Field<T, N>;
 
   builtIn<T extends string>(name: T): BuiltIn<T>;
 
@@ -5253,11 +5559,18 @@ export interface SqlBuilder extends Standard {
 
   dropView<N extends string>(name: CompatiableObjectName<N>): DropView<N>;
 
-  dropProcedure<N extends string>(name: CompatiableObjectName<N>): DropProcedure<N>;
+  dropProcedure<N extends string>(
+    name: CompatiableObjectName<N>
+  ): DropProcedure<N>;
 
-  dropFunction<N extends string>(name: CompatiableObjectName<N>): DropFunction<N>;
+  dropFunction<N extends string>(
+    name: CompatiableObjectName<N>
+  ): DropFunction<N>;
 
-  dropIndex<N extends string>(table: CompatiableObjectName, name: N): DropIndex<N>;
+  dropIndex<N extends string>(
+    table: CompatiableObjectName,
+    name: N
+  ): DropIndex<N>;
 
   annotation(...text: string[]): Annotation;
   note(text: string): Annotation;
@@ -5353,10 +5666,10 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  add(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  add<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
   },
 
@@ -5366,10 +5679,10 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  sub(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  sub<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
   },
   /**
@@ -5378,10 +5691,10 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  mul(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  mul<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
   },
   /**
@@ -5390,22 +5703,23 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  div(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  div<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
   },
+
   /**
    * 算术运算 %
    * @param left 左值
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  mod(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  mod<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
   },
   /*
@@ -5414,22 +5728,22 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  xor(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  xor<T extends Numeric>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
   },
   /**
-   * 位算术运算 <<
+   * 位算术运算 << 仅支持整型
    * @param left 左值
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  shl(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  shl<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
   },
   /**
@@ -5438,10 +5752,10 @@ export const SqlBuilder: SqlBuilder = {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  shr(
-    left: CompatibleExpression<number>,
-    right: CompatibleExpression<number>
-  ): Expression<number> {
+  shr<T extends Interger>(
+    left: CompatibleExpression<T>,
+    right: CompatibleExpression<T>
+  ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
   },
   // static convert<T extends DbType>(
@@ -5672,7 +5986,10 @@ export const SqlBuilder: SqlBuilder = {
   /**
    * 声明一个函数
    */
-  func<N extends string>(name: CompatiableObjectName<N>, builtIn = false): Func<N> {
+  func<N extends string>(
+    name: CompatiableObjectName<N>,
+    builtIn = false
+  ): Func<N> {
     return new Func(name, builtIn);
   },
   /**
@@ -5688,7 +6005,10 @@ export const SqlBuilder: SqlBuilder = {
   /**
    * 创建一个字段
    */
-  field<T extends Scalar, N extends string>(name: N, rowset?: CompatibleRowset): Field<T, N> {
+  field<T extends Scalar, N extends string>(
+    name: N,
+    rowset?: CompatibleRowset
+  ): Field<T, N> {
     return new Field(name, rowset);
   },
   builtIn<T extends string>(name: T): BuiltIn<T> {
@@ -5773,7 +6093,11 @@ export const SqlBuilder: SqlBuilder = {
     return new ScalarFuncInvoke<T>(func, args);
   },
 
-  makeInvoke(type: 'table' | 'scalar', name: CompatiableObjectName, builtIn = false): any {
+  makeInvoke(
+    type: 'table' | 'scalar',
+    name: CompatiableObjectName,
+    builtIn = false
+  ): any {
     if (type === 'table') {
       return function (
         ...args: CompatibleExpression[]
@@ -5861,7 +6185,11 @@ export const SqlBuilder: SqlBuilder = {
     });
     return selects[0];
   },
-  invoke(type: 'table' | 'scalar', name: CompatiableObjectName, builtIn = false): any {
+  invoke(
+    type: 'table' | 'scalar',
+    name: CompatiableObjectName,
+    builtIn = false
+  ): any {
     if (type === 'table') {
       return function (
         ...args: CompatibleExpression[]
@@ -5921,13 +6249,20 @@ export const SqlBuilder: SqlBuilder = {
   dropView<N extends string>(name: CompatiableObjectName<N>): DropView<N> {
     return new DropView(name);
   },
-  dropProcedure<N extends string>(name: CompatiableObjectName<N>): DropProcedure<N> {
+  dropProcedure<N extends string>(
+    name: CompatiableObjectName<N>
+  ): DropProcedure<N> {
     return new DropProcedure(name);
   },
-  dropFunction<N extends string>(name: CompatiableObjectName<N>): DropFunction<N> {
+  dropFunction<N extends string>(
+    name: CompatiableObjectName<N>
+  ): DropFunction<N> {
     return new DropFunction(name);
   },
-  dropIndex<N extends string>(table: CompatiableObjectName, name: N): DropIndex<N> {
+  dropIndex<N extends string>(
+    table: CompatiableObjectName,
+    name: N
+  ): DropIndex<N> {
     return new DropIndex(table, name);
   },
   annotation(...text: string[]): Annotation {

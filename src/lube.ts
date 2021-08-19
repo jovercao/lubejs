@@ -1,18 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Executor, QueryResult } from './execute';
-import { URL } from 'url';
 import { ISOLATION_LEVEL } from './constants';
-import assert from 'assert';
-import { SqlOptions, SqlUtil, StandardTranslator } from './sql-util';
+import { SqlOptions, SqlUtil } from './sql-util';
 import { Parameter } from './ast';
 import { DatabaseSchema } from './schema';
 import { MigrateBuilder } from './migrate-builder';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { DbContext, DbContextConstructor, LubeConfig } from './orm';
-import { Constructor } from './types';
 import { metadataStore } from './metadata';
-import { isUrl, parseConnectionUrl } from './util';
+import { parseConnectionUrl } from './util';
 
 export type ConnectOptions = {
   /**
@@ -257,8 +254,7 @@ export async function createLube(
 export async function createLube(
   optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Lube> {
-  let options: ConnectOptions;
-  options = await getConnectOptions(optOrUrlOrCfg);
+  const options: ConnectOptions = await getConnectOptions(optOrUrlOrCfg);
   const provider: DbProvider = options.driver!(options);
   const lube = new Lube(provider);
   // await lube.open();

@@ -44,6 +44,8 @@ db.save(Employee, {
 - SharedArrayBuffer -> `DbType.Binary(DbType.MAX)`
 - Object -> `DbType.object<any>()`
 - Array -> `DbType.array<any>()`
+- Uuid -> `DbType.uuid`
+- Decimal -> `DbType.decimal`
 
 ## 数据建模 Code First模式(推荐使用)
 

@@ -79,6 +79,7 @@ import {
   DropFunction,
   DropIndex,
   DropTable,
+  StandardCondition,
 } from './ast';
 import { Command } from './execute';
 import { CompatiableObjectName, DbType, ObjectName, Scalar } from './types';
@@ -152,6 +153,7 @@ import {
   isAlterDatabase,
   isDropDatabase,
   isUse,
+  isStandardCondition,
 } from './util';
 import { Standard } from './std';
 
@@ -329,8 +331,11 @@ export abstract class SqlUtil {
     operation: StandardStatement
   ): Statement;
   protected translationStandardOperation<T extends Scalar>(
-    operation: StandardExpression<T> | StandardStatement
-  ): Expression<T> | Statement {
+    operation: StandardCondition
+  ): Condition;
+  protected translationStandardOperation<T extends Scalar>(
+    operation: StandardExpression<T> | StandardStatement | StandardCondition
+  ): Expression<T> | Statement | Condition {
     const transFn = Reflect.get(this.translator, operation.$name);
     return transFn.call(this.translator, ...operation.$datas);
   }
@@ -1180,6 +1185,9 @@ export abstract class SqlUtil {
         condition as UnaryLogicCondition,
         params
       );
+    }
+    if (isStandardCondition(condition)) {
+      return this.sqlifyCondition(this.translationStandardOperation(condition), params, parent);
     }
     throw invalidAST('condition', condition);
   }

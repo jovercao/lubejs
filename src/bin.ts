@@ -1,20 +1,17 @@
+import 'ts-node/register';
+import 'tsconfig-paths/register';
 import Program from 'commander';
 import { MigrateCli } from './migrate-cli';
 import 'colors';
-import { createContext, loadConfig } from './lube';
-import { resolve } from 'path'
-import { metadataStore } from './metadata';
-import { DbContextConstructor } from './db-context';
-import { outputCommand } from './util';
-
-const OPTIONS_FILE = '.lubejs';
+import { loadConfig } from './lube';
 
 async function initCli(options?: {
   context?: string;
   migrateDir?: string;
   require?: string;
 }): Promise<MigrateCli> {
-  let { context, migrateDir, require: importModule } = options || {};
+  let { migrateDir } = options || {};
+  const {context, require: importModule} = options || {};
   if (importModule) {
     const file = require.resolve(importModule);
     if (file.endsWith('.ts')) {
@@ -37,7 +34,7 @@ async function initCli(options?: {
 }
 
 const migrate = Program.command('migrate')
-  .option('-c, --context <context>', '配置文件.lubejs.ts中的contexts[key].')
+  .option('-c, --context <context>', `配置文件.lubejs.ts或.lubejs.js中的contexts名称。`)
   .option(
     '-d, --dir <dir>',
     '迁移文件路径，不传递时默认为 {pwd}/migrate/{context}/。'

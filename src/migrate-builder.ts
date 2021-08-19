@@ -29,6 +29,7 @@ import {
   CreateDatabase,
   DropDatabase,
   AlterDatabase,
+  If,
 } from './ast';
 import { CompatiableObjectName, RowObject, Scalar } from './types';
 import { isStatement } from './util';
@@ -200,11 +201,15 @@ export abstract class MigrateBuilder {
   // 删除列默认值约束
   abstract dropDefaultValue(table: CompatiableObjectName, column: string): Statement;
 
+  // TIPS: 因为流程控制等语句将导致无法正确生成快照，因此不在此添加条件语句等信息
+  // 除非完成执行引擎，这将会是一个巨大的工作量，需要考虑的情况过多，并且因为数据，流程走向无法预测。
+  // 因此规定迁移文件必须按
+
   // abstract existsTable(table: CompatiableObjectName): Condition;
 
   // abstract existsDatabase(database: string): Condition;
 
-  // abstract existsView(name: string): Condition;
+  // abstract existsView(name: CompatiableObjectName): Condition;
 
   // abstract existsFunction(name: CompatiableObjectName): Condition;
 

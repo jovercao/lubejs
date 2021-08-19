@@ -153,7 +153,7 @@ export class Uuid {
 
   static readonly empty = new Uuid(Uuid.DEFAULT);
 
-  valueOf() {
+  valueOf(): number[] {
     return this._buffer || Uuid.DEFAULT;
   }
 
@@ -168,28 +168,6 @@ export class Uuid {
 }
 
 export { Decimal };
-
-// export interface Decimal {
-//   readonly source: string;
-//   toString(): string;
-//   add(value: Decimal) {
-
-//   }
-// }
-
-// export function Decimal(value: string | number | bigint): Decimal {
-//   let stringValue: string;
-//   if (typeof value === 'bigint' || typeof value === 'number') {
-//     stringValue = value.toString();
-//   } else {
-//     stringValue = value
-//   }
-//   const data = Object(stringValue);
-//   data.valueOf = () =>
-//   data.source = value;
-//   data.toString = () => value
-//   return data as Decimal;
-// }
 
 export type UuidConstructor = typeof Uuid;
 export type DecimalConstructor = typeof Decimal;
@@ -301,7 +279,7 @@ export type ARRAY<T extends DbType> = {
   readonly type: T;
 };
 
-export function isSameDbType(type1: DbType, type2: DbType) {
+export function isSameDbType(type1: DbType, type2: DbType): boolean {
   return deepthEqual(type1, type2);
 }
 
@@ -548,7 +526,7 @@ export const DbType = {
  * 用于做实体主键类型
  * 用户可自行使用 合并声明扩展
  */
-// @eslint-ignore
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface EntityKey {}
 
 /**
@@ -564,3 +542,19 @@ export type EntityKeyType = EntityKey[keyof EntityKey] extends never
 export type EntityKeyName = keyof EntityKey extends never
   ? 'id'
   : keyof EntityKey;
+
+/**
+ * 所有数值类型
+ */
+export type Numeric = Decimal | bigint | number;
+
+/**
+ * 所有整形
+ */
+export type Interger = number | bigint;
+
+// /**
+//  * 所浮点类型
+//  */
+// export type Float = number;
+

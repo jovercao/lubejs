@@ -3,18 +3,21 @@
  * 如数据类型、函数、系统变量、系统常量等
  */
 
+import Decimal from 'decimal.js-light';
 import {
   Expression,
   CompatibleExpression,
   Star,
   StandardExpression,
+  Condition,
+  StandardCondition,
 } from './ast';
-import { Binary, DbType, TsTypeOf, Scalar } from './types';
+import { Binary, DbType, TsTypeOf, Scalar, CompatiableObjectName, Numeric } from './types';
 
 export interface Standard {
   count(expr: Star | CompatibleExpression<Scalar>): Expression<number>;
-  avg(expr: CompatibleExpression<number>): Expression<number>;
-  sum(expr: CompatibleExpression<number>): Expression<number>;
+  avg<T extends number | Decimal | bigint>(expr: CompatibleExpression<T>): Expression<T>;
+  sum<T extends number | Decimal | bigint>(expr: CompatibleExpression<T>): Expression<T>;
   max<T extends Exclude<Scalar, Binary>>(expr: Expression<T>): Expression<T>;
   min<T extends Exclude<Scalar, Binary>>(expr: Expression<T>): Expression<T>;
   /**
@@ -26,7 +29,7 @@ export interface Standard {
   identityValue(
     table: CompatibleExpression<string>,
     column: CompatibleExpression<string>
-  ): Expression<number>;
+  ): Expression<number | bigint>;
   /**
    * 转换数据类型
    * @param expr
@@ -245,48 +248,61 @@ export interface Standard {
     value: CompatibleExpression<T>,
     defaultValue: CompatibleExpression<T>
   ): Expression<T>;
-  abs(value: CompatibleExpression<number>): Expression<number>;
-  exp(value: CompatibleExpression<number>): Expression<number>;
-  ceil(value: CompatibleExpression<number>): Expression<number>;
-  floor(value: CompatibleExpression<number>): Expression<number>;
-  ln(value: CompatibleExpression<number>): Expression<number>;
-  log(value: CompatibleExpression<number>): Expression<number>;
+  abs(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  exp(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  ceil(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  ceil(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  floor(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  ln(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  log(value: CompatibleExpression<Numeric>): Expression<Numeric>;
   mod(
-    value: CompatibleExpression<number>,
-    x: CompatibleExpression<number>
-  ): Expression<number>;
+    value: CompatibleExpression<Numeric>,
+    x: CompatibleExpression<Numeric>
+  ): Expression<Numeric>;
   pi(): Expression<number>;
   power(
-    a: CompatibleExpression<number>,
-    b: CompatibleExpression<number>
-  ): Expression<number>;
-  radians(value: CompatibleExpression<number>): Expression<number>;
-  degrees(value: CompatibleExpression<number>): Expression<number>;
+    a: CompatibleExpression<Numeric>,
+    b: CompatibleExpression<Numeric>
+  ): Expression<Numeric>;
+  radians(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  degrees(value: CompatibleExpression<Numeric>): Expression<Numeric>;
   random(): Expression<number>;
-  round(
-    value: CompatibleExpression<number>,
-    s: CompatibleExpression<number>
-  ): Expression<number>;
-  sign(value: CompatibleExpression<number>): Expression<number>;
-  sqrt(value: CompatibleExpression<number>): Expression<number>;
-  cos(value: CompatibleExpression<number>): Expression<number>;
-  sin(value: CompatibleExpression<number>): Expression<number>;
-  tan(value: CompatibleExpression<number>): Expression<number>;
-  acos(value: CompatibleExpression<number>): Expression<number>;
-  asin(value: CompatibleExpression<number>): Expression<number>;
-  atan(value: CompatibleExpression<number>): Expression<number>;
-  atan2(value: CompatibleExpression<number>): Expression<number>;
-  cot(value: CompatibleExpression<number>): Expression<number>;
+  round<T extends Numeric>(
+    value: CompatibleExpression<T>,
+    s: CompatibleExpression<Numeric>
+  ): Expression<T>;
+  sign(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  sqrt(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  cos(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  sin(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  tan(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  acos(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  asin(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  atan(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  atan2(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+  cot(value: CompatibleExpression<Numeric>): Expression<Numeric>;
+
+  existsTable(table: CompatiableObjectName): Condition;
+
+  existsDatabase(database: string): Condition;
+
+  existsView(name: CompatiableObjectName): Condition;
+
+  existsFunction(name: CompatiableObjectName): Condition;
+
+  existsProcedure(name: CompatiableObjectName): Condition;
+
+  existsSequence(name: CompatiableObjectName): Condition;
 }
 
 export const Standard: Standard = {
   count(expr: Star | CompatibleExpression<Scalar>): Expression<number> {
     return StandardExpression.create(Standard.count.name, [expr]);
   },
-  avg(expr: CompatibleExpression<number>): Expression<number> {
+  avg(expr: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.avg.name, [expr]);
   },
-  sum(expr: CompatibleExpression<number>): Expression<number> {
+  sum(expr: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.sum.name, [expr]);
   },
   max<T extends Exclude<Scalar, Binary>>(expr: Expression<T>): Expression<T> {
@@ -304,7 +320,7 @@ export const Standard: Standard = {
   identityValue(
     table: CompatibleExpression<string>,
     column: CompatibleExpression<string>
-  ): Expression<number> {
+  ): Expression<number | bigint> {
     return StandardExpression.create(Standard.identityValue.name, [
       table,
       column,
@@ -464,37 +480,37 @@ export const Standard: Standard = {
   },
   addDays(
     date: CompatibleExpression<Date>,
-    days: CompatibleExpression<number>
+    days: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addDays.name, [date, days]);
   },
   addMonths(
     date: CompatibleExpression<Date>,
-    months: CompatibleExpression<number>
+    months: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addMonths.name, [date, months]);
   },
   addYears(
     date: CompatibleExpression<Date>,
-    years: CompatibleExpression<number>
+    years: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addYears.name, [date, years]);
   },
   addHours(
     date: CompatibleExpression<Date>,
-    hours: CompatibleExpression<number>
+    hours: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addHours.name, [date, hours]);
   },
   addMinutes(
     date: CompatibleExpression<Date>,
-    minutes: CompatibleExpression<number>
+    minutes: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addMinutes.name, [date, minutes]);
   },
   addSeconds(
     date: CompatibleExpression<Date>,
-    seconds: CompatibleExpression<number>
+    seconds: CompatibleExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(Standard.addSeconds.name, [date, seconds]);
   },
@@ -515,8 +531,8 @@ export const Standard: Standard = {
    */
   substr(
     str: CompatibleExpression<string>,
-    start: CompatibleExpression<number>,
-    length: CompatibleExpression<number>
+    start: CompatibleExpression<Numeric>,
+    length: CompatibleExpression<Numeric>
   ): Expression<string> {
     return StandardExpression.create(Standard.substr.name, [start, length]);
   },
@@ -606,20 +622,20 @@ export const Standard: Standard = {
   ): Expression<T> {
     return StandardExpression.create(Standard.nvl.name, [value, defaultValue]);
   },
-  abs(value: CompatibleExpression<number>): Expression<number> {
+  abs(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.abs.name, [value]);
   },
-  exp(value: CompatibleExpression<number>): Expression<number> {
+  exp(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.exp.name, [value]);
   },
   // cbrt(value: CompatibleExpression<number>): Expression<number> {
   //   return StandardExpression.create(Standard.cbrt.name, [value]);
   // }
 
-  ceil(value: CompatibleExpression<number>): Expression<number> {
+  ceil(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.ceil.name, [value]);
   },
-  floor(value: CompatibleExpression<number>): Expression<number> {
+  floor(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.floor.name, [value]);
   },
   ln(value: CompatibleExpression<number>): Expression<number> {
@@ -629,39 +645,39 @@ export const Standard: Standard = {
     return StandardExpression.create(Standard.log.name, [value]);
   },
   mod(
-    value: CompatibleExpression<number>,
-    x: CompatibleExpression<number>
-  ): Expression<number> {
+    value: CompatibleExpression<Numeric>,
+    x: CompatibleExpression<Numeric>
+  ): Expression<Numeric> {
     return StandardExpression.create(Standard.mod.name, [value, x]);
   },
   pi(): Expression<number> {
     return StandardExpression.create(Standard.pi.name, []);
   },
   power(
-    a: CompatibleExpression<number>,
-    b: CompatibleExpression<number>
-  ): Expression<number> {
+    a: CompatibleExpression<Numeric>,
+    b: CompatibleExpression<Numeric>
+  ): Expression<Numeric> {
     return StandardExpression.create(Standard.power.name, [a, b]);
   },
-  radians(value: CompatibleExpression<number>): Expression<number> {
+  radians(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.radians.name, [value]);
   },
-  degrees(value: CompatibleExpression<number>): Expression<number> {
+  degrees(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.degrees.name, [value]);
   },
   random(): Expression<number> {
     return StandardExpression.create(Standard.random.name, []);
   },
-  round(
-    value: CompatibleExpression<number>,
-    s?: CompatibleExpression<number>
-  ): Expression<number> {
+  round<T extends Numeric>(
+    value: CompatibleExpression<T>,
+    s?: CompatibleExpression<Numeric>
+  ): Expression<T> {
     return StandardExpression.create(Standard.round.name, [value, s]);
   },
-  sign(value: CompatibleExpression<number>): Expression<number> {
+  sign(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.sign.name, [value]);
   },
-  sqrt(value: CompatibleExpression<number>): Expression<number> {
+  sqrt(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.sqrt.name, [value]);
   },
   // trunc(
@@ -671,30 +687,54 @@ export const Standard: Standard = {
   //   return StandardExpression.create(Standard.trunc.name, [value, s]);
   // }
 
-  cos(value: CompatibleExpression<number>): Expression<number> {
+  cos(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.cos.name, [value]);
   },
-  sin(value: CompatibleExpression<number>): Expression<number> {
+  sin(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.sin.name, [value]);
   },
-  tan(value: CompatibleExpression<number>): Expression<number> {
+  tan(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.tan.name, [value]);
   },
-  acos(value: CompatibleExpression<number>): Expression<number> {
+  acos(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.acos.name, [value]);
   },
-  asin(value: CompatibleExpression<number>): Expression<number> {
+  asin(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.asin.name, [value]);
   },
-  atan(value: CompatibleExpression<number>): Expression<number> {
+  atan(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.atan.name, [value]);
   },
-  atan2(value: CompatibleExpression<number>): Expression<number> {
+  atan2(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.atan2.name, [value]);
   },
-  cot(value: CompatibleExpression<number>): Expression<number> {
+  cot(value: CompatibleExpression<Numeric>): Expression<Numeric> {
     return StandardExpression.create(Standard.cot.name, [value]);
   },
+
+  existsTable(table: CompatiableObjectName): Condition {
+    return StandardCondition.create(Standard.existsTable.name, [table]);
+  },
+
+  existsDatabase(database: string): Condition {
+    return StandardCondition.create(Standard.existsDatabase.name, [database]);
+  },
+
+  existsView(name: CompatiableObjectName): Condition {
+    return StandardCondition.create(Standard.existsView.name, [name]);
+  },
+
+  existsFunction(name: CompatiableObjectName): Condition {
+    return StandardCondition.create(Standard.existsFunction.name, [name]);
+  },
+
+  existsProcedure(name: CompatiableObjectName): Condition {
+    return StandardCondition.create(Standard.existsProcedure.name, [name]);
+  },
+
+  existsSequence(name: CompatiableObjectName): Condition {
+    return StandardCondition.create(Standard.existsSequence.name, [name]);
+  }
 };
 /********************************************扩展 Expression.to方法**********************************************/
 // declare module lubejs {
