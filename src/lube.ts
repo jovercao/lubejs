@@ -9,7 +9,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { DbContext, DbContextConstructor, LubeConfig } from './orm';
 import { metadataStore } from './metadata';
-import { parseConnectionUrl } from './util';
+import { assignIfUndefined, parseConnectionUrl } from './util';
 
 export type ConnectOptions = {
   /**
@@ -40,14 +40,18 @@ export type ConnectOptions = {
    * 数据库名称
    */
   database?: string;
-  /**
-   * 连接池最大连接数，单位为秒，默认为5
-   */
-  maxConnections?: number;
-  /**
-   * 连接池最小连接数，默认为1
-   */
-  minConnections?: number;
+  // /**
+  //  * 连接池最大连接数，单位为秒，默认为5
+  //  */
+  // maxConnections?: number;
+  // /**
+  //  * 连接池最小连接数，默认为1
+  //  */
+  // minConnections?: number;
+  // /**
+  //  * 回收未使用的连接等待时长，单位: ms，默认为30000ms
+  //  */
+  // recoveryConnection?: number;
   /**
    * 连接超时时长，单位: ms，默认为15000ms
    */
@@ -57,20 +61,16 @@ export type ConnectOptions = {
    */
   requestTimeout?: number;
   /**
-   * 回收未使用的连接等待时长，单位: ms，默认为30000ms
-   */
-  recoveryConnection?: number;
-  /**
    * 编译选项
    */
   sqlOptions?: SqlOptions;
 };
 
-const defaultConnectOptions: Partial<ConnectOptions> = {
+const DEFAULT_CONNECT_OPTIONS: Partial<ConnectOptions> = {
   connectionTimeout: 30,
   requestTimeout: 10 * 60,
-  minConnections: 0,
-  maxConnections: 5,
+  // minConnections: 0,
+  // maxConnections: 5,
 };
 
 export type TransactionHandler<T> = (
@@ -319,6 +319,7 @@ async function getConnectOptions(opt?: ConnectOptions | string | DbContextConstr
     }
     options.driver = driver;
   }
+  assignIfUndefined(options, DEFAULT_CONNECT_OPTIONS);
   return options;
 }
 
