@@ -708,7 +708,7 @@ export class ${name} implements Migrate {
 }
 
 export default ${name};
-  `;
+`;
   }
 
   /**
