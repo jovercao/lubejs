@@ -702,7 +702,7 @@ export class ${name} implements Migrate {
     builder: MigrateBuilder,
     dialect: string
   ): Promise<void> {
-    ${(downcodes && downcodes.map(line => line + ';').join(';\n    ')) || ''}
+    ${(downcodes && downcodes.map(line => line + ';').join('\n    ')) || ''}
   }
 
 }
