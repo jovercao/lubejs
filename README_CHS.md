@@ -93,6 +93,8 @@ node star.js
 
 #### 实体声明
 
+注意： 在使用装饰器模式时, typescript 必须打开`experimentalDecorators`与`emitDecoratorMetadata`选项，否则将无法使用装饰器或者获取装被装饰的属性类型。
+
 - 装饰器声明： [ORM](https://github.com/jovercao/lubejs-tester/blob/master/orm-decorator/index.ts)
 
 - 配置代码声明： [ORM](https://github.com/jovercao/lubejs-tester/blob/master/orm-configure.ts)

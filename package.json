@@ -15,10 +15,9 @@
   ],
   "scripts": {
     "build": "npm run clean && npm run lint && tsc && npm pack",
-    "clean": "pwsh -c 'rm -r -force dist'",
+    "clean": "pwsh -c 'rm -r -force dist;rm -r -force doc'",
     "lint": "eslint --fix ./src --ext .ts",
-    "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src",
-    "migrate": "node --require ts-node/register --require tsconfig-paths/register  ./src/bin.ts migrate"
+    "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src"
   },
   "repository": {
     "type": "git",
