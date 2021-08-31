@@ -43,53 +43,61 @@ npm install lubejs-mssql
 
 ### 开始
 
-**typescript:**
+第一个
 
 ```ts
 // start.ts
 import { createLube, SqlBuilder as SQL } from 'lubejs'
+// 导入mssql驱动
 import 'lubejs-mssql'
 
 (async () => {
+  // 创建连接
   const db = await createLube('mssql://user:password@localhost:1433/database');
-
-  await db.query(SQL.select(1));
+  // SELECT 'hello world'
+  console.log(await db.queryScalar(SQL.select('hello world!')));  // 'hello world'
 })()
-
 ```
 
-安装`ts-node`并运行`ts-node start.js`启动
-或者执行`tsc`编译后`node start.js`启动
 
-**javascript:**
 
-```js
-// start.js
-const { createLube, SqlBuilder: SQL } = require('lubejs')
-require('lubejs-mssql')
+## 数据库操作
 
-(async () => {
-  const db = await createLube('mssql://user:password@localhost:1433/database');
+### 创建连接
 
-  await db.query(SQL.select(1));
-})()
+```ts
+const db = await createLube('mssql://user:password@localhost:1433/database');
 
 ```
-
-运行 `node start.js`启动
-
-```base
-node star.js
-
-```
-
-## 进阶
 
 ### 增删改查
 
-范例： [start.ts](https://github.com/jovercao/lubejs-tester/blob/master/start.ts)
+#### 插入
 
-### ORM
+```ts
+await db.insert('tableName', {
+  strField: 'value',
+  numField: 1,
+  decimalField: new Decimal('1.0321'),
+  bigintField: 939483n,
+
+})
+```
+
+#### 删除
+
+
+
+#### 修改
+
+#### 查询
+
+
+#### 完整范例
+
+> 范例： [start.ts](https://github.com/jovercao/lubejs-tester/blob/master/start.ts)
+
+### ORM实体
 
 #### 实体声明
 
