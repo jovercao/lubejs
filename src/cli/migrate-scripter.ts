@@ -7,14 +7,13 @@ import {
   KeyColumn,
   CompatiableObjectName,
   DbType,
-} from '../ast';
-import { SqlBuilder as SQL } from '../sql-builder';
+} from '../core';
+import { SQL } from '../core/sql-builder';
 
 import { MigrateBuilder } from './migrate-builder';
 import {
   CheckConstraintSchema,
   ColumnSchema,
-  compareSchema,
   ConstraintSchema,
   DatabaseSchema,
   ForeignKeySchema,
@@ -23,9 +22,9 @@ import {
   SequenceSchema,
   TableSchema,
   UniqueConstraintSchema,
-} from '../orm/schema';
+} from '../orm';
 import { sortByDependency } from './util';
-import { ObjectDifference } from '../orm/compare';
+import { compareSchema, ObjectDifference } from './compare';
 
 export abstract class MigrateScripter<T extends string | Statement> {
   protected beforeCodes: T[] = [];

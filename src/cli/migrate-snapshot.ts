@@ -11,7 +11,7 @@ import {
   SequenceSchema,
   TableSchema,
   ViewSchema,
-} from '../orm/schema';
+} from '../orm';
 import { assertAst, isSameObject } from './util';
 import {
   AllStatement,
@@ -28,9 +28,8 @@ import {
   SQL_SYMBOLE,
   SQL_SYMBOLE_TABLE_MEMBER,
   STATEMENT_KIND,
-} from '../ast';
-
-import { SqlUtil } from '../base/sql-util';
+  SqlUtil,
+} from '../core';
 
 export class SnapshotMigrateBuilder extends MigrateBuilder {
   // existsTable(table: CompatiableObjectName<string>): Condition {

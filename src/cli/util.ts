@@ -1,4 +1,4 @@
-import { CompatiableObjectName } from "../ast";
+import { CompatiableObjectName } from "../core";
 
 export function sortByDependency<T>(
   source: T[],

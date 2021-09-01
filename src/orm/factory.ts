@@ -1,5 +1,5 @@
-import { Connection, ConnectOptions } from '../base/connection';
-import { loadConfig, prepareConnectOptions } from '../config';
+import { Connection, ConnectOptions } from '../core/base/connection';
+import { loadConfig, prepareConnectOptions } from '../core/config';
 import { connect } from '../core';
 import { DbContext, DbContextConstructor } from './db-context';
 import { metadataStore } from './metadata-store';
@@ -64,7 +64,7 @@ export async function createContext(
 }
 
 
-export async function getConnectOptions(
+async function getConnectOptions(
   opt?: ConnectOptions | string | DbContextConstructor
 ): Promise<ConnectOptions> {
   let options: ConnectOptions | undefined;

@@ -29,9 +29,9 @@ import {
   Scalar,
   Statement,
   Update,
-} from '../ast';
-import { CompatibleExpression } from '../ast/expression/expression';
-import { SqlBuilder as SQL } from '../sql-builder';
+  CompatibleExpression,
+  SQL
+} from '../core';
 
 export abstract class MigrateBuilder {
   use(name: string): Statement {

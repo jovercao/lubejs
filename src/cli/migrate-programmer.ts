@@ -12,9 +12,7 @@ import {
   TableSchema,
   UniqueConstraintSchema,
 } from '../orm/schema';
-import { SqlUtil } from '../base/sql-util';
-import { CompatiableObjectName } from '../ast/object/db-object';
-import { DbType } from '../ast/db-type';
+import { CompatiableObjectName, DbType, SqlUtil } from '../core';
 
 // export class MigrateProgrammer {
 //   constructor(private sqlUtil: SqlUtil, private builderName: string) {

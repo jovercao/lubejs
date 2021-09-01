@@ -1,4 +1,4 @@
-import { Decimal, RowObject, Uuid } from '../ast';
+import { Decimal, Uuid } from '../core';
 import { FetchRelations, ScalarType } from './types';
 
 const PropertySelector: any = new Proxy(

@@ -1,24 +1,33 @@
+import 'colors';
 import { existsSync, mkdirSync, promises } from 'fs';
 import { dirname, join, resolve } from 'path';
-import { Raw, Statement } from '../ast';
-import { SqlBuilder as SQL } from '../sql-builder';
-import { DbContext, DbContextConstructor, DbInstance } from '../orm/db-context';
-import { DatabaseSchema, generateSchema } from '../orm/schema';
-import { MigrateBuilder } from './migrate-builder';
 import { mkdir, readFile } from 'fs/promises';
-import 'colors';
-import { ConnectOptions } from '../base/connection';
-import { createContext } from '../orm/factory';
 import md5 from 'crypto-js/md5';
+import {
+  DbContext,
+  DbContextConstructor,
+  DbInstance,
+  DatabaseSchema,
+  generateSchema,
+  createContext,
+  metadataStore,
+} from '../orm';
 import {
   SnapshotMigrateBuilder,
   SnapshotMigrateTracker,
 } from './migrate-snapshot';
+import {
+  Raw,
+  Statement,
+  SQL,
+  ConnectOptions,
+  DbType,
+  Command,
+} from '../core';
+import { MigrateBuilder } from './migrate-builder';
 import { StatementMigrateScripter } from './migrate-scripter';
 import { ProgramMigrateScripter } from './migrate-programmer';
-import { metadataStore } from '../orm/metadata-store';
-import { Command } from '../base/types';
-import { DbType } from '../ast/db-type';
+import './types';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {

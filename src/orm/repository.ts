@@ -1,31 +1,48 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { ColumnsOf, ProxiedRowset, ProxiedTable, Condition, Scalar, isStringType } from '../ast';
+import {
+  ColumnsOf,
+  ProxiedRowset,
+  ProxiedTable,
+  Condition,
+  isStringType,
+  isScalar,
+  SQL,
+} from '../core';
 import { Queryable } from './queryable';
 import {
   ColumnMetadata,
+  ManyToManyMetadata,
+  OneToManyMetadata,
+  PrimaryOneToOneMetadata,
+  TableEntityMetadata,
+} from './metadata';
+import { AsyncEventEmitter } from './async-event';
+import { DbInstance } from './db-context';
+import {
+  Entity,
+  EntityConstructor,
+  EntityInstance,
+  EntityKeyType,
+} from './entity';
+import {
+  DbEvents,
+  FetchRelations,
+  RelationKeyOf,
+  RepositoryEventHandler,
+} from './types';
+import {
   isForeignOneToOne,
   isManyToMany,
   isManyToOne,
   isOneToMany,
   isPrimaryOneToOne,
-  ManyToManyMetadata,
-  OneToManyMetadata,
-  PrimaryOneToOneMetadata,
-  TableEntityMetadata,
-} from './metadata'
-import { AsyncEventEmitter } from './async-event';
-import { DbInstance } from './db-context';
-import { Entity, EntityConstructor, EntityInstance, EntityKeyType } from './entity';
-import { SqlBuilder } from '../sql-builder';
-import { isScalar } from '../ast/scalar/util';
-import { DbEvents, FetchRelations, RelationKeyOf, RepositoryEventHandler } from './types';
+} from './metadata/util';
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 
 // TODO: Lube 事务嵌套支持
-
 
 export type FetchOptions<T> = {
   includes?: FetchRelations<T>;
@@ -75,8 +92,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     options?: FetchOptions<T>
   ): Promise<EntityInstance<T> | undefined> {
     let query = this.filter(rowset =>
-      rowset[this.metadata.key.column.columnName as ColumnsOf<T>]
-        .eq(key as any)
+      rowset[this.metadata.key.column.columnName as ColumnsOf<T>].eq(key as any)
     );
     if (options?.includes) {
       query = query.include(options.includes);
@@ -103,7 +119,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
       if (options?.withoutRelations !== true) {
         await this.saveSuperiors(
           item,
-          options?.withoutRelations === false ? undefined : options?.withoutRelations
+          options?.withoutRelations === false
+            ? undefined
+            : options?.withoutRelations
         );
       }
       const row: any = Object.create(null);
@@ -133,7 +151,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       await this.executor.insert(this.rowset, row);
 
       const key = this.metadata.key.column.isIdentity
-        ? SqlBuilder.identityValue(
+        ? SQL.identityValue(
             this.metadata.dbName,
             this.metadata.key.column.columnName
           )
@@ -239,7 +257,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
         // 保存父表项
         await this.saveSuperiors(
           item,
-          options?.withoutRelations === false ? undefined : options?.withoutRelations
+          options?.withoutRelations === false
+            ? undefined
+            : options?.withoutRelations
         );
       }
       const changes: any = {};
@@ -257,14 +277,19 @@ export class Repository<T extends Entity> extends Queryable<T> {
         );
       }
 
-      const updated = await this.executor.find(this.rowset, this.getWhere(item));
+      const updated = await this.executor.find(
+        this.rowset,
+        this.getWhere(item)
+      );
       this.toEntity(updated, item);
 
       if (options?.withoutRelations !== true) {
         // 保存子项
         await this.saveSubordinates(
           item,
-          options?.withoutRelations === false ? undefined : options?.withoutRelations
+          options?.withoutRelations === false
+            ? undefined
+            : options?.withoutRelations
         );
       }
     }
@@ -415,7 +440,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     return this;
   }
 
-  private async _save(items: T | T[], options?: SaveOptions<any>): Promise<void> {
+  private async _save(
+    items: T | T[],
+    options?: SaveOptions<any>
+  ): Promise<void> {
     if (!Array.isArray(items)) {
       items = [items];
     }
@@ -492,8 +520,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     withoutRelations?: RelationKeyOf<any>[]
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes?.(relation.property))
-        continue;
+      if (withoutRelations?.includes?.(relation.property)) continue;
       if (Reflect.get(item, relation.property) === undefined) continue;
       if (isForeignOneToOne(relation) || isManyToOne(relation)) {
         const dependent = Reflect.get(item, relation.property);
@@ -527,8 +554,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     skipCompare: boolean = false
   ): Promise<void> {
     for (const relation of this.metadata.relations) {
-      if (withoutRelations?.includes?.(relation.property))
-        continue;
+      if (withoutRelations?.includes?.(relation.property)) continue;
       if (Reflect.get(item, relation.property) === undefined) continue;
 
       if (isOneToMany(relation)) {
@@ -609,7 +635,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
 
     // 删除多余的子项
     for (const subItem of subSnapshots) {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
+      const subKey = Reflect.get(
+        subItem,
+        relation.referenceEntity.key.property
+      );
       if (!itemsMap[subKey]) {
         await repo.delete(subItem);
       }
@@ -634,7 +663,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     const subItems: any[] = Reflect.get(item, relation.property);
 
     const makeRelationItem: (subItem: any) => any = (subItem: any) => {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
+      const subKey = Reflect.get(
+        subItem,
+        relation.referenceEntity.key.property
+      );
       const relationItem = new relation.relationClass();
       relationRepo._setProperty(
         relationItem,
@@ -688,7 +720,10 @@ export class Repository<T extends Entity> extends Queryable<T> {
     });
 
     const newSubItems: any[] = subItems.filter((subItem: any) => {
-      const subKey = Reflect.get(subItem, relation.referenceEntity.key.property);
+      const subKey = Reflect.get(
+        subItem,
+        relation.referenceEntity.key.property
+      );
       return !snapshotMap[subKey];
     });
 

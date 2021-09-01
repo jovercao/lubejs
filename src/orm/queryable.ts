@@ -14,29 +14,25 @@ import {
   RowObject,
   NamedSelect,
   isStringType,
-} from '../ast';
-import { SqlBuilder as SQL } from '../sql-builder';
+  Executor,
+  SQL,
+} from '../core';
 import { DbInstance } from './db-context';
-import { Executor } from '../base/executor';
-import {
-  EntityMetadata,
-  makeRowset,
-  isManyToMany,
-  isManyToOne,
-  isOneToMany,
-  isForeignOneToOne,
-  isPrimaryOneToOne,
-  ColumnMetadata,
-  RelationMetadata,
-  aroundRowset,
-} from './metadata';
+import { EntityMetadata, ColumnMetadata, RelationMetadata } from './metadata';
 import { Repository } from './repository';
-import {
-  Constructor, FetchRelations, RelationKeyOf
-} from './types';
+import { FetchRelations, RelationKeyOf } from './types';
 import { Entity, EntityConstructor, EntityInstance } from './entity';
 import { mergeFetchRelations } from './util';
 import { metadataStore } from './metadata-store';
+import {
+  makeRowset,
+  aroundRowset,
+  isPrimaryOneToOne,
+  isForeignOneToOne,
+  isOneToMany,
+  isManyToOne,
+  isManyToMany,
+} from './metadata/util';
 
 // import { getMetadata } from 'typeorm'
 
@@ -64,7 +60,9 @@ export class Queryable<T extends Entity | RowObject>
     Entity: EntityConstructor<T> // constructor(
   ) {
     if (Entity) {
-      this.metadata = metadataStore.getEntity(Entity as Constructor<Entity>);
+      this.metadata = metadataStore.getEntity(
+        Entity as EntityConstructor<Entity>
+      );
       if (!this.metadata) {
         throw new Error(`Only allow register entity constructor.`);
       }
@@ -163,7 +161,9 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 过滤数据并返回一个新的Queryable
    */
-  filter(condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
+  filter(
+    condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
+  ): Queryable<T> {
     const queryable = this.fork(
       select(this.rowset._)
         .from(this.rowset)
@@ -220,7 +220,7 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   join<J extends Entity, G extends InputObject>(
-    entity: Constructor<J>,
+    entity: EntityConstructor<J>,
     on: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => Condition,
     results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G
   ): Queryable<RowObjectFrom<G>> {
@@ -262,7 +262,7 @@ export class Queryable<T extends Entity | RowObject>
 
   getSql(): Select<T> {
     if (NamedSelect.isNamedSelect(this.rowset)) {
-      return this.rowset.$select as Select<T>
+      return this.rowset.$select as Select<T>;
     }
     return select(this.rowset._).from(this.rowset);
   }

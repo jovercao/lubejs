@@ -5,7 +5,7 @@ import {
   Scalar,
   Uuid,
   UuidConstructor,
-} from '../ast/scalar';
+} from '../core';
 import { Entity, EntityConstructor } from './entity';
 
 /**
@@ -67,7 +67,7 @@ export declare type DataTypeOf<T> = T extends string
   ? ObjectConstructor
   : T extends (infer M)[]
   ? M extends object
-    ? [Constructor<M>]
+    ? [new (...args: any) => M]
     : [DataTypeOf<M>]
   : never;
 
@@ -85,12 +85,12 @@ export declare type ScalarType =
   | ArrayConstructor
   | UuidConstructor;
 
-/**
- * 构造函数，即类本身
- */
-export declare type Constructor<T = object> = {
-  new (...args: any): T;
-};
+// /**
+//  * 构造函数，即类本身
+//  */
+// export declare type Constructor<T = object> = {
+//   new (...args: any): T;
+// };
 
 export declare type EntityType = EntityConstructor<Entity>;
 /******************************* Model 相关声明 *********************************/

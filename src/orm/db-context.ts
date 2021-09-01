@@ -1,5 +1,5 @@
-import { Executor } from '../base/executor';
-import { Connection } from '../base/connection';
+import { EventEmitter } from 'events';
+import { Executor, Connection } from '../core';
 import { Queryable } from './queryable';
 import {
   DeleteOptions,
@@ -7,9 +7,13 @@ import {
   Repository,
   SaveOptions,
 } from './repository';
-import { EventEmitter } from 'stream';
 import { DbContextMetadata } from './metadata';
-import { Entity, EntityConstructor, EntityInstance, EntityKeyType } from './entity';
+import {
+  Entity,
+  EntityConstructor,
+  EntityInstance,
+  EntityKeyType,
+} from './entity';
 import { DbContextEventHandler, DbEvents } from './types';
 import { metadataStore } from './metadata-store';
 
