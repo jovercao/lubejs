@@ -1,28 +1,36 @@
-import assert from "assert";
-import EventEmitter from "events";
-import { CompatibleCondition, Condition } from "../ast/condition/condition";
-import { Document } from "../ast/document";
-import { Parameter } from "../ast/expression/parameter";
-import { ProxiedRowset, Rowset } from "../ast/rowset/rowset";
-import { Scalar } from "../ast/scalar";
-import { CompatibleSortInfo, Sort } from "../ast/statement/crud/sort";
-import { Statement } from "../ast/statement/statement";
-import { AsScalarType, ColumnsOf, InputObject, RowObjectFrom, WhereObject } from "../ast/types";
-import { RowObject } from "../ast/types";
-import { SqlUtil } from "./sql-util";
-import { SQL } from "../sql-builder";
-import { Select } from "../ast/statement/crud/select";
-import { Execute } from "../ast/statement/programmer/execute";
-import { CompatiableObjectName } from "../ast/object/db-object";
-import { CompatibleExpression } from "../ast/expression/expression";
-import { ProxiedTable, Table } from "../ast/rowset/table";
-import { Field } from "../ast/expression/field";
-import { isScalar } from "../ast/scalar/util";
-import { Assignment } from "../ast/statement/programmer/assignment";
-import { Procedure } from "../ast/object/procedure";
-import { Connection } from "./connection";
-import { Command, QueryResult } from "./types";
-
+import assert from 'assert';
+import EventEmitter from 'events';
+import { CompatibleCondition, Condition } from '../sql/condition/condition';
+import { SqlUtil } from './sql-util';
+import { Connection } from './connection';
+import { Command, QueryResult } from './types';
+import {
+  SQL,
+  RowObject,
+  WhereObject,
+  ProxiedRowset,
+  CompatibleSortInfo,
+  Sort,
+  Parameter,
+  Scalar,
+  Statement,
+  Document,
+  Select,
+  Execute,
+  InputObject,
+  AsScalarType,
+  CompatiableObjectName,
+  Table,
+  CompatibleExpression,
+  ProxiedTable,
+  ColumnsOf,
+  Field,
+  isScalar,
+  Rowset,
+  RowObjectFrom,
+  Assignment,
+  Procedure,
+} from '../sql';
 
 const { and, doc } = SQL;
 
@@ -50,7 +58,10 @@ export const INSERT_MAXIMUM_ROWS = 2000;
  * 数据执行器
  */
 export abstract class Executor {
-  protected abstract doQuery(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
+  protected abstract doQuery(
+    sql: string,
+    params?: Parameter[]
+  ): Promise<QueryResult<any, any, any>>;
 
   protected _emitter: EventEmitter = new EventEmitter();
 
@@ -513,4 +524,3 @@ export abstract class Executor {
     return res as any;
   }
 }
-

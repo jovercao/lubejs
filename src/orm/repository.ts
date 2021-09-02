@@ -151,7 +151,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       await this.executor.insert(this.rowset, row);
 
       const key = this.metadata.key.column.isIdentity
-        ? SQL.identityValue(
+        ? SQL.std.identityValue(
             this.metadata.dbName,
             this.metadata.key.column.columnName
           )

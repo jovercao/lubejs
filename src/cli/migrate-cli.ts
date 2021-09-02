@@ -520,7 +520,7 @@ class MigrateCliClass {
             SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
               builder.column('migrate_id', DbType.string(100)).primaryKey(),
               builder.column('hash', DbType.string(32)).notNull(),
-              builder.column('date', DbType.datetime).default(SQL.now()),
+              builder.column('date', DbType.datetime).default(SQL.std.now()),
             ])
           );
         }
@@ -699,8 +699,7 @@ class MigrateCliClass {
       this.dbContext.connection.sqlUtil,
       notResolverType
     );
-    const defaultSchema =
-      await this.dbContext.connection.getDefaultSchema();
+    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
     scripter.migrate(defaultSchema, source, target);
     const upCodes = scripter.getScripts();
     scripter.clear();
@@ -744,8 +743,7 @@ export default ${name};
   async sync(outputPath?: string): Promise<void> {
     const metadataSchema = generateSchema(this.dbContext);
 
-    const defaultSchema =
-      await this.dbContext.connection.getDefaultSchema();
+    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
     // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
     const dbSchema: DatabaseSchema | undefined = await this.getDbSchema();
     // 如果数据库不存在，先创建数据库
@@ -803,8 +801,7 @@ export default ${name};
     const list = await this._list();
     let needRetrace = false;
     let currentHash: string = '';
-    const defaultSchema =
-      await this.dbContext.connection.getDefaultSchema();
+    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
     for (const item of list) {
       if (!currentHash) {
         currentHash = await getFileHash(item.path);

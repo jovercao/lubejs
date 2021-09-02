@@ -7,8 +7,8 @@ import {
   KeyColumn,
   CompatiableObjectName,
   DbType,
+  SQL
 } from '../core';
-import { SQL } from '../core/sql-builder';
 
 import { MigrateBuilder } from './migrate-builder';
 import {

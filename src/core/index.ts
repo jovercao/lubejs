@@ -5,8 +5,7 @@ import { prepareConnectOptions } from './config';
 /**
  * 仅核心功能包，不包括ORM内容
  */
-export * from './ast';
-export * from './sql-builder';
+export * from './sql';
 export * from './base/connection';
 export * from './base/db-provider';
 export * from './base/executor';

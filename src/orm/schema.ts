@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
-import { SQL } from '../core/sql-builder';
+import { SQL } from '../core';
 import { DbContext } from './db-context';
 import {
   ColumnMetadata,

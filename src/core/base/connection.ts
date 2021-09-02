@@ -1,4 +1,4 @@
-import { SQL } from '../sql-builder';
+import { SQL } from '../sql';
 import { DbProvider } from './db-provider';
 import { Executor } from './executor';
 import { SqlOptions } from './sql-util';
@@ -67,11 +67,11 @@ export abstract class Connection extends Executor {
    * 获取当前数据库
    */
   async getDatabase(): Promise<string> {
-    return await this.queryScalar(SQL.select(SQL.currentDatabase()));
+    return await this.queryScalar(SQL.select(SQL.std.currentDatabase()));
   }
 
   async getDefaultSchema(): Promise<string> {
-    return await this.queryScalar(SQL.select(SQL.defaultSchema()));
+    return await this.queryScalar(SQL.select(SQL.std.defaultSchema()));
   }
 
   /**

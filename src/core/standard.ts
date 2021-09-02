@@ -17,22 +17,19 @@ import {
   StandardExpression,
   StandardCondition,
   Float,
-} from './ast';
+} from './sql';
 
 export class Standard {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   protected constructor() {}
   static std: Standard = new Standard();
   count(expr: Star | CompatibleExpression<Scalar>): Expression<number> {
     return StandardExpression.create(STD.count.name, [expr]);
   }
-  avg<T extends Numeric>(
-    expr: CompatibleExpression<T>
-  ): Expression<T> {
+  avg<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T> {
     return StandardExpression.create(STD.avg.name, [expr]);
   }
-  sum<T extends Numeric>(
-    expr: CompatibleExpression<T>
-  ): Expression<T> {
+  sum<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T> {
     return StandardExpression.create(STD.sum.name, [expr]);
   }
 
@@ -49,10 +46,7 @@ export class Standard {
     table: CompatibleExpression<string>,
     column: CompatibleExpression<string>
   ): Expression<number | bigint> {
-    return StandardExpression.create(STD.identityValue.name, [
-      table,
-      column,
-    ]);
+    return StandardExpression.create(STD.identityValue.name, [table, column]);
   }
   /**
    * 转换数据类型
@@ -60,7 +54,7 @@ export class Standard {
   convert<T extends DbType>(
     expr: CompatibleExpression,
     toType: T
-  ): Expression<TsTypeOf<T>>  {
+  ): Expression<TsTypeOf<T>> {
     return StandardExpression.create(STD.convert.name, [expr, toType]);
   }
   /**
@@ -82,10 +76,7 @@ export class Standard {
     date: CompatibleExpression<Date>,
     offset: CompatibleExpression<string>
   ): Expression<Date> {
-    return StandardExpression.create(STD.switchTimezone.name, [
-      date,
-      offset,
-    ]);
+    return StandardExpression.create(STD.switchTimezone.name, [date, offset]);
   }
   /**
    * 格式化日期函数
@@ -178,10 +169,7 @@ export class Standard {
     start: CompatibleExpression<Date>,
     end: CompatibleExpression<Date>
   ): Expression<number> {
-    return StandardExpression.create(STD.minutesBetween.name, [
-      start,
-      end,
-    ]);
+    return StandardExpression.create(STD.minutesBetween.name, [start, end]);
   }
   /**
    * 计算两个日期之间的天数，小数
@@ -193,10 +181,7 @@ export class Standard {
     start: CompatibleExpression<Date>,
     end: CompatibleExpression<Date>
   ): Expression<number> {
-    return StandardExpression.create(STD.secondsBetween.name, [
-      start,
-      end,
-    ]);
+    return StandardExpression.create(STD.secondsBetween.name, [start, end]);
   }
   addDays(
     date: CompatibleExpression<Date>,
@@ -313,11 +298,7 @@ export class Standard {
     search: CompatibleExpression<string>,
     startAt?: CompatibleExpression<number>
   ): Expression<number> {
-    return StandardExpression.create(STD.strpos.name, [
-      str,
-      search,
-      startAt,
-    ]);
+    return StandardExpression.create(STD.strpos.name, [str, search, startAt]);
   }
   /**
    * 获取一个字符的ascii码

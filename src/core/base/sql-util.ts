@@ -1,88 +1,89 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'assert';
-import { AST } from '../ast/ast';
-import { BinaryCompareCondition } from '../ast/condition/binary-compare-condition';
-import { BinaryLogicCondition } from '../ast/condition/binary-logic-condition';
-import { Condition } from '../ast/condition/condition';
-import { ExistsCondition } from '../ast/condition/exists-condition';
-import { GroupCondition } from '../ast/condition/group-condition';
-import { StandardCondition } from '../ast/condition/standard-condition';
-import { UnaryCompareCondition } from '../ast/condition/unary-compare-condition';
-import { UnaryLogicCondition } from '../ast/condition/unary-logic-condition';
-import { DbType } from '../ast/db-type';
-import { Document } from '../ast/document';
-import { BinaryOperation } from '../ast/expression/binary-operation';
-import { Case } from '../ast/expression/case';
-import { Operation } from '../ast/expression/common/operation';
-import { Expression } from '../ast/expression/expression';
-import { Field } from '../ast/expression/field';
-import { GroupExpression } from '../ast/expression/group-expression';
-import { Literal } from '../ast/expression/literal';
-import { Parameter } from '../ast/expression/parameter';
-import { StandardExpression } from '../ast/expression/standard-expression';
-import { UnaryOperation } from '../ast/expression/unary-operation';
-import { ValuedSelect } from '../ast/expression/valied-select';
-import { Variant } from '../ast/expression/variant';
-import { BuiltIn } from '../ast/object/built-in';
 import {
   CompatiableObjectName,
+  Raw,
+  Field,
+  DbType,
+  Scalar,
+  StandardExpression,
+  Expression,
+  StandardStatement,
+  Statement,
+  StandardCondition,
+  Condition,
+  Parameter,
   DBObject,
+  Variant,
+  Document,
   ObjectName,
-} from '../ast/object/db-object';
-import { Raw } from '../ast/raw';
-import { NamedSelect } from '../ast/rowset/named-select';
-import { Rowset } from '../ast/rowset/rowset';
-import { Table } from '../ast/rowset/table';
-import { TableVariant } from '../ast/rowset/table-variant';
-import { WithSelect } from '../ast/rowset/with-select';
-import { Scalar } from '../ast/scalar/scalar';
-import { Standard, STD } from '../standard';
-import { Annotation } from '../ast/statement/other/annotation';
-import { Block } from '../ast/statement/control/block';
-import { Break } from '../ast/statement/control/break';
-import { Continue } from '../ast/statement/control/continue';
-import { If } from '../ast/statement/control/if';
-import { While } from '../ast/statement/control/while';
-import { Join } from '../ast/statement/crud/common/join';
-import { Delete } from '../ast/statement/crud/delete';
-import { Insert } from '../ast/statement/crud/insert';
-import { Select } from '../ast/statement/crud/select';
-import { SelectColumn } from '../ast/statement/crud/select-column';
-import { Sort } from '../ast/statement/crud/sort';
-import { Star } from '../ast/statement/crud/star';
-import { Union } from '../ast/statement/crud/union';
-import { Update } from '../ast/statement/crud/update';
-import { Declare } from '../ast/statement/declare';
-import { AlterDatabase } from '../ast/statement/migrate/alter-database';
-import { AlterFunction } from '../ast/statement/migrate/alter-function';
-import { AlterProcedure } from '../ast/statement/migrate/alter-procedure';
-import { AlterTable, CreateView } from '../ast/statement/migrate/alter-table';
-import { AlterView } from '../ast/statement/migrate/alter-view';
-import { CreateDatabase } from '../ast/statement/migrate/create-database';
-import { CreateFunction } from '../ast/statement/migrate/create-function';
-import { CreateIndex } from '../ast/statement/migrate/create-index';
-import { CreateProcedure } from '../ast/statement/migrate/create-procedure';
-import { CreateSequence } from '../ast/statement/migrate/create-sequence';
-import { CreateTable } from '../ast/statement/migrate/create-table';
-import { DropDatabase } from '../ast/statement/migrate/drop-database';
-import { DropFunction } from '../ast/statement/migrate/drop-function';
-import { DropIndex } from '../ast/statement/migrate/drop-index';
-import { DropProcedure } from '../ast/statement/migrate/drop-procedure';
-import { DropSequence } from '../ast/statement/migrate/drop-sequence';
-import { DropTable } from '../ast/statement/migrate/drop-table';
-import { DropView } from '../ast/statement/migrate/drop-view';
-import { ProcedureParameter } from '../ast/statement/migrate/procedure-parameter';
-import { Use } from '../ast/statement/migrate/use';
-import { Assignment } from '../ast/statement/programmer/assignment';
-import { Execute } from '../ast/statement/programmer/execute';
-import { ScalarFuncInvoke } from '../ast/statement/programmer/scalar-func-invoke';
-import { TableFuncInvoke } from '../ast/statement/programmer/table-func-invoke';
-import { StandardStatement } from '../ast/statement/other/standard-statement';
-import { Statement } from '../ast/statement/statement';
-import { TableVariantDeclare } from '../ast/statement/declare/table-variant-declare';
-import { VariantDeclare } from '../ast/statement/declare/variant-declare';
-import { When } from '../ast/expression/when';
-import { With } from '../ast/statement/crud/with';
+  SQL,
+  Annotation,
+  Select,
+  Update,
+  Insert,
+  Delete,
+  Declare,
+  Execute,
+  Assignment,
+  CreateTable,
+  AlterTable,
+  DropTable,
+  CreateView,
+  AlterView,
+  DropView,
+  CreateProcedure,
+  AlterProcedure,
+  DropProcedure,
+  CreateFunction,
+  AlterFunction,
+  DropFunction,
+  CreateIndex,
+  DropIndex,
+  CreateSequence,
+  DropSequence,
+  Block,
+  If,
+  While,
+  Break,
+  Continue,
+  CreateDatabase,
+  AlterDatabase,
+  DropDatabase,
+  Use,
+  GroupExpression,
+  ValuedSelect,
+  UnaryOperation,
+  BinaryOperation,
+  Rowset,
+  NamedSelect,
+  BuiltIn,
+  SelectColumn,
+  Star,
+  WithSelect,
+  With,
+  Union,
+  Case,
+  When,
+  GroupCondition,
+  BinaryLogicCondition,
+  BinaryCompareCondition,
+  UnaryCompareCondition,
+  ExistsCondition,
+  UnaryLogicCondition,
+  Literal,
+  ScalarFuncInvoke,
+  TableFuncInvoke,
+  Join,
+  Sort,
+  Table,
+  TableVariant,
+  TableVariantDeclare,
+  VariantDeclare,
+  ProcedureParameter,
+  Operation
+} from '../sql';
+import { Standard } from '../standard';
 import { Command } from './types';
 
 /**
@@ -388,7 +389,7 @@ export abstract class SqlUtil {
     /**
      * 父级AST
      */
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(statement)) {
       return statement.$sql;
@@ -575,7 +576,7 @@ export abstract class SqlUtil {
   protected sqlifyValuedSelect(
     expr: ValuedSelect<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     return `(${this.sqlifySelect(expr.$select, params, parent)})`;
   }
@@ -583,7 +584,7 @@ export abstract class SqlUtil {
   protected sqlifyOperation(
     operation: Operation,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     if (UnaryOperation.isUnaryOperation(operation)) {
       return this.sqlifyUnaryOperation(operation, params, parent);
@@ -599,7 +600,7 @@ export abstract class SqlUtil {
   protected sqlifyUnaryOperation(
     opt: UnaryOperation<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     return opt.$operator + this.sqlifyExpression(opt.$value, params, parent);
   }
@@ -638,7 +639,7 @@ export abstract class SqlUtil {
   protected sqlifyColumn(
     column: SelectColumn<Scalar, string> | Star | Expression<Scalar> | Raw,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(column)) {
       return column.$sql;
@@ -662,7 +663,7 @@ export abstract class SqlUtil {
   protected sqlifyWithSelect(
     item: WithSelect<any, string> | Raw,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(item)) return item.$sql;
     return `${this.quoted(item.$name)} AS (${this.sqlifySelect(
@@ -704,13 +705,13 @@ export abstract class SqlUtil {
     exec: Execute,
     params: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    parent?: AST
+    parent?: SQL
   ): string;
 
   protected sqlifyInvokeArgumentList(
     args: Expression<Scalar>[],
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     return args
       .map(expr => this.sqlifyExpression(expr, params, parent))
@@ -720,7 +721,7 @@ export abstract class SqlUtil {
   protected sqlifyExecuteArgumentList(
     args: Expression<Scalar>[],
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     return args
       .map(ast => {
@@ -752,7 +753,7 @@ export abstract class SqlUtil {
   protected sqlifyCase(
     caseExpr: Case<any>,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     let fragment = 'CASE';
     if (caseExpr.$expr)
@@ -860,7 +861,7 @@ export abstract class SqlUtil {
   public sqlifyExpression(
     expr: Expression<Scalar> | Raw,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(expr)) {
       return expr.$sql;
@@ -914,7 +915,7 @@ export abstract class SqlUtil {
   protected sqlifyScalarInvokeArgs(
     arg: Expression | Star | BuiltIn,
     params?: Set<Parameter>,
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Star.isStar(arg)) return this.sqlifyStar(arg);
     if (BuiltIn.isBuiltIn(arg)) return this.sqlifyBuildIn(arg);
@@ -970,7 +971,7 @@ export abstract class SqlUtil {
   protected sqlifySelect(
     select: Select,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     const {
       $with,
@@ -1050,7 +1051,7 @@ export abstract class SqlUtil {
     table: Rowset | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(table)) {
       return table.$sql;
@@ -1085,7 +1086,7 @@ export abstract class SqlUtil {
     condition: Condition | Raw,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    parent?: AST
+    parent?: SQL
   ): string {
     if (Raw.isRaw(condition)) return condition.$sql;
     if (ExistsCondition.isExistsCondition(condition)) {
@@ -1140,7 +1141,7 @@ export abstract class SqlUtil {
   protected sqlifyInsert(
     insert: Insert,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     const { $table, $values, $fields, $with } = insert;
     let sql = '';
@@ -1183,7 +1184,7 @@ export abstract class SqlUtil {
   protected sqlifyAssignment(
     assign: Assignment<Scalar>,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     const { left, right } = assign;
     return (
@@ -1227,7 +1228,7 @@ export abstract class SqlUtil {
     update: Update,
     params?: Set<Parameter<Scalar, string>>,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    parent?: AST
+    parent?: SQL
   ): string {
     const { $table, $sets, $with, $where, $froms, $joins } = update;
     assert($table, 'table is required by update statement');
@@ -1264,7 +1265,7 @@ export abstract class SqlUtil {
   protected sqlifyDelete(
     del: Delete,
     params?: Set<Parameter<Scalar, string>>,
-    parent?: AST
+    parent?: SQL
   ): string {
     const { $table, $froms, $joins, $where, $with } = del;
     let sql = '';

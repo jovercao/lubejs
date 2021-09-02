@@ -1,6 +1,6 @@
-import { Parameter } from '../ast/expression/parameter';
-import { Scalar } from '../ast/scalar';
-import { RowObject } from '../ast/types';
+import { Parameter } from '../sql/expression/parameter';
+import { Scalar } from '../sql/scalar';
+import { RowObject } from '../sql/types';
 
 /**
  * 查询结果对象
