@@ -403,7 +403,7 @@ export interface IndexSchema {
  * @returns
  */
 export function generateSchema(context: DbContext): DatabaseSchema {
-  const sqlUtil = context.lube.sqlUtil;
+  const sqlUtil = context.connection.sqlUtil;
   // const databaseName  = await context.lube.provider.getCurrentDatabase();
   // const defaultSchema = await context.lube.provider.getDefaultSchema();
   function genDbSchema(context: DbContext): DatabaseSchema {

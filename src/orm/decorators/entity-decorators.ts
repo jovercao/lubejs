@@ -3,7 +3,7 @@ import { Select } from '../../core';
 import { DbContext, DbContextConstructor } from '../db-context';
 import { Entity, EntityConstructor } from '../entity';
 import { CommonEntityMetadata, KeyMetadata } from '../metadata';
-import { IndexOptions } from './index-decorator';
+import { IndexOptions } from './index-decorators';
 import 'reflect-metadata'
 
 const ENTITY_KEY = Symbol('lubejs:entity');

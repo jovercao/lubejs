@@ -1,5 +1,6 @@
-import { ScalarType, DbInstance } from "..";
+import { DbContext } from "../db-context";
 import { Scalar, DbType, ProxiedRowset, Expression, CompatibleExpression } from "../../core";
+import { ScalarType } from "../types";
 
 /**
  * 属性元数据
@@ -80,6 +81,6 @@ import { Scalar, DbType, ProxiedRowset, Expression, CompatibleExpression } from 
   generator?: (
     rowset: ProxiedRowset<any>,
     item: any,
-    context: DbInstance
+    context: DbContext
   ) => CompatibleExpression<T>;
 }

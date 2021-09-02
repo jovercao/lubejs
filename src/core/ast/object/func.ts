@@ -1,6 +1,6 @@
 import { SQL_SYMBOLE } from '../ast';
 import { CompatibleExpression, Expression } from '../expression/expression';
-import { Rowset } from '../rowset/rowset';
+import { ProxiedRowset, Rowset } from '../rowset/rowset';
 import { Scalar } from '../scalar';
 import { Star } from '../statement/crud/star';
 import { TableFuncInvoke } from '../statement/programmer/table-func-invoke';
@@ -29,8 +29,8 @@ export class Func<
 
   invokeAsTable<T extends RowObject = DefaultRowObject>(
     ...args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
-  ): Rowset<T> {
-    return new TableFuncInvoke(this, args);
+  ): ProxiedRowset<T> {
+    return new TableFuncInvoke(this, args) as any;
   }
 
   invokeAsScalar<T extends Scalar>(

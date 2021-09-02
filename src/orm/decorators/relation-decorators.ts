@@ -6,7 +6,7 @@ import {
 } from '../metadata';
 import { Scalar } from '../../core';
 import { isScalarType, selectProperty } from '../util';
-import { addEntitiyRelation } from './entity';
+import { addEntitiyRelation } from './entity-decorators';
 import { EntityConstructor, Entity } from '../entity';
 import 'reflect-metadata'
 

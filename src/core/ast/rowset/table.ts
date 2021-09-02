@@ -5,6 +5,9 @@ import { Star } from '../statement/crud/star';
 import { ColumnsOf, DefaultRowObject, RowObject } from '../types';
 import { Rowset } from './rowset';
 
+/**
+ * 表对象，表和视图均使用该对象
+ */
 export class Table<
     T extends RowObject = DefaultRowObject,
     N extends string = string
@@ -12,9 +15,10 @@ export class Table<
   extends Rowset<T, N>
   implements DBObject
 {
-  private constructor(name: CompatiableObjectName<N>) {
+  constructor(name: CompatiableObjectName<N>, builtIn = false) {
     super();
     this.$name = name;
+    this.$builtin = builtIn;
   }
 
   static create<
@@ -25,7 +29,7 @@ export class Table<
   }
 
   $name: CompatiableObjectName<N>;
-  $builtin: false = false;
+  readonly $builtin: boolean;
   $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 
   // /**

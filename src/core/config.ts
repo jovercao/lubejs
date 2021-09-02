@@ -93,15 +93,18 @@ export async function prepareConnectOptions(
   } else {
     options = optOrUrlOrCfg;
   }
-  if (!options.driver) {
+  if (!options.provider) {
     if (!options.dialect) {
       throw new Error('ConnectOptions must provide one of dialect or dirver');
     }
-    const driver = dialects[options.dialect];
-    if (!driver) {
+    const provider = dialects[options.dialect];
+    if (!provider) {
       throw new Error(`Unregister dialect ${options.dialect}.`);
     }
-    options.driver = driver;
+    options.provider = provider;
+  }
+  if (!options.dialect) {
+    options.dialect = options.provider!.dialect;
   }
   assignIfUndefined(options, DEFAULT_CONNECT_OPTIONS);
   return options;

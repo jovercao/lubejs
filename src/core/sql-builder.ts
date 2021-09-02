@@ -84,9 +84,10 @@ import {
   Assignable,
   SelectAction,
   With,
+  SelectAliasObject,
 } from './ast';
 import { isPlainObject } from './ast/util';
-import { Standard, STD } from './stanrard';
+import { Standard, STD } from './standard';
 
 export class SqlBuilder extends Standard {
   get type(): typeof DbType {
@@ -527,8 +528,8 @@ export class SqlBuilder extends Standard {
     return UnaryCompareCondition.isNotNull(expr);
   }
 
-  table<T>(nameOrModel: any): any {
-    return Table.ensure(nameOrModel);
+  table<T extends RowObject = any>(name: CompatiableObjectName): ProxiedTable<T> {
+    return Table.ensure(name);
   }
   /**
    * 声明一个函数
@@ -568,89 +569,18 @@ export class SqlBuilder extends Standard {
     return new Star<any>();
   }
 
-  /**
-   * 插入至表,into的别名
-   * @param table
-   * @param fields
-   */
-  insert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
-    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
-  ): Insert<T> {
-    return new Insert(table, fields);
-  }
-  /**
-   * 插入至表,into的别名
-   * @param table
-   * @param fields
-   */
-  identityInsert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
-    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
-  ): Insert<T> {
-    return new Insert(table, fields).withIdentity();
-  }
-  /**
-   * 更新一个表格
-   * @param table
-   */
-  update<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
-  ): Update<T> {
-    return new Update(table);
-  }
-  /**
-   * 删除一个表格
-   * @param table 表格
-   */
-  delete<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
-  ): Delete<T> {
-    return new Delete(table);
-  }
-
-  readonly select: SelectAction = (...args: any[]): any => {
-    return new Select(...args);
-  };
-
-  raw(sql: string): any {
-    return new Raw(sql);
-  }
-
-  block(...statements: Statement[]): Block;
-  block(statements: Statement[]): Block;
-  block(...statements: Statement[] | [Statement[]]): Block {
-    if (statements.length === 1 && Array.isArray(statements[0])) {
-      statements = statements[0];
-    }
-    return new Block(statements as Statement[]);
-  }
-
-  execute<R extends Scalar = any, O extends RowObject[] = []>(
-    proc: CompatiableObjectName | Procedure<R, O, string>,
-    params?: CompatibleExpression<Scalar>[]
-    // | Parameter<JsConstant, string>[] | InputObject
-  ): Execute<R, O> {
-    return new Execute(proc, params);
-  }
-
-  invokeTableFunction<T extends RowObject = any>(
-    func: CompatiableObjectName | Func<string>,
-    args: CompatibleExpression<Scalar>[]
-  ): ProxiedRowset<T>;
-
-  invokeTableFunction<T extends RowObject = any>(
+  invokeAsTable<T extends RowObject = any>(
     func: CompatiableObjectName | Func<string>,
     args: CompatibleExpression<Scalar>[]
   ): ProxiedRowset<T> {
-    return new TableFuncInvoke(func, args) as any;
+    return Func.ensure(func).invokeAsTable<T>(...args);
   }
 
-  invokeScalarFunction<T extends Scalar = any>(
+  invokeAsScalar<T extends Scalar = any>(
     func: CompatiableObjectName | Func<string>,
     args: CompatibleExpression<Scalar>[]
-  ): ScalarFuncInvoke<T> {
-    return new ScalarFuncInvoke(func, args);
+  ): Expression<T> {
+    return Func.ensure(func).invokeAsScalar<T>(...args);
   }
 
   makeInvoke<T extends RowObject>(
@@ -779,12 +709,12 @@ export class SqlBuilder extends Standard {
       return function (
         ...args: CompatibleExpression[]
       ): ProxiedRowset<RowObject> {
-        return SQL.invokeTableFunction(SQL.func(name, builtIn), args);
+        return SQL.invokeAsTable(SQL.func(name, builtIn), args);
       };
     }
     if (type === 'scalar') {
       return function (...args: CompatibleExpression<Scalar>[]): Expression {
-        return SQL.invokeScalarFunction<Scalar>(SQL.func(name, builtIn), args);
+        return SQL.invokeAsScalar<Scalar>(SQL.func(name, builtIn), args);
       };
     }
     throw new Error('invalid arg value of `type`');
@@ -859,6 +789,58 @@ export class SqlBuilder extends Standard {
       return SQL.execute(SQL.proc<Scalar, any, string>(name, builtIn), args);
     };
   }
+
+
+  //********************** statement **************************//
+  /**
+   * 插入至表,into的别名
+   * @param table
+   * @param fields
+   */
+   insert<T extends RowObject = any>(
+    table: CompatibleTable<T, string>,
+    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
+  ): Insert<T> {
+    return Statement.insert(table, fields);
+  }
+  /**
+   * 更新一个表格
+   * @param table
+   */
+  update<T extends RowObject = any>(
+    table: CompatibleTable<T, string>
+  ): Update<T> {
+    return Statement.update(table);
+  }
+  /**
+   * 删除一个表格
+   * @param table 表格
+   */
+  delete<T extends RowObject = any>(
+    table: CompatibleTable<T, string>
+  ): Delete<T> {
+    return Statement.delete(table);
+  }
+
+  readonly select: SelectAction = Statement.select;
+
+  raw(sql: string): any {
+    return new Raw(sql);
+  }
+
+  block(...statements: Statement[]): Block;
+  block(statements: Statement[]): Block;
+  block(...statements: any): Block {
+    return Statement.block(...statements);
+  }
+
+  execute<R extends Scalar = any, O extends RowObject[] = []>(
+    proc: CompatiableObjectName | Procedure<R, O, string>,
+    params?: CompatibleExpression<Scalar>[]
+    // | Parameter<JsConstant, string>[] | InputObject
+  ): Execute<R, O> {
+    return Statement.execute(proc, params);
+  }
   /**
    * 赋值语句
    * @param left 左值
@@ -897,120 +879,85 @@ export class SqlBuilder extends Standard {
   /**
    * With语句
    */
-  with(...rowsets: any): With {
-    if (rowsets.length === 1 && isPlainObject(rowsets)) {
-      return new With(rowsets[0]);
-    }
-    return new With(rowsets);
-  }
-  union<T extends RowObject = any>(...selects: Select<T>[]): Select<T> {
-    selects.forEach((sel, index) => {
-      if (index < selects.length - 1) sel.union(selects[index + 1]);
-    });
-    return selects[0];
-  }
-  unionAll<T extends RowObject = any>(...selects: Select<T>[]): Select<T> {
-    selects.forEach((sel, index) => {
-      if (index < selects.length - 1) sel.unionAll(selects[index + 1]);
-    });
-    return selects[0];
-  }
-  invoke(
-    type: 'table' | 'scalar',
-    name: CompatiableObjectName,
-    builtIn = false
-  ): any {
-    if (type === 'table') {
-      return function (
-        ...args: CompatibleExpression[]
-      ): ProxiedRowset<RowObject> {
-        return SQL.invokeTableFunction(SQL.func(name, builtIn), args);
-      };
-    }
-    if (type === 'scalar') {
-      return function (...args: CompatibleExpression<Scalar>[]): Expression {
-        return SQL.invokeScalarFunction<Scalar>(SQL.func(name, builtIn), args);
-      };
-    }
-    throw new Error('invalid arg value of `type`');
+  with(...rowsets: WithSelect[] | [WithSelect[]] | [SelectAliasObject]): With {
+    return Statement.with(...rowsets)
   }
 
-  readonly createTable: CreateTableHandler = Object.assign((name: any) => {
-    const table = new CreateTable(name);
-    return table;
-  }, CreateTableMemberBuilder);
+  createTable<N extends string>(name: CompatiableObjectName<N>): CreateTable<N> {
+    return Statement.createTable(name);
+  }
 
   alterTable<N extends string>(name: CompatiableObjectName<N>): AlterTable<N> {
-    return new AlterTable(name);
+    return Statement.alterTable(name)
   }
 
   createView<T extends RowObject = any, N extends string = string>(
     name: CompatiableObjectName<N>
   ): CreateView<T, N> {
-    return new CreateView(name);
+    return Statement.createView(name)
   }
 
   alterView<T extends RowObject = any, N extends string = string>(
     name: CompatiableObjectName<N>
   ): AlterView<T, N> {
-    return new AlterView(name);
+    return Statement.alterView(name)
   }
 
   createIndex(name: string): CreateIndex {
-    return new CreateIndex(name);
+    return Statement.createIndex(name);
   }
 
   createProcedure(name: CompatiableObjectName): CreateProcedure {
-    return new CreateProcedure(name);
+    return Statement.createProcedure(name)
   }
 
   alterProcedure(name: CompatiableObjectName): AlterProcedure {
-    return new AlterProcedure(name);
+    return Statement.alterProcedure(name);
   }
 
   createFunction(name: CompatiableObjectName): CreateFunction {
-    return new CreateFunction(name);
+    return Statement.createFunction(name)
   }
 
   alterFunction(name: CompatiableObjectName): AlterFunction {
-    return new AlterFunction(name);
+    return Statement.alterFunction(name);
   }
 
   dropTable<N extends string>(name: CompatiableObjectName<N>): DropTable<N> {
-    return new DropTable(name);
+    return Statement.dropTable(name)
   }
 
   dropView<N extends string>(name: CompatiableObjectName<N>): DropView<N> {
-    return new DropView(name);
+    return Statement.dropView(name)
   }
 
   dropProcedure<N extends string>(
     name: CompatiableObjectName<N>
   ): DropProcedure<N> {
-    return new DropProcedure(name);
+    return Statement.dropProcedure(name);
   }
 
   dropFunction<N extends string>(
     name: CompatiableObjectName<N>
   ): DropFunction<N> {
-    return new DropFunction(name);
+    return Statement.dropFunction(name);
   }
 
   dropIndex<N extends string>(
     table: CompatiableObjectName,
     name: N
   ): DropIndex<N> {
-    return new DropIndex(table, name);
+    return Statement.dropIndex(table, name);
   }
 
   annotation(...text: string[]): Annotation {
-    return new Annotation('BLOCK', text.join('\n'));
+    return Statement.annotation(...text);
   }
 
   note(text: string): Annotation {
-    return new Annotation('LINE', text);
+    return Statement.note(text);
   }
-
+  //******************end statement*******************//
   /**
    * input 参数
    */

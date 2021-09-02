@@ -49,36 +49,15 @@ export const INSERT_MAXIMUM_ROWS = 2000;
 /**
  * 数据执行器
  */
-export class Executor {
-  /**
-   * SQL执行器
-   * @param {*} query 查询函数
-   * @param {*} sqlUtil 编译函数
-   */
-  protected constructor(
-    query: QueryHandler,
-    sqlUtil: SqlUtil,
-    isTrans = false
-  ) {
-    // 是否启用严格模式，避免关键字等问题
-    this.doQuery = query;
-    this.sqlUtil = sqlUtil;
-    this.isTrans = isTrans;
-  }
+export abstract class Executor {
+  protected abstract doQuery(sql: string, params?: Parameter[]): Promise<QueryResult<any, any, any>>;
 
   protected _emitter: EventEmitter = new EventEmitter();
-
-  private doQuery: QueryHandler;
 
   /**
    * 编译器
    */
-  readonly sqlUtil: SqlUtil;
-
-  /**
-   * 是否在事务当中
-   */
-  readonly isTrans: boolean;
+  abstract readonly sqlUtil: SqlUtil;
 
   on(event: 'command', listener: (cmd: Command) => void): this;
   on(event: 'commit', listener: (executor: Executor) => void): this;
@@ -311,23 +290,23 @@ export class Executor {
         'Values exceed 1000 rows, and will be inserted multiple times.'
       );
     }
-    const action = async (executor: Executor): Promise<number> => {
+    const action = async (): Promise<number> => {
       let i = 0;
       let rowsAffected = 0;
       while (i < packedValues.length) {
         const items = packedValues.slice(i, i + INSERT_MAXIMUM_ROWS);
         i += INSERT_MAXIMUM_ROWS;
         const sql = SQL.insert(table, fields).values(items);
-        const res = await executor.query(sql);
+        const res = await this.query(sql);
         rowsAffected += res.rowsAffected;
       }
       return rowsAffected;
     };
     // 启用事务
-    if (this instanceof Connection && !this.isTrans) {
-      return this.trans(action);
+    if (this instanceof Connection) {
+      return (this as Connection).trans(action);
     }
-    return action(this);
+    return action();
   }
 
   async find<T extends RowObject = any>(
@@ -481,9 +460,9 @@ export class Executor {
         })
       );
       let res: QueryResult<T>;
-      // 批量操作开启事务
-      if (this instanceof Connection && !this.isTrans) {
-        res = await this.trans(async executer => await executer.query(docs));
+      // 批量操作自动开启事务
+      if (this instanceof Connection) {
+        res = await this.trans(async () => await this.query(docs));
       } else {
         res = await this.query(docs);
       }

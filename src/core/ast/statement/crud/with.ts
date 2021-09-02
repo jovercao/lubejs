@@ -10,6 +10,7 @@ import { Delete } from "./delete";
 import { Insert } from "./insert";
 import { Select } from "./select";
 import { Update } from "./update";
+import { isPlainObject } from "../../util";
 
 export class With<A extends SelectAliasObject = any> extends AST {
   $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
@@ -19,14 +20,16 @@ export class With<A extends SelectAliasObject = any> extends AST {
   /**
    * With结构
    */
-  constructor(items: WithSelect<any, string>[] | SelectAliasObject) {
+  constructor(...items: WithSelect[] | [WithSelect[]] | [SelectAliasObject]) {
     super();
-    if (Array.isArray(items)) {
-      this.$rowsets = items;
-    } else {
-      this.$rowsets = Object.entries(items).map(
+    if (items.length === 0 && isPlainObject(items[0])) {
+      this.$rowsets = Object.entries(items[0]).map(
         ([name, sel]) => WithSelect.create(name, sel)
       );
+    } else if (Array.isArray(items[0])) {
+      this.$rowsets = items[0] as WithSelect[];
+    } else {
+      this.$rowsets = items as WithSelect[];
     }
   }
 

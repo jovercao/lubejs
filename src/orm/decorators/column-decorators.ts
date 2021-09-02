@@ -3,8 +3,8 @@ import { CompatibleExpression, DbType, ProxiedRowset } from "../../core";
 import { isScalarType } from "../util";
 import { ColumnMetadata } from "../metadata";
 import { ScalarType } from "../types";
-import { addEntitiyColumn } from "./entity";
-import { DbInstance } from "../db-context";
+import { addEntitiyColumn } from "./entity-decorators";
+import { DbContext } from "../db-context";
 import 'reflect-metadata'
 
 const COLUMN_KEY = Symbol('lubejs:column');
@@ -150,7 +150,7 @@ export function autogen<T extends Entity = any>(
   generator: (
     rowset: ProxiedRowset<T>,
     item: object,
-    context: DbInstance
+    context: DbContext
   ) => CompatibleExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {

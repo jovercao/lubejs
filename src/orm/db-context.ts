@@ -17,19 +17,15 @@ import {
 import { DbContextEventHandler, DbEvents } from './types';
 import { metadataStore } from './metadata-store';
 
-export class DbInstance {
-  protected constructor(executor: Executor, isTransaction = false) {
-    this.executor = executor;
-    this._isTransaction = isTransaction;
-    // this.executor.on('command', outputCommand);
+export class DbContext {
+  constructor(public readonly connection: Connection) {
+    this.metadata = metadataStore.getContext(
+      this.constructor as DbContextConstructor
+    );
   }
-
-  private _isTransaction: boolean = false;
 
   private _emitter: EventEmitter = new EventEmitter();
   private _metadata!: DbContextMetadata;
-
-  readonly executor: Executor;
 
   public get metadata(): DbContextMetadata {
     return this._metadata;
@@ -41,10 +37,6 @@ export class DbInstance {
 
   // 为节省内存，Repository 使用共享对象
   private _repositories: Map<Entity, Repository<any>> = new Map();
-
-  get isTransaction() {
-    return this._isTransaction;
-  }
 
   /**
    * 获取一个可查询对象
@@ -259,32 +251,3 @@ export interface DbContextConstructor<T extends DbContext = DbContext> {
 /**
  * 数据库上下文对象
  */
-export class DbContext extends DbInstance {
-  constructor(public readonly lube: Connection) {
-    super(lube);
-    this.metadata = metadataStore.getContext(
-      this.constructor as DbContextConstructor
-    );
-    // if (lube.database !== this.metadata.database) {
-    //   lube.change(this.metadata.database);
-    // }
-  }
-
-  /**
-   * 开启一个事务
-   */
-  async trans<T>(
-    handler: (instance: DbInstance, abort: () => Promise<void>) => Promise<T>
-  ): Promise<T> {
-    return this.lube.trans((executor, abort) => {
-      const instance = new DbInstance(executor, true);
-      Reflect.set(instance, 'metadata', this.metadata);
-      return handler(instance, abort);
-    });
-  }
-
-  // static async create<T extends DbContext>(Context: DbContextConstructor<T>, options: ConnectOptions): Promise<T> {
-  //   const lube = await connect(options);
-  //   return new Context(lube);
-  // }
-}

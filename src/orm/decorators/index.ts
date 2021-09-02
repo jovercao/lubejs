@@ -7,11 +7,11 @@ export {
   calculate,
   autogen,
   type,
-} from './column';
-export { comment } from './comment';
-export { context, connection, database } from './context';
-export { table, view, query, key } from './entity';
-export { index, unique } from './index-decorator';
+} from './column-decorators';
+export { comment } from './comment-decorators';
+export { context, connection, database } from './context-decorators';
+export { table, view, query, key } from './entity-decorators';
+export { index, unique } from './index-decorators';
 export {
   oneToMany,
   oneToOne,
@@ -20,5 +20,5 @@ export {
   among,
   foreignKey,
   principal,
-} from './relation';
+} from './relation-decorators';
 export { repository } from './repository';

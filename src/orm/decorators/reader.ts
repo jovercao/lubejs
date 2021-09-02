@@ -1,11 +1,11 @@
-export { ColumnOptions, getColumnOptions } from './column';
-export { getComment } from './comment';
+export { ColumnOptions, getColumnOptions } from './column-decorators';
+export { getComment } from './comment-decorators';
 export {
   getConnectionOptions,
   getContextOptions,
   getDecorateContexts,
   DbContextOptions,
-} from './context';
+} from './context-decorators';
 export {
   EntityOptions,
   getDecorateEntities,
@@ -14,7 +14,7 @@ export {
   getEntityKeyOptions,
   getEntityRelations,
   getEntityOptions,
-} from './entity';
-export { IndexOptions, getIndexOptions } from './index-decorator';
-export { RelationOptions, getAmong, getRelationOptions } from './relation';
+} from './entity-decorators';
+export { IndexOptions, getIndexOptions } from './index-decorators';
+export { RelationOptions, getAmong, getRelationOptions } from './relation-decorators';
 

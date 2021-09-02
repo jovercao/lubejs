@@ -3,7 +3,7 @@ import { DatabaseSchema } from '../orm';
 import { MigrateBuilder } from './migrate-builder';
 
 declare module '../core' {
-  export interface DbProvider  {
+  export interface Connection  {
     readonly migrateBuilder: MigrateBuilder;
     /**
      * 获取数据库架构

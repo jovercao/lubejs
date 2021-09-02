@@ -1,7 +1,7 @@
 import { Entity, EntityConstructor } from '../entity';
 import { ConnectOptions } from '../../core';
 import { parseConnectionUrl } from '../../core/config';
-import { setEntityOptions } from './entity';
+import { setEntityOptions } from './entity-decorators';
 import { DbContextMetadata } from '../metadata';
 import { DbContext, DbContextConstructor } from '../db-context';
 import 'reflect-metadata'

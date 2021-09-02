@@ -1,5 +1,5 @@
 import { EntityConstructor } from "../entity";
-import { addEntitiyIndex, getEntityOptions, setEntityOptions } from "./entity";
+import { addEntitiyIndex, getEntityOptions, setEntityOptions } from "./entity-decorators";
 import 'reflect-metadata'
 
 const INDEX_KEY = Symbol('lubejs:index');

@@ -1,5 +1,5 @@
 import { Scalar, DbType, ProxiedRowset, CompatibleExpression, Expression } from "../../core";
-import { DbInstance } from "../db-context";
+import { DbContext } from "../db-context";
 import { Entity } from "../entity";
 import { ColumnMetadata } from "../metadata";
 import { ContextBuilder } from "./context-builder";
@@ -37,7 +37,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
     generator: (
       rowset: ProxiedRowset<T>,
       item: T,
-      context: DbInstance
+      context: DbContext
     ) => CompatibleExpression<V>
   ): Omit<this, 'isAutogen'> {
     this.metadata.generator = generator as any;

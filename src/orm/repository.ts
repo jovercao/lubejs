@@ -19,7 +19,7 @@ import {
   TableEntityMetadata,
 } from './metadata';
 import { AsyncEventEmitter } from './async-event';
-import { DbInstance } from './db-context';
+import { DbContext } from './db-context';
 import {
   Entity,
   EntityConstructor,
@@ -77,7 +77,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
   protected rowset!: ProxiedTable<T>;
   private _emitter: AsyncEventEmitter = new AsyncEventEmitter();
 
-  constructor(context: DbInstance, public ctr: EntityConstructor<T>) {
+  constructor(context: DbContext, public ctr: EntityConstructor<T>) {
     super(context, ctr as any);
     if (!this.metadata || this.metadata.readonly) {
       throw new Error(`Repository must instance of table entity`);
@@ -417,7 +417,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
   private async _emit(
     event: DbEvents,
     items: T[],
-    context: DbInstance
+    context: DbContext
   ): Promise<void> {
     await this._emitter.emit(event, items);
     await this._emitter.emit('all', items);

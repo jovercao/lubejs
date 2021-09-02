@@ -1,88 +1,88 @@
-import { DbProvider, DbProviderFactory } from "./db-provider";
-import { Executor } from "./executor";
-import { SqlOptions } from "./sql-util";
-import { ISOLATION_LEVEL, TransactionHandler } from "./transaction";
+import { SQL } from '../sql-builder';
+import { DbProvider } from './db-provider';
+import { Executor } from './executor';
+import { SqlOptions } from './sql-util';
 
-export class Connection extends Executor {
-  public readonly provider: DbProvider;
+/**
+ * 事务隔离级别
+ */
+export enum ISOLATION_LEVEL {
+  READ_COMMIT = 'READ_COMMIT',
+  READ_UNCOMMIT = 'READ_UNCOMMIT',
+  REPEATABLE_READ = 'REPEATABLE_READ',
+  SERIALIZABLE = 'SERIALIZABLE',
+  SNAPSHOT = 'SNAPSHOT',
+}
 
-  constructor(provider: DbProvider) {
-    const sqlUtil = provider.sqlUtil;
-    super(provider.query.bind(provider), sqlUtil);
-    this.provider = provider;
-    this.provider.lube = this;
+export class AbortError extends Error {
+  code: string = 'ABORT';
+}
+
+export abstract class Connection extends Executor {
+  constructor(public readonly options: ConnectOptions) {
+    super();
   }
 
   /**
-   * 开启一个事务并自动提交
-   * @param {*} handler (exeutor, cancel) => false
-   * @param {*} isolationLevel 事务隔离级别
+   * 开启一个事务并在代码执行完成后自动提交，遇到错误时会自动回滚
+   * 用户亦可主动调用cancel来取消当前事务，并且产生一个异常中断后续代码执行
    */
   async trans<T>(
-    handler: TransactionHandler<T>,
+    handler: (abort: (message?: string) => void) => Promise<T>,
     isolationLevel: ISOLATION_LEVEL = ISOLATION_LEVEL.READ_COMMIT
   ): Promise<T> {
-    if (this.isTrans) {
+    if (this.inTransaction) {
       throw new Error('is in transaction now');
     }
-    let canceled = false;
-    const { query, commit, rollback } = await this.provider.beginTrans(
-      isolationLevel
-    );
-    const executor = new Executor(query, this.sqlUtil, true);
-    const abort = async () => {
-      canceled = true;
-      await rollback();
-      executor.emit('rollback', executor);
-    };
-    const complete = async () => {
-      await commit();
-      executor.emit('commit', executor);
-    };
-    executor.on('command', cmd => this._emitter.emit('command', cmd));
-    executor.on('error', cmd => this._emitter.emit('error', cmd));
     try {
-      const res = await handler(executor, abort);
-      if (!canceled) {
-        await complete();
-      }
+      await this.beginTrans(isolationLevel);
+      const res = await handler((message: string) => {
+        throw new AbortError(message || 'Abort.');
+      });
+      await this.commit();
       return res;
     } catch (ex) {
-      // HACK: 本该写在mssql库中的，但是由于这是mssql库的bug只能写在这里
-      if (ex?.code === 'EREQINPROG') {
-        throw new Error(`mssql driver error.`);
-      }
-      if (!canceled) {
-        await abort();
+      if (this.inTransaction) {
+        await this.rollback();
       }
       throw ex;
     }
   }
 
-  get opened() {
-    return this.provider.opened;
+  abstract beginTrans(isolationLevel: ISOLATION_LEVEL): Promise<void>;
+
+  abstract commit(): Promise<void>;
+
+  abstract rollback(): Promise<void>;
+
+  abstract readonly opened: boolean;
+
+  abstract open(): Promise<void>;
+
+  abstract close(): Promise<void>;
+
+  abstract readonly inTransaction: boolean;
+
+  /**
+   * 获取当前数据库
+   */
+  async getDatabase(): Promise<string> {
+    return await this.queryScalar(SQL.select(SQL.currentDatabase()));
   }
 
-  getCurrentDatabase(): Promise<string> {
-    return this.provider.getCurrentDatabase();
+  async getDefaultSchema(): Promise<string> {
+    return await this.queryScalar(SQL.select(SQL.defaultSchema()));
   }
 
   /**
    * 变更所在数据库
    * 当为null时表示登录用户默认数据库
    */
-  changeDatabase(database: string | null): void {
-    return this.provider.changeDatabase(database);
-  }
-
-  open(): Promise<void> {
-    return this.provider.open();
-  }
-
-  close(): Promise<void> {
-    return this.provider.close();
+  async changeDatabase(database: string): Promise<void> {
+    await this.query(SQL.use(database));
   }
 }
+
 export type ConnectOptions = {
   /**
    * 数据库方言(必须是已注册的言)，与driver二选一，必须安装相应的驱动才可正常使用
@@ -91,7 +91,8 @@ export type ConnectOptions = {
   /**
    * 驱动程序，与dialect二选一，优先使用driver
    */
-  driver?: DbProviderFactory;
+  provider?: DbProvider;
+
   /**
    * 主机名
    */
@@ -137,4 +138,3 @@ export type ConnectOptions = {
    */
   sqlOptions?: SqlOptions;
 };
-

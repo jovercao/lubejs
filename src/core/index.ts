@@ -11,7 +11,6 @@ export * from './base/connection';
 export * from './base/db-provider';
 export * from './base/executor';
 export * from './base/sql-util';
-export * from './base/transaction';
 export * from './base/types';
 export * from './register';
 export { loadConfig } from './config';
@@ -28,8 +27,5 @@ export async function connect(
   optOrUrlOrCfg?: ConnectOptions | string
 ): Promise<Connection> {
   const options = await prepareConnectOptions(optOrUrlOrCfg);
-  const provider: DbProvider = options.driver!(options);
-  const lube = new Connection(provider);
-  // await lube.open();
-  return lube;
+  return options.provider!.connection(options);
 }

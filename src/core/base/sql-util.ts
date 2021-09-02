@@ -36,7 +36,7 @@ import { Table } from '../ast/rowset/table';
 import { TableVariant } from '../ast/rowset/table-variant';
 import { WithSelect } from '../ast/rowset/with-select';
 import { Scalar } from '../ast/scalar/scalar';
-import { Standard, STD } from '../stanrard';
+import { Standard, STD } from '../standard';
 import { Annotation } from '../ast/statement/other/annotation';
 import { Block } from '../ast/statement/control/block';
 import { Break } from '../ast/statement/control/break';

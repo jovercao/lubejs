@@ -17,7 +17,6 @@ import {
   Executor,
   SQL,
 } from '../core';
-import { DbInstance } from './db-context';
 import { EntityMetadata, ColumnMetadata, RelationMetadata } from './metadata';
 import { Repository } from './repository';
 import { FetchRelations, RelationKeyOf } from './types';
@@ -33,6 +32,7 @@ import {
   isManyToOne,
   isManyToMany,
 } from './metadata/util';
+import { DbContext } from './db-context';
 
 // import { getMetadata } from 'typeorm'
 
@@ -56,7 +56,7 @@ export class Queryable<T extends Entity | RowObject>
   implements AsyncIterable<T>
 {
   constructor(
-    protected context: DbInstance,
+    protected context: DbContext,
     Entity: EntityConstructor<T> // constructor(
   ) {
     if (Entity) {
@@ -87,7 +87,7 @@ export class Queryable<T extends Entity | RowObject>
   // }
 
   protected get executor(): Executor {
-    return this.context.executor;
+    return this.context.connection;
   }
 
   /**
@@ -272,7 +272,7 @@ export class Queryable<T extends Entity | RowObject>
    */
   async fetchAll(): Promise<EntityInstance<T>[]> {
     const sql = this.getSql();
-    const { rows } = await this.context.executor.query(sql);
+    const { rows } = await this.executor.query(sql);
 
     if (this.metadata) {
       return rows as EntityInstance<T>[];
@@ -304,7 +304,7 @@ export class Queryable<T extends Entity | RowObject>
    */
   async fetchFirst(): Promise<EntityInstance<T> | undefined> {
     const sql = this.getSql().limit(1);
-    const rows = (await this.context.executor.query(sql)).rows!;
+    const rows = (await this.executor.query(sql)).rows!;
     if (!this.metadata) {
       return rows[0] as EntityInstance<T> | undefined;
     }

@@ -431,11 +431,31 @@ export class Standard {
   existsFunction(name: CompatiableObjectName): Condition {
     return StandardCondition.create(STD.existsFunction.name, [name]);
   }
+  /**
+   * 返回是否存在存储过程条件
+   */
   existsProcedure(name: CompatiableObjectName): Condition {
     return StandardCondition.create(STD.existsProcedure.name, [name]);
   }
+  /**
+   * 返回是否存在序列
+   */
   existsSequence(name: CompatiableObjectName): Condition {
     return StandardCondition.create(STD.existsSequence.name, [name]);
+  }
+
+  /**
+   * 获取当前数据库
+   */
+  currentDatabase(): Expression<string> {
+    return StandardExpression.create(STD.currentDatabase.name, []);
+  }
+
+  /**
+   * 获取默认架构
+   */
+  defaultSchema(): Expression<string> {
+    return StandardExpression.create(STD.defaultSchema.name, []);
   }
 }
 
