@@ -2,6 +2,10 @@ import { SQL, SQL_SYMBOLE } from '../../sql';
 import { KeyColumns, KeyColumnsObject } from './key-column';
 
 export class PrimaryKey extends SQL {
+
+  static isPrimaryKey(object: any): object is PrimaryKey {
+    return object?.$type === SQL_SYMBOLE.PRIMARY_KEY
+  }
   $type: SQL_SYMBOLE.PRIMARY_KEY = SQL_SYMBOLE.PRIMARY_KEY;
   $name?: string;
   /**

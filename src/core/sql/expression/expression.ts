@@ -309,18 +309,11 @@ export abstract class Expression<T extends Scalar = Scalar>
    * 将当前表达式转换为指定的类型
    */
   to<T extends DbType>(type: T): Expression<TsTypeOf<T>> {
-    return Expression.convert(this, type);
+    return SQL.std.convert(this, type);
   }
 
   static isExpression(object: any): object is Expression {
     return object?.$tag === SQL_SYMBOLE.EXPRESSION;
-  }
-
-  static convert<T extends DbType>(
-    expr: CompatibleExpression,
-    toType: T
-  ): Expression<TsTypeOf<T>> {
-    return StandardExpression.create(Expression.convert.name, [expr, toType]);
   }
 
   /**

@@ -11,9 +11,9 @@ export type CompareScalarType =
   | bigint
   | CompareScalarType[];
 
-export type ListType = object[];
+export type CompareListType = object[];
 
-export type ObjectType = object;
+export type CompareObjectType = object;
 
 export type ScalarDifference<T extends CompareScalarType> = {
   source: T | null | undefined;
@@ -52,7 +52,7 @@ export enum ValueType {
   list = 2,
 }
 
-export function isListType(value: any): value is ListType {
+export function isListType(value: any): value is CompareListType {
   return getType(value) === ValueType.list;
 }
 
@@ -60,7 +60,7 @@ export function isCompareScalarType(value: any): value is CompareScalarType {
   return getType(value) === ValueType.scalar;
 }
 
-export function isObejctType(value: any): value is ObjectType {
+export function isObejctType(value: any): value is CompareObjectType {
   return getType(value) === ValueType.object;
 }
 

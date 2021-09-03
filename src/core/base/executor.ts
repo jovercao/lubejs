@@ -315,7 +315,7 @@ export abstract class Executor {
     };
     // 启用事务
     if (this instanceof Connection) {
-      return (this as Connection).trans(action);
+      return (this as unknown as Connection).trans(action);
     }
     return action();
   }

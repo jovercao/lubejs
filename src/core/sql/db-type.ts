@@ -113,6 +113,11 @@ export function isSameDbType(type1: DbType, type2: DbType): boolean {
   return deepthEqual(type1, type2);
 }
 
+export function isDbType(value: any): value is DbType {
+  if (!value) return false;
+  return !!Reflect.get(DbType, value.name);
+}
+
 export function isStringType(type: any): type is STRING {
   return type?.name === 'STRING';
 }

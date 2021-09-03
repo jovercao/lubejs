@@ -15,7 +15,7 @@ import {
   SnapshotMigrateBuilder,
   SnapshotMigrateTracker,
 } from './migrate-snapshot';
-import { Raw, Statement, SQL, ConnectOptions, DbType, Command } from '../core';
+import { Raw, Statement, SQL, ConnectOptions, DbType, Command, DbProvider, getProvider } from '../core';
 import { MigrateBuilder } from './migrate-builder';
 import { StatementMigrateScripter } from './migrate-scripter';
 import { ProgramMigrateScripter } from './migrate-programmer';
@@ -113,6 +113,10 @@ class MigrateCliClass {
 
   private initDatabase!: string;
 
+  private provider!: DbProvider;
+
+  private migrateBuilder!: MigrateBuilder;
+
   private async init(): Promise<void> {
     let Ctr: DbContextConstructor;
     if (this.contextName) {
@@ -123,6 +127,8 @@ class MigrateCliClass {
     }
     this.dbContext = await createContext(Ctr);
     this.initDatabase = await this.dbContext.connection.getDatabase();
+    this.provider = getProvider(this.dbContext.connection.options.dialect!);
+    this.migrateBuilder = this.provider.getMigrateBuilder();
   }
 
   /**
@@ -165,22 +171,159 @@ class MigrateCliClass {
     return statements;
   }
 
+  // todo 待实现
+  private async ensureSchema(): Promise<void> {
+    throw new Error('尚未实现');
+  }
+
+  private async existsTargetDatabase(): Promise<boolean> {
+    try {
+      const result = await this.runInTargetDatabase(async () => {
+        return true;
+      });
+      return result;
+    } catch {
+      return false;
+    }
+  }
+
+  private async _script(
+    start: MigrateInfo | undefined,
+    end: MigrateInfo | undefined
+  ): Promise<Command[]> {
+    const startIndex = start?.index ?? -1;
+    const endIndex = end?.index ?? -1;
+
+    const migrates = await this._list();
+    await this.snapshotAll();
+
+    if (startIndex === endIndex) {
+      console.log(`源和目标版本一致或未找到可供生成的的迁移文件。`.yellow);
+      return [];
+    }
+    const isUpgrade = endIndex > startIndex;
+    const isDemotion = endIndex < startIndex;
+
+    const statements: Statement[] = [];
+    if (isUpgrade) {
+      for (let i = startIndex + 1; i <= endIndex; i++) {
+        const info = migrates[i];
+        statements.push(
+          SQL.note(
+            `===============Migrate up script from "${info.path}"====================`
+          )
+        );
+
+        // statements.push(SQL.note('Check last migration exists in database?'));
+        // const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
+        // if (i >= 1) {
+        //   const lastInfo = migrates[i - 1];
+        //   statements.push(
+        //     SQL.if(
+        //       SQL.not(
+        //         SQL.exists(
+        //           SQL.select(1)
+        //             .from(t)
+        //             .where(
+        //               t.migrate_id.eq(lastInfo.id).and(t.hash.eq(lastInfo.hash!))
+        //             )
+        //         )
+        //       )
+        //     ).then(
+        //       this.dbContext.lube.provider.migrateBuilder.throw(
+        //         `Migration ${lastInfo.id} must upped before ${info.id}.`
+        //       )
+        //     )
+        //   );
+        // }
+        // statements.push(SQL.note('Check last migration exists in database?'));
+        // statements.push(
+        //   SQL.if(
+        //     SQL.exists(SQL.select(1).from(t).where(t.migrate_id.eq(info.id)))
+        //   ).then(
+        //     this.dbContext.lube.provider.migrateBuilder.throw(
+        //       `Migration ${info.id} upped in database.`
+        //     )
+        //   )
+        // );
+        const Migrate = await importMigrate(info);
+        const codes = await this.runMigrate(
+          Migrate,
+          'up',
+          this.migrateBuilder
+        );
+        statements.push(...codes);
+        // 创建迁移记录表
+        if (i === 0) {
+          statements.push(
+            SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
+              builder.column('migrate_id', DbType.string(100)).primaryKey(),
+              builder.column('hash', DbType.string(32)).notNull(),
+              builder.column('date', DbType.datetime).default(SQL.std.now()),
+            ])
+          );
+        }
+        statements.push(
+          SQL.insert(LUBE_MIGRATE_TABLE_NAME).values({
+            migrate_id: info.id,
+            hash: info.hash,
+          })
+        );
+      }
+    }
+    if (isDemotion) {
+      for (let i = startIndex; i > endIndex; i--) {
+        const info = migrates[i];
+        const t = SQL.table(LUBE_MIGRATE_TABLE_NAME).as('t');
+        statements.push(SQL.note(`Migrate down script from "${info.path}"`));
+
+        statements.push(SQL.note('Check migrate file change'));
+        statements.push(
+          SQL.if(
+            SQL.not(
+              SQL.exists(
+                SQL.select(1)
+                  .from(t)
+                  .where(t.migrate_id.eq(info.id).and(t.hash.eq(info.hash)))
+              )
+            )
+          ).then(
+            this.migrateBuilder.throw(
+              `No migrate in database or migrate file is changed after migration ${info.id} up. For data security, please handle this migration manually`
+            )
+          )
+        );
+
+        const Migrate = await importMigrate(info);
+        const codes = await this.runMigrate(
+          Migrate,
+          'down',
+          this.migrateBuilder
+        );
+        statements.push(...codes);
+        statements.push(
+          SQL.delete(t).where(
+            t.migrate_id.eq(info.id).and(t.hash.eq(info.hash))
+          )
+        );
+        if (i === 0) {
+          statements.push(SQL.dropTable(LUBE_MIGRATE_TABLE_NAME));
+        }
+      }
+    }
+
+    const scripts = statements.map(statement =>
+      this.dbContext.connection.sqlUtil.sqlify(statement)
+    );
+    return scripts;
+  }
+  private _migrateList?: MigrateInfo[];
+
   async dispose(): Promise<void> {
     if (this.dbContext?.connection?.opened) {
       await this.dbContext.connection.close();
     }
   }
-
-  // async connect() {
-  //   await this.dbContext.lube.changeDatabase(undefined);
-  //   try {
-  //     await this.dbContext.lube.provider.open();
-  //   } catch {
-  //     // 如果目标连接字符串数据库不存在，则切换到默认数据库连接;
-  //     this.dbContext.lube.provider.changeDatabase(undefined);
-  //     await this.dbContext.lube.provider.open();
-  //   }
-  // }
 
   /**
    * 获取数据库当前迁移版本
@@ -238,11 +381,6 @@ class MigrateCliClass {
     }
   }
 
-  // todo 待实现
-  private async ensureSchema(): Promise<void> {
-    throw new Error('尚未实现');
-  }
-
   // private async ensureMigrateTable(): Promise<void> {
   //   if (!this.dbSchema.tables.find(t => t.name === LUBE_MIGRATE_TABLE_NAME)) {
   //     const sql = SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
@@ -264,29 +402,29 @@ class MigrateCliClass {
     return timestamp;
   }
 
-  /**
-   * 创建一个空的迁移文件
-   * @param name
-   */
-  async create(name?: string): Promise<void> {
-    const timestamp = this.getTimestamp();
-    if (!name) {
-      name = 'Migrate' + timestamp;
-    }
-    const exists = await this.findMigrate(name);
-    if (exists) {
-      throw new Error(`迁移文件${name}已经存在：${exists.path}`);
-    }
+  // /**
+  //  * 创建一个空的迁移文件
+  //  * @param name
+  //  */
+  // async create(name?: string): Promise<void> {
+  //   const timestamp = this.getTimestamp();
+  //   if (!name) {
+  //     name = 'Migrate' + timestamp;
+  //   }
+  //   const exists = await this.findMigrate(name);
+  //   if (exists) {
+  //     throw new Error(`迁移文件${name}已经存在：${exists.path}`);
+  //   }
 
-    const id = `${timestamp}_${name}`;
-    const codes = this.generateMigrateClass(name);
-    if (!existsSync(this.migrateDir)) {
-      await promises.mkdir(this.migrateDir);
-    }
-    const filePath = join(this.migrateDir, `${id}.ts`);
-    await writeFile(filePath, codes);
-    console.info(`迁移文件创建成功：${filePath}`);
-  }
+  //   const id = `${timestamp}_${name}`;
+  //   const codes = this.generateMigrateClass(name);
+  //   if (!existsSync(this.migrateDir)) {
+  //     await promises.mkdir(this.migrateDir);
+  //   }
+  //   const filePath = join(this.migrateDir, `${id}.ts`);
+  //   await writeFile(filePath, codes);
+  //   console.info(`迁移文件创建成功：${filePath}`);
+  // }
 
   /**
    * 将数据库架构与当前架构进行对比，并生成新的迁移文件
@@ -410,18 +548,6 @@ class MigrateCliClass {
   //   }
   // }
 
-  async existsTargetDatabase(): Promise<boolean> {
-    const currentDb = await this.dbContext.connection.getDatabase();
-    try {
-      const result = await this.runInTargetDatabase(async () => {
-        return true;
-      });
-      return result;
-    } catch {
-      return false;
-    }
-  }
-
   /**
    * 更新到指定迁移
    * 无论是否比指定迁移更新
@@ -446,137 +572,6 @@ class MigrateCliClass {
       }
     });
     console.info(`------------执行成功，已更新到${target.id}.----------------`);
-  }
-
-  async _script(
-    start: MigrateInfo | undefined,
-    end: MigrateInfo | undefined
-  ): Promise<Command[]> {
-    const startIndex = start?.index ?? -1;
-    const endIndex = end?.index ?? -1;
-
-    const migrates = await this._list();
-    await this.snapshotAll();
-
-    if (startIndex === endIndex) {
-      console.log(`源和目标版本一致或未找到可供生成的的迁移文件。`.yellow);
-      return [];
-    }
-    const isUpgrade = endIndex > startIndex;
-    const isDemotion = endIndex < startIndex;
-
-    const statements: Statement[] = [];
-    if (isUpgrade) {
-      for (let i = startIndex + 1; i <= endIndex; i++) {
-        const info = migrates[i];
-        statements.push(
-          SQL.note(
-            `===============Migrate up script from "${info.path}"====================`
-          )
-        );
-
-        // statements.push(SQL.note('Check last migration exists in database?'));
-        // const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
-        // if (i >= 1) {
-        //   const lastInfo = migrates[i - 1];
-        //   statements.push(
-        //     SQL.if(
-        //       SQL.not(
-        //         SQL.exists(
-        //           SQL.select(1)
-        //             .from(t)
-        //             .where(
-        //               t.migrate_id.eq(lastInfo.id).and(t.hash.eq(lastInfo.hash!))
-        //             )
-        //         )
-        //       )
-        //     ).then(
-        //       this.dbContext.lube.provider.migrateBuilder.throw(
-        //         `Migration ${lastInfo.id} must upped before ${info.id}.`
-        //       )
-        //     )
-        //   );
-        // }
-        // statements.push(SQL.note('Check last migration exists in database?'));
-        // statements.push(
-        //   SQL.if(
-        //     SQL.exists(SQL.select(1).from(t).where(t.migrate_id.eq(info.id)))
-        //   ).then(
-        //     this.dbContext.lube.provider.migrateBuilder.throw(
-        //       `Migration ${info.id} upped in database.`
-        //     )
-        //   )
-        // );
-        const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(
-          Migrate,
-          'up',
-          this.dbContext.connection.migrateBuilder
-        );
-        statements.push(...codes);
-        // 创建迁移记录表
-        if (i === 0) {
-          statements.push(
-            SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
-              builder.column('migrate_id', DbType.string(100)).primaryKey(),
-              builder.column('hash', DbType.string(32)).notNull(),
-              builder.column('date', DbType.datetime).default(SQL.std.now()),
-            ])
-          );
-        }
-        statements.push(
-          SQL.insert(LUBE_MIGRATE_TABLE_NAME).values({
-            migrate_id: info.id,
-            hash: info.hash,
-          })
-        );
-      }
-    }
-    if (isDemotion) {
-      for (let i = startIndex; i > endIndex; i--) {
-        const info = migrates[i];
-        const t = SQL.table(LUBE_MIGRATE_TABLE_NAME).as('t');
-        statements.push(SQL.note(`Migrate down script from "${info.path}"`));
-
-        statements.push(SQL.note('Check migrate file change'));
-        statements.push(
-          SQL.if(
-            SQL.not(
-              SQL.exists(
-                SQL.select(1)
-                  .from(t)
-                  .where(t.migrate_id.eq(info.id).and(t.hash.eq(info.hash)))
-              )
-            )
-          ).then(
-            this.dbContext.connection.migrateBuilder.throw(
-              `No migrate in database or migrate file is changed after migration ${info.id} up. For data security, please handle this migration manually`
-            )
-          )
-        );
-
-        const Migrate = await importMigrate(info);
-        const codes = await this.runMigrate(
-          Migrate,
-          'down',
-          this.dbContext.connection.migrateBuilder
-        );
-        statements.push(...codes);
-        statements.push(
-          SQL.delete(t).where(
-            t.migrate_id.eq(info.id).and(t.hash.eq(info.hash))
-          )
-        );
-        if (i === 0) {
-          statements.push(SQL.dropTable(LUBE_MIGRATE_TABLE_NAME));
-        }
-      }
-    }
-
-    const scripts = statements.map(statement =>
-      this.dbContext.connection.sqlUtil.sqlify(statement)
-    );
-    return scripts;
   }
 
   async script(options?: {
@@ -622,7 +617,6 @@ class MigrateCliClass {
     return text;
   }
 
-  private _migrateList?: MigrateInfo[];
 
   /**
    * 列出当前所有迁移
@@ -745,7 +739,8 @@ export default ${name};
 
     const defaultSchema = await this.dbContext.connection.getDefaultSchema();
     // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
-    const dbSchema: DatabaseSchema | undefined = await this.getDbSchema();
+    const dbSchema: DatabaseSchema | undefined =
+      await this.dbContext.connection.getSchema(this.targetDatabase);
     // 如果数据库不存在，先创建数据库
     if (!dbSchema) {
       await this.dbContext.connection.query(
@@ -754,7 +749,7 @@ export default ${name};
     }
 
     const scripter = new StatementMigrateScripter(
-      this.dbContext.connection.migrateBuilder
+      this.provider.getMigrateBuilder()
     );
     scripter.migrate(defaultSchema, metadataSchema, dbSchema);
     const statements: Statement[] = scripter.getScripts();

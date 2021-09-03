@@ -1,4 +1,4 @@
-import { DefaultRowObject } from '../../..';
+import { DefaultRowObject } from '../../../../core';
 import { SQL_SYMBOLE } from '../../sql';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { Field } from '../../expression/field';

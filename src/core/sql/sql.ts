@@ -35,6 +35,7 @@ import {
   GroupExpression,
   Literal,
   Parameter,
+  StandardExpression,
   UnaryOperation,
   Variant,
   When,
@@ -94,6 +95,7 @@ import { clone, isPlainObject } from './util';
  * 所有AST类的基类
  */
 export abstract class SQL {
+
   abstract readonly $type: SQL_SYMBOLE;
   /**
    * 克隆自身

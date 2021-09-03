@@ -2,6 +2,9 @@ import { SQL, SQL_SYMBOLE } from "../../sql";
 import { CompatiableObjectName } from "../../object/db-object";
 
 export class ForeignKey extends SQL {
+  static isForeignKey(object: any): object is ForeignKey {
+    return object?.$type === SQL_SYMBOLE.FOREIGN_KEY
+  }
   constructor(name?: string, columns?: string[]) {
     super();
     this.$name = name;

@@ -12,4 +12,8 @@ export class VariantDeclare extends SQL {
 
   $name: string;
   $dbType: DbType;
+
+  static isVariantDeclare(object: any): object is VariantDeclare {
+    return object?.$type === SQL_SYMBOLE.VARAINT_DECLARE;
+  }
 }

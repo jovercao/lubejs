@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { Executor, Connection } from '../core';
+import { Connection } from '../core';
 import { Queryable } from './queryable';
 import {
   DeleteOptions,

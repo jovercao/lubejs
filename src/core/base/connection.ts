@@ -1,7 +1,7 @@
 import { SQL } from '../sql';
 import { DbProvider } from './db-provider';
 import { Executor } from './executor';
-import { SqlOptions } from './sql-util';
+import { SqlOptions, SqlUtil } from './sql-util';
 
 /**
  * 事务隔离级别
@@ -18,9 +18,13 @@ export class AbortError extends Error {
   code: string = 'ABORT';
 }
 
-export abstract class Connection extends Executor {
-  constructor(public readonly options: ConnectOptions) {
+abstract class ConnectionClass extends Executor {
+  constructor(public provider: DbProvider, public readonly options: ConnectOptions) {
     super();
+  }
+
+  get sqlUtil(): SqlUtil {
+    return this.provider.sqlUtil;
   }
 
   /**
@@ -83,6 +87,12 @@ export abstract class Connection extends Executor {
   }
 }
 
+export type ConnectionConstructor = typeof ConnectionClass;
+
+export const Connection: ConnectionConstructor = ConnectionClass;
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Connection extends ConnectionClass {}
+
 export type ConnectOptions = {
   /**
    * 数据库方言(必须是已注册的言)，与driver二选一，必须安装相应的驱动才可正常使用
@@ -133,8 +143,4 @@ export type ConnectOptions = {
    * 单个查询超时时长,单位: ms，默认为15000ms
    */
   requestTimeout?: number;
-  /**
-   * 编译选项
-   */
-  sqlOptions?: SqlOptions;
 };

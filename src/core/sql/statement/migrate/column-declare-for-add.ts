@@ -3,11 +3,15 @@ import { Condition } from '../../condition/condition';
 import { DbType, TsTypeOf } from '../../db-type';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { ColumnDeclare } from './column-declare';
+import { CreateTableMember } from './create-table';
 
 export class ColumnDeclareForAdd<
   N extends string = string,
   T extends DbType = DbType
 > extends ColumnDeclare<N, T> {
+  static isColumnDeclareForAdd(object: any): object is ColumnDeclareForAdd {
+    return object?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN
+  }
   $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   $default?: Expression<TsTypeOf<T>>;
 

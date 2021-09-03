@@ -14,4 +14,10 @@ export async function register(
   dialects[name] = driver();
 }
 
-export const dialects: Record<string, DbProvider> = {};
+export function getProvider(dialect: string): DbProvider {
+  const provider = dialects[dialect];
+  if (!provider) throw new Error(`Dialect ${dialect} is not register, please import provider module before use it.`)
+  return provider;
+}
+
+const dialects: Record<string, DbProvider> = {};

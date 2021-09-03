@@ -14,7 +14,7 @@ import {
   EqulsCompartor,
   ObjectDifference,
   ObjectKeyCompartor,
-} from '../cli/compare';
+} from '../migrate/compare';
 import {
   isTableEntity,
   isViewEntity,

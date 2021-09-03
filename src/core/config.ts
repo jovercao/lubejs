@@ -2,7 +2,7 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { URL } from "url";
 import { ConnectOptions } from "./base/connection";
-import { dialects } from "./register";
+import { getProvider } from "./register";
 import { assignIfUndefined } from "../util";
 
 const OPTIONS_FILE = '.lubejs';
@@ -97,7 +97,7 @@ export async function prepareConnectOptions(
     if (!options.dialect) {
       throw new Error('ConnectOptions must provide one of dialect or dirver');
     }
-    const provider = dialects[options.dialect];
+    const provider = getProvider(options.dialect);
     if (!provider) {
       throw new Error(`Unregister dialect ${options.dialect}.`);
     }

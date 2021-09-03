@@ -84,6 +84,7 @@ import {
   Operation
 } from '../sql';
 import { Standard } from '../standard';
+import { DbProvider } from './db-provider';
 import { Command } from './types';
 
 /**
@@ -186,15 +187,17 @@ const DEFAULT_COMPILE_OPTIONS: SqlOptions = {
  * AST到SQL的编译器基类，包含大部分标准实现
  */
 export abstract class SqlUtil {
-  options: SqlOptions;
+  constructor(public provider: DbProvider, options?: SqlOptions) {
+    this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
+  }
+
+  readonly options: SqlOptions;
 
   /**
    * 转译器
    */
-  abstract get translator(): StandardTranslator;
-
-  constructor(options?: SqlOptions) {
-    this.options = Object.assign({}, DEFAULT_COMPILE_OPTIONS, options);
+  get translator(): StandardTranslator {
+    return this.provider.stdTranslator;
   }
 
   sqlifyObjectName(name: CompatiableObjectName, builtIn = false): string {
@@ -1129,7 +1132,7 @@ export abstract class SqlUtil {
     throw this._invalidAST('condition', condition);
   }
 
-  private assertAst(
+  protected assertAst(
     value: any,
     message: string = 'AST syntax error.'
   ): asserts value {
@@ -1290,4 +1293,3 @@ export abstract class SqlUtil {
   }
 }
 
-// TODO 待实现 std, StandardOperation 编译
