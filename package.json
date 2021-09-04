@@ -7,7 +7,7 @@
     "dist": "dist"
   },
   "bin": {
-    "lube": "./dist/bin.js"
+    "lube": "./dist/cli/bin.js"
   },
   "files": [
     "dist/**/*.js",
