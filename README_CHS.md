@@ -89,6 +89,8 @@ node star.js
 
 范例： [start.ts](https://github.com/jovercao/lubejs-tester/blob/master/start.ts)
 
+@import "https://github.com/jovercao/lubejs-tester/blob/master/start.ts"
+
 ### ORM
 
 #### 实体声明
