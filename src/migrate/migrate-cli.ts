@@ -98,6 +98,7 @@ export function outputCommand(cmd: Command): void {
  * 迁移命令行
  */
 class MigrateCliClass {
+  private _targetSchemaName!: string
   constructor(
     private contextName?: string,
     public readonly migrateDir: string = './migrates'
@@ -126,16 +127,17 @@ class MigrateCliClass {
       this.contextName = Ctr.name;
     }
     this.dbContext = await createContext(Ctr);
-    this.initDatabase = await this.dbContext.connection.getDatabase();
+    this.initDatabase = await this.dbContext.connection.getDatabaseName();
     this.provider = getProvider(this.dbContext.connection.options.dialect!);
     this.migrateBuilder = this.provider.getMigrateBuilder();
+    this._targetSchemaName = await this.dbContext.connection.getSchemaName();
   }
 
   /**
    * 确保在目标数据库中运行
    */
   private async runInTargetDatabase<T>(handler: () => Promise<T>): Promise<T> {
-    const currentDb = await this.dbContext.connection.getDatabase();
+    const currentDb = await this.dbContext.connection.getDatabaseName();
     if (currentDb !== this.targetDatabase) {
       await this.dbContext.connection.query(SQL.use(this.targetDatabase));
       try {
@@ -176,6 +178,10 @@ class MigrateCliClass {
     throw new Error('尚未实现');
   }
 
+  /**
+   * 数据库是否存在
+   * @returns
+   */
   private async existsTargetDatabase(): Promise<boolean> {
     try {
       const result = await this.runInTargetDatabase(async () => {
@@ -510,19 +516,34 @@ class MigrateCliClass {
     return item;
   }
 
+  /**
+   * 获取数据库架构
+   * @returns
+   */
   async getDbSchema(): Promise<DatabaseSchema | undefined> {
     return this.dbContext!.connection.getSchema(this.targetDatabase);
   }
 
-  getMetadataSchema(): DatabaseSchema {
+  /**
+   * 获取实体的架构
+   * @returns
+   */
+  getEntitySchema(): DatabaseSchema {
     return generateSchema(this.dbContext);
   }
 
+  /**
+   * 目标数据库名称
+   */
   get targetDatabase(): string {
     return (
       this.dbContext.connection.options.database ||
       this.dbContext.metadata.database
     );
+  }
+
+  get targetSchemaName(): string {
+    return this._targetSchemaName;
   }
 
   // async useTargetDatabase() {
@@ -693,7 +714,7 @@ class MigrateCliClass {
       this.dbContext.connection.sqlUtil,
       notResolverType
     );
-    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
+    const defaultSchema = await this.dbContext.connection.getSchemaName();
     scripter.migrate(defaultSchema, source, target);
     const upCodes = scripter.getScripts();
     scripter.clear();
@@ -737,7 +758,7 @@ export default ${name};
   async sync(outputPath?: string): Promise<void> {
     const metadataSchema = generateSchema(this.dbContext);
 
-    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
+    const defaultSchema = await this.dbContext.connection.getSchemaName();
     // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
     const dbSchema: DatabaseSchema | undefined =
       await this.dbContext.connection.getSchema(this.targetDatabase);
@@ -796,7 +817,6 @@ export default ${name};
     const list = await this._list();
     let needRetrace = false;
     let currentHash: string = '';
-    const defaultSchema = await this.dbContext.connection.getDefaultSchema();
     for (const item of list) {
       if (!currentHash) {
         currentHash = await getFileHash(item.path);
@@ -841,7 +861,7 @@ export default ${name};
         const tracker = new SnapshotMigrateTracker(
           lastSchema,
           this.dbContext.connection.sqlUtil,
-          defaultSchema
+          this.targetSchemaName
         );
         const builder = new SnapshotMigrateBuilder();
         const migrate = (await import(item.path)).default;

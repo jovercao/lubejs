@@ -17,10 +17,6 @@ export interface MigrateDbProvider {
 }
 
 declare module '../core/base/connection' {
-  export namespace ConnectionConstructor {
-    interface prototype extends MigrateConnection {}
-  }
-
   export interface Connection extends MigrateConnection {}
 }
 

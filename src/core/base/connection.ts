@@ -70,11 +70,15 @@ abstract class ConnectionClass extends Executor {
   /**
    * 获取当前数据库
    */
-  async getDatabase(): Promise<string> {
+  async getDatabaseName(): Promise<string> {
     return await this.queryScalar(SQL.select(SQL.std.currentDatabase()));
   }
 
-  async getDefaultSchema(): Promise<string> {
+  /**
+   * 获取当前默认架构
+   * @returns
+   */
+  async getSchemaName(): Promise<string> {
     return await this.queryScalar(SQL.select(SQL.std.defaultSchema()));
   }
 
@@ -82,8 +86,8 @@ abstract class ConnectionClass extends Executor {
    * 变更所在数据库
    * 当为null时表示登录用户默认数据库
    */
-  async changeDatabase(database: string): Promise<void> {
-    await this.query(SQL.use(database));
+  async changeDatabase(name: string): Promise<void> {
+    await this.query(SQL.use(name));
   }
 }
 

@@ -1,9 +1,9 @@
 import 'ts-node/register';
 import 'tsconfig-paths/register';
 import Program from 'commander';
-import { MigrateCli } from '../migrate';
+import { MigrateCli } from './migrate';
 import 'colors';
-import { loadConfig } from '../core';
+import { loadConfig } from './core';
 
 async function initCli(options?: {
   context?: string;

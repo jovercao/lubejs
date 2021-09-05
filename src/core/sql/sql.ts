@@ -94,7 +94,7 @@ import { clone, isPlainObject } from './util';
 /**
  * 所有AST类的基类
  */
-export abstract class SQL {
+abstract class SQLClass {
 
   abstract readonly $type: SQL_SYMBOLE;
   /**
@@ -1184,3 +1184,7 @@ export enum SQL_SYMBOLE {
   OBJECT = 'OBJECT',
   ROWSET = 'ROWSET',
 }
+
+export type SQLConstructor = typeof SQLClass;
+export type SQL = SQLClass;
+export const SQL: SQLConstructor = SQLClass;

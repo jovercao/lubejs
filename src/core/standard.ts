@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-namespace */
 /**
  * 此文件和于存放标准库
  * 如数据类型、函数、系统变量、系统常量等
@@ -16,8 +17,9 @@ import {
   CompatiableObjectName,
   StandardExpression,
   StandardCondition,
-  Float,
+  Float
 } from './sql';
+import './sql';
 
 export class Standard {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -441,3 +443,10 @@ export class Standard {
 }
 
 export const STD: Standard = Standard.std;
+
+// declare module './sql/sql' {
+//   // eslint-disable-next-line @typescript-eslint/no-empty-interface
+//   export namespace SQLConstructor {
+//     [p in keyof Standard]: Standard[p]
+//   }
+// }

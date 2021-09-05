@@ -2,20 +2,14 @@
   "name": "lubejs",
   "version": "3.0.0-preview02",
   "description": "An easy-to-use nodejs oracledb client",
-  "main": "dist/index.js",
-  "directories": {
-    "dist": "dist"
-  },
+  "main": "index.js",
   "bin": {
-    "lube": "./dist/cli/bin.js"
+    "lube": "cli.js"
   },
-  "files": [
-    "dist/**/*.js",
-    "dist/**/*.d.ts"
-  ],
   "scripts": {
-    "build": "npm run clean && npm run lint && tsc && npm pack",
-    "clean": "pwsh -c 'rm -r -force dist;rm -r -force doc'",
+    "build": "npm run clean && npm run lint && tsc && npm run pack",
+    "pack": "pwsh -c cp  README.md dist/; cp README_CHS.md dist/; cp package.json dist/; cd dist; npm pack;",
+    "clean": "pwsh -c if (test-path dist) { rm -r -force dist; } if (test-path doc) { rm -r -force doc; }",
     "lint": "eslint --fix ./src --ext .ts",
     "doc": "typedoc --plugin typedoc-plugin-markdown --out doc src"
   },

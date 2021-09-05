@@ -5,7 +5,7 @@ import { ColumnsOf, DefaultRowObject, RowObject } from "../types";
 import { Rowset } from "./rowset";
 
 export class WithSelect<
-  T extends RowObject = DefaultRowObject,
+  T extends RowObject = any,
   N extends string = string
 > extends Rowset<T> {
   readonly $type: SQL_SYMBOLE.WITH_SELECT = SQL_SYMBOLE.WITH_SELECT;
