@@ -39,7 +39,7 @@ abstract class SQLClass {
   }
 
   static return(value?: CompatibleExpression): Return {
-    return new Return(value)
+    return new Return(value);
   }
 
   /**
@@ -216,13 +216,7 @@ abstract class SQLClass {
    * @returns 返回逻辑表达式
    */
   static and(conditions: Condition[]): Condition;
-  static and(
-    ...conditions: [
-      Condition,
-      Condition,
-      ...Condition[]
-    ]
-  ): Condition;
+  static and(...conditions: [Condition, Condition, ...Condition[]]): Condition;
   /**
    * 位算术运算 &
    * @param left 左值
@@ -251,10 +245,7 @@ abstract class SQLClass {
       );
     }
 
-    return BinaryLogicCondition.join(
-      LOGIC_OPERATOR.AND,
-      args as Condition[]
-    );
+    return BinaryLogicCondition.join(LOGIC_OPERATOR.AND, args as Condition[]);
   }
 
   /**
@@ -263,13 +254,7 @@ abstract class SQLClass {
    * @returns 返回逻辑表达式
    */
   static or(conditions: Condition[]): Condition;
-  static or(
-    ...conditions: [
-      Condition,
-      Condition,
-      ...Condition[]
-    ]
-  ): Condition;
+  static or(...conditions: [Condition, Condition, ...Condition[]]): Condition;
   /**
    * 位算术运算 |
    * @param left 左值
@@ -296,10 +281,7 @@ abstract class SQLClass {
         args[1] as CompatibleExpression<Interger>
       );
     }
-    return BinaryLogicCondition.join(
-      LOGIC_OPERATOR.OR,
-      args as Condition[]
-    );
+    return BinaryLogicCondition.join(LOGIC_OPERATOR.OR, args as Condition[]);
   }
 
   /**
@@ -332,7 +314,7 @@ abstract class SQLClass {
       throw new Error(`conditions must more than or equals 2 element.`);
     }
     const cond: Condition = conditions.reduce((previous, current) => {
-      let condition = current
+      let condition = current;
       // 如果是二元逻辑条件运算，则将其用括号括起来，避免逻辑运算出现优先级的问题
       if (BinaryLogicCondition.isBinaryLogicCondition(condition)) {
         condition = SQL.group(condition);
@@ -1003,6 +985,10 @@ abstract class SQLClass {
   ): Parameter<TsTypeOf<T>, N> {
     return Parameter.output(name, type, value);
   }
+
+  static sequence<T extends Numeric>(name: CompatiableObjectName): Sequence<T> {
+    return new Sequence(name);
+  }
 }
 
 export enum SQL_SYMBOLE {
@@ -1057,6 +1043,11 @@ export enum SQL_SYMBOLE {
    * 函数
    */
   FUNCTION = 'FUNCITON',
+
+  /**
+   * 序列
+   */
+  SEQUENCE = 'SEQUENCE',
   // /**
   //  * 标量函数
   //  */
@@ -1104,7 +1095,13 @@ export const SQL: SQLConstructor = SQLClass;
 import { RowObject, ColumnsOf } from './types';
 import { DbType, DbTypeOf, TsTypeOf } from './db-type';
 import { Document } from './document';
-import { CompatiableObjectName, Func, Procedure, BuiltIn } from './object';
+import {
+  CompatiableObjectName,
+  Func,
+  Procedure,
+  BuiltIn,
+  Sequence,
+} from './object';
 import {
   Table,
   WithSelect,

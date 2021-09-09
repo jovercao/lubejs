@@ -149,4 +149,6 @@ export abstract class StandardTranslator implements Standard {
   abstract currentDatabase(): Expression<string>;
 
   abstract defaultSchema(): Expression<string>;
+
+  abstract sequenceNextValue<T extends Numeric>(sequenceName: CompatiableObjectName<string>): Expression<T>;
 }

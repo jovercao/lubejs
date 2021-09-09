@@ -440,6 +440,13 @@ export class Standard {
   defaultSchema(): Expression<string> {
     return StandardExpression.create(STD.defaultSchema.name, []);
   }
+
+  /**
+   * 获取序列下一个值
+   */
+  sequenceNextValue<T extends Numeric>(sequenceName: CompatiableObjectName): Expression<T> {
+    return StandardExpression.create(STD.sequenceNextValue.name, [sequenceName]);
+  }
 }
 
 export const STD: Standard = Standard.std;

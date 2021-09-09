@@ -30,6 +30,7 @@ import {
   RowObjectFrom,
   Assignment,
   Procedure,
+  Expression,
 } from '../sql';
 
 const { and, doc } = SQL;
@@ -128,6 +129,9 @@ export abstract class Executor {
       typeof args[0].sql === 'string'
     ) {
       command = args[0];
+      // 如果查询的是表达式，则自动转换为 select xx;
+    } else if (args.length === 1 && Expression.isExpression(args[0])) {
+      command = this.sqlUtil.sqlify(SQL.select(args[0]));
     } else {
       assert(
         args.length <= 2 && typeof args[0] === 'string',
@@ -215,6 +219,9 @@ export abstract class Executor {
     sql: Select<T>
   ): Promise<AsScalarType<T> | null>;
   async queryScalar<T extends Scalar>(sql: Select<any>): Promise<T | null>;
+  async queryScalar<T extends Scalar>(
+    expression: Expression<T>
+  ): Promise<T | null>;
   async queryScalar<T extends Scalar = any>(
     sql: TemplateStringsArray,
     ...params: any[]
@@ -331,7 +338,9 @@ export abstract class Executor {
     let columns: any[];
     const t = Table.ensure(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
-      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.$field(fieldName));
+      columns = (fields as ColumnsOf<T>[]).map(fieldName =>
+        t.$field(fieldName)
+      );
     } else {
       columns = [t.star];
     }
