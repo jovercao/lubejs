@@ -1,23 +1,5 @@
-import { Interger, Numeric, Scalar } from '../scalar';
+
 import { SQL, SQL_SYMBOLE } from '../sql';
-import { Condition } from '../condition/condition';
-import { DbType, TsTypeOf } from '../db-type';
-import { Select } from '../statement/crud/select';
-import { SelectColumn } from '../statement/crud/select-column';
-import { Sort } from '../statement/crud/sort';
-import { BinaryOperation } from './binary-operation';
-import { UnaryOperation } from './unary-operation';
-import { BinaryCompareCondition, UnaryCompareCondition } from '../condition';
-import { Literal } from './literal';
-import { GroupExpression } from './group-expression';
-import { StandardExpression } from './standard-expression';
-import {
-  BINARY_OPERATION_OPERATOR,
-  UNARY_OPERATION_OPERATOR,
-} from './common/operation';
-import { Variant } from './variant';
-import { CompatibleRowset } from '../rowset';
-import { Field } from './field';
 
 /**
  * 可兼容的表达式
@@ -329,3 +311,13 @@ export abstract class Expression<T extends Scalar = Scalar>
     return expr;
   }
 }
+
+// *****因循环引用问题，需要放置在底部 ****************************** //
+import { Scalar } from '../scalar';
+import { Condition } from '../condition/condition';
+import { DbType, TsTypeOf } from '../db-type';
+import { Select } from '../statement/crud/select';
+import { SelectColumn } from '../statement/crud/select-column';
+import { Sort } from '../statement/crud/sort';
+import { BinaryCompareCondition, UnaryCompareCondition } from '../condition';
+import { Literal } from './literal';

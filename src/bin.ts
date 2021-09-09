@@ -4,6 +4,8 @@ import Program from 'commander';
 import { MigrateCli } from './migrate';
 import 'colors';
 import { loadConfig } from './core';
+import { Writable } from 'stream';
+import { createWriteStream, openSync } from 'fs';
 
 async function initCli(options?: {
   context?: string;
@@ -157,20 +159,20 @@ const migrateUpdate = migrate
 
 const migrateSync = migrate
   .command('sync')
-  .option(
-    '-o, --output-path <outputPath>',
-    '脚本输出路径，不指定此参数时则更新数据库'
-  )
+  // .option(
+  //   '-o, --output-path <outputPath>',
+  //   '脚本输出路径，不指定此参数时则更新数据库'
+  // )
   .description(
     `同步数据库架构及种子数据，本命令为方便开发测试而建立，不建议在生产环境中使用，
 因为通过Sync更新的数据库后，将不能再使用迁移版本管理命令 'lubejs migrate update <migrate>'
 进行更新，否则可能造成数据丢失！`
   )
   .action(async () => {
-    const opts = migrateSync.opts();
+    // const opts = migrateSync.opts();
     const cli = await initCli(migrate.opts());
     try {
-      await cli.sync(opts?.outputPath);
+      await cli.sync(process.stdout);
     } catch (error) {
       errorHandler(error);
     } finally {

@@ -158,7 +158,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         : Reflect.get(item, this.metadata.key.property);
       const added = await this.executor.find(
         this.rowset,
-        this.rowset.$(this.metadata.key.property as any).eq(key)
+        this.rowset.$field(this.metadata.key.property as any).eq(key)
       );
       this.toEntity(added, item);
       if (options?.withoutRelations !== true) {
@@ -187,7 +187,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       );
     }
     const condition: Condition = this.rowset
-      .$(this.metadata.key.property as any)
+      .$field(this.metadata.key.property as any)
       .eq(keyValue);
     return condition;
   }
@@ -200,7 +200,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       );
     }
     let condition: Condition = this.rowset
-      .$(this.metadata.key.property as any)
+      .$field(this.metadata.key.property as any)
       .eq(keyValue);
     if (this.metadata.rowflagColumn) {
       const rowflagValue = Reflect.get(
@@ -214,7 +214,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       }
       condition = condition.and(
         this.rowset
-          .$(this.metadata.rowflagColumn.property as any)
+          .$field(this.metadata.rowflagColumn.property as any)
           .eq(rowflagValue)
       );
     }
@@ -468,7 +468,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
     for (const column of this.metadata.columns) {
       if (column.isIdentity || column.isRowflag) continue;
       if (column.isImplicit && !Reflect.has(item, column.property)) continue;
-      Reflect.set(datarow, column.columnName, this.toDbValue(item, column));
+      // 因为rowset已经在core中完成字段映射功能，此处可直接使用property访问
+      Reflect.set(datarow, column.property, this.toDbValue(item, column));
     }
     return datarow;
   }

@@ -3,7 +3,7 @@ import { CompatibleCondition, Condition } from '../../condition/condition';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { ValuedSelect } from '../../expression/valied-select';
 import { ProxiedWithSelect, WithSelect } from '../../rowset/with-select';
-import { ProxiedNamedSelect, NamedSelect } from '../../rowset/named-select'
+import { ProxiedNamedSelect, NamedSelect } from '../../rowset/named-select';
 import { Scalar } from '../../scalar';
 import { isScalar } from '../../scalar/util';
 import { AsScalarType, InputObject, RowObject } from '../../types';
@@ -14,17 +14,19 @@ import { SelectColumn } from './select-column';
 import { CompatibleSortInfo, Sort, SortObject, SORT_DIRECTION } from './sort';
 import { Star } from './star';
 
-import { Union } from './union'
+import { Union } from './union';
+import { Field } from '../../expression';
+import { COLUMN_NAME_PREEFIX } from './common/select-action';
 
 /**
- * SELECT查询
+ * SELECT查询，传入的表达式会被自动命名为 '#column_' + i;
  */
 export class Select<T extends RowObject = any> extends Fromable {
   $top?: number;
   $offset?: number;
   $limit?: number;
   $distinct?: boolean;
-  $columns: (Expression<Scalar> | SelectColumn<Scalar, string> | Star<any>)[];
+  $columns: (SelectColumn<Scalar, string> | Star<any>)[];
   $sorts?: Sort[];
   $groups?: Expression<any>[];
   $having?: Condition;
@@ -46,10 +48,7 @@ export class Select<T extends RowObject = any> extends Fromable {
       columns.length > 0,
       'Must select one or more columns by Select statement.'
     );
-    if (
-      columns.length === 1 &&
-      isPlainObject(columns[0])
-    ) {
+    if (columns.length === 1 && isPlainObject(columns[0])) {
       const results = columns[0];
       this.$columns = Object.entries(results as InputObject<T>).map(
         ([name, expr]: [string, unknown]) => {
@@ -61,17 +60,29 @@ export class Select<T extends RowObject = any> extends Fromable {
       );
       return;
     }
+    let i = 0;
     // 实例化
     this.$columns = (
       columns as (CompatibleExpression<Scalar> | SelectColumn<Scalar, string>)[]
     ).map(item => {
-      if (
-        Expression.isExpression(item) ||
-        SelectColumn.isSelectColumn(item) ||
-        Star.isStar(item)
-      )
+      if (Field.isField(item)) {
+        return item.as();
+      }
+      if (Star.isStar(item) || SelectColumn.isSelectColumn(item)) {
         return item;
-      return Expression.ensure(item);
+      }
+      return new SelectColumn(
+        COLUMN_NAME_PREEFIX + (++i).toString(),
+        Expression.ensure(item)
+      );
+
+      // if (
+      //   Expression.isExpression(item) ||
+      //   SelectColumn.isSelectColumn(item) ||
+      //   Star.isStar(item)
+      // )
+      //   return item;
+      // return Expression.ensure(item);
     });
   }
 
@@ -158,10 +169,10 @@ export class Select<T extends RowObject = any> extends Fromable {
    * Having 子句
    * @param condition
    */
-  having(condition: CompatibleCondition<T>) {
+  having(condition: Condition) {
     assert(!this.$having, 'having is declared');
     assert(this.$groups, 'Syntax error, group by is not declared.');
-    this.$having = Condition.ensure(condition);
+    this.$having = condition;
     return this;
   }
 
@@ -226,10 +237,8 @@ export class Select<T extends RowObject = any> extends Fromable {
   }
 
   static isSelect(object: any): object is Select {
-    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.SELECT;
+    return (
+      Statement.isStatement(object) && object.$kind === STATEMENT_KIND.SELECT
+    );
   }
 }
-
-
-
-

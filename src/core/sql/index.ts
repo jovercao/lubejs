@@ -1,4 +1,4 @@
-export * from './sql'
+export * from './raw'
 
 export * from './condition'
 
@@ -16,8 +16,6 @@ export * from './scalar'
 // statements
 export * from './statement'
 
-export * from './raw'
-
 export * from './document'
 
 export * from './types'
@@ -25,3 +23,5 @@ export * from './types'
 export * from './scalar'
 
 export * from './db-type'
+
+export * from './sql'

@@ -33,4 +33,13 @@ export class BinaryCompareCondition extends Condition {
       this.$right = Expression.ensure(right);
     }
   }
+
+  static isBinaryCompareCondition(
+    object: any
+  ): object is BinaryCompareCondition {
+    return (
+      Condition.isCondition(object) &&
+      object.$kind === CONDITION_KIND.BINARY_COMPARE
+    );
+  }
 }

@@ -4,7 +4,7 @@ import { Statement, STATEMENT_KIND } from "../statement";
 export class Return extends Statement {
   $kind: STATEMENT_KIND.RETURN = STATEMENT_KIND.RETURN;
   $value?: Expression;
-  constructor(value: CompatibleExpression) {
+  constructor(value?: CompatibleExpression) {
     super();
     this.$value = Expression.ensure(value);
   }

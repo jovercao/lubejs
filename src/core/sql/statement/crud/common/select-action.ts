@@ -1,19 +1,33 @@
-import { CompatibleExpression } from "../../../expression/expression";
-import { Scalar } from "../../../scalar";
-import { DefaultRowObject, InputObject, RowObject, RowObjectFrom } from "../../../types";
-import { Select } from "../select";
-import { Star } from '../star'
-import { SelectColumn } from "../select-column";
+import { CompatibleExpression } from '../../../expression/expression';
+import { Scalar } from '../../../scalar';
+import {
+  DefaultRowObject,
+  InputObject,
+  RowObject,
+  RowObjectFrom,
+} from '../../../types';
+import { Select } from '../select';
+import { Star } from '../star';
+import { SelectColumn } from '../select-column';
 
+/**
+ * 自动列名前缀
+ */
+export const COLUMN_NAME_PREEFIX = '#column_';
+export type DefaultColumnName = '#column_1';
+export const DEFAULT_COLUMN_NAME: DefaultColumnName = '#column_1';
 /**
  * SELECT函数签名
  */
- export type SelectAction = {
+export type SelectAction = {
   /**
    * 选择列
    */
   // <T extends RowObject = any>(a: Star<T>): Select<T>;
   <T extends RowObject>(a: Star<T>): Select<T>;
+  <T extends Scalar>(value: CompatibleExpression<T>): Select<{
+    '#column_1': T;
+  }>;
   <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
   <T extends RowObject>(results: InputObject<T>): Select<T>;
   <T extends Scalar>(expr: CompatibleExpression<T>): Select<{

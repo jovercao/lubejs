@@ -443,10 +443,3 @@ export class Standard {
 }
 
 export const STD: Standard = Standard.std;
-
-// declare module './sql/sql' {
-//   // eslint-disable-next-line @typescript-eslint/no-empty-interface
-//   export namespace SQLConstructor {
-//     [p in keyof Standard]: Standard[p]
-//   }
-// }

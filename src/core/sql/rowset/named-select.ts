@@ -17,7 +17,6 @@ export class NamedSelect<
   readonly $type: SQL_SYMBOLE.NAMED_SELECT = SQL_SYMBOLE.NAMED_SELECT;
   $select: Select<T>;
   $name: A;
-  $alias?: never;
 
   private constructor(statement: Select<T>, name: A) {
     super();
@@ -31,11 +30,6 @@ export class NamedSelect<
   >(statement: Select<T>, name: A): NamedSelect<T, A> {
     return new NamedSelect(statement, name) as ProxiedNamedSelect<T, A>;
   }
-
-  /**
-   * 将别名再进行别名化
-   */
-  as: never;
 }
 
 export type ProxiedNamedSelect<
@@ -43,5 +37,5 @@ export type ProxiedNamedSelect<
   N extends string = string
 > = NamedSelect<T, N> &
   {
-    readonly [P in ColumnsOf<T>]: Field<T[P], string>;
+    readonly [P in ColumnsOf<T>]: Field<T[P], P>;
   };

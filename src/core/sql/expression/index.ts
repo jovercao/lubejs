@@ -1,4 +1,3 @@
-export * from './expression';
 export * from './binary-operation';
 export * from './case';
 export * from './field';
@@ -12,3 +11,4 @@ export * from './variant';
 export * from './when';
 export * from './common/assignable';
 export * from './common/operation';
+export * from './expression';

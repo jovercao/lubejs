@@ -29,11 +29,11 @@ export function aroundRowset<T extends Entity = any>(
   if (!ENTITY_COLUMN_MAPS.has(metadata)) {
     const map: Record<string, string> = {};
     metadata.columns.forEach(col => {
-      map[(col.property, col.columnName)];
+      map[col.property] = col.columnName;
     });
     ENTITY_COLUMN_MAPS.set(metadata, map);
   }
-  rowset.$bind(ENTITY_COLUMN_MAPS.get(metadata)!);
+  rowset.$around(ENTITY_COLUMN_MAPS.get(metadata)!);
   return rowset;
 }
 

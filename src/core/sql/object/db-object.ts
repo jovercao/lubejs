@@ -1,9 +1,4 @@
-import { RowObject } from '..';
 import { SQL } from '../sql';
-import { ProxiedTable, Table } from '../rowset';
-import { BuiltIn } from './built-in';
-import { Func } from './func';
-import { Procedure } from './procedure';
 
 /**
  * 标识符，可以多级，如表名等

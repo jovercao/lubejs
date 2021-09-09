@@ -1,16 +1,5 @@
-import { DefaultInputObject, RowObject, WhereObject } from '../types';
+
 import { SQL, SQL_SYMBOLE } from '../sql';
-import { CompatibleRowset, Rowset } from '../rowset/rowset';
-import { Field } from '../expression/field';
-import { BinaryLogicCondition } from './binary-logic-condition';
-import { GroupCondition } from './group-condition';
-import { UnaryLogicCondition } from './unary-logic-condition';
-import { UnaryCompareCondition } from './unary-compare-condition';
-import { CompatibleExpression, Expression } from '../expression';
-import { Scalar } from '../scalar';
-import { BinaryCompareCondition } from './binary-compare-condition';
-import { Select } from '../statement';
-import { ExistsCondition } from './exists-condition';
 
 /**
  * 查询条件
@@ -23,7 +12,7 @@ export abstract class Condition extends SQL {
    * @param condition 下一个查询条件
    * @returns 返回新的查询条件
    */
-  and(condition: CompatibleCondition): Condition {
+  and(condition: Condition): Condition {
     return BinaryLogicCondition.and(this, condition);
 
     // condition = ensureCondition(condition);
@@ -54,7 +43,7 @@ export abstract class Condition extends SQL {
       if (typeof rowset === 'string' || Array.isArray(rowset)) {
         makeField = (key: string) => new Field(key, rowset);
       } else if (Rowset.isRowset(rowset)) {
-        makeField = (key: string) => (rowset as any).field(key);
+        makeField = (key: string) => rowset.$field(key as any);
       }
     } else {
       makeField = (key: string) => new Field(key);
@@ -125,3 +114,9 @@ export enum CONDITION_KIND {
 export type CompatibleCondition<T extends RowObject = DefaultInputObject> =
   | Condition
   | WhereObject<T>;
+
+
+import { DefaultInputObject, RowObject, WhereObject } from '../types';
+import { CompatibleRowset, Rowset } from '../rowset/rowset';
+import { Field } from '../expression/field';
+import { BinaryLogicCondition } from './binary-logic-condition';

@@ -52,7 +52,7 @@ export interface QueryHandler {
   >;
 }
 
-export const INSERT_MAXIMUM_ROWS = 2000;
+export const INSERT_MAXIMUM_ROWS = 1000;
 
 /**
  * 数据执行器
@@ -206,19 +206,19 @@ export abstract class Executor {
   async queryScalar<T extends Scalar = any>(
     sql: string,
     params?: Parameter[]
-  ): Promise<T>;
+  ): Promise<T | null>;
   async queryScalar<T extends Scalar = any>(
     sql: string,
     params?: InputObject
-  ): Promise<T>;
+  ): Promise<T | null>;
   async queryScalar<T extends RowObject>(
     sql: Select<T>
-  ): Promise<AsScalarType<T>>;
-  async queryScalar<T extends Scalar>(sql: Select<any>): Promise<T>;
+  ): Promise<AsScalarType<T> | null>;
+  async queryScalar<T extends Scalar>(sql: Select<any>): Promise<T | null>;
   async queryScalar<T extends Scalar = any>(
     sql: TemplateStringsArray,
     ...params: any[]
-  ): Promise<T>;
+  ): Promise<T | null>;
   async queryScalar(...args: any[]): Promise<any> {
     const rows = (await this._internalQuery(...args)).rows!;
     if (rows.length === 0) return null;
@@ -314,7 +314,7 @@ export abstract class Executor {
       return rowsAffected;
     };
     // 启用事务
-    if (this instanceof Connection) {
+    if (this instanceof Connection && !this.inTransaction) {
       return (this as unknown as Connection).trans(action);
     }
     return action();
@@ -331,9 +331,9 @@ export abstract class Executor {
     let columns: any[];
     const t = Table.ensure(table);
     if (fields && fields.length > 0 && typeof fields[0] === 'string') {
-      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.$(fieldName));
+      columns = (fields as ColumnsOf<T>[]).map(fieldName => t.$field(fieldName));
     } else {
-      columns = [t._];
+      columns = [t.star];
     }
     const sql = SQL.select<T>(...columns)
       .top(1)
@@ -380,7 +380,7 @@ export abstract class Executor {
     if (results) {
       columns = results(t);
     } else {
-      columns = t._;
+      columns = t.star;
     }
     const sql = SQL.select(columns).from(table);
     if (where) {
@@ -472,7 +472,7 @@ export abstract class Executor {
       );
       let res: QueryResult<T>;
       // 批量操作自动开启事务
-      if (this instanceof Connection) {
+      if (this instanceof Connection && !this.inTransaction) {
         res = await this.trans(async () => await this.query(docs));
       } else {
         res = await this.query(docs);

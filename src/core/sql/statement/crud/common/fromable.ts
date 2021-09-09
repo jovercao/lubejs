@@ -1,5 +1,5 @@
 import { CompatibleCondition, Condition } from "../../../condition/condition";
-import { RowObject } from "../../../types";
+import { RowObject, WhereObject } from "../../../types";
 import { ProxiedRowset, Rowset } from "../../../rowset/rowset"
 import { CompatiableObjectName } from "../../../object/db-object";
 import { With } from "../with";
@@ -62,15 +62,26 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
     return this.join(table, on, true);
   }
 
+  protected ensureCondition(condition: CompatibleCondition<T>): Condition {
+    if (isPlainObject(condition)) {
+      // 严格限制语法，字段名必须带上表别名
+      assert(this.$froms, 'from must call before where when use `WhereObject<T>` condition type.')
+      if ((this.$froms?.length || 0) > 1 || this.$joins) {
+        throw new Error('object condition is not support for multi rowset source select statement.');
+      }
+      const rowset = this.$froms?.[0]
+      return Condition.ensure(condition, rowset);
+    }
+    return condition
+  }
+
   /**
    * where查询条件
    * @param condition
    */
   where(condition: CompatibleCondition<T>) {
     assert(!this.$where, 'where is declared');
-    if (isPlainObject(condition)) {
-      condition = Condition.ensure(condition);
-    }
+    condition = this.ensureCondition(condition);
     this.$where = condition as Condition;
     return this;
   }
@@ -82,7 +93,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    */
   andWhere(condition: CompatibleCondition<T>) {
     if (!this.$where) return this.where(condition);
-    this.$where = Condition.and(this.$where, condition);
+    this.$where = Condition.and(this.$where, this.ensureCondition(condition));
     return this;
   }
 }

@@ -1,7 +1,7 @@
 import { SQL, SQL_SYMBOLE } from "../../sql";
 import { Field } from "../../expression/field";
 import { CompatiableObjectName } from "../../object/db-object";
-import { WithSelect } from "../../rowset/with-select";
+import { ProxiedWithSelect, WithSelect } from "../../rowset/with-select";
 import { CompatibleTable } from '../../rowset/table'
 import { Scalar } from "../../scalar";
 import { ColumnsOf, RowObject } from "../../types";
@@ -20,7 +20,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
   /**
    * With结构
    */
-  constructor(...items: WithSelect[] | [WithSelect[]] | [SelectAliasObject]) {
+  constructor(...items: WithSelect[] | [WithSelect[]] | ProxiedWithSelect[] | [ProxiedWithSelect[]] | [SelectAliasObject]) {
     super();
     if (items.length === 0 && isPlainObject(items[0])) {
       this.$rowsets = Object.entries(items[0]).map(

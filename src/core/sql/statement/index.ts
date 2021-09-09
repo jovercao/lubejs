@@ -27,13 +27,14 @@ import { Assignment } from './programmer';
 import { Declare } from './declare';
 import { StandardStatement } from './other/standard-statement';
 
-export * from './statement';
 export * from './control';
 export * from './crud';
 export * from './declare';
 export * from './migrate';
 export * from './other';
 export * from './programmer';
+
+export * from './statement';
 
 /**
  * CRUD语句，允许 接WITH语句

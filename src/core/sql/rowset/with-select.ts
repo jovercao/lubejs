@@ -1,16 +1,20 @@
 import { SQL_SYMBOLE } from "../sql";
-import { Field } from "../expression/field";
-import { Select } from "../statement/crud/select";
-import { ColumnsOf, DefaultRowObject, RowObject } from "../types";
 import { Rowset } from "./rowset";
 
 export class WithSelect<
   T extends RowObject = any,
   N extends string = string
 > extends Rowset<T> {
+  private constructor(name: N, select: Select<T>) {
+    super();
+    this.$name = name;
+    this.$select = select;
+  }
+
   readonly $type: SQL_SYMBOLE.WITH_SELECT = SQL_SYMBOLE.WITH_SELECT;
   $select: Select<T>;
   $alias?: string;
+
   /**
    * WITH 声明名称
    */
@@ -26,17 +30,16 @@ export class WithSelect<
   >(name: N, select: Select<T>): ProxiedWithSelect<T, N> {
     return new WithSelect(name, select) as ProxiedWithSelect<T, N>;
   }
-
-  private constructor(name: N, select: Select<T>) {
-    super();
-    this.$name = name;
-    this.$select = select;
-  }
 }
 
 export type ProxiedWithSelect<
   T extends RowObject = RowObject,
   N extends string = string
 > = WithSelect<T, N> & {
-  readonly [P in ColumnsOf<T>]: Field<T[P], string>;
+  readonly [P in ColumnsOf<T>]: Field<T[P], P>;
 };
+
+
+import { Field } from "../expression/field";
+import { Select } from "../statement/crud/select";
+import { ColumnsOf, DefaultRowObject, RowObject } from "../types";

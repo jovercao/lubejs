@@ -47,7 +47,7 @@ npm install lubejs-mssql
 
 ```ts
 // start.ts
-import { createLube, SqlBuilder as SQL } from 'lubejs'
+import { createLube, SQL } from 'lubejs'
 import 'lubejs-mssql'
 
 (async () => {

@@ -1,6 +1,5 @@
 import { SQL_SYMBOLE } from "../sql";
 import { CompatibleCondition, Condition, CONDITION_KIND, LOGIC_OPERATOR } from "./condition";
-import { GroupCondition } from "./group-condition";
 
 /**
  * 二元逻辑查询条件条件
@@ -16,19 +15,19 @@ import { GroupCondition } from "./group-condition";
    */
   constructor(
     operator: LOGIC_OPERATOR,
-    left: CompatibleCondition<any>,
-    right: CompatibleCondition<any>
+    left: Condition,
+    right: Condition
   ) {
     super();
     this.$operator = operator;
     /**
      * 左查询条件
      */
-    this.$left = Condition.ensure(left);
+    this.$left = left
     /**
      * 右查询条件
      */
-    this.$right = Condition.ensure(right);
+    this.$right = right
   }
 
   static isBinaryLogicCondition(object: any): object is BinaryLogicCondition {

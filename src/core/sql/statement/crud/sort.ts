@@ -2,10 +2,11 @@ import { SQL, SQL_SYMBOLE } from '../../sql';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { Scalar } from '../../scalar';
 import { ColumnsOf, DefaultInputObject, RowObject } from '../../types';
+import { SelectColumn } from './select-column';
 
 export class Sort extends SQL {
   $type: SQL_SYMBOLE.SORT = SQL_SYMBOLE.SORT;
-  $expr: Expression<Scalar>;
+  $expr: Expression | SelectColumn;
   $direction?: SORT_DIRECTION;
   constructor(expr: CompatibleExpression<Scalar>, direction?: SORT_DIRECTION) {
     super();

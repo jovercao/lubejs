@@ -46,9 +46,9 @@ export class Table<
   /**
    * 获取所有字段
    */
-  get _(): Star<T> {
+  get star(): Star<T> {
     if (this.$alias) {
-      return super._;
+      return super.star;
     }
     return new Star(this);
   }
@@ -83,5 +83,5 @@ export type ProxiedTable<
   N extends string = string
 > = Table<T, N> &
   {
-    readonly [P in ColumnsOf<T>]: Field<T[P], string>;
+    readonly [P in ColumnsOf<T>]: Field<T[P], P>;
   };

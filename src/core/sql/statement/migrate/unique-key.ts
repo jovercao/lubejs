@@ -1,5 +1,4 @@
-import { SQL } from '../..';
-import { SQL_SYMBOLE } from '../../sql';
+import { SQL, SQL_SYMBOLE } from '../../sql';
 import { KeyColumns, KeyColumnsObject } from './key-column';
 
 /**

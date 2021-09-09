@@ -1,24 +1,26 @@
 import { SQL, SQL_SYMBOLE } from "../../sql";
-import { DbType } from "../../db-type";
+import { DbType, DbTypeOf } from "../../db-type";
 import { Literal } from "../../expression/literal";
 import { PARAMETER_DIRECTION } from "../../expression/parameter";
+import { Variant } from "../../expression";
+import { Scalar } from "../../scalar";
 
-export class ProcedureParameter extends SQL {
+export class ProcedureParameter<T extends Scalar = Scalar, N extends string = string> extends Variant<T, N> {
   readonly $type: SQL_SYMBOLE.PROCEDURE_PARAMETER =
     SQL_SYMBOLE.PROCEDURE_PARAMETER;
 
   constructor(
-    name: string,
-    dataType: DbType,
-    direct: PARAMETER_DIRECTION = 'INPUT'
+    name: N,
+    dataType: DbTypeOf<T>,
+    direct: PARAMETER_DIRECTION = 'INPUT',
+    defaultValue?: Literal<T>
   ) {
-    super();
-    this.$name = name;
+    super(name);
     this.$dbType = dataType;
     this.$direct = direct;
+    this.$default = defaultValue;
   }
 
-  $name: string;
   $dbType: DbType;
   $direct: PARAMETER_DIRECTION;
   $default?: Literal;

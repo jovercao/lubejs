@@ -13,10 +13,10 @@ import { CompatibleCondition, Condition, CONDITION_KIND, LOGIC_OPERATOR } from "
    * @param operator
    * @param next
    */
-  constructor(operator: LOGIC_OPERATOR.NOT, next: CompatibleCondition<any>) {
+  constructor(operator: LOGIC_OPERATOR.NOT, next: Condition) {
     super();
     this.$operator = operator;
-    this.$condition = Condition.ensure(next);
+    this.$condition = next;
   }
 
   static isUnaryLogicCondition(object: any): object is UnaryLogicCondition {

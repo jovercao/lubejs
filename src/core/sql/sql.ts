@@ -1,101 +1,7 @@
-import { RowObject, ColumnsOf } from './types';
-import { DbType, DbTypeOf, TsTypeOf } from './db-type';
-import { Document } from './document';
-import { CompatiableObjectName, Func, Procedure, BuiltIn } from './object';
-import {
-  Table,
-  WithSelect,
-  ProxiedTable,
-  CompatibleRowset,
-  ProxiedRowset,
-  CompatibleTable,
-} from './rowset';
-import {
-  GroupCondition,
-  BinaryLogicCondition,
-  LOGIC_OPERATOR,
-  BinaryCompareCondition,
-  BINARY_COMPARE_OPERATOR,
-  ExistsCondition,
-  CONDITION_KIND,
-  Condition,
-  CompatibleCondition,
-  UnaryLogicCondition,
-  UnaryCompareCondition,
-  UNARY_COMPARE_OPERATOR,
-} from './condition';
-import { Standard } from '../standard';
-import {
-  Assignable,
-  BinaryOperation,
-  Case,
-  CompatibleExpression,
-  Expression,
-  Field,
-  GroupExpression,
-  Literal,
-  Parameter,
-  StandardExpression,
-  UnaryOperation,
-  Variant,
-  When,
-} from './expression';
-import {
-  BINARY_OPERATION_OPERATOR,
-  UNARY_OPERATION_OPERATOR,
-} from './expression/common/operation';
-import { Raw } from './raw';
-import { Interger, isScalar, Numeric, Scalar } from './scalar';
-import {
-  AlterDatabase,
-  AlterFunction,
-  AlterProcedure,
-  AlterTable,
-  AlterView,
-  Annotation,
-  Assignment,
-  Block,
-  Break,
-  Continue,
-  CreateDatabase,
-  CreateFunction,
-  CreateIndex,
-  CreateProcedure,
-  CreateSequence,
-  CreateTable,
-  CreateView,
-  Declare,
-  DeclareBuilder,
-  Delete,
-  DropDatabase,
-  DropFunction,
-  DropIndex,
-  DropProcedure,
-  DropSequence,
-  DropTable,
-  DropView,
-  Execute,
-  If,
-  Insert,
-  Select,
-  SelectAction,
-  SelectAliasObject,
-  Star,
-  Statement,
-  TableVariantDeclare,
-  Update,
-  Use,
-  VariantDeclare,
-  While,
-  With,
-} from './statement';
-import { clone, isPlainObject } from './util';
-
 /**
  * 所有AST类的基类
  */
 abstract class SQLClass {
-
   abstract readonly $type: SQL_SYMBOLE;
   /**
    * 克隆自身
@@ -124,9 +30,17 @@ abstract class SQLClass {
     return new While(condition);
   }
 
-  static readonly break: Break = new Break();
+  static get break(): Break {
+    return new Break();
+  }
 
-  static continue: Continue = new Continue();
+  static get continue(): Continue {
+    return new Continue();
+  }
+
+  static return(value?: CompatibleExpression): Return {
+    return new Return(value)
+  }
 
   /**
    * 创建一个SQL文档
@@ -141,11 +55,11 @@ abstract class SQLClass {
     return new Document(lines);
   }
 
-  static group(condition: CompatibleCondition): Condition;
+  static group(condition: Condition): Condition;
   static group<T extends Scalar>(expr: CompatibleExpression<T>): Expression<T>;
-  static group(value: CompatibleCondition | CompatibleExpression): any {
+  static group(value: Condition | CompatibleExpression): any {
     if (Condition.isCondition(value) || isPlainObject(value)) {
-      return new GroupCondition(value as CompatibleCondition);
+      return new GroupCondition(value as Condition);
     }
     return new GroupExpression(value as CompatibleExpression);
   }
@@ -301,12 +215,12 @@ abstract class SQLClass {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
-  static and(conditions: CompatibleCondition[]): Condition;
+  static and(conditions: Condition[]): Condition;
   static and(
     ...conditions: [
-      CompatibleCondition,
-      CompatibleCondition,
-      ...CompatibleCondition[]
+      Condition,
+      Condition,
+      ...Condition[]
     ]
   ): Condition;
   /**
@@ -321,8 +235,8 @@ abstract class SQLClass {
   ): Expression<T>;
   static and(
     ...args:
-      | CompatibleCondition[]
-      | [CompatibleCondition[]]
+      | Condition[]
+      | [Condition[]]
       | [CompatibleExpression<Interger>, CompatibleExpression<Interger>]
   ): any {
     if (Array.isArray(args[0])) {
@@ -339,7 +253,7 @@ abstract class SQLClass {
 
     return BinaryLogicCondition.join(
       LOGIC_OPERATOR.AND,
-      args as CompatibleCondition[]
+      args as Condition[]
     );
   }
 
@@ -348,12 +262,12 @@ abstract class SQLClass {
    * @param conditions 查询条件列表
    * @returns 返回逻辑表达式
    */
-  static or(conditions: CompatibleCondition[]): Condition;
+  static or(conditions: Condition[]): Condition;
   static or(
     ...conditions: [
-      CompatibleCondition,
-      CompatibleCondition,
-      ...CompatibleCondition[]
+      Condition,
+      Condition,
+      ...Condition[]
     ]
   ): Condition;
   /**
@@ -368,8 +282,8 @@ abstract class SQLClass {
   ): Expression<T>;
   static or(
     ...args:
-      | CompatibleCondition[]
-      | [CompatibleCondition[]]
+      | Condition[]
+      | [Condition[]]
       | [CompatibleExpression<Interger>, CompatibleExpression<Interger>]
   ): any {
     if (Array.isArray(args[0])) {
@@ -384,7 +298,7 @@ abstract class SQLClass {
     }
     return BinaryLogicCondition.join(
       LOGIC_OPERATOR.OR,
-      args as CompatibleCondition[]
+      args as Condition[]
     );
   }
 
@@ -412,13 +326,13 @@ abstract class SQLClass {
    */
   private static join(
     logic: LOGIC_OPERATOR.AND | LOGIC_OPERATOR.OR,
-    conditions: CompatibleCondition[]
+    conditions: Condition[]
   ): Condition {
     if (conditions.length < 2) {
       throw new Error(`conditions must more than or equals 2 element.`);
     }
     const cond: Condition = conditions.reduce((previous, current) => {
-      let condition = Condition.ensure(current);
+      let condition = current
       // 如果是二元逻辑条件运算，则将其用括号括起来，避免逻辑运算出现优先级的问题
       if (BinaryLogicCondition.isBinaryLogicCondition(condition)) {
         condition = SQL.group(condition);
@@ -464,15 +378,6 @@ abstract class SQLClass {
     right: CompatibleExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.NEQ, left, right);
-  }
-
-  static isBinaryCompareCondition(
-    object: any
-  ): object is BinaryCompareCondition {
-    return (
-      Condition.isCondition(object) &&
-      object.$kind === CONDITION_KIND.BINARY_COMPARE
-    );
   }
 
   static lt<T extends Scalar>(
@@ -629,7 +534,7 @@ abstract class SQLClass {
   }
 
   static builtIn<N extends string>(name: N): BuiltIn<N> {
-    throw new BuiltIn(name);
+    return new BuiltIn(name);
   }
 
   static get star(): Star<any> {
@@ -897,7 +802,12 @@ abstract class SQLClass {
    * With语句
    */
   static with(
-    ...rowsets: WithSelect[] | [WithSelect[]] | [SelectAliasObject]
+    ...rowsets:
+      | WithSelect[]
+      | [WithSelect[]]
+      | ProxiedWithSelect[]
+      | [ProxiedWithSelect[]]
+      | [SelectAliasObject]
   ): With {
     return new With(...rowsets);
   }
@@ -1131,6 +1041,7 @@ export enum SQL_SYMBOLE {
   CHECK_CONSTRAINT = 'CHECK_CONSTRAINT',
   UNIQUE_KEY = 'UNIQUE_KEY',
   PROCEDURE_PARAMETER = 'PROCEDURE_PARAMETER',
+  FUNCTION_PARAMETER = 'FUNCTION_PARAMETER',
   ALTER_TABLE_COLUMN = 'ALTER_TABLE_COLUMN',
   CONDITION = 'CONDITION',
   PARAMETER = 'PARAMETER',
@@ -1188,3 +1099,98 @@ export enum SQL_SYMBOLE {
 export type SQLConstructor = typeof SQLClass;
 export type SQL = SQLClass;
 export const SQL: SQLConstructor = SQLClass;
+
+// ********************因为循环引用的原因，必须将import放置在后面********************** //
+import { RowObject, ColumnsOf } from './types';
+import { DbType, DbTypeOf, TsTypeOf } from './db-type';
+import { Document } from './document';
+import { CompatiableObjectName, Func, Procedure, BuiltIn } from './object';
+import {
+  Table,
+  WithSelect,
+  ProxiedTable,
+  CompatibleRowset,
+  ProxiedRowset,
+  CompatibleTable,
+  ProxiedWithSelect,
+} from './rowset';
+import {
+  GroupCondition,
+  BinaryLogicCondition,
+  LOGIC_OPERATOR,
+  BinaryCompareCondition,
+  BINARY_COMPARE_OPERATOR,
+  ExistsCondition,
+  CONDITION_KIND,
+  Condition,
+  CompatibleCondition,
+  UnaryLogicCondition,
+  UnaryCompareCondition,
+  UNARY_COMPARE_OPERATOR,
+} from './condition';
+import { Standard } from '../standard';
+import {
+  Assignable,
+  BinaryOperation,
+  Case,
+  CompatibleExpression,
+  Expression,
+  Field,
+  GroupExpression,
+  Literal,
+  Parameter,
+  UnaryOperation,
+  Variant,
+  When,
+} from './expression';
+import {
+  BINARY_OPERATION_OPERATOR,
+  UNARY_OPERATION_OPERATOR,
+} from './expression/common/operation';
+import { Raw } from './raw';
+import { Interger, isScalar, Numeric, Scalar } from './scalar';
+import {
+  AlterDatabase,
+  AlterFunction,
+  AlterProcedure,
+  AlterTable,
+  AlterView,
+  Annotation,
+  Assignment,
+  Block,
+  Break,
+  Continue,
+  CreateDatabase,
+  CreateFunction,
+  CreateIndex,
+  CreateProcedure,
+  CreateSequence,
+  CreateTable,
+  CreateView,
+  Declare,
+  DeclareBuilder,
+  Delete,
+  DropDatabase,
+  DropFunction,
+  DropIndex,
+  DropProcedure,
+  DropSequence,
+  DropTable,
+  DropView,
+  Execute,
+  If,
+  Insert,
+  Return,
+  Select,
+  SelectAction,
+  SelectAliasObject,
+  Star,
+  Statement,
+  TableVariantDeclare,
+  Update,
+  Use,
+  VariantDeclare,
+  While,
+  With,
+} from './statement';
+import { clone, isPlainObject } from './util';

@@ -12,6 +12,7 @@ import { SQL, SQL_SYMBOLE } from "./sql";
     super();
     this.$sql = sql;
   }
+
   static isRaw(value: any): value is Raw {
     return value?.$type === SQL_SYMBOLE.RAW;
   }

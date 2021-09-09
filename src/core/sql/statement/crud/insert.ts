@@ -14,9 +14,6 @@ import { With } from './with';
  * Insert 语句
  */
 export class Insert<T extends RowObject = any> extends Statement {
-  static isInsert(object: any): object is Insert {
-    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.INSERT;
-  }
   $table: Table<T, string>;
   $fields?: Field[];
   $values?: Expression<Scalar>[][] | Select<T>;
@@ -50,7 +47,7 @@ export class Insert<T extends RowObject = any> extends Statement {
     if (fields) {
       if (typeof fields[0] === 'string') {
         this.$fields = (fields as ColumnsOf<T>[]).map(field =>
-          this.$table.$(field)
+          this.$table.$field(field)
         );
       } else {
         this.$fields = fields as Field<Scalar, ColumnsOf<T>>[];
@@ -68,7 +65,7 @@ export class Insert<T extends RowObject = any> extends Statement {
       );
       this.$fields = (Object.keys(existsFields) as ColumnsOf<T>[]).map(
         fieldName => {
-          return this.$table.$(fieldName);
+          return this.$table.$field(fieldName);
         }
       );
     }
@@ -134,5 +131,8 @@ export class Insert<T extends RowObject = any> extends Statement {
 
     // values(items: InputObject[])
     // 字段从值中提取
+  }
+  static isInsert(object: any): object is Insert {
+    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.INSERT;
   }
 }

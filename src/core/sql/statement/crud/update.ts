@@ -1,8 +1,10 @@
 import assert from 'assert';
+import { CompatibleCondition, Condition } from '../../condition';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { CompatibleTable, Table } from '../../rowset/table';
 import { Scalar } from '../../scalar';
 import { InputObject, RowObject } from '../../types';
+import { isPlainObject } from '../../util';
 import { Assignment } from '../programmer/assignment';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { Fromable } from './common/fromable';
@@ -44,7 +46,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
         this.$sets = Object.entries(item).map(
           ([key, value]: [string, unknown]) =>
             new Assignment(
-              this.$table.$(key as any),
+              this.$table.$field(key as any),
               Expression.ensure(value as CompatibleExpression)
             )
         );
@@ -54,6 +56,14 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
     this.$sets = sets as Assignment<Scalar>[];
     return this;
   }
+
+  protected ensureCondition(condition: CompatibleCondition<T>): Condition {
+    if (isPlainObject(condition)) {
+      return Condition.ensure(condition, this.$table);
+    }
+    return condition
+  }
+
   static isUpdate(object: any): object is Update {
     return (
       Statement.isStatement(object) && object.$kind === STATEMENT_KIND.UPDATE

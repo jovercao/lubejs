@@ -81,7 +81,9 @@ import {
   TableVariantDeclare,
   VariantDeclare,
   ProcedureParameter,
-  Operation
+  Operation,
+  FunctionParameter,
+  Return,
 } from '../sql';
 import { Standard } from '../standard';
 import { DbProvider } from './db-provider';
@@ -450,7 +452,9 @@ export abstract class SqlUtil {
     } else if (Block.isBlock(statement)) {
       return this.sqlifyBlock(statement, params);
     } else if (StandardStatement.isStandardStatement(statement)) {
-      return this.sqlifyStatement(this.translationStandardOperation(statement));
+      return this.sqlifyStatement(this.translationStandardOperation(statement), params);
+    } else if (Return.isReturn(statement)) {
+      return this.sqlifyReturn(statement, params)
     } else if (If.isIf(statement)) {
       return this.sqlifyIf(statement, params);
     } else if (While.isWhile(statement)) {
@@ -469,6 +473,13 @@ export abstract class SqlUtil {
       return this.sqlifyUse(statement);
     }
     throw this._invalidAST('statement', statement);
+  }
+  sqlifyReturn(statement: Return, params: Set<Parameter<Scalar, string>> | undefined): string {
+    let sql = 'RETURN'
+    if (statement.$value) {
+      sql += ' '  + this.sqlifyExpression(statement.$value);
+    }
+    return sql;
   }
   sqlifyUse(statement: Use): string {
     return `USE ${this.sqlifyObjectName(statement.$database)}`;
@@ -966,7 +977,12 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>
   ): string {
     if (Raw.isRaw(sort)) return sort.$sql;
-    let sql = this.sqlifyExpression(sort.$expr, params, sort);
+    let sql: string;
+    if (SelectColumn.isSelectColumn(sort.$expr)) {
+      sql = this.quoted(sort.$expr.$name);
+    } else {
+      sql = this.sqlifyExpression(sort.$expr, params, sort);
+    }
     if (sort.$direction) sql += ' ' + sort.$direction;
     return sql;
   }
@@ -1213,6 +1229,8 @@ export abstract class SqlUtil {
     varDec: ProcedureParameter
   ): string;
 
+  protected abstract sqlifyFunctionParameter(varDec: FunctionParameter): string;
+
   protected sqlifyDeclare(declare: Declare): string {
     return (
       'DECLARE ' +
@@ -1247,7 +1265,12 @@ export abstract class SqlUtil {
     sql +=
       ' SET ' +
       $sets
-        .map(assign => this.sqlifyAssignment(assign, params, update))
+        .map(
+          assign =>
+            this.sqlifyExpression(assign.left, params, parent) +
+            ' = ' +
+            this.sqlifyExpression(assign.right, params, parent)
+        )
         .join(', ');
 
     if ($froms && $froms.length > 0) {
@@ -1292,4 +1315,3 @@ export abstract class SqlUtil {
     return sql;
   }
 }
-

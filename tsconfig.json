@@ -4,6 +4,7 @@
     "target": "ES2020",
     "declaration": true,
     "noImplicitAny": true,
+    "charset": "utf8",
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

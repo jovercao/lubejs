@@ -1,7 +1,7 @@
 import { SQL } from '../sql';
 import { DbProvider } from './db-provider';
 import { Executor } from './executor';
-import { SqlOptions, SqlUtil } from './sql-util';
+import { SqlUtil } from './sql-util';
 
 /**
  * 事务隔离级别
@@ -71,7 +71,7 @@ abstract class ConnectionClass extends Executor {
    * 获取当前数据库
    */
   async getDatabaseName(): Promise<string> {
-    return await this.queryScalar(SQL.select(SQL.std.currentDatabase()));
+    return (await this.queryScalar(SQL.select(SQL.std.currentDatabase())))!;
   }
 
   /**
@@ -79,7 +79,7 @@ abstract class ConnectionClass extends Executor {
    * @returns
    */
   async getSchemaName(): Promise<string> {
-    return await this.queryScalar(SQL.select(SQL.std.defaultSchema()));
+    return (await this.queryScalar(SQL.select(SQL.std.defaultSchema())))!;
   }
 
   /**

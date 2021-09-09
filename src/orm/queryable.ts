@@ -111,7 +111,7 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   take(count: number, skip = 0): Queryable<T> {
-    const sql = select(this.rowset._)
+    const sql = select(this.rowset.star)
       .from(this.rowset)
       .offset(skip)
       .limit(count);
@@ -165,7 +165,7 @@ export class Queryable<T extends Entity | RowObject>
     condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
   ): Queryable<T> {
     const queryable = this.fork(
-      select(this.rowset._)
+      select(this.rowset.star)
         .from(this.rowset)
         .where(condition(this.rowset))
         .as(ROWSET_ALIAS)
@@ -185,7 +185,7 @@ export class Queryable<T extends Entity | RowObject>
 
   sort(sorts: (p: ProxiedRowset<T>) => Sort[] | SortObject<T>): Queryable<T> {
     return this.fork(
-      select(this.rowset._)
+      select(this.rowset.star)
         .from(this.rowset)
         .orderBy(sorts(this.rowset))
         .as(ROWSET_ALIAS)
@@ -212,9 +212,9 @@ export class Queryable<T extends Entity | RowObject>
   }
 
   union(...sets: Queryable<T>[]): Queryable<T> {
-    const sql = select(this.rowset._).from(this.rowset);
+    const sql = select(this.rowset.star).from(this.rowset);
     sets.forEach(query => {
-      sql.unionAll(select(query.rowset._).from(query.rowset));
+      sql.unionAll(select(query.rowset.star).from(query.rowset));
     });
     return this.fork(sql.as(ROWSET_ALIAS));
   }
@@ -264,7 +264,7 @@ export class Queryable<T extends Entity | RowObject>
     if (NamedSelect.isNamedSelect(this.rowset)) {
       return this.rowset.$select as Select<T>;
     }
-    return select(this.rowset._).from(this.rowset);
+    return select(this.rowset.star).from(this.rowset);
   }
 
   /**
@@ -395,9 +395,9 @@ export class Queryable<T extends Entity | RowObject>
       const relationForeignColumn =
         relation.referenceRelation.relationRelation.referenceRelation
           .foreignColumn;
-      const relationIdsSelect = select(rt.$(relationForeignColumn.property))
+      const relationIdsSelect = select(rt.$field(relationForeignColumn.property))
         .from(rt)
-        .where(rt.$(thisForeignColumn.property).eq(key));
+        .where(rt.$field(thisForeignColumn.property).eq(key));
       const subItems = await relationRepository
         .filter(rowset =>
           rowset[relation.referenceEntity.key.column.property].in(
@@ -415,11 +415,10 @@ export class Queryable<T extends Entity | RowObject>
       (column.type === Object || column.type === Array) &&
       isStringType(column.dbType)
     ) {
-      return JSON.parse(Reflect.get(datarow, column.columnName));
-      // } if (column.type === BigInt) {
-      //   return new BigInt(Reflect.get(datarow, column.columnName));
+      return JSON.parse(Reflect.get(datarow, column.property));
     } else {
-      return Reflect.get(datarow, column.columnName);
+      // 因为rowset已经完成映射转换，在SQL级别已是输出属性名，因此直接取属性名即可
+      return Reflect.get(datarow, column.property);
     }
   }
 

@@ -30,5 +30,5 @@ export type ProxiedTableVariant<
   N extends string = string
 > = TableVariant<T, N> &
   {
-    readonly [P in ColumnsOf<T>]: Field<T[P], string>;
+    readonly [P in ColumnsOf<T>]: Field<T[P], P>;
   };

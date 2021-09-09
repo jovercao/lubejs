@@ -114,8 +114,8 @@ export function isSameDbType(type1: DbType, type2: DbType): boolean {
 }
 
 export function isDbType(value: any): value is DbType {
-  if (!value) return false;
-  return !!Reflect.get(DbType, value.name);
+  if (typeof value?.name !== 'string') return false;
+  return !!Reflect.get(DbType, (value.name as string).toLowerCase());
 }
 
 export function isStringType(type: any): type is STRING {

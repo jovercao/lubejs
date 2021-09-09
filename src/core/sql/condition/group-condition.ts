@@ -6,9 +6,9 @@ export class GroupCondition extends Condition {
   readonly $kind: CONDITION_KIND.GROUP =
     CONDITION_KIND.GROUP;
 
-  constructor(conditions: CompatibleCondition<any>) {
+  constructor(condition: Condition) {
     super();
-    this.$inner = Condition.ensure(conditions);
+    this.$inner = condition;
   }
 
   static isGroupCondition(object: any): object is GroupCondition {

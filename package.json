@@ -4,7 +4,7 @@
   "description": "An easy-to-use nodejs oracledb client",
   "main": "index.js",
   "bin": {
-    "lube": "cli.js"
+    "lube": "bin.js"
   },
   "scripts": {
     "build": "npm run clean && npm run lint && tsc && npm run pack",
@@ -49,7 +49,7 @@
     "tsconfig-paths": "^3.10.1",
     "typedoc": "^0.17.8",
     "typedoc-plugin-markdown": "^2.3.1",
-    "typescript": "^4.3.5"
+    "typescript": "^4.4.2"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
