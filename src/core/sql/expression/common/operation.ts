@@ -27,7 +27,7 @@ export abstract class Operation<
 }
 
 export enum BINARY_OPERATION_OPERATOR {
-  CONCAT = '+',
+  CONCAT = 'CONCAT',
   ADD = '+',
   SUB = '-',
   MUL = '*',

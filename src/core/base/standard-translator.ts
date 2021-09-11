@@ -12,6 +12,8 @@ export abstract class StandardTranslator implements Standard {
     return this.provider.sqlUtil;
   }
 
+  abstract identityValue(table: CompatibleExpression<string>, column: CompatibleExpression<string>): Expression<number | bigint>;
+
   abstract count(expr: Star<any> | CompatibleExpression<Scalar>): Expression<number>;
 
   abstract avg<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T>;
@@ -22,7 +24,6 @@ export abstract class StandardTranslator implements Standard {
 
   abstract min<T extends string | number | bigint | boolean | Decimal | Date | Uuid | null>(expr: Expression<T>): Expression<T>;
 
-  abstract identityValue(table: CompatibleExpression<string>, column: CompatibleExpression<string>): Expression<number | bigint>;
 
   abstract convert<T extends DbType>(expr: CompatibleExpression<Scalar>, toType: T): Expression<TsTypeOf<T>>;
 

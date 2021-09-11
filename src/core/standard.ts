@@ -17,7 +17,7 @@ import {
   CompatiableObjectName,
   StandardExpression,
   StandardCondition,
-  Float
+  Float,
 } from './sql';
 import './sql';
 
@@ -126,7 +126,7 @@ export class Standard {
     return StandardExpression.create(STD.daysBetween.name, [start, end]);
   }
   /**
-   * 计算两个日期之间的天数，小数
+   * 计算两个日期之间的月数，小数
    * @param start
    * @param end
    * @returns
@@ -278,7 +278,8 @@ export class Standard {
    * 转换成大写字母
    * @param str
    * @returns
-   */ upper(str: CompatibleExpression<string>): Expression<string> {
+   */
+  upper(str: CompatibleExpression<string>): Expression<string> {
     return StandardExpression.create(STD.upper.name, [str]);
   }
   /**
@@ -402,6 +403,8 @@ export class Standard {
   cot(value: CompatibleExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.cot.name, [value]);
   }
+
+
   existsTable(table: CompatiableObjectName): Condition {
     return StandardCondition.create(STD.existsTable.name, [table]);
   }
@@ -444,8 +447,12 @@ export class Standard {
   /**
    * 获取序列下一个值
    */
-  sequenceNextValue<T extends Numeric>(sequenceName: CompatiableObjectName): Expression<T> {
-    return StandardExpression.create(STD.sequenceNextValue.name, [sequenceName]);
+  sequenceNextValue<T extends Numeric>(
+    sequenceName: CompatiableObjectName
+  ): Expression<T> {
+    return StandardExpression.create(STD.sequenceNextValue.name, [
+      sequenceName,
+    ]);
   }
 }
 
