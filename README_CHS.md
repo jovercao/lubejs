@@ -9,7 +9,7 @@
 
 ## lubejs是什么
 
-lubejs 是一套类型化sql构建、执行工具，亦是一套强大易用的Typescript ORM开发框架\。
+lubejs 是一套类型化sql构建、执行工具，亦是一套强大易用的Typescript ORM开发框架。
 
 > 
 
@@ -24,7 +24,7 @@ lubejs 是一套类型化sql构建、执行工具，亦是一套强大易用的T
 - 简洁，极简api，极易上手
 - 贴近自然，语法与标准sql极为接近，大大降低学习成本
 - 渐进式，lubejs分为两个层级的引用，core及完整功能包
-- 安全，typescript类型推导，完整类型安全
+- typescript类型推导，完整类型安全
 
 ## 快速开始
 
@@ -957,7 +957,7 @@ const sql = SQL.with(adult).select(a.start).from(adult.as('a'))
 
 ### 构建Insert语句
 
-**单条插入**
+#### 单条插入
 
 ```ts
 // 单条插入
@@ -973,7 +973,7 @@ const sql = SQL.insert(personTable).values({
 
 
 
-**多条插入**
+#### 多条插入
 
 ```ts
 // 多条插入
@@ -1004,6 +1004,8 @@ const sql = SQL.insert(personTable).values([
 
 ### 构建UPDATE语句
 
+#### 使用表名更新
+
 ```ts
 const sql = SQL.update(personTable).set({
     age: personTable.age.add(1) // 大了一岁咯
@@ -1012,7 +1014,7 @@ const sql = SQL.update(personTable).set({
 // => UPDATE Person SET age = p.age + 1 WHERE Person.name = '张三'
 ```
 
-**使用别名更新**
+#### 使用别名更新
 
 ```ts
 // 这些在广州有房产的人大了一岁了
@@ -1033,12 +1035,14 @@ const sql = SQL.update(p).set({
 
 ### 构建DELETE语句
 
+#### 使用表名删除
+
 ```ts
 const sql = SQL.delete(personTable).where(personTable.age.gt(60))
 // => DELETE Person WHERE Person.age > 60
 ```
 
-**使用别名删除**
+#### 使用别名删除
 
 ```ts
 // 删除在广州有房产的人的数据
@@ -1054,9 +1058,83 @@ const sql = SQL.delete(p)
 
 
 
+### 函数调用
+
+
+
+
+
+### 存储过程调用
+
+
+
+假设我们有以下存储过程
+
+```sql
+CREATE PROCEDURE sp_get_person
+(
+	@type VARCHAR(20) = 'all',
+    @total INT OUTPUT
+)
+AS
+BEGIN
+	SELECT @total = COUNT(p.id) FROM Person;
+	IF (@type = 'audlt')
+		SELECT * FROM Person p WHERE p.age >= 18;
+	ELSE IF (@type = 'children')
+		SELECT * FROM Person p WHERE p.age < 18;
+	ELSE IF (@type = 'aged')
+		SELECT * FROM Person p WHERE p.age >= 50;
+	ELSE
+		SELECT * FROM Person;
+	END
+	
+	RETURN  100;
+END
+```
+
+
+
+#### 快速调用
+
+```ts
+const sql = SQL.execute<number, Person>('sp_get_person', ['children', 0]);
+```
+
+#### 参数调用（当希望获取输出参数时）
+
+```ts
+const params: Parameter[] = [
+    SQL.input('type', 'audlt'),
+    SQL.output('total', DbType.int32)
+]
+const sql = SQL.execute<number, Person>('sp_get_person', ['children', 0]);
+const result = await db.query(sql);
+
+console.log(result.returnValue); // => 100
+console.log(result.rows); // SELECT 查询结果
+console.log(result.output.total); // => 表Person行数
+```
+
+#### 创建存储过程声明
+
+存储过程是一个重复调用的过程，为了使用更加方便，我们还可以创建一个函数来快速的调用它，并使它爱类型保护
+
+```ts
+// 将SQL存储过程声明为一个Typescript函数
+const sp_get_person = SQL.makeExec<'audlt' | 'children' | 'aged' | 'all', number, [Person]>('sp_get_person');
+
+// 然后我们可以这样调用来达到与快速调用一样的效果。
+const sql = sp_get_person('children', 0);
+```
+
+
+
+
+
 ### 其它语句
 
-**创建表**
+#### 创建表
 
 ```ts
 const sql = SQL.createTable('Person').as(({ column }) => [
@@ -1081,7 +1159,7 @@ const sql = SQL.createTable('Person').as(({ column }) => [
 
 
 
-**修改表**
+#### 修改表
 
 - 添加列
 
@@ -1114,14 +1192,14 @@ const sql = SQL.alterTable('House').dropForeignKey('FK_HOUSE_PERSON')
 
 
 
-**创建索引**
+#### 创建索引
 
 ```ts
 const sql = SQL.createIndex('IX_Person_name').on('Person', ['name']);
 // => CREATE INDEX IX_Person_name ON Person(name)
 ```
 
-**删除索引**
+#### 删除索引
 
 ```ts
 const sql = SQL.dropIndex('Person', 'IX_Person_name')
@@ -1136,33 +1214,87 @@ const sql = SQL.dropIndex('Person', 'IX_Person_name')
 
 ### Lubejs 所支持的语句
 
-**数据操作语句**
+#### 数据操作语句
+
+| 语句                                | 使用                                                | 说明                  |
+| ----------------------------------- | --------------------------------------------------- | --------------------- |
+| insert                              | `SQL.insert(...)`                                   |                       |
+| update                              | `SQL.update(...)`                                   |                       |
+| select                              | `SQL.update(...)`                                   |                       |
+| delete                              | `SQL.delete(...)`                                   |                       |
+| case when ... then ... else ... end | `SQL.case(...)`                                     | CASE语句              |
+| execute                             | `SQL.execute(...)`、``                              | 存储过程调用          |
+| invoke                              | `SQL.invokeAsScalar(...)`，`SQL.invokeAsTable(...)` | 函数调用              |
+|                                     | `SQL.makeExec(...)`                                 | 将SQL函数声明为JS函数 |
+| order by                            |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+|                                     |                                                     |                       |
+
+
+
+
+
+#### 数据结构操作语句
 
 | 语句           | 使用            | 说明 |
 | -------------- | --------------- | ---- |
-| insert         | SQL.insert(...) |      |
-| update         | SQL.update(...) |      |
-| select         | SQL.update(...) |      |
-| delete         |                 |      |
 | create table   |                 |      |
+| altert table   |                 |      |
 | drop table     |                 |      |
-| if..then..else |                 |      |
-| while          |                 |      |
 |                |                 |      |
 |                |                 |      |
 |                |                 |      |
 |                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
+|                |                 |      |
 
+#### 程序控制语句
 
-
-
-
-**数据结构操作语句**
-
-
-
-**程序控制语句**
-
+| 语句           | 使用 | 说明 |
+| -------------- | ---- | ---- |
+| if..then..else |      |      |
+| while          |      |      |
+| begin ... end  |      |      |
+| break          |      |      |
+| return         |      |      |
+| continue       |      |      |
 
 
 ## SQL执行
