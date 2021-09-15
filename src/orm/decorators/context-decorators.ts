@@ -4,7 +4,9 @@ import { parseConnectionUrl } from '../../core/config';
 import { setEntityOptions } from './entity-decorators';
 import { DbContextMetadata } from '../metadata';
 import { DbContext, DbContextConstructor } from '../db-context';
-import 'reflect-metadata'
+import 'reflect-metadata';
+import { DataType, ScalarType } from '../types';
+import { Uuid, UuidConstructor } from '../../core/sql';
 
 const CONTEXT_KEY = Symbol('lubejs:context');
 const CONNECTION_KEY = Symbol('lubejs:connection');
@@ -15,10 +17,17 @@ const DECORATE_CONTEXTS_KEY = Symbol('lubejs:decorate:contexts');
 export type DbContextOptions = Partial<
   Pick<
     DbContextMetadata,
-    'database' | 'globalKeyName' | 'globalKeyType'
+    'database'
     // | 'comment'
   >
->;
+> & {
+  globalKeyName?: string;
+  globalKeyType?:
+    | StringConstructor
+    | NumberConstructor
+    | UuidConstructor
+    | BigIntConstructor;
+};
 
 function addDecorateContext(ctr: DbContextConstructor): void {
   let ctrs = getDecorateContexts();
@@ -99,6 +108,25 @@ export function database(
   return function (target: DbContextConstructor) {
     setContextOptions(target, {
       database: name,
+    });
+  };
+}
+
+/**
+ * 声明全局主键
+ */
+export function globalKey(
+  name: string,
+  type:
+    | StringConstructor
+    | NumberConstructor
+    | UuidConstructor
+    | BigIntConstructor
+): (constructor: DbContextConstructor) => void {
+  return function (target: DbContextConstructor) {
+    setContextOptions(target, {
+      globalKeyName: name,
+      globalKeyType: type,
     });
   };
 }

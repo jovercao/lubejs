@@ -14,7 +14,7 @@ export class NamedSelect<
   readonly $type: SQL_SYMBOLE.NAMED_SELECT = SQL_SYMBOLE.NAMED_SELECT;
   $select: Select<T>;
   $name: A;
-  $alias: never;
+  $alias!: never;
 
   private constructor(statement: Select<T>, name: A) {
     super();

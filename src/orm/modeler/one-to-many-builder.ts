@@ -1,14 +1,13 @@
-import { Scalar } from "../../core";
-import { Entity } from "../entity";
-import { OneToManyMetadata, ManyToOneMetadata } from "../metadata";
-import { selectProperty } from "../util";
-import { ContextBuilder } from "./context-builder";
-import { EntityBuilder } from "./entity-builder";
-
+import { Scalar } from '../../core';
+import { Entity } from '../entity';
+import { OneToManyMetadata, ManyToOneMetadata } from '../metadata';
+import { selectProperty } from '../util';
+import { ContextBuilder } from './context-builder';
+import { EntityBuilder } from './entity-builder';
 
 export class OneToManyBuilder<S extends Entity, D extends Entity> {
-  isDetail(): this {
-    this.metadata.isDetail = true;
+  isDetail(yesOrNo: boolean = true): this {
+    this.metadata.isDetail = yesOrNo;
     return this;
   }
 

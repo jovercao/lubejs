@@ -18,7 +18,7 @@ import { EntityConstructor } from '../entity';
 import { ContextBuilder } from './context-builder';
 import { ManyToManyBuilder } from './many-to-many-builder';
 import { OneToManyBuilder, ManyToOneBuilder } from './one-to-many-builder';
-import { OneToOneBuilder, ForeignOneToOneBuilder } from './one-to-one-builder';
+import { OneToOneBuilder, ForeignOneToOneBuilder, PrimaryOneToOneBuilder } from './one-to-one-builder';
 
 export class ModelBuilder {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -30,6 +30,12 @@ export class ModelBuilder {
       this.context(target).metadata.connection = connectionOptions;
     }
     const contextOptions = getContextOptions(target);
+    if (contextOptions?.globalKeyName) {
+      this.context(target).hasGlobalKey(
+        contextOptions.globalKeyName,
+        contextOptions.globalKeyType!
+      );
+    }
     if (contextOptions) {
       Object.assign(this.context(target).metadata, contextOptions);
     }
@@ -141,6 +147,9 @@ export class ModelBuilder {
                 );
               if (relationOptions.isPrimary) {
                 builder = map.isPrimary();
+                if (relationOptions.isDetail) {
+                  (builder as PrimaryOneToOneBuilder<any, any>).isDetail();
+                }
               } else {
                 let bd: ForeignOneToOneBuilder<any, any>;
                 builder = bd = map.hasForeignKey(
@@ -169,6 +178,9 @@ export class ModelBuilder {
                     ? (p: any) => p[relationOptions.referenceProperty!]
                     : undefined
                 );
+              if (relationOptions.isDetail) {
+                builder.isDetail();
+              }
               break;
             }
             case 'MANY_TO_ONE': {
@@ -277,6 +289,10 @@ export class ModelBuilder {
           indexBuilder.isUnique(indexOptions.isUnique);
         }
       });
+
+      if (entityOptions.seedDatas) {
+        entityBuilder.hasData(entityOptions.seedDatas);
+      }
     } else if (assignable.kind === 'VIEW') {
       if (!assignable.body) {
         throw new Error(`View entity must specify body statement.`);
@@ -290,9 +306,32 @@ export class ModelBuilder {
     }
   }
 
+  private buildDecorators() {
+    // 在使用context之前初始化指令模型
+    if (!this.isDecoratorBuilt) {
+      // 必须提前，避免死死循环
+      this.isDecoratorBuilt = true;
+      const decorateContexts = getDecorateContexts();
+      if (decorateContexts) {
+        for (const context of decorateContexts) {
+          this.buildDecoratorDbContext(context);
+        }
+      }
+
+      const decoratorEntities = getDecorateEntities();
+      if (decoratorEntities) {
+        for (const entity of decoratorEntities) {
+          this.buildDecoratorEntity(entity);
+        }
+      }
+    }
+  }
+
   static readonly instance = new ModelBuilder();
 
   private contextMap: Map<DbContextConstructor, ContextBuilder> = new Map();
+
+  private isDecoratorBuilt: boolean = false;
 
   /**
    * 声明数据库上下文类
@@ -310,6 +349,8 @@ export class ModelBuilder {
     context: DbContextConstructor<T>,
     build?: (builder: ContextBuilder<T>) => void | Promise<void>
   ): ContextBuilder<T> | this {
+    this.buildDecorators();
+
     let builder = this.contextMap.get(context);
     if (!builder) {
       builder = new ContextBuilder(context);
@@ -323,24 +364,11 @@ export class ModelBuilder {
   }
 
   /**
-   * 完成建模工作
+   * 完成建模工作后，必须调用该方法，才能正常使用ORM功能。
    * 此方法请在ORM准备完毕时调用
    */
   ready() {
-    const decorateContexts = getDecorateContexts();
-    if (decorateContexts) {
-      for (const context of decorateContexts) {
-        this.buildDecoratorDbContext(context);
-      }
-    }
-
-    const decoratorEntities = getDecorateEntities();
-    if (decoratorEntities) {
-      for (const entity of decoratorEntities) {
-        this.buildDecoratorEntity(entity);
-      }
-    }
-
+    this.buildDecorators();
     for (const ctxBuilder of this.contextMap.values()) {
       if (!ctxBuilder.isReady) {
         ctxBuilder.ready();

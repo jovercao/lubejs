@@ -30,7 +30,7 @@ import {
   Statement,
   Update,
   CompatibleExpression,
-  SQL
+  SQL,
 } from '../core';
 
 export abstract class MigrateBuilder {
@@ -318,4 +318,5 @@ export abstract class MigrateBuilder {
   ): Statement {
     return SQL.alterTable(table).drop(builder => builder.check(name));
   }
+
 }

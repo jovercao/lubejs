@@ -3,6 +3,7 @@ import { DbContextConstructor } from "../db-context";
 import { ConnectOptions, UuidConstructor } from "../../core";
 import { EntityMetadata } from "./entity-metadata";
 import { isTableEntity } from "./util";
+import { KeyMetadata } from "./key-metadata";
 
 export class DbContextMetadata {
   constructor(ctr: DbContextConstructor) {
@@ -12,19 +13,20 @@ export class DbContextMetadata {
   class: DbContextConstructor;
   database!: string;
   className!: string;
-  /**
-   * 全局主键字段名称
-   */
-  globalKeyName!: string;
+  globalKey?: KeyMetadata;
+  // /**
+  //  * 全局主键字段名称
+  //  */
+  // globalKeyName!: string;
+  // globalKeyType!:
+  //   | NumberConstructor
+  //   | StringConstructor
+  //   | BigIntConstructor
+  //   | UuidConstructor;
   /**
    * 连接
    */
   connection?: ConnectOptions;
-  globalKeyType!:
-    | NumberConstructor
-    | StringConstructor
-    | BigIntConstructor
-    | UuidConstructor;
   private _entitiyMap: Map<EntityConstructor<Entity>, EntityMetadata> = new Map();
   private _entities: EntityMetadata[] = [];
   get entities(): ReadonlyArray<EntityMetadata> {

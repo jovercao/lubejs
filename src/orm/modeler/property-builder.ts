@@ -1,9 +1,16 @@
-import { Scalar, DbType, ProxiedRowset, CompatibleExpression, Expression } from "../../core";
-import { DbContext } from "../db-context";
-import { Entity } from "../entity";
-import { ColumnMetadata } from "../metadata";
-import { ContextBuilder } from "./context-builder";
-import { EntityBuilder } from "./entity-builder";
+import {
+  Scalar,
+  DbType,
+  ProxiedRowset,
+  CompatibleExpression,
+  Expression,
+} from '../../core';
+import { DbContext } from '../db-context';
+import { Entity } from '../entity';
+import { ColumnMetadata } from '../metadata';
+import { ContextBuilder } from './context-builder';
+import { EntityBuilder } from './entity-builder';
+import { dataTypeToDbType } from './util';
 
 export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   constructor(
@@ -25,6 +32,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   hasType(dbType: DbType): Omit<this, 'hasType'> {
     this.metadata.dbType = dbType;
+    this.metadata.isRowflag = dbType.name === 'ROWFLAG';
     return this;
   }
 
@@ -39,43 +47,51 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
       item: T,
       context: DbContext
     ) => CompatibleExpression<V>
-  ): Omit<this, 'isAutogen'> {
+  ): this {
     this.metadata.generator = generator as any;
+    return this;
+  }
+
+  isNotAutogen(): this {
+    delete this.metadata.generator;
     return this;
   }
 
   /**
    * 是否可空
    */
-  isNullable(): Omit<this, 'isNullable'> {
-    this.metadata.isNullable = true;
+  isNullable(yesOrNo: boolean = true): Omit<this, 'isNullable'> {
+    this.metadata.isNullable = yesOrNo;
     return this;
   }
 
-  isRequired(): this {
-    this.metadata.isNullable = false;
+  isRequired(yesOrNo: boolean = true): this {
+    this.metadata.isNullable = yesOrNo;
     return this;
   }
 
   /**
    * 行标记列，每次更新时自动变换值
+   * 同时会修改列的类型为DbType.rowflag
    */
-  isRowflag(): Omit<this, 'isRowflag'> {
-    // if (this.metadata.dbType) {
-    //   if (this.metadata.dbType.name !== 'ROWFLAG') {
-    //     throw new Error('Rowflag column must type of ROWFLAG.');
-    //   }
-    // } else {
-    this.metadata.dbType = DbType.rowflag;
-    // }
-    this.metadata.isRowflag = true;
+  isRowflag(yesOrNo: boolean = true): Omit<this, 'isRowflag'> {
+    if (yesOrNo) {
+      this.metadata.dbType = DbType.rowflag;
+    } else {
+      if (this.metadata.type) {
+        this.metadata.dbType = dataTypeToDbType(this.metadata.type);
+      } else {
+        throw new Error(`Property ${this.metadata.property} has not type yet.`);
+      }
+    }
+    this.metadata.isRowflag = yesOrNo;
     return this;
   }
 
   /**
    * 标识列
    */
-  isIdentity(seed?: number, step?: number): Omit<this, 'isIdentity'> {
+  isIdentity(seed?: number, step?: number): this {
     this.metadata.isIdentity = true;
     this.metadata.identityStartValue = seed ?? 0;
     this.metadata.identityIncrement = step ?? 1;
@@ -83,19 +99,35 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   }
 
   /**
+   * 移除标识列
+   */
+  isNotIdentity(): this {
+    this.metadata.isIdentity = false;
+    delete this.metadata.identityStartValue;
+    delete this.metadata.identityIncrement;
+    return this;
+  }
+
+  /**
    * 默认值
    */
-  hasDefaultValue(
-    expr: CompatibleExpression<V>
-  ): Omit<this, 'hasDefaultValue' | 'asCalculated'> {
+  hasDefaultValue(expr: CompatibleExpression<V>): this {
     this.metadata.defaultValue = Expression.ensure(expr);
+    return this;
+  }
+
+  /**
+   * 移除默认值
+   */
+  hasNoDefaultValue(): this {
+    delete this.metadata.defaultValue;
     return this;
   }
 
   /**
    * 摘要说明
    */
-  hasComment(comment: string): Omit<this, 'commentBy'> {
+  hasComment(comment?: string): Omit<this, 'commentBy'> {
     this.metadata.comment = comment;
     return this;
   }
@@ -106,6 +138,12 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   isCalculated(expr: CompatibleExpression<V>): this {
     this.metadata.isCalculate = true;
     this.metadata.calculateExpression = Expression.ensure(expr);
+    return this;
+  }
+
+  isNotCalculated(): this {
+    this.metadata.isCalculate = false;
+    delete this.metadata.calculateExpression;
     return this;
   }
 }

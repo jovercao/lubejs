@@ -100,7 +100,13 @@ export class Repository<T extends Entity> extends Queryable<T> {
     if (options?.withDetail) {
       query = query.withDetail();
     }
-    return query.fetchFirst();
+    const item = await query.fetchFirst();
+    if (!item) {
+      throw new Error(
+        `Data key ${key} not exists in Entity '${this.metadata.className}'.`
+      );
+    }
+    return item;
   }
 
   async insert(items: T | T[], options?: SaveOptions<T>): Promise<void> {
@@ -448,14 +454,39 @@ export class Repository<T extends Entity> extends Queryable<T> {
       items = [items];
     }
     for (const item of items) {
-      if (!Reflect.has(item, this.metadata.key.property)) {
-        // 如果存在主键，则表示更新数据
-        await this._insert(item, options);
+      const keyValue = Reflect.get(
+        item,
+        this.metadata.key.property
+      ) as EntityKeyType;
+      if (this.metadata.key.column.isIdentity) {
+        if (keyValue !== undefined) {
+          // 否则为修改数据
+          await this._update(item, options);
+        } else {
+          // 如果存在主键，则表示更新数据
+          await this._insert(item, options);
+        }
       } else {
-        // 否则为修改数据
-        await this._update(item, options);
+        // 自动生成列的主键可能为空
+        if (keyValue !== undefined && (await this.existsKey(keyValue))) {
+          // 否则为修改数据
+          await this._update(item, options);
+        } else {
+          // 如果存在主键，则表示更新数据
+          await this._insert(item, options);
+        }
       }
     }
+  }
+
+  // 判断是否存在主键值
+  public async existsKey(key: EntityKeyType): Promise<boolean> {
+    const result = await this.filter(p =>
+      (p as any)[this.metadata.key.property].eq(key)
+    )
+      .count()
+      .fetchFirst();
+    return (result?.count ?? 0) > 0;
   }
 
   /**

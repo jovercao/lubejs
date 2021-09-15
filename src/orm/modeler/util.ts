@@ -36,8 +36,6 @@ import { ContextBuilder } from './context-builder';
  * @param column
  */
 export function fixColumn(
-  ctx: DbContextMetadata,
-  entity: EntityMetadata,
   column: ColumnMetadata
 ) {
   if (!column.columnName) {
@@ -281,21 +279,27 @@ export function fixEntityKey(
   entity: EntityMetadata
 ): void {
   if (!entity.key) {
+    if (!builder.metadata.globalKey) {
+      throw new Error(`Key must declare in Entity, or globalKey must special.`)
+    }
     entity.key = {
-      property: builder.metadata.globalKeyName,
+      property: builder.metadata.globalKey.property,
     } as KeyMetadata;
   }
   if (!entity.key!.column) {
     let keyColumn = entity.getColumn(entity.key.property);
     if (!keyColumn) {
+      if (!builder.metadata.globalKey?.column) {
+        throw new Error(`Key must declare in Entity, or globalKey must special.`)
+      }
       // 隐式主键
       keyColumn = {
         kind: 'COLUMN',
         isImplicit: true,
-        property: builder.metadata.globalKeyName,
-        type: builder.metadata.globalKeyType,
-        columnName: builder.metadata.globalKeyName,
-        dbType: dataTypeToDbType(builder.metadata.globalKeyType),
+        property: entity.key.property,
+        type: builder.metadata.globalKey.column.type,
+        columnName: builder.metadata.globalKey.column.columnName,
+        dbType: builder.metadata.globalKey.column.dbType,
         isIdentity: true,
         identityStartValue: 0,
         identityIncrement: 1,
@@ -328,7 +332,7 @@ export function fixEntity(
   // }
   // 先将列完善
   for (const member of entity.columns) {
-    fixColumn(builder.metadata, entity, member);
+    fixColumn(member);
   }
 
   if (!isTableEntity(entity)) return;

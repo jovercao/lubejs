@@ -24,7 +24,8 @@ export interface RelationOptions {
   relationProperty?: string;
   foreignProperty?: string;
   isRequired?: boolean;
-  isPrimary?: true;
+  isPrimary?: boolean;
+  isDetail?: boolean;
 }
 
 export function oneToOne<T extends object>(
@@ -78,14 +79,14 @@ export function foreignKey(
   /**
    * 导航属性名称
    */
-  foreignProperty: string,
+  foreignProperty?: string,
   required?: boolean
 ): PropertyDecorator;
 export function foreignKey<T extends Entity>(
   /**
    * 导航属性名称
    */
-  foreignProperty: string | ((p: Required<T>) => Scalar),
+  foreignProperty?: string | ((p: Required<T>) => Scalar),
   required: boolean = false
 ): PropertyDecorator {
   return function (target: Object, key: string) {
@@ -99,6 +100,7 @@ export function foreignKey<T extends Entity>(
           ? selectProperty(foreignProperty)
           : foreignProperty,
       isRequired: required,
+      isPrimary: false
     });
   };
 }
@@ -170,6 +172,18 @@ export function manyToMany<R extends Entity>(
     });
     addEntitiyRelation(target.constructor as EntityConstructor, key);
   };
+}
+
+
+/**
+ * 将导航属性声明为明细项
+ */
+export function detail(yesOrNo: boolean = true): PropertyDecorator {
+  return function (target: Object, key: string) {
+    setRelationOptions(target.constructor as EntityConstructor, key, {
+      isDetail: yesOrNo
+    });
+  }
 }
 
 /**

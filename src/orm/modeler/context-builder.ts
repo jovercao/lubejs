@@ -1,13 +1,15 @@
 import { UuidConstructor } from "../../core";
 import { ConnectOptions } from "../../core/base/connection";
+import { DbType, DbTypeOf, Scalar, ScalarTypeOf, TsTypeOf } from "../../core/sql";
 import { DbContext } from "../db-context";
 import { Entity, EntityConstructor } from "../entity";
-import { DbContextMetadata, EntityMetadata } from "../metadata";
+import { ColumnMetadata, DbContextMetadata, EntityMetadata, KeyMetadata } from "../metadata";
 import { metadataStore } from "../metadata-store";
 import { isTableEntity } from "../metadata/util";
-import { EntityType } from "../types";
+import { DataType, EntityType, ScalarType } from "../types";
 import { EntityBuilder } from "./entity-builder";
-import { fixEntity, fixEntityIndexes, fixEntityRelations } from "./util";
+import { PropertyBuilder } from "./property-builder";
+import { fixColumn, fixEntity, fixEntityIndexes, fixEntityKey, fixEntityRelations } from "./util";
 
 export class ContextBuilder<T extends DbContext = DbContext> {
   public readonly metadata: DbContextMetadata;
@@ -150,11 +152,12 @@ export class ContextBuilder<T extends DbContext = DbContext> {
       this.metadata.database = this.metadata.className;
     }
 
-    if (!this.metadata.globalKeyName) {
-      this.metadata.globalKeyName = 'id';
-      this.metadata.globalKeyType = BigInt;
+    if (!this.metadata.globalKey) {
+      this.hasGlobalKey('id', BigInt);
     }
-
+    if (this.metadata.globalKey) {
+      fixColumn(this.metadata.globalKey.column);
+    }
     for (const entity of this.metadata.entities) {
       fixEntity(this, entity);
     }
@@ -174,16 +177,23 @@ export class ContextBuilder<T extends DbContext = DbContext> {
   /**
    * 指定全局主键字段名称
    */
-  hasGlobalKey(
+  hasGlobalKey<T extends NumberConstructor
+  | StringConstructor
+  | BigIntConstructor
+  | UuidConstructor>(
     name: string,
-    type:
-      | NumberConstructor
-      | StringConstructor
-      | BigIntConstructor
-      | UuidConstructor
-  ): this {
-    this.metadata.globalKeyName = name;
-    this.metadata.globalKeyType = type;
-    return this;
+    type: ScalarType
+  ): PropertyBuilder<Entity, Scalar>{
+    // this.metadata.globalKeyName = name;
+    // this.metadata.globalKeyType = type;
+    const columnBuilder = new PropertyBuilder(this, null as any, {
+      columnName: name,
+      type
+    });
+    this.metadata.globalKey = {
+      property: name,
+      column: columnBuilder.metadata as ColumnMetadata
+    } as KeyMetadata;
+    return columnBuilder;
   }
 }

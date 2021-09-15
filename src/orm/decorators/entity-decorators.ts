@@ -4,7 +4,7 @@ import { DbContext, DbContextConstructor } from '../db-context';
 import { Entity, EntityConstructor } from '../entity';
 import { CommonEntityMetadata, KeyMetadata } from '../metadata';
 import { IndexOptions } from './index-decorators';
-import 'reflect-metadata'
+import 'reflect-metadata';
 
 const ENTITY_KEY = Symbol('lubejs:entity');
 const ENTITY_COLUMNS_KEY = Symbol('lubejs:entity:columns');
@@ -12,6 +12,8 @@ const ENTITY_RELATIONS_KEY = Symbol('lubejs:entity:relations');
 const ENTITY_KEY_KEY = Symbol('lubejs:entity:key');
 const ENTITY_INDEXES_KEY = Symbol('lubejs:entity:indexes');
 const DECORATE_ENTITIES_KEY = Symbol('lubejs:decorate:entities');
+
+// TODO: 待实现指令继承功能。
 
 export interface EntityOptions
   extends Partial<
@@ -22,6 +24,7 @@ export interface EntityOptions
     >
   > {
   contextGetter?: () => DbContextConstructor;
+  seedDatas?: any[];
   indexes: IndexOptions[];
 }
 
@@ -229,6 +232,20 @@ export function view<T extends Entity>(
       kind: 'VIEW',
       dbName: name,
       body: body!(),
+    });
+  };
+}
+
+/**
+ * 种子数据
+ */
+export function data<T extends Entity>(
+  datas: any[]
+): (constructor: EntityConstructor<T>) => void {
+  return function (target: EntityConstructor<T>): void {
+    setEntityOptions(target, {
+      kind: 'QUERY',
+      seedDatas: datas,
     });
   };
 }

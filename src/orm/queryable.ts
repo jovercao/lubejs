@@ -173,6 +173,14 @@ export class Queryable<T extends Entity | RowObject>
     return queryable;
   }
 
+  count(): Queryable<{
+    count: number;
+  }> {
+    return this.map(p => ({
+      count: SQL.std.count(1)
+    }));
+  }
+
   /**
    * 返回一个新的类型
    */

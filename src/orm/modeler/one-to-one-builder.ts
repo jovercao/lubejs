@@ -1,7 +1,11 @@
-import { Entity } from "../entity";
-import { OneToOneMetadata, PrimaryOneToOneMetadata, ForeignOneToOneMetadata } from "../metadata";
-import { ContextBuilder } from "./context-builder";
-import { EntityBuilder } from "./entity-builder";
+import { Entity } from '../entity';
+import {
+  OneToOneMetadata,
+  PrimaryOneToOneMetadata,
+  ForeignOneToOneMetadata,
+} from '../metadata';
+import { ContextBuilder } from './context-builder';
+import { EntityBuilder } from './entity-builder';
 
 export abstract class OneToOneBuilder<S extends Entity, D extends Entity> {
   constructor(
@@ -16,8 +20,6 @@ export abstract class OneToOneBuilder<S extends Entity, D extends Entity> {
   }
 }
 
-
-
 export class PrimaryOneToOneBuilder<
   S extends Entity,
   D extends Entity
@@ -29,8 +31,8 @@ export class PrimaryOneToOneBuilder<
    * 获取或查询时传递withDetail选项，将自动附带
    * 删除时亦将同步删除，默认为联动删除
    */
-  isDetail(): Omit<this, 'isDetail'> {
-    this.metadata.isDetail = true;
+  isDetail(yesOrNo: boolean = true): Omit<this, 'isDetail'> {
+    this.metadata.isDetail = yesOrNo;
     return this;
   }
 }
@@ -46,13 +48,13 @@ export class ForeignOneToOneBuilder<
     return this;
   }
 
-  isRequired(): Omit<this, 'isNullable'> {
-    this.metadata.isRequired = true;
+  isRequired(yesOrNo: boolean = true): Omit<this, 'isNullable'> {
+    this.metadata.isRequired = yesOrNo;
     return this;
   }
 
-  isCascade(): Omit<this, 'isCascade'> {
-    this.metadata.isCascade = true;
+  isCascade(yesOrNo: boolean = true): Omit<this, 'isCascade'> {
+    this.metadata.isCascade = yesOrNo;
     return this;
   }
 }

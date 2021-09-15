@@ -1,11 +1,11 @@
-import { EntityConstructor, Entity } from "../entity";
-import { CompatibleExpression, DbType, ProxiedRowset } from "../../core";
-import { isScalarType } from "../util";
-import { ColumnMetadata } from "../metadata";
-import { ScalarType } from "../types";
-import { addEntitiyColumn } from "./entity-decorators";
-import { DbContext } from "../db-context";
-import 'reflect-metadata'
+import { EntityConstructor, Entity } from '../entity';
+import { CompatibleExpression, DbType, ProxiedRowset } from '../../core';
+import { isScalarType } from '../util';
+import { ColumnMetadata } from '../metadata';
+import { ScalarType } from '../types';
+import { addEntitiyColumn } from './entity-decorators';
+import { DbContext } from '../db-context';
+import 'reflect-metadata';
 
 const COLUMN_KEY = Symbol('lubejs:column');
 
@@ -118,19 +118,19 @@ export function column<T extends Entity>(
   };
 }
 
-export function rowflag(): PropertyDecorator {
+export function rowflag(yesOrNo: boolean = true): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
       dbType: DbType.rowflag,
-      isRowflag: true,
+      isRowflag: yesOrNo,
     });
   };
 }
 
-export function nullable(nullable: boolean = true): PropertyDecorator {
+export function nullable(yesOrNo: boolean = true): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
-      isNullable: nullable,
+      isNullable: yesOrNo,
     });
   };
 }
@@ -142,6 +142,15 @@ export function calculate(
     setColumnOptions(target.constructor as EntityConstructor, key, {
       isCalculate: true,
       calculateExpressionGetter: exprGetter,
+    });
+  };
+}
+
+export function noCalculate(): PropertyDecorator {
+  return function (target: Object, key: string) {
+    setColumnOptions(target.constructor as EntityConstructor, key, {
+      isCalculate: false,
+      calculateExpressionGetter: undefined,
     });
   };
 }
@@ -160,12 +169,31 @@ export function autogen<T extends Entity = any>(
   };
 }
 
+/**
+ * 移除自动生成
+ */
+export function noAutogen<T extends Entity = any>(): PropertyDecorator {
+  return function (target: Object, key: string) {
+    setColumnOptions(target.constructor as EntityConstructor, key, {
+      generator: undefined,
+    });
+  };
+}
+
 export function defaultValue(
   exprGetter: () => CompatibleExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
       defaultValueGetter: exprGetter,
+    });
+  };
+}
+
+export function noDefaultValue(): PropertyDecorator {
+  return function (target: Object, key: string) {
+    setColumnOptions(target.constructor as EntityConstructor, key, {
+      defaultValueGetter: undefined,
     });
   };
 }

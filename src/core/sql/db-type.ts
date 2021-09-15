@@ -10,11 +10,10 @@
 import { Raw } from './raw';
 import { deepthEqual } from './util';
 import { parse, stringify, v4 } from 'uuid';
-import { Binary, Decimal, Scalar, Uuid } from './scalar';
+import { Binary, Decimal, DecimalConstructor, Scalar, Uuid } from './scalar';
+import { DataType } from '../../orm';
 
 // **********************************类型声明******************************************
-
-
 
 export type INT64 = {
   readonly name: 'INT64';
@@ -173,6 +172,12 @@ export type TsTypeOf<T extends DbType> = T extends
   ? TsTypeOf<M>[]
   : never;
 
+export type ScalarTypeOf<T extends DataType> = T extends new (
+  ...args: any
+) => infer R
+  ? R
+  : never;
+
 /**
  * 从TS Type 转换为DbType的类型
  */
@@ -261,14 +266,12 @@ export const DbType = {
     return new Raw(name);
   },
   rowflag: {
-    name: 'ROWFLAG'
+    name: 'ROWFLAG',
   } as ROWFLAG,
   MAX: 0,
 };
-
 
 // /**
 //  * 所浮点类型
 //  */
 // export type Float = number;
-
