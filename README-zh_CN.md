@@ -13,11 +13,11 @@
 
 lubejs 是一套类型化sql构建、执行工具，亦是一套强大易用的Typescript ORM开发框架。
 
-- 完备的SQL构建工具，使用最贴近SQL的语法编写SQL，及低的学习成本
-- 强大的Typescript类型支持，支持反向类型推导，通过select函数确定返回类型，全类型安全
-- ORM配套工具，Code first
+- 完备的SQL构建工具，使用最贴近SQL的语法编写SQL，极低的学习成本
+- 强大的Typescript类型支持，支持反向类型推导，返回明确类型，拥有完整类型安全体系，智能语法提示，提高开发效率以及预排除类型错误，强烈建立在typescript项目中使用lubejs。
+- ORM配套工具，Code first、数据迁移
 - 匹配多种数据库（目前只支持mssql)
-- 建立了SQL中间标准，只要使用中间标准，跨数据库不再需要重构
+- 跨数据库兼容，为此，lubejs建立了标准行为库，把大多数常用的，而在各个数据库中又不尽相同的操作行为，包括在其中。
 
 
 
@@ -26,8 +26,10 @@ lubejs 是一套类型化sql构建、执行工具，亦是一套强大易用的T
 - 简洁，极简api，极易上手
 - 贴近自然，语法与标准sql极为接近，大大降低学习成本
 - 渐进式，lubejs分为两个层级的引用，core及完整功能包
-- 跨数据库兼容，为此，lubejs建立了标准行为库，把大多数常用的，而在各个数据库中又不尽相同的操作行为，包括在其中。仅可能的向`write one run any where`的目标靠拢。
-- 完整的typescript类型安全，使用typescript类型推导，智能提示，提高开发效率以及预排除类型错误，强烈建立在typescript项目中使用lubejs。
+- 多数据库方言统一兼容，建立中间标准操作库并不断丰富。
+- 完整的typescript类型安全
+
+
 
 ## 快速开始
 
@@ -321,7 +323,7 @@ async function example(db: Connection) {
 
 ## 版本说明
 
-*注意： lubejs目前仍为预览版，内部会有部分调整，公共API可能会有小许调整，但不会有大调整。*
+***注意： lubejs目前仍为预览版，内部会有部分调整，公共API可能会有小许调整，但不会有大调整。***
 
 ### 渐进式分离
 
@@ -344,7 +346,7 @@ nodejs &gt;=  `12.0`
 
 ### SQL构造器(SQL对象)
 
-所有的SQL构造，均由 `SQL`对象发起，几乎所有的`SQL`对象有几乎所有`SQL`的语句，均可从`SQL`对象创建，如`SQL.select`，`SQL.update`,`SQL.delete`等。
+所有的SQL构造，均由 `SQL`对象发起，几乎所有的`SQL`的语句，均可从`SQL`对象创建，例如`SQL.select`，`SQL.update`,`SQL.delete`等。
 
 ```ts
 // 导入SQL对象
@@ -356,7 +358,7 @@ import { SQL } from 'lubejs';
 ```ts
 const {
     insert,
-    delete: $delete
+    delete: $delete // 关键字delete需要使用别名
 } = SQL
 
 // 构建插入张三、李四两条记录到table1的语句
@@ -372,11 +374,13 @@ const sql = $delete('table1').where({ id: 1 })
 
 ***注意：`delete`为`js`关键字，需要使用别名代替，其它关键字亦是如此***
 
+
+
 ### 标准行为（SQL.std）
 
 lubejs为了更大程序的兼容多数据库，专门定义了标准行为，用于统一在跨数据库时的操作，避免在跨方言数据库迁移是的重复劳动。
 
-`Standard`中定义了许多常用的函数、操作等行为
+`SQL.std`中定义了许多常用的函数、操作等行为
 
 
 
@@ -403,7 +407,7 @@ lubejs为了更大程序的兼容多数据库，专门定义了标准行为，�
 
 **日期函数**
 
-| 说明                   | 函数                                   |      |
+| 说明                   | 函数                                   | 备注 |
 | ---------------------- | -------------------------------------- | ---- |
 | 当前时间               | `SQL.std.now(expr)`                    |      |
 | UTC当前时间            | `SQL.std.utcNow(expr)`                 |      |
@@ -427,26 +431,25 @@ lubejs为了更大程序的兼容多数据库，专门定义了标准行为，�
 
 **字符串函数**
 
-| 说明                             | 函数                 |      |
-| -------------------------------- | -------------------- | ---- |
-| 获取字符串字符数                 | `SQL.std.strlen      |      |
-| 获取字符串字节数                 |                      |      |
-| 截取字符串                       | `SQL.std.substr      |      |
-| 替换字符串                       | `SQL.std.replace     |      |
-| 删除两侧空格                     | `SQL.std.trim        |      |
-| 删除右侧空格                     | `SQL.std.trimEnd     |      |
-| 转换成小写字母                   | `SQL.std.lower       |      |
-| 转换成大写字母                   | `SQL.std.upper       |      |
-| 获取字符串在另一个字符串中的位置 | `SQL.std.strpos      |      |
-| 获取一个字符的ascii码            | `SQL.std.ascii       |      |
-| 将一个ascii码转换成一个字符      | `SQL.std.asciiChar   |      |
-| 获取一个字符的unicode码          | `SQL.std.unicode     |      |
-| 将一个unicode码转换成一个字符    | `SQL.std.unicodeChar |      |
-
+| 说明                             | 函数                                   | 备注 |
+| -------------------------------- | -------------------------------------- | ---- |
+| 获取字符串字符数                 | `SQL.std.strlen(str)`                  |      |
+| 获取字符串字节数                 |                                        |      |
+| 截取字符串                       | `SQL.std.substr(str, start, len)`      |      |
+| 替换字符串                       | `SQL.std.replace(str, search, text)`   |      |
+| 删除两侧空格                     | `SQL.std.trim(str)`                    |      |
+| 删除右侧空格                     | `SQL.std.trimEnd(str)`                 |      |
+| 转换成小写字母                   | `SQL.std.lower(str)`                   |      |
+| 转换成大写字母                   | `SQL.std.upper(str)`                   |      |
+| 获取字符串在另一个字符串中的位置 | `SQL.std.strpos(str, search, startAt)` |      |
+| 获取一个字符的ascii码            | `SQL.std.ascii(str)`                   |      |
+| 将一个ascii码转换成一个字符      | `SQL.std.asciiChar(code)`              |      |
+| 获取一个字符的unicode码          | `SQL.std.unicode(str)`                 |      |
+| 将一个unicode码转换成一个字符    | `SQL.std.unicodeChar(code)`            |      |
 
 **数学函数**
 
-| 说明     | 函数 |      |
+| 说明     | 函数 | 备注 |
 | -------- | ---- | ---- |
 | 求绝对值 | `SQL.std.abs(value)` |      |
 | 指数曲线 | `SQL.std.exp(value)` |      |
@@ -472,7 +475,7 @@ lubejs为了更大程序的兼容多数据库，专门定义了标准行为，�
 
 **常用操作**
 
-| 说明     | 方法 |      |
+| 说明     | 方法 | 备注 |
 | -------- | ---- | ---- |
 | 返回条件：是否存在表 | `SQL.std.existsTable(tableName)` |      |
 | 返回条件：是不存在数据库 | `SQL.std.existsDatabase(dbName)` |      |
@@ -532,16 +535,17 @@ const sql = SQL.createTable('Person').as(builder => {
 | (尚未支持) DbType.object        | Object             | nvarchar(max)       |      |
 | (尚未支持) DbType.array(dbType) | Array              | nvarhcar(max)       |      |
 
+
+
 ### 行集(Rowset)
 
 所有可以通过`select from`的对象均可称为行集，具体有以下内容：
 
 - 表/视图
-
-- 别名SELECT子查询
-
-- WITH别名查询
-- 表值函数调用结果
+- SELECT子查询别名
+- WITH查询项
+- 表值函数返回值
+- 表变量
 
 
 
@@ -581,9 +585,20 @@ const sql = SQL.select(p.name.as('first_name')).from(p)
 
 ### 表达式(Expression)
 
-在lubejs中所有表达式对象均由`Expression`类继承而来，其中包括：字段（Field）、一元运算（UnaryOperation）、二元运算(BinaryOperation)、变量(Variant)、标量函数调用(ScalarFuncInvoke)等)，使用表达式可以方便的进行运算操作，例如：
+在lubejs中所有表达式对象均由`Expression`类继承而来，其中包括：
 
-**加法运算**
+- 字段（Field）
+- 一元运算（UnaryOperation）
+- 二元运算(BinaryOperation)
+- 变量(Variant)
+- 标量函数调用(ScalarFuncInvoke)等)
+- 字面量(Literial)
+
+
+
+使用表达式可以方便的进行运算操作，例如：
+
+- 加法运算
 
 ```ts
 // 加法运算
@@ -591,7 +606,7 @@ p.age.add(1)
 // => p.age + 1
 ```
 
-**生成比较查询条件**
+- 生成比较查询条件
 
 ```ts
 // 生成比较查询条件
@@ -647,25 +662,9 @@ const sql = SQL.select(p.star).from(p).where(SQL.literial(18).lt(p.age)); // => 
 
 ### 查询条件(Condition)
 
-具体对比条件运算符清单如下：
+**JSON格式查询条件 **
 
-| 运算符   | 方法                                                         | 说明      |
-| -------- | ------------------------------------------------------------ | --------- |
-| =        | `SQL.eq(left, right)`、 `Expression.prototype.eq(value)`     | 等于      |
-| <>       | `SQL.neq(left, right)`、`Expression.prototype.neq(value)`    | 不等于    |
-| <        | `SQL.lt(left, right)`、`Expression.prototype.lt(value)`      | 小于      |
-| >        | `SQL.gt(left, right)`、`Expression.prototype.gt(value)`      | 大于      |
-| <=       | `SQL.lte(left, right)`、`Expression.prototype.lte(value)`    | 小于等于  |
-| >=       | `SQL.gte(left, right)`、`Expression.prototype.gte(value)`    | 大于等于  |
-| LIKE     | `SQL.like(left, right)`、`Expression.prototype.like(value)`  | 近似匹配  |
-| NOT LIKE | `SQL.notLike(left, right)`、`Expression.prototype.notLike(value)` | 不近似    |
-| IN       | `SQL.in(left, right)`、`Expression.prototype.in(value)`      | 在...内   |
-| NOT IN   | `SQL.notIn(left, right)`、`Expression.prototype.in(value)`   | 不在...内 |
-|          |                                                              |           |
-
-**JSON格式 **
-
-JSON格式仅适用于简单的 `=`, `in`运算之间的`and`条件联接，一般用于快速查询某个对象，若要使用高级条件请看下面。
+JSON格式仅适用于单表查询情况下的简单的 `=`, `in`运算之间的`and`条件联接，一般用于快速查询某个对象，若要使用高级条件请看下文。
 
 ```ts
 const sql = SQL.select(p.star).from(p).where({ name: '张三', age: [18, 19, 20] })
@@ -684,7 +683,24 @@ const sql = SQL.select(p.star).from(p).where(
 // => SELECT p.* FROM Person p WHERE p.name = '张三' AND p.age in (18, 19, 20)
 ```
 
-**AND/OR/NOT条件**
+比较条件运算符
+
+| 运算符   | 方法                                                         | 说明      |
+| -------- | ------------------------------------------------------------ | --------- |
+| =        | `SQL.eq(left, right)`、 `Expression.prototype.eq(value)`     | 等于      |
+| <>       | `SQL.neq(left, right)`、`Expression.prototype.neq(value)`    | 不等于    |
+| <        | `SQL.lt(left, right)`、`Expression.prototype.lt(value)`      | 小于      |
+| >        | `SQL.gt(left, right)`、`Expression.prototype.gt(value)`      | 大于      |
+| <=       | `SQL.lte(left, right)`、`Expression.prototype.lte(value)`    | 小于等于  |
+| >=       | `SQL.gte(left, right)`、`Expression.prototype.gte(value)`    | 大于等于  |
+| LIKE     | `SQL.like(left, right)`、`Expression.prototype.like(value)`  | 近似匹配  |
+| NOT LIKE | `SQL.notLike(left, right)`、`Expression.prototype.notLike(value)` | 不近似    |
+| IN       | `SQL.in(left, right)`、`Expression.prototype.in(value)`      | 在...内   |
+| NOT IN   | `SQL.notIn(left, right)`、`Expression.prototype.in(value)`   | 不在...内 |
+
+
+
+**逻辑条件**
 
 ```ts
 // AND 查询
@@ -716,9 +732,19 @@ const sql = SQL.select(p.star).from(p).where(
 // => SELECT p.* FROM Person p WHERE (p.age >= 18 AND p.sex = '男' AND p.name like '张%')
 ```
 
-
-
 ***注意： 使用SQL.and/SQL.or构建的查询条件所返回的条件为分组条件***
+
+
+
+逻辑运算符
+
+| 运算符 | 方法                                                         | 说明     |
+| ------ | ------------------------------------------------------------ | -------- |
+| AND    | `SQL.and(...conditions)`、 `Condition.prototype.and(condition)` | 与逻辑   |
+| OR     | `SQL.or(...conditions)`、`Condition.prototype.neq(condition)` | 或逻辑   |
+| NOT    | `SQL.not(condition)`                                         | 否定逻辑 |
+
+
 
 **分组条件**
 
@@ -737,13 +763,21 @@ const sql = SQL.select(p.star).from(p).where(
 //    WHERE (p.sex = '男' AND p.name like '张%' AND (p.age < 18 OR p.age >= 60))
 ```
 
+**EXISTS子句**
+
+```ts
+// 查询有房子的人
+const sql = SQL.select(p.star).from(p).where(
+    SQL.exists(SQL.select(h.id).from(h).where(h.personId.eq(p.id)))
+)
+// => SELECT p.* FROM Person p WHERE EXISTS(SELECT h.id FROM House h WHERE h.personId = p.id)
+```
+
 
 
 ## SQL构建
 
-本单节会介绍怎么使用`lubejs`来构建sql语句
-
-*注意：本章节所讲的构建sql，并非执行sql，执行sql会在后续章节讲解*
+本单节会介绍怎么使用`lubejs`来构建sql语句，需要注意的是，本章节所讲的构建sql，并非执行sql，执行sql会在后续章节讲解。
 
 
 
@@ -770,8 +804,8 @@ interface House {
 ### 声明表对象
 
 ```ts
-const personTable = SQL.table<Person>('Person');
-const houseTable = SQL.table<House>('House')
+const p = SQL.table<Person>('Person').as('p');
+const h = SQL.table<House>('House').as('h');
 ```
 
 
@@ -804,7 +838,7 @@ const sql = SQL.select({
 
 使用此方法构建的sql会带上类型，在后续查询结果中亦会包含此类型。
 
-**使用星号*查询 **
+**整表返回(使用*号)**
 
 ```ts
 const sql = SQL.select(p.star).from(p)
@@ -813,22 +847,15 @@ const sql = SQL.select(p.star).from(p)
 
 使用 `p.star` 返回`p`本身所附带的类型，会被select所继承过去。
 
-**使用表达式**
-
-```ts
-const sql = SQL.select(p.name, 1, 2, 3).from(p)
-// => SELECT p.name as name, 1 as #column_1, 2 as #column_2, 3 as #column_3 FROM Person p
-```
+~~**使用表达式（此功能已删除）**~~
 
 
-
-*注意： 为了兼容各数据库，不指定字段名的表达式列，而字段列则会使用本身列名，lubejs会为其自动加上列名，规则为： `#column_{i}`*
-
-*注意：表达式查询方式建议仅在查询单个值时使用，其它情况不推荐使用该方式查询，因为使用该方式将失去类型推导*
 
 #### WHERE条件
 
-请参考[查询条件](#查询条件)章节
+请参考[查询条件(Condition)](#查询条件（Condition)章节
+
+
 
 #### 多表关联查询
 

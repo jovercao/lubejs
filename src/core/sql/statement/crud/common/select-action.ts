@@ -1,7 +1,7 @@
 import { CompatibleExpression } from '../../../expression/expression';
 import { Scalar } from '../../../scalar';
 import {
-  DefaultRowObject,
+  ColumnsOf,
   InputObject,
   RowObject,
   RowObjectFrom,
@@ -9,6 +9,8 @@ import {
 import { Select } from '../select';
 import { Star } from '../star';
 import { SelectColumn } from '../select-column';
+import { ColumnKeyOf } from '../../../../../orm';
+import { Field } from '../../../expression';
 
 /**
  * 自动列名前缀
@@ -21,21 +23,109 @@ export const DEFAULT_COLUMN_NAME: DefaultColumnName = '#column_1';
  */
 export type SelectAction = {
   /**
-   * 选择列
+   * 整表返回
    */
-  // <T extends RowObject = any>(a: Star<T>): Select<T>;
   <T extends RowObject>(a: Star<T>): Select<T>;
-  <T extends Scalar>(value: CompatibleExpression<T>): Select<{
-    '#column_1': T;
-  }>;
-  <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
-  <T extends RowObject>(results: InputObject<T>): Select<T>;
+  /**
+   * 单个值查询
+   */
+  // <T extends Scalar>(value: CompatibleExpression<T>): Select<{
+  //   '#column_1': T;
+  // }>;
   <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
     '*no name': T;
   }>;
-  <T extends RowObject = DefaultRowObject>(
-    ...columns: (SelectColumn | CompatibleExpression | Star<any>)[]
-  ): Select<T>;
+  <T extends RowObject>(fields: SelectColumn): Select<T>;
+  <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
+  <T extends RowObject>(results: InputObject<T>): Select<T>;
+  // <
+  //   A extends SelectColumn | Field,
+  //   B extends SelectCloumn | Field,
+  //   C extends SelectCloumn | Field,
+  //   D extends SelectCloumn | Field,
+  //   E extends SelectCloumn | Field,
+  //   F extends SelectCloumn | Field,
+  //   G extends SelectCloumn | Field,
+  //   H extends SelectCloumn | Field,
+  //   I extends SelectCloumn | Field,
+  //   J extends SelectCloumn | Field,
+  //   K extends SelectCloumn | Field,
+  //   L extends SelectCloumn | Field,
+  //   M extends SelectCloumn | Field,
+  //   N extends SelectCloumn | Field,
+  //   O extends SelectCloumn | Field,
+  //   P extends SelectCloumn | Field,
+  //   Q extends SelectCloumn | Field,
+  //   R extends SelectCloumn | Field,
+  //   S extends SelectCloumn | Field,
+  //   T extends SelectCloumn | Field,
+  //   U extends SelectCloumn | Field,
+  //   V extends SelectCloumn | Field,
+  //   W extends SelectCloumn | Field,
+  //   X extends SelectCloumn | Field,
+  //   Y extends SelectCloumn | Field,
+  //   Z extends SelectCloumn | Field
+  // >(
+  //   a: A,
+  //   b: B,
+  //   c: C,
+  //   d: D,
+  //   e: E,
+  //   f: F,
+  //   g: G,
+  //   h: H,
+  //   i: I,
+  //   j: J,
+  //   k: K,
+  //   l: L,
+  //   m: M,
+  //   n: N,
+  //   o: O,
+  //   p: P,
+  //   q: Q,
+  //   r: R,
+  //   s: S,
+  //   t: T,
+  //   u: U,
+  //   v: V,
+  //   w: W,
+  //   x: X,
+  //   y: Y,
+  //   z: Z
+  // ): Select<
+  //   RowTypeByColumns<
+  //     A,
+  //     B,
+  //     C,
+  //     D,
+  //     E,
+  //     F,
+  //     G,
+  //     H,
+  //     I,
+  //     J,
+  //     K,
+  //     L,
+  //     M,
+  //     N,
+  //     O,
+  //     P,
+  //     Q,
+  //     R,
+  //     S,
+  //     T,
+  //     U,
+  //     V,
+  //     W,
+  //     X,
+  //     Y,
+  //     Z
+  //   >
+  // >;
+
+  // <T extends RowObject = DefaultRowObject>(
+  //   ...columns: (SelectColumn | CompatibleExpression | Star<any>)[]
+  // ): Select<T>;
   // <A extends CompatibleExpression>(a: A): Select<{ unnamed: TypeOf<A> }>;
   // <A extends SelectCloumn, B extends SelectCloumn>(a: A, b: B): Select<
   //   RowTypeByColumns<A, B>

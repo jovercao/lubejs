@@ -1,12 +1,12 @@
-import { CompatibleCondition, Condition } from "../../../condition/condition";
-import { RowObject, WhereObject } from "../../../types";
-import { ProxiedRowset, Rowset } from "../../../rowset/rowset"
-import { CompatiableObjectName } from "../../../object/db-object";
-import { With } from "../with";
-import { Join } from "./join";
-import { Statement } from "../../statement";
-import assert from "assert";
-import { isPlainObject } from "../../../util";
+import { CompatibleCondition, Condition } from '../../../condition/condition';
+import { RowObject, WhereObject } from '../../../types';
+import { ProxiedRowset, Rowset } from '../../../rowset/rowset';
+import { CompatiableObjectName } from '../../../object/db-object';
+import { With } from '../with';
+import { Join } from './join';
+import { Statement } from '../../statement';
+import assert from 'assert';
+import { isPlainObject } from '../../../util';
 
 export abstract class Fromable<T extends RowObject = any> extends Statement {
   $froms?: ProxiedRowset[];
@@ -65,14 +65,19 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
   protected ensureCondition(condition: CompatibleCondition<T>): Condition {
     if (isPlainObject(condition)) {
       // 严格限制语法，字段名必须带上表别名
-      assert(this.$froms, 'from must call before where when use `WhereObject<T>` condition type.')
-      if ((this.$froms?.length || 0) > 1 || this.$joins) {
-        throw new Error('object condition is not support for multi rowset source select statement.');
+      assert(
+        this.$froms,
+        'The `.from` must call before where when use `WhereObject<T>` condition type.'
+      );
+      if (this.$froms?.length !== 1 || this.$joins) {
+        throw new Error(
+          'WhereObject<T> condition is not support for multi rowset source select statement.'
+        );
       }
-      const rowset = this.$froms?.[0]
+      const rowset = this.$froms?.[0];
       return Condition.ensure(condition, rowset);
     }
-    return condition
+    return condition;
   }
 
   /**

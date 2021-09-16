@@ -14,5 +14,5 @@ export type HasOneKeyOf<T extends Entity> = {
 }[keyof T];
 
 export type ColumnKeyOf<T extends Entity> = {
-  [P in keyof T]: P extends string ? (T[P] extends Scalar ? P : never) : never;
+  [P in keyof T]: P extends string ? (NonNullable<T[P]> extends Scalar ? P : never) : never;
 }[keyof T];

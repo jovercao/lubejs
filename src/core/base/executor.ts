@@ -31,6 +31,8 @@ import {
   Assignment,
   Procedure,
   Expression,
+  Star,
+  CompatibleTable,
 } from '../sql';
 
 const { and, doc } = SQL;
@@ -208,6 +210,10 @@ export abstract class Executor {
    * @param sql
    */
   async queryScalar<T extends Scalar = any>(
+    sql: TemplateStringsArray,
+    ...params: Scalar[]
+  ): Promise<T | null>;
+  async queryScalar<T extends Scalar = any>(
     sql: string,
     params?: Parameter[]
   ): Promise<T | null>;
@@ -221,10 +227,6 @@ export abstract class Executor {
   async queryScalar<T extends Scalar>(sql: Select<any>): Promise<T | null>;
   async queryScalar<T extends Scalar>(
     expression: Expression<T>
-  ): Promise<T | null>;
-  async queryScalar<T extends Scalar = any>(
-    sql: TemplateStringsArray,
-    ...params: any[]
   ): Promise<T | null>;
   async queryScalar(...args: any[]): Promise<any> {
     const rows = (await this._internalQuery(...args)).rows!;
@@ -327,24 +329,49 @@ export abstract class Executor {
     return action();
   }
 
+  async find<
+    T extends RowObject = any,
+    G extends InputObject<T> = InputObject<T>
+  >(
+    table: ProxiedTable<T, string> | CompatiableObjectName,
+    results: (rowset: Readonly<ProxiedRowset<T>>) => G,
+    where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
+  ): Promise<RowObjectFrom<G> | null>;
   async find<T extends RowObject = any>(
     table: ProxiedTable<T, string> | CompatiableObjectName,
-    where:
+    where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
+  ): Promise<T | null>;
+  async find<
+    T extends RowObject = any,
+    G extends InputObject<T> = InputObject<T>
+  >(
+    table: ProxiedTable<T, string> | CompatiableObjectName,
+    resultsOrwhere:
       | Condition
       | WhereObject<T>
-      | ((table: ProxiedRowset<T>) => Condition),
-    fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
-  ): Promise<T | null> {
-    let columns: any[];
+      | ((table: ProxiedRowset<T>) => Condition)
+      | ((rowset: Readonly<Rowset<T>>) => G),
+    where?:
+      | Condition
+      | WhereObject<T>
+      | ((table: ProxiedRowset<T>) => Condition)
+  ): Promise<T | RowObjectFrom<G> | null> {
     const t = Table.ensure(table);
-    if (fields && fields.length > 0 && typeof fields[0] === 'string') {
-      columns = (fields as ColumnsOf<T>[]).map(fieldName =>
-        t.$field(fieldName)
-      );
+    let results: ((rowset: Readonly<Rowset<T>>) => G) | undefined;
+    if (!where) {
+      where = resultsOrwhere as (table: ProxiedRowset<T>) => Condition;
     } else {
-      columns = [t.star];
+      results = resultsOrwhere as (rowset: Readonly<Rowset<T>>) => G;
     }
-    const sql = SQL.select<T>(...columns)
+
+    let columns: Star<T> | G;
+    if (results) {
+      columns = results(t);
+    } else {
+      columns = t.star;
+    }
+
+    const sql = SQL.select(columns as any)
       .top(1)
       .from(t)
       .where(typeof where === 'function' ? where(t) : where);
@@ -361,18 +388,21 @@ export abstract class Executor {
    * @param where
    * @param options
    */
-  async select<T extends RowObject = any, G extends InputObject = InputObject>(
-    table: CompatiableObjectName | ProxiedTable<T>,
-    results: (rowset: Readonly<Rowset<T>>) => G,
+  async select<
+    T extends RowObject = any,
+    G extends InputObject<T> = InputObject<T>
+  >(
+    table: CompatiableObjectName | ProxiedRowset<T>,
+    results: (rowset: Readonly<ProxiedRowset<T>>) => G,
     options?: SelectOptions<T>
   ): Promise<RowObjectFrom<G>[]>;
   async select<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T>,
+    table: CompatiableObjectName | ProxiedRowset<T>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
   async select(
-    table: CompatiableObjectName | ProxiedTable,
-    arg2?: SelectOptions | ((rowset: Readonly<Rowset>) => any),
+    table: CompatiableObjectName | ProxiedRowset,
+    arg2?: SelectOptions | ((rowset: Readonly<ProxiedRowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
     let options: SelectOptions | undefined;
@@ -384,13 +414,14 @@ export abstract class Executor {
       options = arg2;
     }
     const { where, sorts, offset, limit } = options || {};
-    let columns: any;
-    const t: ProxiedRowset<any> = Table.ensure(table) as any;
+    let columns: Star | InputObject<any>;
+    const t: ProxiedRowset<any> = Rowset.ensure(table) as any;
     if (results) {
       columns = results(t);
     } else {
       columns = t.star;
     }
+
     const sql = SQL.select(columns).from(table);
     if (where) {
       sql.where(typeof where === 'function' ? where(t) : where);
@@ -418,94 +449,28 @@ export abstract class Executor {
    * 更新表
    */
   async update<T extends RowObject = any>(
-    table: string | Table<T, string>,
+    table: CompatibleTable<T>,
     sets: InputObject<T> | Assignment[],
     where?:
       | WhereObject<T>
       | Condition
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
-  ): Promise<number>;
-  /**
-   * 通过主键更新
-   */
-  async update<T extends RowObject = any>(
-    table: string | Table<T, string>,
-    items: T[],
-    /**
-     * 更新键字段列表
-     */
-    keyFieldsOrWhere:
-      | ColumnsOf<T>[]
-      | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
-  ): Promise<number>;
-
-  async update<T extends RowObject = any>(
-    table: string | ProxiedTable<T, string>,
-    setsOrItems:
-      | InputObject<T>
-      | InputObject<T>[]
-      | Assignment[]
-      | Assignment[][],
-    whereOrKeys?:
-      | WhereObject<T>
-      | Condition
-      | ColumnsOf<T>[]
-      | ((table: Readonly<ProxiedRowset<T>>) => Condition)
-      | ((item: T, table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
     const t = Table.ensure(table);
 
-    if (Array.isArray(setsOrItems) && !(setsOrItems[0] instanceof Assignment)) {
-      let keys: ColumnsOf<T>[];
-      let where: (item: T, table: Readonly<ProxiedRowset<T>>) => Condition;
-      if (typeof whereOrKeys === 'function') {
-        where = whereOrKeys as (
-          item: T,
-          table: Readonly<ProxiedRowset<T>>
-        ) => Condition;
-      } else {
-        keys = whereOrKeys as ColumnsOf<T>[];
-      }
-      const items = setsOrItems as T[];
-      const docs: Document = doc(
-        items.map(item => {
-          let condition: CompatibleCondition;
-          if (keys) {
-            condition = and(keys.map(field => t[field].eq(item[field])));
-          } else {
-            condition = where(item, t);
-          }
-          const sql = SQL.update(table).set(item).where(condition);
-          return sql;
-        })
-      );
-      let res: QueryResult<T>;
-      // 批量操作自动开启事务
-      if (this instanceof Connection && !this.inTransaction) {
-        res = await this.trans(async () => await this.query(docs));
-      } else {
-        res = await this.query(docs);
-      }
-      return res.rowsAffected;
-    }
-    const sets = setsOrItems as Assignment[] | InputObject<T>;
     const sql = SQL.update(t).set(sets);
-    const where = whereOrKeys as
-      | Condition
-      | ((table: Readonly<ProxiedRowset<T>>) => Condition);
     if (where) {
-      sql.where(
-        typeof where === 'function'
-          ? where(t)
-          : (whereOrKeys as CompatibleCondition<T>)
-      );
+      if (typeof where === 'function') {
+        where = where(t);
+      }
+      sql.where(where);
     }
     const res = await this.query(sql);
     return res.rowsAffected;
   }
 
   async delete<T extends RowObject = any>(
-    table: ProxiedTable<T> | CompatiableObjectName,
+    table: CompatibleTable<T>,
     where?:
       | WhereObject<T>
       | Condition
@@ -514,7 +479,10 @@ export abstract class Executor {
     const t = Table.ensure(table);
     const sql = SQL.delete(t);
     if (where) {
-      sql.where(where instanceof Function ? where(t) : where);
+      if (typeof where === 'function') {
+        where = where(t);
+      }
+      sql.where(where);
     }
     const res = await this.query(sql);
     return res.rowsAffected;
