@@ -3,11 +3,9 @@
 > Lubejs 是一个用于 `node.js` 诣在方便使用SQL数据库连接.
 > 取名为lube意为润滑，即作为js与sql间的润滑剂般的存在，我们可以尽情使用优雅的 js/ts来 替代拼接 sql 字符串。
 
-
-
 本库部分灵感来自于[EF](https://github.com/dotnet/efcore) 与  [TypeORM](https://github.com/typeorm/typeorm)，致谢
 
-[English](./README.md)
+[English](./README-en_US.md)
 
 ## lubejs是什么
 
@@ -60,7 +58,7 @@ import 'lubejs-mssql'
   const db = await connect('mssql://user:password@localhost:1433/database');
   // SELECT 'hello world'
   console.log(await db.queryScalar(SQL.select('hello world!')));  // => 'hello world'
-    
+
   await db.close();
 })()
 ```
@@ -611,7 +609,7 @@ p.age.add(1)
 ```ts
 // 生成比较查询条件
 p.age.lte(18)
-// => p.age >= 18	
+// => p.age >= 18
 ```
 
 更多细节请参考[WHERE条件](#查询条件)
@@ -662,7 +660,7 @@ const sql = SQL.select(p.star).from(p).where(SQL.literial(18).lt(p.age)); // => 
 
 ### 查询条件(Condition)
 
-**JSON格式查询条件 **
+**JSON格式查询条件**
 
 JSON格式仅适用于单表查询情况下的简单的 `=`, `in`运算之间的`and`条件联接，一般用于快速查询某个对象，若要使用高级条件请看下文。
 
@@ -749,7 +747,7 @@ const sql = SQL.select(p.star).from(p).where(
 **分组条件**
 
 ```ts
-// 
+//
 const sql = SQL.select(p.star).from(p).where(
     SQL.and(
         p.sex.eq('男'),
@@ -842,7 +840,7 @@ const sql = SQL.select({
 
 ```ts
 const sql = SQL.select(p.star).from(p)
-// => SELECT p.* FROM Person p	
+// => SELECT p.* FROM Person p
 ```
 
 使用 `p.star` 返回`p`本身所附带的类型，会被select所继承过去。
@@ -1145,7 +1143,7 @@ BEGIN
 	ELSE
 		SELECT * FROM Person;
 	END
-	
+
 	RETURN  100;
 END
 ```
@@ -1427,7 +1425,7 @@ console.log(result); // => { rows: [{ '#column_1': 1 }]} }
 **返回值：**
 
 - 类型: QueryResult<T, R, O>
-- 结构 
+- 结构
 
 ```ts
 {
@@ -1575,7 +1573,7 @@ await db.update<Person>('Person', {
 
 ```ts
 db.on('command', cmd => {
-    // 
+    //
     console.log('SQL: ' + cmd.sql);
     // 调用时所传递的参数
     console.log('PARAMS:' + JSON.stringify(cmd.params));
@@ -2266,7 +2264,7 @@ export class User extends Entity implements EntityKey {
     id?: bigint;
 
     // ... 其它属性
-    
+
     @detail() // 声明为明细属性
     @principal()  // 将该属性声明为主要的一对一关系
     @oneToOne(() => Employee, p => p.user) // 声明一对一关系
@@ -2300,7 +2298,7 @@ export class User extends Entity implements EntityKey {
     id?: bigint;
 
     // ... 其它属性
-    
+
     @principal()  // 将该属性声明为主要的一对一关系
     @oneToOne(() => Employee) // 声明一对一关系
     employee?: Employee;
@@ -2398,7 +2396,7 @@ export class Employee extends Entity implements EntityKey {
   // 其它属性...
 
   // 声明 一对一（从）属性
-  @foreignKey()  // 声明为外键一对一属性	
+  @foreignKey()  // 声明为外键一对一属性
   @oneToOne(() => User)  // 声明一对一关系，
   user?: User | null;  // 如果orderId字段是可空的，需要声明为可以为null，用于断开连接关系
 }
@@ -2679,7 +2677,7 @@ export class Position extends Entity implements EntityKey {
 
   @manyToMany(() => Employee, p => p.positions)   // 关联对向导航属性
   employees?: Employee[];
-  
+
   @oneToMany(() => EmployeePosition, p => p.position)
   employeePositions?: EmployeePosition[];
 }
@@ -2830,7 +2828,7 @@ import { Employee } from './entities/employee'
 export class DB extends DbContext {
   	@repository(() => User) // 声明一个仓库属性，可以直接从该属性获取仓库，并且该属性为延迟创建，只有在访问该属性时才会被创建。
   	user: Repository<User>;
-    
+
     @repository(() => Employee)
     employee: Repository<Employee>;
 }
@@ -2921,7 +2919,7 @@ export class Init implements Migrate {
     dialect: string
   ): Promise<void> {
    // 在此编写您的回滚代码
-  
+
 }
 
 export default Init;
@@ -2961,19 +2959,13 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
 该命令可以为迁移文件生成SQL代码，其中<source_name>为源版本迁移文件名称，<target_name>为目标版本迁移文件名称，并将命令导出到<output_file>文件中。
 
-
-
 更为详细的操作，请使用`lube --help`查看。
 
 ## API
 
-[API DOC](./doc/globals.md)
+[API 文档](./doc/globals.md)
 
 ## Updated Logs
-
-### 3.0.0-preview01
-
-最初预览版
 
 ### 3.0.0-preview04
 
@@ -2982,3 +2974,6 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 - 完整文档初稿
 - 增加测试覆盖面
 
+### 3.0.0-preview01
+
+最初预览版

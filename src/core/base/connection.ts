@@ -94,12 +94,13 @@ abstract class ConnectionClass extends Executor {
 export type ConnectionConstructor = typeof ConnectionClass;
 
 export const Connection: ConnectionConstructor = ConnectionClass;
+
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Connection extends ConnectionClass {}
 
 export type ConnectOptions = {
   /**
-   * 数据库方言(必须是已注册的言)，与driver二选一，必须安装相应的驱动才可正常使用
+   * 数据库方言(必须是已注册的)，与driver二选一，必须安装相应的驱动才可正常使用
    */
   dialect?: string;
   /**
@@ -127,18 +128,7 @@ export type ConnectOptions = {
    * 数据库名称
    */
   database?: string;
-  // /**
-  //  * 连接池最大连接数，单位为秒，默认为5
-  //  */
-  // maxConnections?: number;
-  // /**
-  //  * 连接池最小连接数，默认为1
-  //  */
-  // minConnections?: number;
-  // /**
-  //  * 回收未使用的连接等待时长，单位: ms，默认为30000ms
-  //  */
-  // recoveryConnection?: number;
+
   /**
    * 连接超时时长，单位: ms，默认为15000ms
    */
