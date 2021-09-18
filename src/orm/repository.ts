@@ -2,13 +2,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
 import {
-  ColumnsOf,
-  ProxiedRowset,
   ProxiedTable,
   Condition,
   isStringType,
   isScalar,
   SQL,
+  Executor,
 } from '../core';
 import { Queryable } from './queryable';
 import {
@@ -38,7 +37,13 @@ import {
   isManyToOne,
   isOneToMany,
   isPrimaryOneToOne,
+  isTableEntity,
+  makeRowset,
 } from './metadata/util';
+import { metadataStore } from './metadata-store';
+import { EntityMgr } from './entity-mgr';
+import { DefaultRowObject } from '../core/sql';
+import { mergeFetchRelations } from './util';
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
 
@@ -46,7 +51,6 @@ import {
 
 export type FetchOptions<T> = {
   includes?: FetchRelations<T>;
-  nocache?: boolean;
   /**
    * 是否连同明细属性一并查询
    * 默认为false
@@ -72,41 +76,64 @@ export type DeleteOptions = {
   withDetail?: boolean;
 };
 
-export class Repository<T extends Entity> extends Queryable<T> {
+export class Repository<T extends Entity> {
   protected metadata!: TableEntityMetadata;
-  protected rowset!: ProxiedTable<T>;
+  // INFO 因为列会进行映射，因此rowset的返回类型不确定
+  protected rowset!: ProxiedTable<DefaultRowObject>;
   private _emitter: AsyncEventEmitter = new AsyncEventEmitter();
 
-  constructor(context: DbContext, public ctr: EntityConstructor<T>) {
-    super(context, ctr as any);
-    if (!this.metadata || this.metadata.readonly) {
+  constructor(
+    protected readonly context: DbContext,
+    public ctr: EntityConstructor<T>
+  ) {
+    const metadata = metadataStore.getEntity(ctr);
+    if (!isTableEntity(metadata)) {
+      throw new Error(`Entitymgr is only allowed for tableentities.`);
+    }
+    this.metadata = metadata;
+    // this.metadata = metadataStore.getEntity(
+    //   Entity as EntityConstructor<Entity>
+    // ) as TableEntityMetadata;
+    if (this.metadata.readonly) {
       throw new Error(`Repository must instance of table entity`);
     }
+    if (!this.metadata) {
+      throw new Error(`Only allow register entity constructor.`);
+    }
+    this.rowset = makeRowset(ctr) as ProxiedTable<DefaultRowObject>;
+  }
+
+  protected get connection(): Executor {
+    return this.context.connection;
+  }
+
+  private get mgr(): EntityMgr<T> {
+    return this.context.getMgr(this.metadata.class);
   }
 
   /**
-   * 通过主键查询一个项
+   * 创建一个可查询对象
+   */
+  query(): Queryable<T> {
+    return new Queryable<T>(this.context, this.metadata.class);
+  }
+
+  /**
+   * 通过主键查询一个项，
+   * 默认不使用缓存
    */
   async get(
     key: EntityKeyType,
     options?: FetchOptions<T>
-  ): Promise<EntityInstance<T> | undefined> {
-    let query = this.filter(rowset =>
-      rowset[this.metadata.key.column.columnName as ColumnsOf<T>].eq(key as any)
-    );
-    if (options?.includes) {
-      query = query.include(options.includes);
-    }
+  ): Promise<EntityInstance<T>> {
+    let includes: FetchRelations<T> | undefined;
     if (options?.withDetail) {
-      query = query.withDetail();
+      includes = this.metadata.getDetailIncludes();
     }
-    const item = await query.fetchFirst();
-    if (!item) {
-      throw new Error(
-        `Data key ${key} not exists in Entity '${this.metadata.className}'.`
-      );
-    }
-    return item;
+    includes = mergeFetchRelations(options?.includes, includes);
+    return await this.mgr.fetchByKey(key, {
+      includes,
+    });
   }
 
   async insert(items: T | T[], options?: SaveOptions<T>): Promise<void> {
@@ -140,7 +167,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
             );
           }
           row[column.columnName] = await column.generator(
-            this.rowset as ProxiedRowset<any>,
+            this.rowset,
             item,
             this.context
           );
@@ -154,7 +181,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         }
         row[column.columnName] = this.toDbValue(item, column);
       }
-      await this.executor.insert(this.rowset, row);
+      await this.connection.insert(this.rowset, row);
 
       const key = this.metadata.key.column.isIdentity
         ? SQL.std.identityValue(
@@ -162,11 +189,11 @@ export class Repository<T extends Entity> extends Queryable<T> {
             this.metadata.key.column.columnName
           )
         : Reflect.get(item, this.metadata.key.property);
-      const added = await this.executor.find(
+      const added = (await this.connection.find(
         this.rowset,
         this.rowset.$field(this.metadata.key.property as any).eq(key)
-      );
-      this.toEntity(added, item);
+      ))!;
+      this.mgr.toEntity(added, item);
       if (options?.withoutRelations !== true) {
         await this.saveSubordinates(
           item,
@@ -181,11 +208,11 @@ export class Repository<T extends Entity> extends Queryable<T> {
   }
 
   /**
-   * 获取更新或删除定位查询条件
+   * 获取定位查询条件（仅查询）
    * @param item
    * @returns
    */
-  protected getWhere(item: T): Condition {
+  protected getWhereForQuery(item: T): Condition {
     const keyValue = Reflect.get(item, this.metadata.key.property);
     if (keyValue === undefined) {
       throw new Error(
@@ -243,6 +270,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
 
   public async update(items: T | T[], options?: SaveOptions<T>): Promise<void> {
     await this._update(items, options);
+    this.mgr.clearCache();
   }
 
   /**
@@ -276,18 +304,18 @@ export class Repository<T extends Entity> extends Queryable<T> {
         changes[column.columnName] = this.toDbValue(item, column);
       }
       const where = this.getWhereForUpdate(item);
-      const lines = await this.executor.update(this.rowset, changes, where);
+      const lines = await this.connection.update(this.rowset, changes, where);
       if (lines === 0) {
         throw new Error(
           `The data to be modified does not exist or has been modified or deleted.`
         );
       }
 
-      const updated = await this.executor.find(
+      const updated = await this.connection.find(
         this.rowset,
-        this.getWhere(item)
+        this.getWhereForQuery(item)
       );
-      this.toEntity(updated, item);
+      this.mgr.toEntity(updated!, item);
 
       if (options?.withoutRelations !== true) {
         // 保存子项
@@ -332,8 +360,8 @@ export class Repository<T extends Entity> extends Queryable<T> {
       if (options?.withDetail) {
         await this._deleteDetail(item);
       }
-      const where = this.getWhere(item);
-      const lines = await this.executor.delete(this.rowset, where);
+      const where = this.getWhereForQuery(item);
+      const lines = await this.connection.delete(this.rowset, where);
       if (lines !== 1) {
         throw new Error(
           `The data to be delete does not exist or has been changed or deleted. ${item}`
@@ -341,6 +369,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
       }
     }
     this._emit('deleted', items, this.context);
+    this.mgr.clearCache();
   }
 
   /**
@@ -357,7 +386,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
     for (const relation of this.metadata.relations) {
       if (isPrimaryOneToOne(relation)) {
         if (!relation.isDetail) continue;
-        const detail: any = await this.fetchRelation(item, relation);
+        const detail: any = await this.mgr.fetchRelation(item, relation);
         if (detail) {
           await this.context
             .getRepository(relation.referenceClass)
@@ -365,10 +394,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         }
       } else if (isOneToMany(relation)) {
         if (!relation.isDetail) continue;
-        const details: any[] = (await this.fetchRelation(
-          item,
-          relation
-        )) as any;
+        const details: any[] = (await this.mgr.fetchRelation(item, relation)) as any;
         if (details?.length > 0) {
           await this.context
             .getRepository(relation.referenceClass)
@@ -376,7 +402,7 @@ export class Repository<T extends Entity> extends Queryable<T> {
         }
       } else if (isManyToMany(relation)) {
         // 多对多关系仅中间表
-        const middles: any[] = (await this.fetchRelation(
+        const middles: any[] = (await this.mgr.fetchRelation(
           item,
           relation.relationRelation
         )) as any;
@@ -477,13 +503,13 @@ export class Repository<T extends Entity> extends Queryable<T> {
         }
       }
     }
+    this.mgr.clearCache();
   }
 
   // 判断是否存在主键值
   public async existsKey(key: EntityKeyType): Promise<boolean> {
-    const result = await this.filter(p =>
-      (p as any)[this.metadata.key.property].eq(key)
-    )
+    const result = await this.query()
+      .filter(p => (p as any)[this.metadata.key.property].eq(key))
       .count()
       .fetchFirst();
     return (result?.count ?? 0) > 0;
@@ -642,10 +668,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
       });
     }
 
-    const subSnapshots: any[] = (await this.fetchRelation(
-      item,
-      relation
-    )) as any;
+    const subSnapshots: any[] = (await this.context
+      .getMgr(this.metadata.class)
+      .fetchRelation(item, relation)) as any;
 
     const itemsMap: any = {};
     const snapshotMap: any = {};
@@ -728,10 +753,9 @@ export class Repository<T extends Entity> extends Queryable<T> {
     }
 
     // 取中间表快照
-    const relationSnapshots: any[] = (await this.fetchRelation(
-      item,
-      relation.relationRelation
-    )) as any;
+    const relationSnapshots: any[] = (await this.context
+      .getMgr(this.metadata.class)
+      .fetchRelation(item, relation.relationRelation)) as any;
     await subRepo._save(subItems, {
       withoutRelations: [relation.referenceRelation.property],
     });

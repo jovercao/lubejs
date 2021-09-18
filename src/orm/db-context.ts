@@ -16,6 +16,7 @@ import {
 } from './entity';
 import { DbContextEventHandler, DbEvents } from './types';
 import { metadataStore } from './metadata-store';
+import { EntityMgr } from './entity-mgr';
 
 export class DbContext {
   constructor(public readonly connection: Connection) {
@@ -35,34 +36,40 @@ export class DbContext {
     this._metadata = value;
   }
 
+  private _repositories?: Map<Entity, Repository<any>>;
+
   // 为节省内存，Repository 使用共享对象
-  private _repositories: Map<Entity, Repository<any>> = new Map();
+  private get repositories(): Map<Entity, Repository<any>> {
+    if (!this._repositories) {
+      this._repositories = new Map();
+    }
+    return this._repositories;
+  }
+
+
+  private _mgrs?: Map<Entity, EntityMgr<any>>;
+
+  // 为节省内存，Repository 使用共享对象
+  private get mgrs(): Map<Entity, EntityMgr<any>> {
+    if (!this._mgrs) {
+      this._mgrs = new Map();
+    }
+    return this._mgrs;
+  }
+
 
   /**
    * 获取一个可查询对象
    */
   getRepository<T extends Entity>(Entity: EntityConstructor<T>): Repository<T> {
-    // INFO 取消检查，以适应更多多场景
-    // const metadata = metadataStore.getEntity(ctr)
-    // if (metadata.contextClass !== this.constructor) {
-    //   throw new Error(`Repostory ${ctr.name} is not belong of DbContext ${this.constructor.name}`)
-    // }
-    const entityMetadata = this.metadata.getEntity(Entity);
-
-    if (!entityMetadata) {
-      throw new Error(
-        `Entity '${Entity.name}' is not of context '${this.constructor.name}' or unregister.`
-      );
-    }
-
-    if (!this._repositories.get(Entity)) {
+    if (!this.repositories.get(Entity)) {
       const repo = new Repository(this, Entity);
       repo.on('all', (event: DbEvents, items: T[]) => {
         this._emit(event, Entity, items);
       });
-      this._repositories.set(Entity, repo);
+      this.repositories.set(Entity, repo);
     }
-    return this._repositories.get(Entity)!;
+    return this.repositories.get(Entity)!;
   }
 
   /**
@@ -70,6 +77,18 @@ export class DbContext {
    */
   getQueryable<T extends Entity>(Entity: EntityConstructor<T>): Queryable<T> {
     return new Queryable<T>(this, Entity as any);
+  }
+
+  /**
+   * 内部方法，请不要使用
+   */
+  getMgr<T extends Entity>(Entity: EntityConstructor<T>): EntityMgr<T> {
+    let mgr = this.mgrs.get(Entity);
+    if (!mgr) {
+      mgr = new EntityMgr(Entity, this);
+      this.mgrs.set(Entity, mgr);
+    }
+    return mgr;
   }
 
   get<T extends Entity>(
@@ -241,6 +260,12 @@ export class DbContext {
       this._emitter.off(event, handler);
     }
     return this;
+  }
+
+  async dispose(): Promise<void> {
+    if (this.connection.opened) {
+      await this.connection.close();
+    }
   }
 }
 

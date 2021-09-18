@@ -9,12 +9,12 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   static isDelete(object: any): object is Delete {
     return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.DELETE
   }
-  $table: Table<T, string>;
+  $table: Table<T>;
   $kind: STATEMENT_KIND.DELETE = STATEMENT_KIND.DELETE;
 
-  constructor(table: CompatibleTable<T, string>) {
+  constructor(table: CompatibleTable<T>) {
     super();
-    this.$table = Table.ensure(table) as Table<T, string>;
+    this.$table = Table.ensure(table) as Table<T>;
   }
 
   protected ensureCondition(condition: CompatibleCondition<T>): Condition {

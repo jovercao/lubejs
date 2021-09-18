@@ -12,43 +12,27 @@ import {
   Condition,
   Select,
   RowObject,
-  NamedSelect,
-  isStringType,
   Executor,
   SQL,
 } from '../core';
-import { EntityMetadata, ColumnMetadata, RelationMetadata } from './metadata';
-import { Repository } from './repository';
-import { FetchRelations, RelationKeyOf } from './types';
+import { EntityMetadata, TableEntityMetadata } from './metadata';
+import { FetchRelations } from './types';
 import { Entity, EntityConstructor, EntityInstance } from './entity';
 import { mergeFetchRelations } from './util';
 import { metadataStore } from './metadata-store';
-import {
-  makeRowset,
-  aroundRowset,
-  isPrimaryOneToOne,
-  isForeignOneToOne,
-  isOneToMany,
-  isManyToOne,
-  isManyToMany,
-} from './metadata/util';
+import { makeRowset, aroundRowset, isTableEntity } from './metadata/util';
 import { DbContext } from './db-context';
+import {
+  ColumnsOf,
+  DefaultRowObject,
+  NamedSelect,
+  ProxiedTable,
+} from '../core/sql';
+import { EntityMgr } from './entity-mgr';
 
 // import { getMetadata } from 'typeorm'
 
-const { and, select } = SQL;
-/**
- * 可查询对象，接口类似js自带的`Array`对象，并且其本身是一个异步可迭代对象，实现了延迟加载功能，数据将在调用`toArray`，或者对其进行遍历时才执行加载
- * // TODO: 实现延迟在线逐条查询功能
- * // TODO: 性能优化，不再每一个动作产生一个SQL子查询
- * ```ts
- * const x: Queryable<T> = ...
- * for await (const item of x) {
- *    ...
- * }
- * ```
- */
-
+const { select } = SQL;
 const ROWSET_ALIAS = '__t__';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
@@ -57,26 +41,42 @@ export class Queryable<T extends Entity | RowObject>
 {
   constructor(
     protected context: DbContext,
-    Entity: EntityConstructor<T> // constructor(
+    rowsetOrCtr: EntityConstructor<T> | ProxiedRowset<T> // constructor(
   ) {
-    if (Entity) {
-      this.metadata = metadataStore.getEntity(
-        Entity as EntityConstructor<Entity>
-      );
-      if (!this.metadata) {
+    if (typeof rowsetOrCtr === 'function') {
+      this._metadata = metadataStore.getEntity(rowsetOrCtr);
+      if (!this._metadata) {
         throw new Error(`Only allow register entity constructor.`);
       }
+      this._rowset = makeRowset<any>(rowsetOrCtr) as ProxiedRowset<T>;
+    } else {
+      this._rowset = rowsetOrCtr;
     }
-    this.rowset = makeRowset<any>(Entity) as ProxiedRowset<T>;
-    // this.sql = select(this.rowset.star).from(this.rowset);
+    if (isTableEntity(this._metadata)) {
+      this._tableMetadata = this._metadata;
+    }
   }
 
-  protected rowset: ProxiedRowset<T>;
+  private get mgr(): EntityMgr<T> {
+    if (!this._metadata) {
+      throw new Error(`Mgr is only allowed for entities in queryable.`);
+    }
+    return this.context.getMgr(this._metadata.class);
+  }
+
+  private _rowset: ProxiedRowset<DefaultRowObject>;
   // protected sql: Select<any>;
-  protected metadata?: EntityMetadata;
+  private _metadata?: EntityMetadata;
   private _includes?: FetchRelations<T>;
-  private _nocache: boolean = false;
   private _withDetail: boolean = false;
+  private _sql?: Select<DefaultRowObject>;
+  private get sql(): Select<DefaultRowObject> {
+    if (!this._sql) {
+      this._sql = select(this._rowset.star).from(this._rowset);
+    }
+    return this._sql;
+  }
+  private _tableMetadata?: TableEntityMetadata;
 
   // private _appendWhere(where: CompatibleCondition<T>): this {
   //   if (!this._where) {
@@ -110,75 +110,87 @@ export class Queryable<T extends Entity | RowObject>
     };
   }
 
-  take(count: number, skip = 0): Queryable<T> {
-    const sql = select(this.rowset.star)
-      .from(this.rowset)
-      .offset(skip)
-      .limit(count);
-    return this.fork(sql.as(ROWSET_ALIAS));
+  skip(count: number): this {
+    if (this.sql.$offset !== undefined) {
+      throw new Error(
+        `Skip cannot be used twice, If you want to use a subquery, call .fork() first.`
+      );
+    }
+    this.sql.offset(count);
+    return this;
   }
 
-  // private _buildSelectSql(): Select<T>;
-  // private _buildSelectSql<G extends InputObject>(
-  //   results: G
-  // ): Select<RowTypeFrom<G>>;
-  // private _buildSelectSql<G extends InputObject>(
-  //   results?: (p: ProxiedRowset<T>) => G
-  // ): Select {
-  //   const sql = select(results ? results : this.rowset._).from(this.rowset);
-  //   if (this._where) sql.where(this._where);
-  //   if (this._sorts) sql.orderBy(this._sorts);
-  //   return sql;
-  // }
+  take(count: number): this {
+    if (this.sql.$limit !== undefined) {
+      throw new Error(
+        `Take cannot be used twice, If you want to use a subquery, call .fork() first.`
+      );
+    }
+    this.sql.limit(count);
+    return this;
+  }
 
   // /**
   //  * 克隆当前对象用于添加信息，以免污染当前对象
   //  */
-  private fork(rowset: ProxiedRowset<T>): Queryable<T> {
-    if (this.metadata) {
-      rowset = aroundRowset(rowset, this.metadata);
+  fork(rowset: ProxiedRowset<T>): Queryable<T> {
+    if (this._metadata) {
+      rowset = aroundRowset(rowset, this._metadata);
     }
-    const queryable = this.create(rowset);
+    const queryable = new Queryable(this.context, rowset);
     queryable._withDetail = this._withDetail;
     queryable._includes = this._includes;
-    queryable.metadata = this.metadata;
-    return queryable;
-  }
-
-  /**
-   * 创建一个不含metadata的内部的Queryable
-   * @param rowset
-   * @returns
-   */
-  private create<T extends RowObject>(rowset: ProxiedRowset<T>): Queryable<T> {
-    const queryable: Queryable<T> = Object.create(Queryable.prototype);
-    queryable.context = this.context;
-    queryable.rowset = rowset;
-    queryable._nocache = true;
+    queryable._metadata = this._metadata;
     return queryable;
   }
 
   /**
    * 过滤数据并返回一个新的Queryable
    */
-  filter(
-    condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>
-  ): Queryable<T> {
-    const queryable = this.fork(
-      select(this.rowset.star)
-        .from(this.rowset)
-        .where(condition(this.rowset))
-        .as(ROWSET_ALIAS)
-    );
-    return queryable;
+  filter(condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>): this {
+    this.sql.andWhere(condition(this._rowset as ProxiedRowset<T>));
+    return this;
   }
 
   count(): Queryable<{
     count: number;
   }> {
-    return this.map(p => ({
-      count: SQL.std.count(1)
+    // this._sql.$columns = [
+    //   SQL.std.count(this._rowset.$field(this._metadata!.key!.property! as any)).as('count')
+    // ];
+    return this.map(() => ({
+      count: SQL.std.count(1),
     }));
+  }
+
+  sort(sorts: (p: ProxiedRowset<T>) => Sort[] | SortObject<T>): this {
+    if (this.sql.$sorts) {
+      throw new Error(`Sort cannot be used twice.`);
+    }
+    this.sql.orderBy(sorts(this._rowset as ProxiedRowset<T>));
+    return this;
+
+    // return this.fork(
+    //   select(this.rowset.star)
+    //     .from(this.rowset)
+    //     .orderBy(sorts(this.rowset))
+    //     .as(ROWSET_ALIAS)
+    // );
+  }
+
+  /**
+   * 添加过滤条件，并限定返回头一条记录
+   */
+  find(filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): this {
+    return this.filter(filter).take(1);
+  }
+
+  union(...queries: Queryable<T>[]): this {
+    const sql = this.sql;
+    queries.forEach(query => {
+      sql.unionAll(query.sql);
+    });
+    return this;
   }
 
   /**
@@ -187,44 +199,25 @@ export class Queryable<T extends Entity | RowObject>
   map<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G
   ): Queryable<RowObjectFrom<G>> {
-    const sql = select(results(this.rowset)).from(this.rowset);
-    return this.create(sql.as(ROWSET_ALIAS));
-  }
-
-  sort(sorts: (p: ProxiedRowset<T>) => Sort[] | SortObject<T>): Queryable<T> {
-    return this.fork(
-      select(this.rowset.star)
-        .from(this.rowset)
-        .orderBy(sorts(this.rowset))
-        .as(ROWSET_ALIAS)
-    );
-  }
-
-  /**
-   * 添加过滤条件，并限定返回头一条记录
-   */
-  find(filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): Queryable<T> {
-    return this.filter(filter).take(1);
+    const rowset = this._sql ? this._sql.as(ROWSET_ALIAS) : this._rowset;
+    const sql = select(results(rowset as ProxiedRowset<T>)).from(rowset);
+    return new Queryable(this.context, sql.as(ROWSET_ALIAS));
   }
 
   groupBy<G extends InputObject>(
     results: (p: ProxiedRowset<T>) => G,
     groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
-    where?: (p: ProxiedRowset<T>) => Condition
+    having?: (p: ProxiedRowset<T>) => Condition
   ): Queryable<RowObjectFrom<G>> {
-    if (where) {
-      this.filter(where);
-    }
-    const sql = select(results(this.rowset)).groupBy(...groups(this.rowset));
-    return this.create(sql.as(ROWSET_ALIAS));
-  }
+    const rowset = this._sql ? this.sql.as(ROWSET_ALIAS) : this._rowset;
 
-  union(...sets: Queryable<T>[]): Queryable<T> {
-    const sql = select(this.rowset.star).from(this.rowset);
-    sets.forEach(query => {
-      sql.unionAll(select(query.rowset.star).from(query.rowset));
-    });
-    return this.fork(sql.as(ROWSET_ALIAS));
+    const sql = select(results(rowset as ProxiedRowset<T>)).groupBy(
+      ...groups(this._rowset as ProxiedRowset<T>)
+    );
+    if (having) {
+      sql.having(having(rowset as ProxiedRowset<T>));
+    }
+    return new Queryable(this.context, sql.as(ROWSET_ALIAS));
   }
 
   join<J extends Entity, G extends InputObject>(
@@ -233,224 +226,126 @@ export class Queryable<T extends Entity | RowObject>
     results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G
   ): Queryable<RowObjectFrom<G>> {
     const rightRowset = makeRowset(entity);
-    const newRowset = select(results(this.rowset, rightRowset))
-      .from(this.rowset)
-      .join(rightRowset, on(this.rowset, rightRowset), true)
+    const leftRowset = this._sql ? this._sql.as(ROWSET_ALIAS) : this._rowset;
+    const newRowset = SQL.select(
+      results(leftRowset as ProxiedRowset<T>, rightRowset as ProxiedRowset<J>)
+    )
+      .from(this._rowset)
+      .join(
+        rightRowset,
+        on(leftRowset as ProxiedRowset<T>, rightRowset as ProxiedRowset<J>),
+        true
+      )
       .as(ROWSET_ALIAS);
-    return this.create(newRowset);
+
+    return new Queryable(this.context, newRowset);
   }
 
-  private assertMetdata(metadata?: EntityMetadata): asserts metadata {
-    if (!this.metadata) {
-      throw new Error('Not allow this operation when has no netadata.');
-    }
-  }
   /**
-   * 查询关联属性
+   * 查询关联导航属性
    */
-  include(props: FetchRelations<T>): Queryable<T> {
-    this.assertMetdata(this.metadata);
-    const queryable = this.fork(this.rowset);
-    queryable._includes = props;
-    return queryable;
-  }
-
-  withDetail(): Queryable<T> {
-    this.assertMetdata(this.metadata);
-    const queryable = this.fork(this.rowset);
-    queryable._withDetail = true;
-    return queryable;
-  }
-
-  withNocache(): Queryable<T> {
-    const query = this.fork(this.rowset);
-    query._nocache = true;
-    return query;
-  }
-
-  getSql(): Select<T> {
-    if (NamedSelect.isNamedSelect(this.rowset)) {
-      return this.rowset.$select as Select<T>;
+  include(props: FetchRelations<T>): this {
+    if (!this._tableMetadata) {
+      throw new Error('Queryable.include is allow use in table entity only.');
     }
-    return select(this.rowset.star).from(this.rowset);
+    // const queryable = this.fork(this.rowset);
+    // queryable._includes = props;
+    // return queryable;
+    this._includes = mergeFetchRelations(this._includes, props);
+    return this;
+  }
+
+  /**
+   * 同时返回明细属性
+   * 即被标记为明细属性的导航属性
+   */
+  withDetail(): this {
+    if (!this._tableMetadata) {
+      throw new Error(
+        'Queryable.withDetail is allow use in table entity only.'
+      );
+    }
+    this._withDetail = true;
+    return this;
+  }
+
+  private getSqlForExecute(): Select<DefaultRowObject> {
+    if (this._sql) {
+      return this._sql;
+    }
+
+    // 减少SELECT嵌套
+    if (NamedSelect.isNamedSelect(this._rowset)) {
+      return this._rowset.$select;
+    } else {
+      return SQL.select(this._rowset.star).from(this._rowset);
+    }
   }
 
   /**
    * 执行查询并将结果转换为数组，并获取所有数据返回一个数组
    */
   async fetchAll(): Promise<EntityInstance<T>[]> {
-    const sql = this.getSql();
-    const { rows } = await this.executor.query(sql);
+    const { rows } = await this.executor.query(this.getSqlForExecute());
 
-    if (this.metadata) {
+    if (!this._metadata) {
       return rows as EntityInstance<T>[];
     }
 
-    const items: T[] = [];
+    const items = rows.map(row => this.mgr.toEntity(row));
 
-    let includes: FetchRelations<any> | undefined;
-    if (this._withDetail) {
-      includes = this.metadata!.getDetailIncludes();
-    }
-    if (this._includes) {
-      includes = mergeFetchRelations(includes, this._includes);
-    }
-
-    for (const row of rows!) {
-      const item = this.toEntity(row);
-      items.push(item);
-      // TODO: 添加避免重复加载代码
+    if (this._tableMetadata) {
+      let includes: FetchRelations<any> | undefined;
+      if (this._withDetail) {
+        includes = this._metadata!.getDetailIncludes();
+      }
+      if (this._includes) {
+        includes = mergeFetchRelations(includes, this._includes);
+      }
       if (includes) {
-        await this.loadRelation(item, includes);
+        await Promise.all(
+          items.map(item => {
+            return this.context
+              .getMgr(this._metadata!.class)
+              .loadRelations(item, includes!);
+          })
+        );
+
       }
     }
+
     return items as EntityInstance<T>[];
   }
 
   /**
    * 执行查询，并获取第一行记录
    */
-  async fetchFirst(): Promise<EntityInstance<T> | undefined> {
-    const sql = this.getSql().limit(1);
-    const rows = (await this.executor.query(sql)).rows!;
-    if (!this.metadata) {
-      return rows[0] as EntityInstance<T> | undefined;
+  async fetchFirst(): Promise<EntityInstance<T>> {
+    const { rows } = await this.executor.query(
+      this.getSqlForExecute().limit(1)
+    );
+    if (rows.length <= 0) {
+      throw new Error(`No result exists on this query.`);
     }
-    if (!rows[0]) return;
-    const item = this.toEntity(rows[0]);
-    let includes: FetchRelations | undefined;
-    if (this._includes) {
-      includes = this._includes;
+    if (!this._metadata) {
+      return rows[0] as EntityInstance<T>;
     }
-    if (this._withDetail) {
-      const detailIncludes = this.metadata.getDetailIncludes();
-      includes = mergeFetchRelations({}, includes, detailIncludes);
-    }
-    if (includes) {
-      await this.loadRelation(item, includes);
+    const item = this.mgr.toEntity(rows[0]);
+    if (this._tableMetadata) {
+      let includes: FetchRelations | undefined;
+      if (this._includes) {
+        includes = this._includes;
+      }
+      if (this._withDetail) {
+        const detailIncludes = this._metadata.getDetailIncludes();
+        includes = mergeFetchRelations({}, includes, detailIncludes);
+      }
+      if (includes) {
+        await this.context
+          .getMgr(this._metadata.class)
+          .loadRelations(item, includes);
+      }
     }
     return item as EntityInstance<T>;
-  }
-
-  // TODO: 使用DataLoader优化加载性能
-  async loadRelation(item: T, relations: FetchRelations<T>): Promise<void> {
-    this.assertMetdata(this.metadata);
-    for (const relationName of Object.keys(relations)) {
-      const relation = this.metadata.getRelation(relationName);
-      if (!relation) {
-        throw new Error(`Property ${relationName} is not a relation property.`);
-      }
-      let subIncludes = Reflect.get(relations, relationName);
-      if (subIncludes === true) subIncludes = null;
-
-      const data = await this.fetchRelation(item, relation, {
-        _withDetail: this._withDetail,
-        _includes: subIncludes,
-      });
-      Reflect.set(item, relation.property, data);
-    }
-  }
-
-  protected async fetchRelation<R extends RelationKeyOf<T>>(
-    item: T,
-    relation: RelationMetadata,
-    options?: {
-      _withDetail: boolean;
-      _includes: FetchRelations<T[R]>;
-    }
-  ): Promise<T[R] | null> {
-    this.assertMetdata(this.metadata);
-    const relationRepository: Repository<any> = this.context.getRepository(
-      relation.referenceClass
-    );
-    relationRepository._withDetail = options?._withDetail ?? false;
-    relationRepository._includes = options?._includes;
-
-    if (isPrimaryOneToOne(relation)) {
-      const key = Reflect.get(item, this.metadata.key!.property);
-      const subItem = await relationRepository
-        .find(r => r[relation.referenceRelation.foreignProperty].eq(key))
-        .fetchFirst();
-      return subItem;
-      // 本表为次表
-    } else if (isForeignOneToOne(relation)) {
-      const refKey = Reflect.get(item, relation.foreignProperty);
-      return await relationRepository.get(refKey);
-    } else if (isOneToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.key!.property);
-      const relationItems = await relationRepository
-        .filter(rowset =>
-          rowset[relation.referenceRelation.foreignProperty].eq(key)
-        )
-        .fetchAll();
-      return relationItems as any;
-    } else if (isManyToOne(relation)) {
-      const refValue = Reflect.get(item, relation.foreignProperty);
-      const relationItem = await relationRepository
-        .find(rowset =>
-          rowset[relation.referenceEntity.key.column.property].eq(refValue)
-        )
-        .fetchFirst();
-      return relationItem;
-    } else if (isManyToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.key!.property);
-      // 本表为字段1关联
-      const rt = makeRowset<any>(relation.relationEntity.class);
-      // 当前外键列
-      const thisForeignColumn =
-        relation.relationRelation.referenceRelation.foreignColumn;
-      // 关联外键列
-      const relationForeignColumn =
-        relation.referenceRelation.relationRelation.referenceRelation
-          .foreignColumn;
-      const relationIdsSelect = select(rt.$field(relationForeignColumn.property))
-        .from(rt)
-        .where(rt.$field(thisForeignColumn.property).eq(key));
-      const subItems = await relationRepository
-        .filter(rowset =>
-          rowset[relation.referenceEntity.key.column.property].in(
-            relationIdsSelect
-          )
-        )
-        .fetchAll();
-      return subItems as any;
-    }
-    return null;
-  }
-
-  protected toEntityValue(datarow: any, column: ColumnMetadata): any {
-    if (
-      (column.type === Object || column.type === Array) &&
-      isStringType(column.dbType)
-    ) {
-      return JSON.parse(Reflect.get(datarow, column.property));
-    } else {
-      // 因为rowset已经完成映射转换，在SQL级别已是输出属性名，因此直接取属性名即可
-      return Reflect.get(datarow, column.property);
-    }
-  }
-
-  /**
-   * 将数据库记录转换为实体
-   */
-  protected toEntity(datarow: any, item?: T): T {
-    this.assertMetdata(this.metadata);
-    if (!item) {
-      item = new this.metadata.class() as any;
-    }
-    for (const column of this.metadata.columns) {
-      const itemValue = this.toEntityValue(datarow, column);
-      // 如果是隐式属性，则声明为不可见属性
-      if (column.isImplicit) {
-        Reflect.defineProperty(item!, column.property, {
-          enumerable: false,
-          value: itemValue,
-          writable: true,
-        });
-      } else {
-        Reflect.set(item!, column.property, itemValue);
-      }
-    }
-    return item!;
   }
 }

@@ -19,6 +19,7 @@ import {
 } from './relation-metadata';
 import { metadataStore } from '../metadata-store';
 import { EntityType } from '../types';
+import { DefaultRowObject, ProxiedTable } from '../../core/sql';
 
 const ENTITY_COLUMN_MAPS = new Map<EntityMetadata, Record<string, string>>();
 
@@ -44,7 +45,7 @@ export function aroundRowset<T extends Entity = any>(
  */
 export function makeRowset<T extends Entity = any>(
   entity: EntityConstructor<T>
-): ProxiedRowset<T> {
+): ProxiedRowset<DefaultRowObject> {
   const metadata = metadataStore.getEntity(entity);
   if (!metadata) throw new Error(`No metadata found ${entity}`);
   let rowset: ProxiedRowset<T>;

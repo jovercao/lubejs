@@ -675,7 +675,7 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyWithSelect(
-    item: WithSelect<any, string> | Raw,
+    item: WithSelect<any> | Raw,
     params?: Set<Parameter<Scalar, string>>,
     parent?: SQL
   ): string {

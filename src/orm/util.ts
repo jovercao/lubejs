@@ -1,4 +1,6 @@
-import { Decimal, Uuid } from '../core';
+import { Decimal, isStringType, Uuid } from '../core';
+import { Entity } from './entity';
+import { ColumnMetadata, EntityMetadata } from './metadata';
 import { FetchRelations, ScalarType } from './types';
 
 const PropertySelector: any = new Proxy(
@@ -118,7 +120,7 @@ export function isClass(func: Function): boolean {
 
 export function mergeFetchRelations(
   ...includes: (FetchRelations | undefined)[]
-): FetchRelations {
+): FetchRelations | undefined {
   const merge = (
     dest: Record<string, any> | undefined,
     include: Record<string, any> | undefined
@@ -157,3 +159,4 @@ export function mergeFetchRelations(
   }
   return result;
 }
+

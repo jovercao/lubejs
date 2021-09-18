@@ -238,18 +238,18 @@ export abstract class Executor {
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | Table<T, string>,
+    table: CompatiableObjectName | Table<T>,
     values: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
   ): Promise<number>;
   /**
    * 插入数据
    */
   async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     values: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value:
       | InputObject<T>
@@ -258,12 +258,12 @@ export abstract class Executor {
       | CompatibleExpression[][]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
     value: T | T[]
   ): Promise<number>;
   async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T, string>,
+    table: CompatiableObjectName | ProxiedTable<T>,
     arg2:
       | ColumnsOf<T>[]
       | Field<Scalar, ColumnsOf<T>>[]
@@ -333,19 +333,19 @@ export abstract class Executor {
     T extends RowObject = any,
     G extends InputObject<T> = InputObject<T>
   >(
-    table: ProxiedTable<T, string> | CompatiableObjectName,
+    table: ProxiedTable<T> | CompatiableObjectName,
     results: (rowset: Readonly<ProxiedRowset<T>>) => G,
     where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
   ): Promise<RowObjectFrom<G> | null>;
   async find<T extends RowObject = any>(
-    table: ProxiedTable<T, string> | CompatiableObjectName,
+    table: ProxiedTable<T> | CompatiableObjectName,
     where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
   ): Promise<T | null>;
   async find<
     T extends RowObject = any,
     G extends InputObject<T> = InputObject<T>
   >(
-    table: ProxiedTable<T, string> | CompatiableObjectName,
+    table: ProxiedTable<T> | CompatiableObjectName,
     resultsOrwhere:
       | Condition
       | WhereObject<T>

@@ -828,9 +828,9 @@ export default ${name};
         const cmd = this.dbContext.connection.sqlUtil.sqlify(statement);
         if (output) {
           outputCommand(cmd, output);
+          output.write('----------------------------------------------------\n');
         }
         await this.dbContext.connection.query(cmd);
-        console.info(`----------------------------------------------------`);
       }
     });
     console.info(`更新数据库架构完成，数据库架构已经更新到与实体一致。`);

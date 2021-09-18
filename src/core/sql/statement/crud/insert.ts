@@ -14,7 +14,7 @@ import { With } from './with';
  * Insert 语句
  */
 export class Insert<T extends RowObject = any> extends Statement {
-  $table: Table<T, string>;
+  $table: Table<T>;
   $fields?: Field[];
   $values?: Expression<Scalar>[][] | Select<T>;
   $identityInsert: boolean = false;
@@ -35,12 +35,12 @@ export class Insert<T extends RowObject = any> extends Statement {
    * 构造函数
    */
   constructor(
-    table: CompatibleTable<T, string>,
+    table: CompatibleTable<T>,
     fields?: Field<Scalar, ColumnsOf<T>>[] | ColumnsOf<T>[]
   ) {
     super();
     this.$identityInsert = false;
-    this.$table = Table.ensure(table) as Table<T, string>;
+    this.$table = Table.ensure(table) as Table<T>;
     if (this.$table.$alias) {
       throw new Error('Insert statements do not allow aliases on table.');
     }

@@ -9,13 +9,12 @@ import { Rowset } from './rowset';
  * 表对象，表和视图均使用该对象
  */
 export class Table<
-    T extends RowObject = DefaultRowObject,
-    N extends string = string
+    T extends RowObject = DefaultRowObject
   >
-  extends Rowset<T, N>
+  extends Rowset<T>
   implements DBObject
 {
-  constructor(name: CompatiableObjectName<N>, builtIn = false) {
+  constructor(name: CompatiableObjectName, builtIn = false) {
     super();
     this.$name = name;
     this.$builtin = builtIn;
@@ -24,11 +23,11 @@ export class Table<
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: CompatiableObjectName<N>): ProxiedTable<T, N> {
-    return new Table<T>(name) as ProxiedTable<T, N>;
+  >(name: CompatiableObjectName): ProxiedTable<T> {
+    return new Table<T>(name) as ProxiedTable<T>;
   }
 
-  $name: CompatiableObjectName<N>;
+  $name: CompatiableObjectName;
   readonly $builtin: boolean;
   $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 
@@ -71,17 +70,15 @@ export class Table<
 
 export type CompatibleTable<
   // eslint-disable-next-line
-  T extends RowObject = {},
-  N extends string = string
-> = CompatiableObjectName | ProxiedTable<T, N>;
+  T extends RowObject = {}
+> = CompatiableObjectName | ProxiedTable<T>;
 
 /**
  * 代理后的表
  */
 export type ProxiedTable<
-  T extends RowObject = RowObject,
-  N extends string = string
-> = Table<T, N> &
+  T extends RowObject = RowObject
+> = Table<T> &
   {
     readonly [P in ColumnsOf<T>]: Field<T[P], P>;
   };

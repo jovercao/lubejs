@@ -13,7 +13,7 @@ import { Fromable } from './common/fromable';
  * Update 语句
  */
 export class Update<T extends RowObject = any> extends Fromable<T> {
-  $table: Table<T, string>;
+  $table: Table<T>;
   $sets?: Assignment<Scalar>[];
 
   readonly $kind: STATEMENT_KIND.UPDATE = STATEMENT_KIND.UPDATE;

@@ -2,10 +2,9 @@ import { SQL_SYMBOLE } from "../sql";
 import { Rowset } from "./rowset";
 
 export class WithSelect<
-  T extends RowObject = any,
-  N extends string = string
+  T extends RowObject = any
 > extends Rowset<T> {
-  private constructor(name: N, select: Select<T>) {
+  private constructor(name: string, select: Select<T>) {
     super();
     this.$name = name;
     this.$select = select;
@@ -18,7 +17,7 @@ export class WithSelect<
   /**
    * WITH 声明名称
    */
-  $name: N;
+  $name: string;
   static isWithSelect(object: any): object is WithSelect {
     return object?.$type === SQL_SYMBOLE.WITH_SELECT;
   }
@@ -27,15 +26,14 @@ export class WithSelect<
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: N, select: Select<T>): ProxiedWithSelect<T, N> {
-    return new WithSelect(name, select) as ProxiedWithSelect<T, N>;
+  >(name: string, select: Select<T>): ProxiedWithSelect<T> {
+    return new WithSelect(name, select) as ProxiedWithSelect<T>;
   }
 }
 
 export type ProxiedWithSelect<
-  T extends RowObject = RowObject,
-  N extends string = string
-> = WithSelect<T, N> & {
+  T extends RowObject = RowObject
+> = WithSelect<T> & {
   readonly [P in ColumnsOf<T>]: Field<T[P], P>;
 };
 

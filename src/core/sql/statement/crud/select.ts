@@ -221,8 +221,8 @@ export class Select<T extends RowObject = any> extends Fromable {
     return NamedSelect.create(this, alias) as any;
   }
 
-  asWith<N extends string>(name: N): ProxiedWithSelect<T, N> {
-    return WithSelect.create(name, this) as ProxiedWithSelect<T, N>;
+  asWith<N extends string>(name: N): ProxiedWithSelect<T> {
+    return WithSelect.create(name, this) as ProxiedWithSelect<T>;
   }
 
   /**

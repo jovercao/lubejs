@@ -8,15 +8,14 @@ import { ProxiedRowset, Rowset } from './rowset';
  * 具名SELECT语句，可用于子查询，With语句等
  */
 export class NamedSelect<
-  T extends RowObject = DefaultRowObject,
-  A extends string = string
+  T extends RowObject = DefaultRowObject
 > extends Rowset<T> {
   readonly $type: SQL_SYMBOLE.NAMED_SELECT = SQL_SYMBOLE.NAMED_SELECT;
   $select: Select<T>;
-  $name: A;
+  $name: string;
   $alias!: never;
 
-  private constructor(statement: Select<T>, name: A) {
+  private constructor(statement: Select<T>, name: string) {
     super();
     this.$name = name;
     this.$select = statement;
@@ -34,7 +33,7 @@ export class NamedSelect<
   static create<
     T extends RowObject = DefaultRowObject,
     A extends string = string
-  >(statement: Select<T>, name: A): NamedSelect<T, A> {
+  >(statement: Select<T>, name: A): NamedSelect<T> {
     return new NamedSelect(statement, name) as ProxiedNamedSelect<T, A>;
   }
 }
@@ -42,7 +41,7 @@ export class NamedSelect<
 export type ProxiedNamedSelect<
   T extends RowObject = RowObject,
   N extends string = string
-> = NamedSelect<T, N> &
+> = NamedSelect<T> &
   {
     readonly [P in ColumnsOf<T>]: Field<T[P], P>;
   };

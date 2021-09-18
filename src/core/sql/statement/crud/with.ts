@@ -48,7 +48,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param fields
    */
   insert<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T, string>,
+    table: CompatiableObjectName | CompatibleTable<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     const sql = new Insert(table, fields);
@@ -61,7 +61,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param table
    */
   update<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T, string>
+    table: CompatiableObjectName | CompatibleTable<T>
   ): Update<T> {
     const sql = new Update(table);
     sql.$with = this;
@@ -73,7 +73,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param table 表格
    */
   delete<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T, string>
+    table: CompatiableObjectName | CompatibleTable<T>
   ): Delete<T> {
     const sql = new Delete(table);
     sql.$with = this;

@@ -3,9 +3,11 @@
 > Lubejs 是一个用于 `node.js` 诣在方便使用SQL数据库连接.
 > 取名为lube意为润滑，即作为js与sql间的润滑剂般的存在，我们可以尽情使用优雅的 js/ts来 替代拼接 sql 字符串。
 
+
+
 本库部分灵感来自于[EF](https://github.com/dotnet/efcore) 与  [TypeORM](https://github.com/typeorm/typeorm)，致谢
 
-[English](./README-en_US.md)
+[English](./README.md)
 
 ## lubejs是什么
 
@@ -280,13 +282,13 @@ async function example(db: Connection) {
   // //---------------以下是一个复合查询------------
   const p = SQL.table<Person>("person").as("p");
   const pay = SQL.table<Pay>("pay");
-  const sql = SQL.select(
-    pay.year,
-    pay.month,
-    p.name,
-    p.age,
-    SQL.std.sum(pay.amount).as("total")
-  )
+  const sql = SQL.select({
+        year: pay.year,
+        month: pay.month,
+        name: p.name,
+        age: p.age,
+        total: SQL.std.sum(pay.amount),
+  })
     .from(pay)
     .join(p, pay.personId.eq(p.id))
     .where(p.age.lte(18))
@@ -1831,6 +1833,39 @@ const adminUser = await userQueryable.filter(p => p.name.eq('admin')).fetchFirst
 
 ##### 获取关联数据(include)
 
+Queryable.prototype.include 指定要查询的子项
+
+```ts
+const user = userQueryable.include({
+    employee: true
+}).fetchFirst()
+// user => {
+//   name: '...',
+//   // ...
+//   employee: {
+//     //...
+//   }
+// }
+```
+
+即使是多级关联数据，也可以一次性查询
+
+```ts
+const user = userQueryable.include({
+    employee: {
+        positions: true
+    }
+}).fetchFirst();
+// user => {
+//   name: '...',
+//   // ...
+//   employee: {
+//     //...
+//     positions: [...]
+//   }
+// }
+```
+
 
 
 ##### 使用异步遍历器遍历可查询对象
@@ -1845,9 +1880,7 @@ for await (const item of userQuerable) {
 
 #### 仓储对象(Repository)
 
-Repository因为继承于Queryable，也拥有等同Queryable功能，在其基础上主要扩展了数据插入、更新、保存等功能。
-
-
+仓储对象主要提供数据获取、插入、更新、保存等功能。
 
 ##### 获取一个User实体的仓库对象
 
@@ -1871,9 +1904,6 @@ for await (const item of userRepo) {
 
 传递键值，获取实体数据，当获取一个不存在的数据时，将抛出异常。如果不希望抛出异常，请使用`Queryable.prototype.filter`方法查询。
 
-仓储本身继承于Repository，拥有Queryable的所有功能。
-
-
 
 **使用DbContext获取**
 
@@ -1890,8 +1920,6 @@ const user = userRepo.get(1);
 ```
 
 通过`.get`获取的对象，本身是实体类的实例
-
-
 
 ##### 插入实体数据(insert)
 
@@ -2505,16 +2533,19 @@ const order = Order.create({
     details: [
         {
             product: '铅笔',
+            count: 1,
             price: new Decimal(0.56),
             // ...
         },
         {
             product: '文具盒',
+            count: 1,
             price: new Decimal(10.65),
             // ...
         },
         {
             product: '笔记本',
+            count: 1,
             price: new Decimal(3.5)
         }
     ]
@@ -2534,6 +2565,7 @@ const order = await orderRepo.get(1, { includes: { detail: true }});
 order.details.splice(0, 1); // 删除第一个，即铅笔
 order.details.push(OrderDetail.create({
     product: '圆珠笔',
+    count: 1,
     price: new Decimal(1.2),
     // ...
 }));
@@ -2959,11 +2991,24 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
 该命令可以为迁移文件生成SQL代码，其中<source_name>为源版本迁移文件名称，<target_name>为目标版本迁移文件名称，并将命令导出到<output_file>文件中。
 
+abcdfe1321321
+
 更为详细的操作，请使用`lube --help`查看。
 
 ## API
 
 [API 文档](./doc/globals.md)
+
+
+
+## Task
+
+- [ ] mysql驱动支持
+- [ ] postgresql 驱动支持
+- [ ] 完善测试覆盖面，目标85%
+- [ ] 性能优化
+
+
 
 ## Updated Logs
 

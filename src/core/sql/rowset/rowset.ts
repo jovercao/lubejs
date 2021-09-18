@@ -8,10 +8,13 @@ export type PropertyName = string;
 export type ColumnName = string;
 export type ColumnMap = Record<PropertyName, ColumnName>
 
+
+// TIPS: 请勿改变Rowset声明方式，Typescript不支持类声明合并,而使用type别名方式中的动态属性亦不可被继承
+
 // eslint-disable-next-line @typescript-eslint/ban-types
 export abstract class Rowset<
   T extends RowObject = RowObject,
-  N extends string = string
+  R extends RowObject = T
 > extends SQL {
   protected constructor() {
     super();
@@ -37,7 +40,7 @@ export abstract class Rowset<
     // **********************************************************
   }
 
-  $name?: CompatiableObjectName<N> = undefined;
+  $name?: CompatiableObjectName = undefined;
   /**
    * 别名
    */
@@ -65,7 +68,7 @@ export abstract class Rowset<
    * 字段
    * @param name 节点名称
    */
-  $field<P extends ColumnsOf<T>>(name: P): Field<T[P], P> {
+  $field<P extends ColumnsOf<T>>(name: P): Field<T[P]> {
     if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
@@ -87,9 +90,7 @@ export abstract class Rowset<
   }
 
   /**
-   * 建立数据库字段与JS对象的字段映射
-   * 所有列名在被编译成SQL时将被自动转换为映射的名称
-   * 在select中按 property返回
+   * 该方法为内部方法，用户请不要使用该方法
    */
   $around(columnMap: ColumnMap): this {
     this.$map = columnMap;
@@ -107,8 +108,6 @@ export abstract class Rowset<
     return table;
   }
 }
-
-const propertyNames = Object.getOwnPropertyNames(Rowset.prototype);
 
 export type CompatibleRowset<
   // eslint-disable-next-line
@@ -129,12 +128,10 @@ export type CompatibleRowset<
  * 代理后的行集
  */
 export type ProxiedRowset<
-T extends RowObject = RowObject,
-N extends string = string
-> = Rowset<T, N> & {
+T extends RowObject = RowObject
+> = Rowset<T> & {
   readonly [P in ColumnsOf<T>]: Field<T[P], P>;
 };
-
 
 import { Field } from "../expression/field";
 import { CompatiableObjectName } from "../object/db-object";

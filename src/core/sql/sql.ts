@@ -245,7 +245,7 @@ abstract class SQLClass {
       );
     }
 
-    return BinaryLogicCondition.join(LOGIC_OPERATOR.AND, args as Condition[]);
+    return SQL.join(LOGIC_OPERATOR.AND, args as Condition[]);
   }
 
   /**
@@ -898,7 +898,7 @@ abstract class SQLClass {
    * @param fields
    */
   static insert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
+    table: CompatibleTable<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields);
@@ -908,7 +908,7 @@ abstract class SQLClass {
    * @param table
    */
   static update<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
+    table: CompatibleTable<T>
   ): Update<T> {
     return new Update(table);
   }
@@ -917,7 +917,7 @@ abstract class SQLClass {
    * @param table 表格
    */
   static delete<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
+    table: CompatibleTable<T>
   ): Delete<T> {
     return new Delete(table);
   }

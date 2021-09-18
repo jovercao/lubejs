@@ -111,7 +111,7 @@ export abstract class MigrateBuilder {
   }
 
   insert<T extends RowObject = any>(
-    table: CompatibleTable<T, string>,
+    table: CompatibleTable<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return SQL.insert(table, fields);
@@ -122,7 +122,7 @@ export abstract class MigrateBuilder {
    * @param table
    */
   update<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
+    table: CompatibleTable<T>
   ): Update<T> {
     return SQL.update(table);
   }
@@ -132,7 +132,7 @@ export abstract class MigrateBuilder {
    * @param table 表格
    */
   delete<T extends RowObject = any>(
-    table: CompatibleTable<T, string>
+    table: CompatibleTable<T>
   ): Delete<T> {
     return SQL.delete(table);
   }
