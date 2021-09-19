@@ -33,6 +33,8 @@ import {
 } from './metadata/util';
 import { Queryable } from './queryable';
 
+const REF_ID_ALIAS_NAME = '##REF_ID';
+
 /**
  * 实体管理器
  * - 用于转换数据库类型与实体类型
@@ -233,32 +235,51 @@ export class EntityMgr<T extends Entity> {
     let loader = this.loaders.get(this.metadata.key!);
     if (!loader) {
       loader = new DataLoader(
-        async () => {
+        async (refKeys: EntityKeyType[]) => {
           // 本表为字段1关联
-          const rt = makeRowset<any>(relation.relationEntity.class);
-          return this.queryable(options)
-            .filter(rowset =>
-              rowset
-                .$field(this.metadata.key!.property as any)
-                .in(
-                  SQL.select(
-                    rt.$field(
-                      relation.relationRelation.referenceRelation
-                        .foreignProperty
-                    )
-                  )
-                    .from(rt)
-                    .where(
-                      rt
-                        .$field(
-                          relation.referenceRelation.relationRelation
-                            .referenceRelation.foreignProperty
-                        )
-                        .eq(refKeyValue)
-                    )
-                )
+          const rt = makeRowset<any>(relation.relationEntity.class).as('rt');
+
+          const tt = makeRowset(this.metadata.class).as('tt');
+
+          const rowset = SQL.select(
+            tt.star,
+            rt[
+              relation.referenceRelation.relationRelation.referenceRelation
+                .foreignProperty
+            ].as(REF_ID_ALIAS_NAME)
+          )
+            .from(tt)
+            .join(
+              rt,
+              tt[this.metadata.key!.property].eq(
+                rt[relation.relationRelation.referenceRelation.foreignProperty]
+              )
             )
-            .fetchAll();
+            .where(
+              rt[
+                relation.referenceRelation.relationRelation.referenceRelation
+                  .foreignProperty
+              ].in(refKeys)
+            )
+            .as('RS');
+
+          const queryable = new Queryable(
+            this.context,
+            this.metadata.class,
+            rowset
+          );
+          if (options?.includes) {
+            queryable.include(options.includes);
+          }
+          const datas = await queryable.fetchAll();
+          const groups: Record<EntityKeyType, T[]> = {};
+          // 将查询结果重新分组
+          for (const item of datas) {
+            const rk = Reflect.get(item, REF_ID_ALIAS_NAME);
+            Reflect.deleteProperty(item, REF_ID_ALIAS_NAME);
+            (groups[rk] || (groups[rk] = [])).push(item);
+          }
+          return refKeys.map(key => groups[key]);
         },
         { cache: false }
       );
@@ -268,6 +289,7 @@ export class EntityMgr<T extends Entity> {
     return data;
   }
 
+  private queryable(options?: { includes?: FetchRelations<T> }): Queryable<T>;
   private queryable(options?: { includes?: FetchRelations<T> }): Queryable<T> {
     const query = this.context.getQueryable(this.metadata.class);
 
@@ -296,7 +318,7 @@ export class EntityMgr<T extends Entity> {
             `Property ${relationName} is not a relation property.`
           );
         }
-        let relationIncludes = Reflect.get(relations, relationName);
+        let relationIncludes: any = Reflect.get(relations, relationName);
         if (relationIncludes === true) relationIncludes = null;
         const data = await this.fetchRelation(item, relation, {
           includes: relationIncludes,

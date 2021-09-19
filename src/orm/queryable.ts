@@ -41,17 +41,23 @@ export class Queryable<T extends Entity | RowObject>
 {
   constructor(
     protected context: DbContext,
-    rowsetOrCtr: EntityConstructor<T> | ProxiedRowset<T> // constructor(
+    Ctr?: EntityConstructor<T>,
+    rowset?: ProxiedRowset<T>
   ) {
-    if (typeof rowsetOrCtr === 'function') {
-      this._metadata = metadataStore.getEntity(rowsetOrCtr);
-      if (!this._metadata) {
-        throw new Error(`Only allow register entity constructor.`);
-      }
-      this._rowset = makeRowset<any>(rowsetOrCtr) as ProxiedRowset<T>;
-    } else {
-      this._rowset = rowsetOrCtr;
+    if (!Ctr && !rowset) {
+      throw new Error(`Ctr and rowset One of them must be specified.`);
     }
+    if (Ctr) {
+      this._metadata = metadataStore.getEntity(Ctr);
+      if (!rowset) {
+        this._rowset = makeRowset<any>(Ctr) as ProxiedRowset<T>;
+      }
+    }
+
+    if (rowset) {
+      this._rowset = rowset;
+    }
+
     if (isTableEntity(this._metadata)) {
       this._tableMetadata = this._metadata;
     }
@@ -64,7 +70,7 @@ export class Queryable<T extends Entity | RowObject>
     return this.context.getMgr(this._metadata.class);
   }
 
-  private _rowset: ProxiedRowset<DefaultRowObject>;
+  private _rowset!: ProxiedRowset<DefaultRowObject>;
   // protected sql: Select<any>;
   private _metadata?: EntityMetadata;
   private _includes?: FetchRelations<T>;
@@ -137,7 +143,11 @@ export class Queryable<T extends Entity | RowObject>
     if (this._metadata) {
       rowset = aroundRowset(rowset, this._metadata);
     }
-    const queryable = new Queryable(this.context, rowset);
+    const queryable = new Queryable(
+      this.context,
+      this._metadata?.class,
+      rowset
+    );
     queryable._withDetail = this._withDetail;
     queryable._includes = this._includes;
     queryable._metadata = this._metadata;
@@ -201,7 +211,7 @@ export class Queryable<T extends Entity | RowObject>
   ): Queryable<RowObjectFrom<G>> {
     const rowset = this._sql ? this._sql.as(ROWSET_ALIAS) : this._rowset;
     const sql = select(results(rowset as ProxiedRowset<T>)).from(rowset);
-    return new Queryable(this.context, sql.as(ROWSET_ALIAS));
+    return new Queryable(this.context, undefined, sql.as(ROWSET_ALIAS));
   }
 
   groupBy<G extends InputObject>(
@@ -217,7 +227,7 @@ export class Queryable<T extends Entity | RowObject>
     if (having) {
       sql.having(having(rowset as ProxiedRowset<T>));
     }
-    return new Queryable(this.context, sql.as(ROWSET_ALIAS));
+    return new Queryable(this.context, undefined, sql.as(ROWSET_ALIAS));
   }
 
   join<J extends Entity, G extends InputObject>(
@@ -238,7 +248,7 @@ export class Queryable<T extends Entity | RowObject>
       )
       .as(ROWSET_ALIAS);
 
-    return new Queryable(this.context, newRowset);
+    return new Queryable(this.context, undefined, newRowset);
   }
 
   /**
@@ -282,6 +292,25 @@ export class Queryable<T extends Entity | RowObject>
     }
   }
 
+  private async loadRelations(items: T | T[]): Promise<void> {
+    let includes: FetchRelations<any> | undefined;
+    if (this._withDetail) {
+      includes = this._tableMetadata!.getDetailIncludes();
+    }
+    if (this._includes) {
+      includes = mergeFetchRelations(includes, this._includes);
+    }
+    if (includes) {
+      await Promise.all(
+        (Array.isArray(items) ? items : [items]).map(item =>
+          this.context
+            .getMgr(this._metadata!.class)
+            .loadRelations(item, includes!)
+        )
+      );
+    }
+  }
+
   /**
    * 执行查询并将结果转换为数组，并获取所有数据返回一个数组
    */
@@ -295,25 +324,8 @@ export class Queryable<T extends Entity | RowObject>
     const items = rows.map(row => this.mgr.toEntity(row));
 
     if (this._tableMetadata) {
-      let includes: FetchRelations<any> | undefined;
-      if (this._withDetail) {
-        includes = this._metadata!.getDetailIncludes();
-      }
-      if (this._includes) {
-        includes = mergeFetchRelations(includes, this._includes);
-      }
-      if (includes) {
-        await Promise.all(
-          items.map(item => {
-            return this.context
-              .getMgr(this._metadata!.class)
-              .loadRelations(item, includes!);
-          })
-        );
-
-      }
+      await this.loadRelations(items);
     }
-
     return items as EntityInstance<T>[];
   }
 
@@ -331,20 +343,9 @@ export class Queryable<T extends Entity | RowObject>
       return rows[0] as EntityInstance<T>;
     }
     const item = this.mgr.toEntity(rows[0]);
+
     if (this._tableMetadata) {
-      let includes: FetchRelations | undefined;
-      if (this._includes) {
-        includes = this._includes;
-      }
-      if (this._withDetail) {
-        const detailIncludes = this._metadata.getDetailIncludes();
-        includes = mergeFetchRelations({}, includes, detailIncludes);
-      }
-      if (includes) {
-        await this.context
-          .getMgr(this._metadata.class)
-          .loadRelations(item, includes);
-      }
+      await this.loadRelations(item);
     }
     return item as EntityInstance<T>;
   }

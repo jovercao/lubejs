@@ -2,6 +2,7 @@ import { CompatibleExpression } from '../../../expression/expression';
 import { Scalar } from '../../../scalar';
 import {
   ColumnsOf,
+  DefaultRowObject,
   InputObject,
   RowObject,
   RowObjectFrom,
@@ -38,6 +39,9 @@ export type SelectAction = {
   <T extends RowObject>(fields: SelectColumn): Select<T>;
   <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
   <T extends RowObject>(results: InputObject<T>): Select<T>;
+  <T extends Scalar>(
+    ...results: (Star | CompatibleExpression<T> | SelectColumn)[]
+  ): Select<DefaultRowObject>;
   // <
   //   A extends SelectColumn | Field,
   //   B extends SelectCloumn | Field,
