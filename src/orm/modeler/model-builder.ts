@@ -18,7 +18,11 @@ import { EntityConstructor } from '../entity';
 import { ContextBuilder } from './context-builder';
 import { ManyToManyBuilder } from './many-to-many-builder';
 import { OneToManyBuilder, ManyToOneBuilder } from './one-to-many-builder';
-import { OneToOneBuilder, ForeignOneToOneBuilder, PrimaryOneToOneBuilder } from './one-to-one-builder';
+import {
+  OneToOneBuilder,
+  ForeignOneToOneBuilder,
+  PrimaryOneToOneBuilder,
+} from './one-to-one-builder';
 
 export class ModelBuilder {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -147,9 +151,9 @@ export class ModelBuilder {
                 );
               if (relationOptions.isPrimary) {
                 builder = map.isPrimary();
-                if (relationOptions.isDetail) {
-                  (builder as PrimaryOneToOneBuilder<any, any>).isDetail();
-                }
+                (builder as PrimaryOneToOneBuilder<any, any>).isDetail(
+                  relationOptions.isDetail
+                );
               } else {
                 let bd: ForeignOneToOneBuilder<any, any>;
                 builder = bd = map.hasForeignKey(
@@ -178,9 +182,7 @@ export class ModelBuilder {
                     ? (p: any) => p[relationOptions.referenceProperty!]
                     : undefined
                 );
-              if (relationOptions.isDetail) {
-                builder.isDetail();
-              }
+              builder.isDetail(relationOptions.isDetail);
               break;
             }
             case 'MANY_TO_ONE': {
@@ -217,6 +219,7 @@ export class ModelBuilder {
                     ? (p: any) => p[relationOptions.referenceProperty!]
                     : undefined
                 );
+              builder.isDetail(relationOptions.isDetail);
               // 查找中间表声明
               for (const relationEntity of getDecorateEntities()!) {
                 const among = getAmong(relationEntity);
@@ -230,7 +233,7 @@ export class ModelBuilder {
                   among.rightEngityGetter() === target &&
                   among.leftEntityGetter() ===
                     relationOptions.referenceEntityGetter();
-                if (leftMatch || rightMatch) {
+                if (leftMatch && rightMatch) {
                   // 声明表
                   builder.hasRelationTable(
                     relationEntity,
@@ -264,20 +267,6 @@ export class ModelBuilder {
         }
       }
 
-      const among = getAmong(target);
-      if (among) {
-        if (among.leftProperty) {
-          entityBuilder
-            .hasOne(p => p[among.leftProperty!], among.leftEntityGetter())
-            .withMany();
-        }
-        if (among.rightProperty) {
-          entityBuilder.hasOne(
-            p => p[among.rightProperty!],
-            among.rightEngityGetter()
-          );
-        }
-      }
       entityOptions.indexes.forEach(indexOptions => {
         const indexBuilder = entityBuilder.hasIndex(indexOptions.name!);
         indexBuilder.withProperties(
@@ -289,6 +278,21 @@ export class ModelBuilder {
           indexBuilder.isUnique(indexOptions.isUnique);
         }
       });
+
+      const among = getAmong(target);
+      if (among) {
+        if (among.leftProperty && !entityBuilder.metadata.getRelation(among.leftProperty)) {
+          entityBuilder
+            .hasOne(p => p[among.leftProperty!], among.leftEntityGetter())
+            .withMany();
+        }
+        if (among.rightProperty && !entityBuilder.metadata.getRelation(among.rightProperty)) {
+          entityBuilder.hasOne(
+            p => p[among.rightProperty!],
+            among.rightEngityGetter()
+          );
+        }
+      }
 
       if (entityOptions.seedDatas) {
         entityBuilder.hasData(entityOptions.seedDatas);

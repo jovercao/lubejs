@@ -378,20 +378,17 @@ export function fixManyToMany(
         className = thisClsName + refClsName;
       }
 
-      let cls = ctxBuilder.metadata.findEntityByName(className)?.class;
-      if (cls) {
-        if (!isTableEntity(cls)) {
-          throw new Error(`Entity ${cls.name} is not a table entity.`);
-        }
-      } else {
-        cls = class extends Entity {};
-        Reflect.set(cls, 'name', className);
+      let relationEntity = ctxBuilder.metadata.findEntityByName(className);
+      if (!relationEntity) {
+        const ctr = class extends Entity {};
+        Reflect.set(ctr, 'name', className);
+        relationEntity = ctxBuilder.entity<any>(ctr).asTable(className).metadata;
       }
-
-      relation.relationClass = cls;
-      relation.relationEntity = ctxBuilder
-        .entity<any>(relation.relationClass)
-        .asTable(cls.name).metadata as TableEntityMetadata;
+      if (!isTableEntity(relationEntity)) {
+        throw new Error(`Entity ${relationEntity.className} is not a table entity.`);
+      }
+      relation.relationClass = relationEntity.class;
+      relation.relationEntity = relationEntity;
       fixEntity(ctxBuilder, relation.relationEntity);
     } else {
       relation.relationClass = referenceRelation.relationClass;

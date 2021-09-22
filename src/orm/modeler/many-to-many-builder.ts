@@ -36,8 +36,8 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
         this.metadata.referenceProperty
       ) as ManyToManyMetadata;
       if (referenceRelation) {
-        if (referenceRelation.relationClass) {
-          throw new Error(`Duplicate relation entity declare.`);
+        if (referenceRelation.relationClass && referenceRelation.relationClass !== ctr) {
+          throw new Error(`Duplicate relation entity declare on may to many relation.`);
         }
         referenceRelation.relationClass = ctr;
         referenceRelation.relationEntity = this.metadata.relationEntity;
@@ -46,8 +46,8 @@ export class ManyToManyBuilder<S extends Entity, D extends Entity> {
     return builder;
   }
 
-  isDetail(): this {
-    this.metadata.isDetail = true;
+  isDetail(yesOrNo: boolean = true): this {
+    this.metadata.isDetail = yesOrNo;
     return this;
   }
 
