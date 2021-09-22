@@ -35,9 +35,7 @@ import { ContextBuilder } from './context-builder';
  * @param entity
  * @param column
  */
-export function fixColumn(
-  column: ColumnMetadata
-) {
+export function fixColumn(column: ColumnMetadata) {
   if (!column.columnName) {
     column.columnName = column.property;
   }
@@ -280,7 +278,7 @@ export function fixEntityKey(
 ): void {
   if (!entity.key) {
     if (!builder.metadata.globalKey) {
-      throw new Error(`Key must declare in Entity, or globalKey must special.`)
+      throw new Error(`Key must declare in Entity, or globalKey must special.`);
     }
     entity.key = {
       property: builder.metadata.globalKey.property,
@@ -290,7 +288,9 @@ export function fixEntityKey(
     let keyColumn = entity.getColumn(entity.key.property);
     if (!keyColumn) {
       if (!builder.metadata.globalKey?.column) {
-        throw new Error(`Key must declare in Entity, or globalKey must special.`)
+        throw new Error(
+          `Key must declare in Entity, or globalKey must special.`
+        );
       }
       // 隐式主键
       keyColumn = {
@@ -369,11 +369,29 @@ export function fixManyToMany(
 
   if (!relation.relationClass) {
     if (!referenceRelation?.relationClass) {
-      relation.relationClass = class extends Entity {};
+      const refClsName = relation.referenceClass.name;
+      const thisClsName = entity.className;
+      let className: string;
+      if (refClsName < thisClsName) {
+        className = refClsName + thisClsName;
+      } else {
+        className = thisClsName + refClsName;
+      }
+
+      let cls = ctxBuilder.metadata.findEntityByName(className)?.class;
+      if (cls) {
+        if (!isTableEntity(cls)) {
+          throw new Error(`Entity ${cls.name} is not a table entity.`);
+        }
+      } else {
+        cls = class extends Entity {};
+        Reflect.set(cls, 'name', className);
+      }
+
+      relation.relationClass = cls;
       relation.relationEntity = ctxBuilder
         .entity<any>(relation.relationClass)
-        .asTable(`${entity.className}${relation.referenceEntity.className}`)
-        .metadata as TableEntityMetadata;
+        .asTable(cls.name).metadata as TableEntityMetadata;
       fixEntity(ctxBuilder, relation.relationEntity);
     } else {
       relation.relationClass = referenceRelation.relationClass;
@@ -382,8 +400,9 @@ export function fixManyToMany(
   }
 
   if (!relation.relationProperty) {
-    relation.relationProperty =
-      relation.relationClass.name || `${lowerFirst(entity.className)}`;
+    relation.relationProperty = lowerFirst(
+      complex(relation.relationClass.name)
+    );
   }
 
   if (!relation.relationRelation) {

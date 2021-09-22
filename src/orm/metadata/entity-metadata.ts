@@ -230,11 +230,12 @@ export class EntityMetadata implements CommonEntityMetadata {
         this._detailIncludes = undefined;
       } else {
         const detailIncludes: FetchRelations<any> = {};
+        // TIPS: 先赋值，后取值，以此来规避死循环
+        this._detailIncludes = detailIncludes;
         detailRelations.forEach(relation => {
           detailIncludes[relation.property] =
             relation.referenceEntity.getDetailIncludes() || true;
         });
-        this._detailIncludes = detailIncludes;
       }
     }
     return this._detailIncludes;

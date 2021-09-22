@@ -301,13 +301,9 @@ export class Queryable<T extends Entity | RowObject>
       includes = mergeFetchRelations(includes, this._includes);
     }
     if (includes) {
-      await Promise.all(
-        (Array.isArray(items) ? items : [items]).map(item =>
-          this.context
-            .getMgr(this._metadata!.class)
-            .loadRelations(item, includes!)
-        )
-      );
+      await this.context
+        .getMgr(this._metadata!.class)
+        .loadRelations(Array.isArray(items) ? items : [items], includes!);
     }
   }
 

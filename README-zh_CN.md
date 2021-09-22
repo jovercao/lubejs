@@ -2991,9 +2991,49 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
 该命令可以为迁移文件生成SQL代码，其中<source_name>为源版本迁移文件名称，<target_name>为目标版本迁移文件名称，并将命令导出到<output_file>文件中。
 
-abcdfe1321321
+
 
 更为详细的操作，请使用`lube --help`查看。
+
+
+
+## 其它问题
+
+
+
+### JSON序列化问题
+
+通常我们在使用JS的时候都是用`JSON`对象来进行序列化的，但是由于部分类型`BigInt`并未实现序列化功能，会在序列化时遇到错误Lubejs中的特殊标量类型`Scalar`的序列化情况如下：
+
+| 类型   | 说明                                                         | 具体情况                                                     |
+| ------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Binary | typescript类型别名，实际为`Buffer`、`ArrayBuffer`或者`TypedArrayBuffer`等 | 为了不污染原生对象原则，lubejs未对其序列化行为作出改变，具体序列化结果根据实际值类型而定:<br>- 如值为Buffer类型时，会调用`Buffer.prototype.toString()`再序列化（通常会乱码）。<br>- 如值为ArrayBuffer类型时，会返回`{}` |
+| Uuid   | Uuid类                                                       | 已实现`.toJSON`，会返回`"00000000-0000-0000-0000-000000000000"`格式的字符串 |
+| BigInt | v8引原生类型                                                 | 序列化时将遇到错误。                                         |
+
+建议的解决方案如下：
+
+1. 自定义序列化
+
+   ```ts
+   JSON.stringify({ bigint: 1n }, (key, value) => {
+       if (typeof value === 'bigint') {
+           return  value.toString();
+       } else {
+           return value;
+       }
+   });
+   ```
+
+2. 为添加`.toJSON`方法实现
+
+   ```ts
+   BigInt.prototype.toJSON = function() { return this.toString() }
+   
+   JSON.stringify(1n); // => '"1"'
+   ```
+
+另外反序列化时，也需要注意类型。
 
 ## API
 
@@ -3005,12 +3045,23 @@ abcdfe1321321
 
 - [ ] mysql驱动支持
 - [ ] postgresql 驱动支持
-- [ ] 完善测试覆盖面，目标85%
+- [x] 完善测试覆盖面，目标85%
 - [ ] 性能优化
+  - [x] 完成主从关联多次查询变更为一次查询
+  - [ ] 完成增删查改性能优化，减少SQL编译
 
 
 
 ## Updated Logs
+
+### 3.0.0-preview05
+
+- 完成主从关联多次查询变更为一次查询
+- Uuid添加序列化功能
+- 取消查询缓存功能
+- 修复Bug
+
+
 
 ### 3.0.0-preview04
 

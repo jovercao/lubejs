@@ -270,7 +270,6 @@ export class Repository<T extends Entity> {
 
   public async update(items: T | T[], options?: SaveOptions<T>): Promise<void> {
     await this._update(items, options);
-    this.mgr.clearCache();
   }
 
   /**
@@ -369,7 +368,6 @@ export class Repository<T extends Entity> {
       }
     }
     this._emit('deleted', items, this.context);
-    this.mgr.clearCache();
   }
 
   /**
@@ -386,7 +384,7 @@ export class Repository<T extends Entity> {
     for (const relation of this.metadata.relations) {
       if (isPrimaryOneToOne(relation)) {
         if (!relation.isDetail) continue;
-        const detail: any = await this.mgr.fetchRelation(item, relation);
+        const detail: any = (await this.mgr.fetchRelation([item], relation))[0];
         if (detail) {
           await this.context
             .getRepository(relation.referenceClass)
@@ -394,7 +392,9 @@ export class Repository<T extends Entity> {
         }
       } else if (isOneToMany(relation)) {
         if (!relation.isDetail) continue;
-        const details: any[] = (await this.mgr.fetchRelation(item, relation)) as any;
+        const details: any[] = (
+          await this.mgr.fetchRelation([item], relation)
+        )[0] as any;
         if (details?.length > 0) {
           await this.context
             .getRepository(relation.referenceClass)
@@ -402,10 +402,9 @@ export class Repository<T extends Entity> {
         }
       } else if (isManyToMany(relation)) {
         // 多对多关系仅中间表
-        const middles: any[] = (await this.mgr.fetchRelation(
-          item,
-          relation.relationRelation
-        )) as any;
+        const middles: any[] = (
+          await this.mgr.fetchRelation([item], relation.relationRelation)
+        )[0] as any;
         if (middles?.length > 0) {
           await this.context
             .getRepository(relation.relationRelation.referenceClass)
@@ -503,7 +502,6 @@ export class Repository<T extends Entity> {
         }
       }
     }
-    this.mgr.clearCache();
   }
 
   // 判断是否存在主键值
@@ -668,9 +666,11 @@ export class Repository<T extends Entity> {
       });
     }
 
-    const subSnapshots: any[] = (await this.context
-      .getMgr(this.metadata.class)
-      .fetchRelation(item, relation)) as any;
+    const subSnapshots: any[] = (
+      await this.context
+        .getMgr(this.metadata.class)
+        .fetchRelation([item], relation)
+    )[0] as any;
 
     const itemsMap: any = {};
     const snapshotMap: any = {};
@@ -753,9 +753,11 @@ export class Repository<T extends Entity> {
     }
 
     // 取中间表快照
-    const relationSnapshots: any[] = (await this.context
-      .getMgr(this.metadata.class)
-      .fetchRelation(item, relation.relationRelation)) as any;
+    const relationSnapshots: any[] = (
+      await this.context
+        .getMgr(this.metadata.class)
+        .fetchRelation([item], relation.relationRelation)
+    )[0];
     await subRepo._save(subItems, {
       withoutRelations: [relation.referenceRelation.property],
     });

@@ -1,9 +1,9 @@
-import { Entity, EntityConstructor } from "../entity";
-import { DbContextConstructor } from "../db-context";
-import { ConnectOptions, UuidConstructor } from "../../core";
-import { EntityMetadata } from "./entity-metadata";
-import { isTableEntity } from "./util";
-import { KeyMetadata } from "./key-metadata";
+import { Entity, EntityConstructor } from '../entity';
+import { DbContextConstructor } from '../db-context';
+import { ConnectOptions, UuidConstructor } from '../../core';
+import { EntityMetadata } from './entity-metadata';
+import { isTableEntity } from './util';
+import { KeyMetadata } from './key-metadata';
 
 export class DbContextMetadata {
   constructor(ctr: DbContextConstructor) {
@@ -27,7 +27,8 @@ export class DbContextMetadata {
    * 连接
    */
   connection?: ConnectOptions;
-  private _entitiyMap: Map<EntityConstructor<Entity>, EntityMetadata> = new Map();
+  private _entitiyMap: Map<EntityConstructor<Entity>, EntityMetadata> =
+    new Map();
   private _entities: EntityMetadata[] = [];
   get entities(): ReadonlyArray<EntityMetadata> {
     return this._entities;
@@ -43,6 +44,10 @@ export class DbContextMetadata {
    */
   getEntity(ctr: EntityConstructor<Entity>): EntityMetadata | undefined {
     return this._entitiyMap.get(ctr);
+  }
+
+  findEntityByName(name: string): EntityMetadata | undefined {
+    return this.entities.find(entity => entity.className === name);
   }
 
   /**

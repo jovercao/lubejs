@@ -32,6 +32,10 @@ export class Uuid {
     return this._buffer || Uuid.DEFAULT;
   }
 
+  toJSON(): string {
+    return this.toString();
+  }
+
   static equals(left: Uuid, right: Uuid): boolean {
     for (let i = 0; i < 16; i++) {
       if (left._buffer[i] !== right._buffer[i]) {

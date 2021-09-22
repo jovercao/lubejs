@@ -1,3 +1,4 @@
+import { assert } from 'console';
 import DataLoader from 'dataloader';
 import { FetchRelations, RelationKeyOf } from '.';
 import { isStringType, ProxiedRowset, SQL } from '../core';
@@ -169,23 +170,25 @@ export class EntityMgr<T extends Entity> {
             const fk = Reflect.get(item, relation.foreignProperty);
             (groups[fk] || (groups[fk] = [])).push(item);
           }
-          return keys.map(key => groups[key]);
+          return keys.map(key => groups[key] || []);
         },
         { cache: false }
       );
       this.loaders.set(relation, loader);
     }
-    return (await loader.load(fkValue)) as T[];
+    const data = (await loader.load(fkValue)) as T[];
+    loader.clearAll();
+    return data;
   }
 
-  /**
-   * 清除所有缓存
-   */
-  clearCache() {
-    for (const loader of this.loaders.values()) {
-      loader.clearAll();
-    }
-  }
+  // /**
+  //  * 清除所有缓存
+  //  */
+  // clearCache() {
+  //   for (const loader of this.loaders.values()) {
+  //     loader.clearAll();
+  //   }
+  // }
 
   /**
    * 通过主键获取项
@@ -203,22 +206,35 @@ export class EntityMgr<T extends Entity> {
     if (!loader) {
       loader = new DataLoader(
         async (keys: EntityKeyType[]) => {
-          return await this.queryable(options)
+          const data = await this.queryable(options)
             .filter((p: ProxiedRowset<any>) =>
               p[this.metadata.key!.property].in(keys)
             )
             .fetchAll();
+          // TIPS 必须做好键值对应，否则可能会乱序
+          const map: Record<EntityKeyType, T> = {};
+          data.forEach(item => {
+            map[Reflect.get(item, this.metadata.key!.property)] = item;
+          });
+          return keys.map(key => map[key] || null);
         },
-        { cache: false }
+        // 保留缓存，目的是为了循环引用能直接从缓存中获取
+        { cache: true }
       );
       this.loaders.set(this.metadata.key!, loader);
     }
 
-    const data = (await loader.load(keyValue)) as EntityInstance<T>;
-    if (options?.includes) {
-      await this.loadRelations(data, options.includes);
+    const data = (await loader.load(keyValue)) as EntityInstance<T> | null;
+    if (!data) {
+      throw new Error(
+        `Entity ${this.metadata.className} Key ${keyValue} not found.`
+      );
     }
-    this.clearCache();
+    if (options?.includes) {
+      await this.loadRelations([data], options.includes);
+    }
+    // 执行完立马清除缓存
+    loader.clearAll();
     return data;
   }
 
@@ -241,7 +257,7 @@ export class EntityMgr<T extends Entity> {
 
           const tt = makeRowset(this.metadata.class).as('tt');
 
-          const rowset = SQL.select(
+          const sql = SQL.select(
             tt.star,
             rt[
               relation.referenceRelation.relationRelation.referenceRelation
@@ -260,32 +276,30 @@ export class EntityMgr<T extends Entity> {
                 relation.referenceRelation.relationRelation.referenceRelation
                   .foreignProperty
               ].in(refKeys)
-            )
-            .as('RS');
+            );
 
-          const queryable = new Queryable(
-            this.context,
-            this.metadata.class,
-            rowset
-          );
-          if (options?.includes) {
-            queryable.include(options.includes);
-          }
-          const datas = await queryable.fetchAll();
+          const { rows } = await this.context.connection.query(sql);
+
           const groups: Record<EntityKeyType, T[]> = {};
           // 将查询结果重新分组
-          for (const item of datas) {
-            const rk = Reflect.get(item, REF_ID_ALIAS_NAME);
-            Reflect.deleteProperty(item, REF_ID_ALIAS_NAME);
+          const items = rows.map(row => {
+            const rk = Reflect.get(row, REF_ID_ALIAS_NAME);
+            const item = this.toEntity(row);
             (groups[rk] || (groups[rk] = [])).push(item);
+            return item;
+          });
+          if (options?.includes) {
+            await this.loadRelations(items, options.includes);
           }
-          return refKeys.map(key => groups[key]);
+          return refKeys.map(key => groups[key] || []);
         },
-        { cache: false }
+        { cache: true }
       );
       this.loaders.set(this.metadata.key!, loader);
     }
     const data = (await loader.load(refKeyValue)) as T;
+    // TIPS 重要，每次查询完清除缓存，避免数据被变更后的重复引用；
+    loader.clearAll();
     return data;
   }
 
@@ -303,89 +317,135 @@ export class EntityMgr<T extends Entity> {
    * 向实体实例加载导航属性
    */
   public async loadRelations(
-    item: T,
-    relations: FetchRelations<T>
+    items: T[],
+    relations: FetchRelations<T>,
+    options?: {
+      /**
+       * 是否强制加载已存在的关联关系，如果为false，则已存在属性不会被再次加载
+       */
+      force?: boolean;
+    }
   ): Promise<void> {
     if (!isTableEntity(this.metadata)) {
       throw new Error(`GetKeyValue is only allowed for table entities.`);
     }
-    // 合并查询
-    await Promise.all(
-      Object.keys(relations).map(async relationName => {
-        const relation = this.metadata.getRelation(relationName);
-        if (!relation) {
-          throw new Error(
-            `Property ${relationName} is not a relation property.`
-          );
+    for (const relationName of Object.keys(relations)) {
+      const relation = this.metadata.getRelation(relationName);
+      if (!relation) {
+        throw new Error(`Property ${relationName} is not a relation property.`);
+      }
+      let relationIncludes: any = Reflect.get(relations, relationName);
+      if (relationIncludes === true) relationIncludes = null;
+      // TIPS 重要！过滤掉已加载属性的对象，排除循引用导致的死循环
+      if (!options?.force) {
+        items = items.filter(
+          item => Reflect.get(item, relation.property) === undefined
+        );
+      }
+      const datas = await this.fetchRelation(items, relation, {
+        includes: relationIncludes,
+      });
+      datas.forEach((data, index) => {
+        if (relation.isImplicit) {
+          Reflect.defineProperty(items[index], relation.property, {
+            enumerable: false,
+            value: data,
+            writable: true
+          })
+        } else {
+          Reflect.set(items[index], relation.property, data);
         }
-        let relationIncludes: any = Reflect.get(relations, relationName);
-        if (relationIncludes === true) relationIncludes = null;
-        const data = await this.fetchRelation(item, relation, {
-          includes: relationIncludes,
-        });
-        Reflect.set(item, relation.property, data);
-      })
-    );
+      });
+    }
   }
 
   /**
    * 获取明细属性，但不改变原实体。
+   * 无论实体是否已存在该属性，均会从数据库获取
    */
   public async fetchRelation<R extends RelationKeyOf<T>>(
-    item: T,
+    items: T[],
     relation: ManyToManyMetadata | OneToManyMetadata,
     options?: {
       // 子表包含项
       includes?: FetchRelations<T[R]>;
     }
-  ): Promise<T[R]>;
+  ): Promise<T[R][]>;
   public async fetchRelation<R extends RelationKeyOf<T>>(
-    item: T,
-    relation: OneToOneMetadata | ManyToOneMetadata,
+    items: T[],
+    relations: OneToOneMetadata | ManyToOneMetadata,
     options?: {
       // 子表包含项
       includes?: FetchRelations<T[R]>;
     }
-  ): Promise<T[R] | null>;
+  ): Promise<T[R][]>;
   public async fetchRelation<R extends RelationKeyOf<T>>(
-    item: T,
+    items: T[],
     relation: RelationMetadata,
     options?: {
       // 子表包含项
       includes?: FetchRelations<T[R]>;
     }
-  ): Promise<T[R] | null>;
+  ): Promise<T[R][]>;
   public async fetchRelation<R extends RelationKeyOf<T>>(
-    item: T,
+    items: T[],
     relation: RelationMetadata,
     options?: {
       // 子表包含项
       includes?: FetchRelations<T[R]>;
     }
-  ): Promise<T[R] | null> {
+  ): Promise<T[R][]> {
     if (!isTableEntity(this.metadata)) {
       throw new Error(`GetKeyValue is only allowed for table entities.`);
     }
-    let data: any;
     // 创建子查询，并传递参数
     const refMgr = this.context.getMgr(relation.referenceClass);
-
-    if (isPrimaryOneToOne(relation) || isOneToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.key.property);
-      data = await refMgr.fetchByForeignKey(
-        relation.referenceRelation,
-        key,
-        options
+    let data: any;
+    if (isPrimaryOneToOne(relation)) {
+      data = await Promise.all(
+        items.map(async item => {
+          const key = Reflect.get(item, this.metadata!.key!.property);
+          const data = await refMgr.fetchByForeignKey(
+            relation.referenceRelation,
+            key,
+            options
+          );
+          if (data.length > 1) {
+            throw new Error(
+              `One to one relation error, fetched more then one data rows at foreign key table.`
+            );
+          }
+          return data[0];
+        })
+      );
+    } else if (isOneToMany(relation)) {
+      data = await Promise.all(
+        items.map(async item => {
+          const key = Reflect.get(item, this.metadata!.key!.property);
+          return await refMgr.fetchByForeignKey(
+            relation.referenceRelation,
+            key,
+            options
+          );
+        })
       );
     } else if (isManyToOne(relation) || isForeignOneToOne(relation)) {
-      const refKey = Reflect.get(item, relation.foreignProperty);
-      data = await refMgr.fetchByKey(refKey, options);
+      data = await Promise.all(
+        items.map(async item => {
+          const refKey = Reflect.get(item, relation.foreignProperty);
+          return await refMgr.fetchByKey(refKey, options);
+        })
+      );
     } else if (isManyToMany(relation)) {
-      const key = Reflect.get(item, this.metadata.key.property);
-      data = await refMgr.fetchByManyToManyKey(
-        relation.referenceRelation,
-        key,
-        options
+      data = await Promise.all(
+        items.map(async item => {
+          const key = Reflect.get(item, this.metadata!.key!.property);
+          return await refMgr.fetchByManyToManyKey(
+            relation.referenceRelation,
+            key,
+            options
+          );
+        })
       );
     }
     return data;
