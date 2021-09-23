@@ -15,6 +15,7 @@ export type ProcedureParameterObject = Record<
       direction?: PARAMETER_DIRECTION;
     }
 >;
+
 export class CreateProcedure extends Statement {
   static isCreateProcedure(object: any): object is CreateProcedure {
     return (
@@ -31,6 +32,7 @@ export class CreateProcedure extends Statement {
     super();
     this.$name = name;
   }
+
   params(params: ProcedureParameterObject): this;
   params(params: ProcedureParameter[]): this;
   params(...params: ProcedureParameter[]): this;
@@ -65,7 +67,7 @@ export class CreateProcedure extends Statement {
   }
 
   as(...sql: [Statement[]] | Statement[]): this {
-    this.$body = SQL.block(...sql as any);
+    this.$body = SQL.block(...(sql as any));
     return this;
   }
 }

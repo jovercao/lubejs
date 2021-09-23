@@ -1,9 +1,7 @@
-import { SQL_SYMBOLE } from "../sql";
-import { Rowset } from "./rowset";
+import { SQL_SYMBOLE } from '../sql';
+import { Rowset } from './rowset';
 
-export class WithSelect<
-  T extends RowObject = any
-> extends Rowset<T> {
+export class WithSelect<T extends RowObject = any> extends Rowset<T> {
   private constructor(name: string, select: Select<T>) {
     super();
     this.$name = name;
@@ -22,7 +20,6 @@ export class WithSelect<
     return object?.$type === SQL_SYMBOLE.WITH_SELECT;
   }
 
-
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
@@ -31,13 +28,11 @@ export class WithSelect<
   }
 }
 
-export type ProxiedWithSelect<
-  T extends RowObject = RowObject
-> = WithSelect<T> & {
-  readonly [P in ColumnsOf<T>]: Field<T[P], P>;
-};
+export type ProxiedWithSelect<T extends RowObject = RowObject> = WithSelect<T> &
+  {
+    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
+  };
 
-
-import { Field } from "../expression/field";
-import { Select } from "../statement/crud/select";
-import { ColumnsOf, DefaultRowObject, RowObject } from "../types";
+import { Field } from '../expression/field';
+import { Select } from '../statement/crud/select';
+import { ColumnsOf, DbValueType, DefaultRowObject, RowObject } from '../types';

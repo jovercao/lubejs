@@ -2,12 +2,11 @@
  * 数据库行集，混入类型
  */
 
-import { SQL, SQL_SYMBOLE } from "../sql";
+import { SQL, SQL_SYMBOLE } from '../sql';
 
 export type PropertyName = string;
 export type ColumnName = string;
-export type ColumnMap = Record<PropertyName, ColumnName>
-
+export type ColumnMap = Record<PropertyName, ColumnName>;
 
 // TIPS: 请勿改变Rowset声明方式，Typescript不支持类声明合并,而使用type别名方式中的动态属性亦不可被继承
 
@@ -34,7 +33,7 @@ export abstract class Rowset<
           return this.$field(key as ColumnsOf<T>);
         }
         return undefined;
-      }
+      },
     });
     Object.setPrototypeOf(this, proxied_proto);
     // **********************************************************
@@ -68,7 +67,7 @@ export abstract class Rowset<
    * 字段
    * @param name 节点名称
    */
-  $field<P extends ColumnsOf<T>>(name: P): Field<T[P]> {
+  $field<P extends ColumnsOf<T>>(name: P): Field<DbValueType<T[P]>> {
     if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
@@ -97,16 +96,16 @@ export abstract class Rowset<
     return this;
   }
 
-  static isRowset(object: any): object is Rowset {
+  static isRowset(object: any): object is CompatibleRowset<any> | CompatibleRowset {
     return object?.$tag === SQL_SYMBOLE.ROWSET;
   }
 
-  static ensure<T extends RowObject>(table: CompatiableObjectName | ProxiedRowset<T>): ProxiedRowset<T> {
-    if (!Rowset.isRowset(table)) {
-      return Table.ensure(table)
-    }
-    return table;
-  }
+  // static ensure<T extends RowObject>(table: CompatiableObjectName | ProxiedRowset<T>): ProxiedRowset<T> {
+  //   if (!Rowset.isRowset(table)) {
+  //     return Table.ensure(table)
+  //   }
+  //   return table;
+  // }
 }
 
 export type CompatibleRowset<
@@ -122,22 +121,22 @@ export type CompatibleRowset<
   | ProxiedNamedSelect<T>
   | TableVariant<T>
   | ProxiedTableVariant<T>
-  | TableFuncInvoke<T>;
+  | TableFuncInvoke<T>
+  | ProxiedTableFuncInvoke<T>;
 
 /**
  * 代理后的行集
  */
-export type ProxiedRowset<
-T extends RowObject = RowObject
-> = Rowset<T> & {
-  readonly [P in ColumnsOf<T>]: Field<T[P], P>;
-};
+export type ProxiedRowset<T extends RowObject = RowObject> = Rowset<T> &
+  {
+    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
+  };
 
-import { Field } from "../expression/field";
-import { CompatiableObjectName } from "../object/db-object";
-import { Star } from "../statement/crud/star";
-import { TableFuncInvoke } from "../statement/programmer/table-func-invoke";
-import { ColumnsOf, RowObject } from "../types";
-import { NamedSelect, ProxiedNamedSelect } from "./named-select";
-import { ProxiedTable, Table } from "./table";
-import { ProxiedTableVariant, TableVariant } from "./table-variant";
+import { Field } from '../expression/field';
+import { CompatiableObjectName } from '../object/db-object';
+import { Star, ProxiedTableFuncInvoke, TableFuncInvoke } from '../statement';
+import { ColumnsOf, DbValueType, RowObject } from '../types';
+import { NamedSelect, ProxiedNamedSelect } from './named-select';
+import { ProxiedTable, Table } from './table';
+import { ProxiedTableVariant, TableVariant } from './table-variant';
+import { Scalar } from '../scalar';

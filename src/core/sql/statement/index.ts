@@ -23,13 +23,11 @@ import {
   Use,
 } from './migrate';
 
-import { Assignment } from './programmer';
-import { Declare } from './declare';
+import { Assignment, Declare } from './programmer';
 import { StandardStatement } from './other/standard-statement';
 
 export * from './control';
 export * from './crud';
-export * from './declare';
 export * from './migrate';
 export * from './other';
 export * from './programmer';

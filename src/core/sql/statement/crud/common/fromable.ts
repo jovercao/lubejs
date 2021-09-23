@@ -1,12 +1,17 @@
 import { CompatibleCondition, Condition } from '../../../condition/condition';
 import { RowObject, WhereObject } from '../../../types';
-import { ProxiedRowset, Rowset } from '../../../rowset/rowset';
+import {
+  CompatibleRowset,
+  ProxiedRowset,
+  Rowset,
+} from '../../../rowset/rowset';
 import { CompatiableObjectName } from '../../../object/db-object';
 import { With } from '../with';
 import { Join } from './join';
 import { Statement } from '../../statement';
 import assert from 'assert';
 import { isPlainObject } from '../../../util';
+import { Table } from '../../../rowset';
 
 export abstract class Fromable<T extends RowObject = any> extends Statement {
   $froms?: ProxiedRowset[];
@@ -18,8 +23,10 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: (CompatiableObjectName | ProxiedRowset)[]): this {
-    this.$froms = tables.map(table => Rowset.ensure(table));
+  from(...tables: (CompatibleRowset | CompatiableObjectName)[]): this {
+    this.$froms = tables.map(table =>
+      Rowset.isRowset(table) ? table : Table.create(table)
+    );
     this.$froms.forEach(table => {
       if (!table.$alias) {
         if (!(table as any).$name) {
@@ -38,7 +45,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * @memberof Select
    */
   join<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedRowset<T>,
+    table: CompatibleRowset<T> | CompatiableObjectName,
     on: Condition,
     left?: boolean
   ): this {
@@ -56,7 +63,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * @param on
    */
   leftJoin<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedRowset<T>,
+    table: CompatibleRowset<T> | CompatiableObjectName,
     on: Condition
   ): this {
     return this.join(table, on, true);

@@ -12,7 +12,7 @@ export class While extends Statement {
     this.$condition = condition;
   }
 
-  do(...statements: Statement[] | [Statement | Statement[]]) {
+  do(...statements: Statement[] | [Statement | Statement[]]): this {
     if (statements.length === 1 && Array.isArray(statements[0])) {
       statements = statements[0];
     }
@@ -21,6 +21,7 @@ export class While extends Statement {
     } else {
       this.$statement = statements[0] as Statement;
     }
+    return this;
   }
 
   static isWhile(object: any): object is While {

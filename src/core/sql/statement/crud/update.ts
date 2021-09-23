@@ -1,6 +1,7 @@
 import assert from 'assert';
 import { CompatibleCondition, Condition } from '../../condition';
 import { CompatibleExpression, Expression } from '../../expression/expression';
+import { TableVariant } from '../../rowset';
 import { CompatibleTable, Table } from '../../rowset/table';
 import { Scalar } from '../../scalar';
 import { InputObject, RowObject } from '../../types';
@@ -20,7 +21,10 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
 
   constructor(table: CompatibleTable<T>) {
     super();
-    const tb = Table.ensure(table);
+    const tb =
+      Table.isTable(table) || TableVariant.isTableVariant(table)
+        ? table
+        : Table.create(table);
     if (tb.$alias) {
       this.from(tb);
     }
@@ -61,7 +65,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
     if (isPlainObject(condition)) {
       return Condition.ensure(condition, this.$table);
     }
-    return condition
+    return condition;
   }
 
   static isUpdate(object: any): object is Update {

@@ -1,7 +1,7 @@
 import { SQL_SYMBOLE } from '../sql';
 import { Field } from '../expression/field';
 import { Select } from '../statement/crud/select';
-import { ColumnsOf, DefaultRowObject, RowObject } from '../types';
+import { ColumnsOf, DbValueType, DefaultRowObject, RowObject } from '../types';
 import { ProxiedRowset, Rowset } from './rowset';
 
 /**
@@ -43,5 +43,5 @@ export type ProxiedNamedSelect<
   N extends string = string
 > = NamedSelect<T> &
   {
-    readonly [P in ColumnsOf<T>]: Field<T[P], P>;
+    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
   };

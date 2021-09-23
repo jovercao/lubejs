@@ -1,21 +1,27 @@
-import { SQL_SYMBOLE } from '../../sql';
-import { DbTypeOf } from '../../db-type';
+import { SQL, SQL_SYMBOLE } from '../../sql';
+import { DbType, DbTypeOf } from '../../db-type';
 import { Literal } from '../../expression/literal';
 import { Scalar } from '../../scalar';
-import { Variant } from '../../expression';
+import { Assignable } from '../../expression';
 
 export class FunctionParameter<
   T extends Scalar = Scalar,
   N extends string = string
-> extends Variant<T, N> {
+> extends Assignable<T> {
   readonly $type: SQL_SYMBOLE.FUNCTION_PARAMETER =
     SQL_SYMBOLE.FUNCTION_PARAMETER;
 
-  constructor(name: N, dataType: DbTypeOf<T>, defaultValue?: Literal) {
-    super(name);
+  constructor(name: N, dataType: DbTypeOf<T>, defaultValue?: Literal<T> | T) {
+    super();
+    this.$name = name;
     this.$dbType = dataType;
-    this.$default = defaultValue;
+    if (defaultValue) {
+      this.$default = Literal.isLiteral(defaultValue)
+        ? defaultValue
+        : SQL.literal(defaultValue);
+    }
   }
-  $dbType: DbTypeOf<T>;
-  $default?: Literal;
+  $dbType: DbType;
+  $name: N;
+  $default?: Literal<T>;
 }

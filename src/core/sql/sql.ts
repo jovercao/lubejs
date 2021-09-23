@@ -30,7 +30,7 @@ abstract class SQLClass {
     return new While(condition);
   }
 
-  static get break(): Break {
+  static break(): Break {
     return new Break();
   }
 
@@ -195,10 +195,11 @@ abstract class SQLClass {
     return new Literal(value);
   }
 
-  static variant<T extends Scalar, N extends string = string>(
-    name: N
+  static var<T extends Scalar, N extends string = string>(
+    name: N,
+    type: DbTypeOf<T>
   ): Variant<T, N> {
-    return new Variant(name);
+    return new Variant(name, type);
   }
   /**
    * 创建一个字段
@@ -343,8 +344,8 @@ abstract class SQLClass {
   }
 
   static eq<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: CompatibleExpression<ExpandScalar<T>>,
+    right: CompatibleExpression<ExpandScalar<T>>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.EQ, left, right);
   }
@@ -492,10 +493,36 @@ abstract class SQLClass {
   }
 
   static table<T extends RowObject = any>(
+    name: string,
+    members:
+      | ((builder: typeof TableVariantMemberBuilder) => TableVariantMember[])
+      | TableVariantMember[]
+  ): ProxiedTableVariant<T>;
+  static table<T extends RowObject = any>(
     name: CompatiableObjectName,
-    builtIn = false
-  ): ProxiedTable<T> {
-    return new Table(name, builtIn) as ProxiedTable<T>;
+    builtIn?: boolean
+  ): ProxiedTable<T>;
+  static table<T extends RowObject = any>(
+    name: CompatiableObjectName,
+    builtInOrMembers:
+      | boolean
+      | TableVariantMember[]
+      | ((builder: TableVariantMemberBuilder) => TableVariantMember[]) = false
+  ): ProxiedTable<T> | TableVariant<T> {
+    if (Array.isArray(builtInOrMembers)) {
+      return TableVariant.create(name as string, builtInOrMembers);
+    }
+    if (typeof builtInOrMembers === 'function') {
+      return TableVariant.create(
+        name as string,
+        builtInOrMembers(TableVariantMemberBuilder)
+      );
+    }
+    return new Table(name, builtInOrMembers) as ProxiedTable<T>;
+  }
+
+  static column(name: string, type: DbType): ColumnDeclareForAdd {
+    return new ColumnDeclareForAdd(name, type);
   }
 
   /**
@@ -750,7 +777,7 @@ abstract class SQLClass {
    * @param left 左值
    * @param right 右值
    */
-  static assign<T extends Scalar = any>(
+  static set<T extends Scalar = any>(
     left: Assignable<T>,
     right: CompatibleExpression<T>
   ): Assignment<T> {
@@ -761,9 +788,14 @@ abstract class SQLClass {
    * @param declares 变量列表
    */
   static declare(
-    build: (builder: DeclareBuilder) => (VariantDeclare | TableVariantDeclare)[]
+    ...members:
+      | (Variant<any> | TableVariant<any>)[]
+      | [(Variant<any> | TableVariant<any>)[]]
   ): Declare {
-    return new Declare(build);
+    if (members.length == 1 && Array.isArray(members[0])) {
+      members = members[0];
+    }
+    return new Declare(members as (Variant<any> | TableVariant<any>)[]);
   }
   /**
    * WHEN 语句块
@@ -1092,7 +1124,7 @@ export type SQL = SQLClass;
 export const SQL: SQLConstructor = SQLClass;
 
 // ********************因为循环引用的原因，必须将import放置在后面********************** //
-import { RowObject, ColumnsOf } from './types';
+import { RowObject, ColumnsOf, ExpandScalar } from './types';
 import { DbType, DbTypeOf, TsTypeOf } from './db-type';
 import { Document } from './document';
 import {
@@ -1110,6 +1142,10 @@ import {
   ProxiedRowset,
   CompatibleTable,
   ProxiedWithSelect,
+  TableVariant,
+  ProxiedTableVariant,
+  TableVariantMember,
+  TableVariantMemberBuilder,
 } from './rowset';
 import {
   GroupCondition,
@@ -1118,9 +1154,7 @@ import {
   BinaryCompareCondition,
   BINARY_COMPARE_OPERATOR,
   ExistsCondition,
-  CONDITION_KIND,
   Condition,
-  CompatibleCondition,
   UnaryLogicCondition,
   UnaryCompareCondition,
   UNARY_COMPARE_OPERATOR,
@@ -1156,6 +1190,7 @@ import {
   Assignment,
   Block,
   Break,
+  ColumnDeclareForAdd,
   Continue,
   CreateDatabase,
   CreateFunction,
@@ -1165,7 +1200,6 @@ import {
   CreateTable,
   CreateView,
   Declare,
-  DeclareBuilder,
   Delete,
   DropDatabase,
   DropFunction,
@@ -1183,10 +1217,8 @@ import {
   SelectAliasObject,
   Star,
   Statement,
-  TableVariantDeclare,
   Update,
   Use,
-  VariantDeclare,
   While,
   With,
 } from './statement';

@@ -33,6 +33,9 @@ import {
   Expression,
   Star,
   CompatibleTable,
+  TableVariant,
+  ProxiedTableVariant,
+  CompatibleRowset,
 } from '../sql';
 
 const { and, doc } = SQL;
@@ -356,7 +359,7 @@ export abstract class Executor {
       | WhereObject<T>
       | ((table: ProxiedRowset<T>) => Condition)
   ): Promise<T | RowObjectFrom<G> | null> {
-    const t = Table.ensure(table);
+    const t = Rowset.isRowset(table) ? table : Table.create<T>(table);
     let results: ((rowset: Readonly<Rowset<T>>) => G) | undefined;
     if (!where) {
       where = resultsOrwhere as (table: ProxiedRowset<T>) => Condition;
@@ -401,7 +404,7 @@ export abstract class Executor {
     options?: SelectOptions<T>
   ): Promise<T[]>;
   async select(
-    table: CompatiableObjectName | ProxiedRowset,
+    table: CompatibleRowset<any> | CompatiableObjectName,
     arg2?: SelectOptions | ((rowset: Readonly<ProxiedRowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
@@ -415,22 +418,24 @@ export abstract class Executor {
     }
     const { where, sorts, offset, limit } = options || {};
     let columns: Star | InputObject<any>;
-    const t: ProxiedRowset<any> = Rowset.ensure(table) as any;
+    const t: Rowset<any> = Rowset.isRowset(table) ? table : Table.create(table);
     if (results) {
       columns = results(t);
     } else {
       columns = t.star;
     }
 
-    const sql = SQL.select(columns).from(table);
+    const sql = SQL.select(columns).from(t);
     if (where) {
-      sql.where(typeof where === 'function' ? where(t) : where);
+      sql.where(
+        typeof where === 'function' ? where(t as ProxiedRowset<any>) : where
+      );
     }
     if (sorts) {
       if (Array.isArray(sorts)) {
         sql.orderBy(...sorts);
       } else if (typeof sorts === 'function') {
-        sql.orderBy(...sorts(t));
+        sql.orderBy(...sorts(t as ProxiedRowset<any>));
       } else {
         sql.orderBy(sorts);
       }
@@ -456,7 +461,10 @@ export abstract class Executor {
       | Condition
       | ((table: Readonly<ProxiedRowset<T>>) => Condition)
   ): Promise<number> {
-    const t = Table.ensure(table);
+    const t =
+      Table.isTable(table) || TableVariant.isTableVariant(table)
+        ? table
+        : Table.create<T>(table);
 
     const sql = SQL.update(t).set(sets);
     if (where) {
@@ -474,9 +482,14 @@ export abstract class Executor {
     where?:
       | WhereObject<T>
       | Condition
-      | ((table: Readonly<ProxiedTable<T>>) => Condition)
+      | ((
+          table: Readonly<ProxiedTable<T>> | Readonly<ProxiedTableVariant<T>>
+        ) => Condition)
   ): Promise<number> {
-    const t = Table.ensure(table);
+    const t =
+      Table.isTable(table) || TableVariant.isTableVariant(table)
+        ? table
+        : Table.create<T>(table);
     const sql = SQL.delete(t);
     if (where) {
       if (typeof where === 'function') {

@@ -1320,14 +1320,14 @@ const sql = SQL.dropIndex('Person', 'IX_Person_name')
 
 #### 程序控制语句
 
-| 语句           | 使用              | 说明 |
-| -------------- | ----------------- | ---- |
-| if..then..else | `SQL.if(...)`     |      |
-| while          | `SQL.while(...)`  |      |
-| begin ... end  | `SQL.block(...)`  |      |
-| break          | `SQL.break`       |      |
-| return         | `SQL.return(...)` |      |
-| continue       | `SQL.continue`    |      |
+| 语句           | 使用                              | 说明 |
+| -------------- | --------------------------------- | ---- |
+| if..then..else | `SQL.if(...).then(...).else(...)` |      |
+| while          | `SQL.while(...).do(...)`          |      |
+| begin ... end  | `SQL.block(...)`                  |      |
+| break          | `SQL.break()`                     |      |
+| return         | `SQL.return(...)`                 |      |
+| continue       | `SQL.continue`                    |      |
 
 
 ## SQL执行
@@ -3030,7 +3030,7 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
    ```ts
    BigInt.prototype.toJSON = function() { return this.toString() }
-
+   
    JSON.stringify(1n); // => '"1"'
    ```
 
@@ -3050,7 +3050,6 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 - [ ] 性能优化
   - [x] 完成主从关联多次查询变更为一次查询
   - [ ] 完成增删查改性能优化，减少SQL编译
-
 
 
 ## Updated Logs

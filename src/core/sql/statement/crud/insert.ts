@@ -9,6 +9,7 @@ import { Select } from './select';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { isScalar } from '../../scalar/util';
 import { With } from './with';
+import { TableVariant } from '../../rowset';
 
 /**
  * Insert 语句
@@ -40,7 +41,7 @@ export class Insert<T extends RowObject = any> extends Statement {
   ) {
     super();
     this.$identityInsert = false;
-    this.$table = Table.ensure(table) as Table<T>;
+    this.$table = Table.isTable(table) || TableVariant.isTableVariant(table) ? table as Table<T> : Table.create(table);
     if (this.$table.$alias) {
       throw new Error('Insert statements do not allow aliases on table.');
     }

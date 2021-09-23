@@ -5,10 +5,10 @@ import { Field } from '../../expression/field';
 import { BuiltIn } from '../../object/built-in';
 import { CompatiableObjectName } from '../../object/db-object';
 import { Func } from '../../object/func';
-import { ProxiedRowset, Rowset } from '../../rowset/rowset';
+import { Rowset } from '../../rowset/rowset';
 import { Scalar } from '../../scalar';
 import { isScalar } from '../../scalar/util';
-import { ColumnsOf, RowObject } from '../../types';
+import { ColumnsOf, DbValueType, RowObject } from '../../types';
 import { Star } from '../crud/star';
 
 export class TableFuncInvoke<
@@ -36,9 +36,7 @@ export class TableFuncInvoke<
     );
   }
 
-  static create<
-    T extends RowObject = DefaultRowObject
-  >(
+  static create<T extends RowObject = DefaultRowObject>(
     func: CompatiableObjectName | Func<string>,
     args: (CompatibleExpression<Scalar> | BuiltIn<string> | Star)[]
   ): ProxiedTableFuncInvoke<T> {
@@ -49,9 +47,8 @@ export class TableFuncInvoke<
 /**
  * 代理后的表
  */
-export type ProxiedTableFuncInvoke<
-  T extends RowObject = RowObject
-> = TableFuncInvoke<T> &
-  {
-    readonly [P in ColumnsOf<T>]: Field<T[P], string>;
-  };
+export type ProxiedTableFuncInvoke<T extends RowObject = RowObject> =
+  TableFuncInvoke<T> &
+    {
+      readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, string>;
+    };

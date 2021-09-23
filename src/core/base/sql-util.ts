@@ -78,12 +78,11 @@ import {
   Sort,
   Table,
   TableVariant,
-  TableVariantDeclare,
-  VariantDeclare,
   ProcedureParameter,
   Operation,
   FunctionParameter,
   Return,
+  PARAMETER_DIRECTION,
 } from '../sql';
 import { Standard } from '../standard';
 import { DbProvider } from './db-provider';
@@ -452,9 +451,12 @@ export abstract class SqlUtil {
     } else if (Block.isBlock(statement)) {
       return this.sqlifyBlock(statement, params);
     } else if (StandardStatement.isStandardStatement(statement)) {
-      return this.sqlifyStatement(this.translationStandardOperation(statement), params);
+      return this.sqlifyStatement(
+        this.translationStandardOperation(statement),
+        params
+      );
     } else if (Return.isReturn(statement)) {
-      return this.sqlifyReturn(statement, params)
+      return this.sqlifyReturn(statement, params);
     } else if (If.isIf(statement)) {
       return this.sqlifyIf(statement, params);
     } else if (While.isWhile(statement)) {
@@ -474,10 +476,13 @@ export abstract class SqlUtil {
     }
     throw this._invalidAST('statement', statement);
   }
-  sqlifyReturn(statement: Return, params: Set<Parameter<Scalar, string>> | undefined): string {
-    let sql = 'RETURN'
+  sqlifyReturn(
+    statement: Return,
+    params: Set<Parameter<Scalar, string>> | undefined
+  ): string {
+    let sql = 'RETURN';
     if (statement.$value) {
-      sql += ' '  + this.sqlifyExpression(statement.$value);
+      sql += ' ' + this.sqlifyExpression(statement.$value);
     }
     return sql;
   }
@@ -732,6 +737,8 @@ export abstract class SqlUtil {
       .join(', ');
   }
 
+  protected abstract sqlifyDirection(direction: PARAMETER_DIRECTION): string;
+
   protected sqlifyExecuteArgumentList(
     args: Expression<Scalar>[],
     params?: Set<Parameter<Scalar, string>>,
@@ -741,10 +748,9 @@ export abstract class SqlUtil {
       .map(ast => {
         let sql = this.sqlifyExpression(ast, params, parent);
         if (
-          Parameter.isParameter(ast) &&
-          (ast as Parameter<Scalar, string>).direction === 'OUTPUT'
+          Parameter.isParameter(ast)
         ) {
-          sql += ' OUTPUT';
+          sql += ' ' + this.sqlifyDirection(ast.direction);
         }
         return sql;
       })
@@ -1213,11 +1219,9 @@ export abstract class SqlUtil {
     );
   }
 
-  protected abstract sqlifyTableVariantDeclare(
-    declare: TableVariantDeclare
-  ): string;
+  protected abstract sqlifyTableVariantDeclare(declare: TableVariant): string;
 
-  protected sqlifyVariantDeclare(varDec: VariantDeclare): string {
+  protected sqlifyVariantDeclare(varDec: Variant): string {
     return (
       this.sqlifyVariantName(varDec.$name) +
       ' ' +
@@ -1232,16 +1236,21 @@ export abstract class SqlUtil {
   protected abstract sqlifyFunctionParameter(varDec: FunctionParameter): string;
 
   protected sqlifyDeclare(declare: Declare): string {
+    this.assertAst(
+      declare.$statement,
+      `Declare statement not have do statement. Use '.do(...)' to specify it.`
+    );
     return (
       'DECLARE ' +
       declare.$declares
         .map(dec =>
-          TableVariantDeclare.isTableVariantDeclare(dec)
+          TableVariant.isTableVariant(dec)
             ? this.sqlifyTableVariantDeclare(dec)
             : this.sqlifyVariantDeclare(dec)
         )
         .join(', ') +
-      ';'
+      '\n' +
+      this.sqlifyBlock(declare.$statement)
     );
   }
 

@@ -1,6 +1,6 @@
-import { Scalar } from "../../scalar";
-import { CompatibleExpression, Expression } from "../expression";
-import { Assignment } from "../../statement/programmer/assignment";
+import { Scalar } from '../../scalar';
+import { CompatibleExpression, Expression } from '../expression';
+import { Assignment } from '../../statement/programmer/assignment';
 
 export abstract class Assignable<T extends Scalar = any> extends Expression<T> {
   readonly $lvalue: true = true;
@@ -9,7 +9,7 @@ export abstract class Assignable<T extends Scalar = any> extends Expression<T> {
    * @param left 左值
    * @param right 右值
    */
-  assign(value: CompatibleExpression<T>): Assignment<T> {
+  set(value: CompatibleExpression<T>): Assignment<T> {
     return new Assignment(this, value);
   }
 }

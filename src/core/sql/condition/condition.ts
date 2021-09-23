@@ -57,7 +57,7 @@ export abstract class Condition extends SQL {
       if (Array.isArray(value)) {
         return field.in(value);
       }
-      return field.eq(value);
+      return field.eq(value as any);
     });
 
     return compares.length >= 2 ? Condition.and(compares) : compares[0];

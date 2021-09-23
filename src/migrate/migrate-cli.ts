@@ -319,7 +319,7 @@ class MigrateCliClass {
               SQL.exists(
                 SQL.select(1)
                   .from(t)
-                  .where(t.migrate_id.eq(info.id).and(t.hash.eq(info.hash)))
+                  .where(t.migrate_id.eq(info.id).and(t.hash.eq(info.hash!)))
               )
             )
           ).then(
@@ -338,7 +338,7 @@ class MigrateCliClass {
         statements.push(...codes);
         statements.push(
           SQL.delete(t).where(
-            t.migrate_id.eq(info.id).and(t.hash.eq(info.hash))
+            t.migrate_id.eq(info.id).and(t.hash.eq(info.hash!))
           )
         );
         if (i === 0) {
@@ -821,22 +821,28 @@ export default ${name};
     //   );
     //   return;
     // }
-    console.info(`*************************************************`);
-    console.info(`开始开新数据库架构，请稍候......`);
+    if (output) {
+      output.write(`*************************************************\n`);
+      output.write(`开始更新数据库架构，请稍候......\n`);
+    }
     await this.runInTargetDatabase(async () => {
       for (const statement of statements) {
         const cmd = this.dbContext.connection.sqlUtil.sqlify(statement);
         if (output) {
           outputCommand(cmd, output);
-          output.write('----------------------------------------------------\n');
+          output.write(
+            '----------------------------------------------------\n'
+          );
         }
         await this.dbContext.connection.query(cmd);
       }
     });
-    console.info(`更新数据库架构完成，数据库架构已经更新到与实体一致。`);
-    console.info(
-      `请注意，通过Sync更新的数据库，将不能再使用 'lubejs migrate update <migrate>' 命令更新，否则可能造成数据丢失！`
-    );
+    if (output) {
+      output.write(`更新数据库架构完成，数据库架构已经更新到与实体一致。\n`);
+      output.write(
+        `请注意，通过Sync更新的数据库，将不能再使用 'lubejs migrate update <migrate>' 命令更新，否则可能造成数据丢失！\n`
+      );
+    }
   }
 
   /**

@@ -7,7 +7,7 @@ import { Literal } from './literal';
 /**
  * 参数方向
  */
-export type PARAMETER_DIRECTION = 'INPUT' | 'OUTPUT';
+export type PARAMETER_DIRECTION = 'IN' | 'OUT' | 'INOUT';
 
 /**
  * 程序与数据库间传递值所使用的参数
@@ -40,7 +40,7 @@ export class Parameter<
     name: N,
     type?: DbType,
     value?: T,
-    direction: PARAMETER_DIRECTION = 'INPUT'
+    direction: PARAMETER_DIRECTION = 'IN'
   ) {
     super();
     if (type) {
@@ -64,7 +64,7 @@ export class Parameter<
     value: T,
     type?: DbTypeOf<T>
   ): Parameter<T, N> {
-    return new Parameter(name, type, value, 'INPUT');
+    return new Parameter(name, type, value, 'IN');
   }
 
   /**
@@ -75,6 +75,6 @@ export class Parameter<
     type: T,
     value?: TsTypeOf<T>
   ): Parameter<TsTypeOf<T>, N> {
-    return new Parameter(name, type, value, 'OUTPUT');
+    return new Parameter(name, type, value, 'OUT');
   }
 }

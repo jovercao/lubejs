@@ -2,8 +2,10 @@ import { SQL_SYMBOLE } from '../sql';
 import { Field } from '../expression/field';
 import { CompatiableObjectName, DBObject } from '../object/db-object';
 import { Star } from '../statement/crud/star';
-import { ColumnsOf, DefaultRowObject, RowObject } from '../types';
+import { ColumnsOf, DbValueType, DefaultRowObject, RowObject } from '../types';
 import { Rowset } from './rowset';
+import { TableVariant } from './table-variant';
+import { ProxiedTableVariant } from '.';
 
 /**
  * 表对象，表和视图均使用该对象
@@ -23,7 +25,7 @@ export class Table<
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: CompatiableObjectName): ProxiedTable<T> {
+  >(name: CompatiableObjectName<N>): ProxiedTable<T> {
     return new Table<T>(name) as ProxiedTable<T>;
   }
 
@@ -54,24 +56,15 @@ export class Table<
 
   as!: <N extends string>(alias: N) => ProxiedTable<T>;
 
-  static isTable(object: any): object is Table {
+  static isTable(object: any): object is Table | ProxiedTable {
     return object?.$type === SQL_SYMBOLE.TABLE;
-  }
-
-  static ensure<T extends RowObject>(
-    table: CompatibleTable<T>
-  ): ProxiedTable<T> {
-    if (Table.isTable(table)) {
-      return table as ProxiedTable<T>;
-    }
-    return new Table(table as CompatiableObjectName) as ProxiedTable<T>;
   }
 }
 
 export type CompatibleTable<
   // eslint-disable-next-line
   T extends RowObject = {}
-> = CompatiableObjectName | ProxiedTable<T>;
+> = CompatiableObjectName | ProxiedTable<T> | ProxiedTableVariant<T>;
 
 /**
  * 代理后的表
@@ -80,5 +73,5 @@ export type ProxiedTable<
   T extends RowObject = RowObject
 > = Table<T> &
   {
-    readonly [P in ColumnsOf<T>]: Field<T[P], P>;
+    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
   };

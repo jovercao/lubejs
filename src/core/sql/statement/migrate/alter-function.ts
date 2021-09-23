@@ -1,13 +1,13 @@
 import { DbType, DbTypeOf, isDbType } from '../../db-type';
 import { CompatiableObjectName } from '../../object/db-object';
 import { Statement, STATEMENT_KIND } from '../statement';
-import { TableVariantDeclare } from '../declare/table-variant-declare';
-import { VariantDeclare } from '../declare/variant-declare';
 import { FunctionParameter } from './function-parameter';
 import { FunctionParameterObject } from './create-function';
 import { isPlainObject } from '../../util';
 import { Scalar } from '../../scalar';
 import { SQL } from '../../sql';
+import { TableVariant } from '../../rowset';
+import { Variant } from '../../expression';
 
 export class AlterFunction extends Statement {
   static isAlterFunction(object: any): object is AlterFunction {
@@ -20,7 +20,7 @@ export class AlterFunction extends Statement {
   $name: CompatiableObjectName;
   $params?: FunctionParameter[];
   $body?: Statement;
-  $returns?: FunctionParameter | TableVariantDeclare | DbType;
+  $returns?: Variant | TableVariant | DbType;
 
   constructor(name: CompatiableObjectName) {
     super();
@@ -52,20 +52,20 @@ export class AlterFunction extends Statement {
       );
       return this;
     }
-    if (params.length === 1 && Array.isArray(params)) {
+    if (params.length === 1 && Array.isArray(params[0])) {
       params = params[0] as FunctionParameter[];
     }
     this.$params = params as FunctionParameter[];
     return this;
   }
 
-  returns(returns: FunctionParameter | TableVariantDeclare | DbType): this {
+  returns(returns: Variant | TableVariant | DbType): this {
     this.$returns = returns;
     return this;
   }
 
   as(...sql: [Statement[]] | Statement[]): this {
-    this.$body = SQL.block(...sql as any);
+    this.$body = SQL.block(...(sql as any));
     return this;
   }
 }

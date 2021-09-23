@@ -1,12 +1,13 @@
-import { SQL, SQL_SYMBOLE } from "../../../sql";
-import { Condition } from "../../../condition/condition";
-import { CompatiableObjectName } from "../../../object/db-object";
-import { ProxiedRowset, Rowset } from "../../../rowset/rowset";
+import { SQL, SQL_SYMBOLE } from '../../../sql';
+import { Condition } from '../../../condition/condition';
+import { CompatiableObjectName } from '../../../object/db-object';
+import { ProxiedRowset, Rowset } from '../../../rowset/rowset';
+import { CompatibleRowset, CompatibleTable, Table } from '../../../rowset';
 
 /**
  * 联接查询
  */
- export class Join extends SQL {
+export class Join extends SQL {
   readonly $type: SQL_SYMBOLE.JOIN = SQL_SYMBOLE.JOIN;
   $left: boolean;
   $table: Rowset;
@@ -19,13 +20,13 @@ import { ProxiedRowset, Rowset } from "../../../rowset/rowset";
    * @param left 是否左联接
    */
   constructor(
-    table: CompatiableObjectName | ProxiedRowset,
+    table: CompatibleRowset<any> | CompatiableObjectName,
     on: Condition,
     left = false
   ) {
     super();
 
-    this.$table = Rowset.ensure(table);
+    this.$table = Rowset.isRowset(table) ? table : Table.create(table);
     this.$on = on;
     this.$left = left;
   }

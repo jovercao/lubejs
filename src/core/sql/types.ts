@@ -1,4 +1,4 @@
-import { Decimal, Scalar } from './scalar';
+import { Binary, Decimal, Scalar, Uuid } from './scalar';
 import { CompatibleExpression, Expression } from './expression/expression';
 import { Field, FieldTypeOf } from './expression/field';
 
@@ -35,6 +35,17 @@ export type TypeOf<T> = T extends Scalar
   ? T
   : never;
 
+export type DbValueType<T extends Scalar | undefined> = T extends undefined
+  ? Exclude<T, undefined> | null
+  : T;
+
+/**
+ * 将对象类型转换为数据行类型
+ */
+export type DataRowType<T extends object> = {
+  [P in ColumnsOf<T>]: DbValueType<T[P]>;
+};
+
 // export type RowObjectFrom<T extends InputObject> = T extends InputObject<infer R> ? R : DefaultInputObject;
 
 /**
@@ -65,3 +76,20 @@ export type ColumnsOf<T> = Exclude<
   }[keyof T],
   number | symbol
 >;
+
+export type AssertType<T, X extends Scalar> = T extends X ? X : never;
+
+/**
+ * 展开类型，将字面量(literal)类型扩展到标题(scalar)类型
+ * 例： ExpandType<1> // => number;
+ */
+export type ExpandScalar<T extends Scalar> =
+  | AssertType<T, string>
+  | AssertType<T, number>
+  | AssertType<T, bigint>
+  | AssertType<T, Decimal>
+  | AssertType<T, Date>
+  | AssertType<T, Uuid>
+  | AssertType<T, Binary>
+  | AssertType<T, boolean>
+  | AssertType<T, null>;
