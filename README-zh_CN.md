@@ -3030,7 +3030,7 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
    ```ts
    BigInt.prototype.toJSON = function() { return this.toString() }
-   
+
    JSON.stringify(1n); // => '"1"'
    ```
 
@@ -3054,6 +3054,10 @@ lube migrate script --source <source_name> --target <target_name> --output <outp
 
 
 ## Updated Logs
+
+### 3.0.0-preview06
+
+- 修复Bug
 
 ### 3.0.0-preview05
 
