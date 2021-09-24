@@ -1,23 +1,12 @@
-import { DbType, isDbType } from '../../db-type';
-import { Literal, PARAMETER_DIRECTION } from '../../expression';
 import { CompatiableObjectName } from '../../object/db-object';
 import { SQL } from '../../sql';
-import { isPlainObject } from '../../util';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { ProcedureParameter } from './procedure-parameter';
 
-export type ProcedureParameterObject = Record<
-  string,
-  | DbType
-  | {
-      type: DbType;
-      default?: Literal;
-      direction?: PARAMETER_DIRECTION;
-    }
->;
-
-export class CreateProcedure extends Statement {
-  static isCreateProcedure(object: any): object is CreateProcedure {
+export class CreateProcedure<
+  P extends ProcedureParameter[] = []
+> extends Statement {
+  static isCreateProcedure(object: any): object is CreateProcedure<any> {
     return (
       Statement.isStatement(object) &&
       object.$kind === STATEMENT_KIND.CREATE_PROCEDURE
@@ -25,7 +14,7 @@ export class CreateProcedure extends Statement {
   }
   $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
   $name: CompatiableObjectName;
-  $params?: ProcedureParameter[];
+  $params?: P;
   $body?: Statement;
 
   constructor(name: CompatiableObjectName) {
@@ -33,41 +22,129 @@ export class CreateProcedure extends Statement {
     this.$name = name;
   }
 
-  params(params: ProcedureParameterObject): this;
-  params(params: ProcedureParameter[]): this;
-  params(...params: ProcedureParameter[]): this;
-  params(
-    ...params:
-      | ProcedureParameter[]
-      | [ProcedureParameter[]]
-      | [ProcedureParameterObject]
-  ): this {
-    if (params.length === 1 && isPlainObject(params[0])) {
-      this.$params = Object.entries(params[0] as ProcedureParameterObject).map(
-        ([name, value]) => {
-          if (isDbType(value)) {
-            return new ProcedureParameter(name, value as any);
-          } else {
-            return new ProcedureParameter(
-              name,
-              value.type as any,
-              value.direction,
-              value.default
-            );
-          }
-        }
-      );
-      return this;
+  params<
+    T1 extends ProcedureParameter,
+    T2 extends ProcedureParameter,
+    T3 extends ProcedureParameter,
+    T4 extends ProcedureParameter,
+    T5 extends ProcedureParameter,
+    T6 extends ProcedureParameter,
+    T7 extends ProcedureParameter,
+    T8 extends ProcedureParameter,
+    T9 extends ProcedureParameter,
+    T10 extends ProcedureParameter,
+    T11 extends ProcedureParameter,
+    T12 extends ProcedureParameter,
+    T13 extends ProcedureParameter,
+    T14 extends ProcedureParameter,
+    T15 extends ProcedureParameter,
+    T16 extends ProcedureParameter,
+    T17 extends ProcedureParameter,
+    T18 extends ProcedureParameter,
+    T19 extends ProcedureParameter,
+    T20 extends ProcedureParameter
+  >(
+    ...args:
+      | [
+          (
+            param: CreateProcedureBuilder['param']
+          ) => [
+            p1?: T1,
+            p2?: T2,
+            p3?: T3,
+            p4?: T4,
+            p5?: T5,
+            p6?: T6,
+            p7?: T7,
+            p8?: T8,
+            p9?: T9,
+            p10?: T10,
+            p11?: T11,
+            p12?: T12,
+            p13?: T13,
+            p14?: T14,
+            p15?: T15,
+            p16?: T16,
+            p17?: T17,
+            p18?: T18,
+            p19?: T19,
+            p20?: T20
+          ]
+        ]
+      | [
+          p1?: T1,
+          p2?: T2,
+          p3?: T3,
+          p4?: T4,
+          p5?: T5,
+          p6?: T6,
+          p7?: T7,
+          p8?: T8,
+          p9?: T9,
+          p10?: T10,
+          p11?: T11,
+          p12?: T12,
+          p13?: T13,
+          p14?: T14,
+          p15?: T15,
+          p16?: T16,
+          p17?: T17,
+          p18?: T18,
+          p19?: T19,
+          p20?: T20
+        ]
+  ): CreateProcedure<
+    [
+      T1,
+      T2,
+      T3,
+      T4,
+      T5,
+      T6,
+      T7,
+      T8,
+      T9,
+      T10,
+      T11,
+      T12,
+      T13,
+      T14,
+      T15,
+      T16,
+      T17,
+      T18,
+      T19,
+      T20
+    ]
+  > {
+    if (this.$params) {
+      throw new Error(`CreateProcedure parameters is declared.`);
     }
-    if (params.length === 1 && Array.isArray(params[0])) {
-      params = params[0] as ProcedureParameter[];
+    if (args.length === 1 && typeof args[0] === 'function') {
+      args = args[0](createProcedure.param);
     }
-    this.$params = params as ProcedureParameter[];
-    return this;
+    if ((args as any).findIndex((p: any) => !p) >= 0) {
+      throw new Error(`Procedure parameter must not empty.`);
+    }
+    this.$params = args as any;
+    return this as any;
   }
 
-  as(...sql: [Statement[]] | Statement[]): this {
+  body(...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]): this {
+    if (typeof sql[0] === 'function') {
+      sql = sql[0](this.$params || ([] as any));
+    }
     this.$body = SQL.block(...(sql as any));
     return this;
   }
 }
+
+export const createProcedure = (
+  name: CompatiableObjectName
+): CreateProcedure => {
+  return new CreateProcedure(name);
+};
+
+createProcedure.param = ProcedureParameter.create;
+
+export type CreateProcedureBuilder = typeof createProcedure;

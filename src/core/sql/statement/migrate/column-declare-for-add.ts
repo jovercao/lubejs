@@ -3,7 +3,6 @@ import { Condition } from '../../condition/condition';
 import { DbType, TsTypeOf } from '../../db-type';
 import { CompatibleExpression, Expression } from '../../expression/expression';
 import { ColumnDeclare } from './column-declare';
-import { CreateTableMember } from './create-table';
 
 export class ColumnDeclareForAdd<
   N extends string = string,

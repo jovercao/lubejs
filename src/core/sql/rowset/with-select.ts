@@ -6,6 +6,7 @@ export class WithSelect<T extends RowObject = any> extends Rowset<T> {
     super();
     this.$name = name;
     this.$select = select;
+    this.$proxy();
   }
 
   readonly $type: SQL_SYMBOLE.WITH_SELECT = SQL_SYMBOLE.WITH_SELECT;

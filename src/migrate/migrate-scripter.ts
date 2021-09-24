@@ -1,6 +1,6 @@
 import {
   CreateTableMember,
-  CreateTableMemberBuilder,
+  CreateTableBuilder,
   Statement,
   ColumnDeclareForAdd,
   ColumnDeclareForAlter,
@@ -545,7 +545,7 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
 
   createTable(table: TableSchema): void {
     this.middleCodes.push(
-      this.builder.createTable(table).as(g => [
+      this.builder.createTable(table).body(g => [
         ...table.columns.map(schema =>
           this.tableColumnForAdd(g.column, schema)
         ),
@@ -851,7 +851,7 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
   }
 
   private tableColumnForAdd(
-    column: CreateTableMemberBuilder['column'],
+    column: CreateTableBuilder['column'],
     schema: ColumnSchema
   ): CreateTableMember {
     const col: ColumnDeclareForAdd = column(

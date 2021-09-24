@@ -798,7 +798,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     }
     const sql = `builder.createTable(${this.namify(
       table
-    )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
+    )}).body(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
     // if (table.foreignKeys?.length > 0) {
     //   table.foreignKeys.map(fk => this.addForeignKey(table, fk));

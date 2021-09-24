@@ -13,7 +13,9 @@ export type FunctionParameterObject = Record<
   DbType | { type: DbType; default?: Literal }
 >;
 
-export class CreateFunction extends Statement {
+export class CreateFunction<
+  P extends FunctionParameter[] = []
+> extends Statement {
   static isCreateFunction(object: any): object is CreateFunction {
     return (
       Statement.isStatement(object) &&
@@ -22,7 +24,7 @@ export class CreateFunction extends Statement {
   }
   $kind: STATEMENT_KIND.CREATE_FUNCTION = STATEMENT_KIND.CREATE_FUNCTION;
   $name: CompatiableObjectName;
-  $params?: FunctionParameter[];
+  $params?: P;
   $body?: Statement;
   $returns?: Variant | TableVariant | DbType;
 
@@ -31,36 +33,112 @@ export class CreateFunction extends Statement {
     this.$name = name;
   }
 
-  params(params: FunctionParameterObject): this;
-  params(params: FunctionParameter[]): this;
-  params(...params: FunctionParameter[]): this;
-  params(
-    ...params:
-      | FunctionParameter[]
-      | [FunctionParameter[]]
-      | [FunctionParameterObject]
-  ): this {
-    if (params.length === 1 && isPlainObject(params[0])) {
-      this.$params = Object.entries(params[0] as FunctionParameterObject).map(
-        ([name, value]) => {
-          if (isDbType(value)) {
-            return new FunctionParameter(name, value as DbTypeOf<Scalar>);
-          } else {
-            return new FunctionParameter(
-              name,
-              value.type as DbTypeOf<Scalar>,
-              value.default
-            );
-          }
-        }
-      );
-      return this;
+  params<
+    T1 extends FunctionParameter,
+    T2 extends FunctionParameter,
+    T3 extends FunctionParameter,
+    T4 extends FunctionParameter,
+    T5 extends FunctionParameter,
+    T6 extends FunctionParameter,
+    T7 extends FunctionParameter,
+    T8 extends FunctionParameter,
+    T9 extends FunctionParameter,
+    T10 extends FunctionParameter,
+    T11 extends FunctionParameter,
+    T12 extends FunctionParameter,
+    T13 extends FunctionParameter,
+    T14 extends FunctionParameter,
+    T15 extends FunctionParameter,
+    T16 extends FunctionParameter,
+    T17 extends FunctionParameter,
+    T18 extends FunctionParameter,
+    T19 extends FunctionParameter,
+    T20 extends FunctionParameter
+  >(
+    ...args:
+      | [
+          (
+            param: CreateFunctionBuilder['param']
+          ) => [
+            p1?: T1,
+            p2?: T2,
+            p3?: T3,
+            p4?: T4,
+            p5?: T5,
+            p6?: T6,
+            p7?: T7,
+            p8?: T8,
+            p9?: T9,
+            p10?: T10,
+            p11?: T11,
+            p12?: T12,
+            p13?: T13,
+            p14?: T14,
+            p15?: T15,
+            p16?: T16,
+            p17?: T17,
+            p18?: T18,
+            p19?: T19,
+            p20?: T20
+          ]
+        ]
+      | [
+          p1?: T1,
+          p2?: T2,
+          p3?: T3,
+          p4?: T4,
+          p5?: T5,
+          p6?: T6,
+          p7?: T7,
+          p8?: T8,
+          p9?: T9,
+          p10?: T10,
+          p11?: T11,
+          p12?: T12,
+          p13?: T13,
+          p14?: T14,
+          p15?: T15,
+          p16?: T16,
+          p17?: T17,
+          p18?: T18,
+          p19?: T19,
+          p20?: T20
+        ]
+  ): CreateFunction<
+    [
+      T1,
+      T2,
+      T3,
+      T4,
+      T5,
+      T6,
+      T7,
+      T8,
+      T9,
+      T10,
+      T11,
+      T12,
+      T13,
+      T14,
+      T15,
+      T16,
+      T17,
+      T18,
+      T19,
+      T20
+    ]
+  > {
+    if (this.$params) {
+      throw new Error(`CreateFunction parameters is declared.`);
     }
-    if (params.length === 1 && Array.isArray(params[0])) {
-      params = params[0] as FunctionParameter[];
+    if (args.length === 1 && typeof args[0] === 'function') {
+      args = args[0](createFunction.param);
     }
-    this.$params = params as FunctionParameter[];
-    return this;
+    if ((args as any).findIndex((p: any) => !p) >= 0) {
+      throw new Error(`Function parameter must not empty.`);
+    }
+    this.$params = args as any;
+    return this as any;
   }
 
   returns(returns: Variant | TableVariant | DbType): this {
@@ -68,8 +146,19 @@ export class CreateFunction extends Statement {
     return this;
   }
 
-  as(...sql: [Statement[]] | Statement[]): this {
+  body(...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]): this {
+    if (typeof sql[0] === 'function') {
+      sql = sql[0](this.$params || ([] as any));
+    }
     this.$body = SQL.block(...(sql as any));
     return this;
   }
 }
+
+export function createFunction(name: CompatiableObjectName): CreateFunction {
+  return new CreateFunction(name);
+}
+
+createFunction.param = FunctionParameter.create;
+
+export type CreateFunctionBuilder = typeof createFunction;

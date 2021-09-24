@@ -219,13 +219,13 @@ export abstract class SqlUtil {
     return str;
   }
 
-  sqlifyField(field: Field | Raw): string {
+  protected sqlifyField(field: Field | Raw): string {
     if (Raw.isRaw(field)) {
       return field.$sql;
     }
     let sql: string = '';
     if (field.$table) {
-      sql = this.sqlifyRowsetName(field.$table);
+      sql = this.sqlifyRowsetName(field.$table, true);
       sql += '.' + this.quoted(field.$name);
       return sql;
     }
@@ -321,6 +321,10 @@ export abstract class SqlUtil {
   }
 
   protected sqlifyVariantName(name: string): string {
+    return this.options.variantPrefix + name;
+  }
+
+  protected sqlifyTableVariantName(name: string): string {
     return this.options.variantPrefix + name;
   }
 
@@ -624,10 +628,18 @@ export abstract class SqlUtil {
     return opt.$operator + this.sqlifyExpression(opt.$value, params, parent);
   }
 
-  protected sqlifyRowsetName(rowset: Rowset | Raw): string {
+  protected sqlifyRowsetName(rowset: Rowset | Raw, forField = false): string {
     if (Raw.isRaw(rowset)) return rowset.$sql;
     if (rowset.$alias) {
       return this.quoted(rowset.$alias);
+    }
+    // 如果是表变量
+    if (TableVariant.isTableVariant(rowset)) {
+      const result = this.sqlifyTableVariantName(rowset.$name);
+      if (forField) {
+        return this.quoted(result);
+      }
+      return result;
     }
     if (rowset.$name) {
       return this.sqlifyObjectName(rowset.$name);
@@ -747,9 +759,7 @@ export abstract class SqlUtil {
     return args
       .map(ast => {
         let sql = this.sqlifyExpression(ast, params, parent);
-        if (
-          Parameter.isParameter(ast)
-        ) {
+        if (Parameter.isParameter(ast)) {
           sql += ' ' + this.sqlifyDirection(ast.direction);
         }
         return sql;
@@ -944,7 +954,7 @@ export abstract class SqlUtil {
   protected sqlifyStar(arg: Star<any>): string {
     const sql = '';
     if (arg.$table) {
-      return `${this.sqlifyRowsetName(arg.$table)}.*`;
+      return `${this.sqlifyRowsetName(arg.$table, true)}.*`;
     }
     return '*';
   }
@@ -1237,7 +1247,7 @@ export abstract class SqlUtil {
 
   protected sqlifyDeclare(declare: Declare): string {
     this.assertAst(
-      declare.$statement,
+      declare.$body,
       `Declare statement not have do statement. Use '.do(...)' to specify it.`
     );
     return (
@@ -1250,7 +1260,7 @@ export abstract class SqlUtil {
         )
         .join(', ') +
       '\n' +
-      this.sqlifyBlock(declare.$statement)
+      this.sqlifyBlock(declare.$body)
     );
   }
 

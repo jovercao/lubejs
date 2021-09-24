@@ -20,13 +20,14 @@ export class Table<
     super();
     this.$name = name;
     this.$builtin = builtIn;
+    this.$proxy();
   }
 
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: CompatiableObjectName<N>): ProxiedTable<T> {
-    return new Table<T>(name) as ProxiedTable<T>;
+  >(name: CompatiableObjectName<N>, builtIn = false): ProxiedTable<T> {
+    return new Table<T>(name, builtIn) as ProxiedTable<T>;
   }
 
   $name: CompatiableObjectName;
@@ -43,16 +44,6 @@ export class Table<
   //   }
   //   return new Field<T[P], P>([name, ...pathName(this.$name)] as Name<P>);
   // }
-
-  /**
-   * 获取所有字段
-   */
-  get star(): Star<T> {
-    if (this.$alias) {
-      return super.star;
-    }
-    return new Star(this);
-  }
 
   as!: <N extends string>(alias: N) => ProxiedTable<T>;
 

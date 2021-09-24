@@ -19,12 +19,12 @@ export class NamedSelect<
     super();
     this.$name = name;
     this.$select = statement;
+    this.$proxy();
   }
 
   as(): never {
     throw new Error(`NamedSelect dos not allow with alias.`);
   }
-
 
   static isNamedSelect(object: any): object is NamedSelect {
     return object?.$type === SQL_SYMBOLE.NAMED_SELECT;

@@ -971,7 +971,7 @@ export class SnapshotMigrateTracker {
         `Table ${this.sqlUtil.sqlifyObjectName(statement.$name)} is exists.`
       );
     }
-    assertAst(statement.$members, 'CreateTable statement member not found.');
+    assertAst(statement.$body, 'CreateTable statement member not found.');
     const objName = this.sqlUtil.parseObjectName(statement.$name);
     const table: TableSchema = {
       name: objName.name,
@@ -982,7 +982,7 @@ export class SnapshotMigrateTracker {
       constraints: [],
     };
 
-    this.addTableMembers(table, statement.$members);
+    this.addTableMembers(table, statement.$body);
 
     this.database.tables.push(table);
   }

@@ -34,6 +34,7 @@ export class TableFuncInvoke<
     this.$args = args.map(expr =>
       isScalar(expr) ? Expression.ensure(expr) : expr
     );
+    this.$proxy();
   }
 
   static create<T extends RowObject = DefaultRowObject>(

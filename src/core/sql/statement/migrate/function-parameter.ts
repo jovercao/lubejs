@@ -1,5 +1,5 @@
 import { SQL, SQL_SYMBOLE } from '../../sql';
-import { DbType, DbTypeOf } from '../../db-type';
+import { DbType, DbTypeOf, TsTypeOf } from '../../db-type';
 import { Literal } from '../../expression/literal';
 import { Scalar } from '../../scalar';
 import { Assignable } from '../../expression';
@@ -11,7 +11,7 @@ export class FunctionParameter<
   readonly $type: SQL_SYMBOLE.FUNCTION_PARAMETER =
     SQL_SYMBOLE.FUNCTION_PARAMETER;
 
-  constructor(name: N, dataType: DbTypeOf<T>, defaultValue?: Literal<T> | T) {
+  constructor(name: N, dataType: DbType, defaultValue?: Literal<T> | T) {
     super();
     this.$name = name;
     this.$dbType = dataType;
@@ -24,4 +24,12 @@ export class FunctionParameter<
   $dbType: DbType;
   $name: N;
   $default?: Literal<T>;
+
+  static create<T extends DbType, N extends string>(
+    name: N,
+    dataType: T,
+    defaultValue?: Literal<TsTypeOf<T>> | TsTypeOf<T>
+  ): FunctionParameter<TsTypeOf<T>, N> {
+    return new FunctionParameter(name, dataType, defaultValue);
+  }
 }

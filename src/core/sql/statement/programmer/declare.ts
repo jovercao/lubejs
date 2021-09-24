@@ -14,15 +14,15 @@ export class Declare extends Statement {
     );
   }
   $declares: (Variant | TableVariant)[];
-  $statement?: Block;
+  $body?: Block;
   $kind: STATEMENT_KIND.DECLARE = STATEMENT_KIND.DECLARE;
   constructor(members: (Variant | TableVariant)[]) {
     super();
     this.$declares = members;
   }
 
-  as(...statements: Statement[] | [Statement[]]): this {
-    this.$statement = SQL.block(statements as any);
+  body(...statements: Statement[] | [Statement[]]): this {
+    this.$body = SQL.block(statements as any);
     return this;
   }
 }

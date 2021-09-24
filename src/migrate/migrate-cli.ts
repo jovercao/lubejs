@@ -291,7 +291,7 @@ class MigrateCliClass {
         // 创建迁移记录表
         if (i === 0) {
           statements.push(
-            SQL.createTable(LUBE_MIGRATE_TABLE_NAME).as(builder => [
+            SQL.createTable(LUBE_MIGRATE_TABLE_NAME, builder => [
               builder.column('migrate_id', DbType.string(100)).primaryKey(),
               builder.column('hash', DbType.string(32)).notNull(),
               builder.column('date', DbType.datetime).default(SQL.std.now()),

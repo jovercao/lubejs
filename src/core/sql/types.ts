@@ -93,3 +93,8 @@ export type ExpandScalar<T extends Scalar> =
   | AssertType<T, Binary>
   | AssertType<T, boolean>
   | AssertType<T, null>;
+
+/**
+ * 可空类型，对应数据库可空字段
+ */
+export type Nullable<T extends Scalar> = T | null;

@@ -82,6 +82,7 @@ export abstract class MigrateBuilder {
   alterProcedure(name: CompatiableObjectName): AlterProcedure {
     return SQL.alterProcedure(name);
   }
+
   dropProcedure(name: CompatiableObjectName): DropProcedure {
     return SQL.dropProcedure(name);
   }
@@ -121,9 +122,7 @@ export abstract class MigrateBuilder {
    * 更新一个表格
    * @param table
    */
-  update<T extends RowObject = any>(
-    table: CompatibleTable<T>
-  ): Update<T> {
+  update<T extends RowObject = any>(table: CompatibleTable<T>): Update<T> {
     return SQL.update(table);
   }
 
@@ -131,9 +130,7 @@ export abstract class MigrateBuilder {
    * 删除一个表格
    * @param table 表格
    */
-  delete<T extends RowObject = any>(
-    table: CompatibleTable<T>
-  ): Delete<T> {
+  delete<T extends RowObject = any>(table: CompatibleTable<T>): Delete<T> {
     return SQL.delete(table);
   }
 
@@ -318,5 +315,4 @@ export abstract class MigrateBuilder {
   ): Statement {
     return SQL.alterTable(table).drop(builder => builder.check(name));
   }
-
 }

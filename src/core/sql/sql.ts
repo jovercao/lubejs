@@ -495,7 +495,7 @@ abstract class SQLClass {
   static table<T extends RowObject = any>(
     name: string,
     members:
-      | ((builder: typeof TableVariantMemberBuilder) => TableVariantMember[])
+      | ((builder: TableVariantBuilder) => TableVariantMember[])
       | TableVariantMember[]
   ): ProxiedTableVariant<T>;
   static table<T extends RowObject = any>(
@@ -507,24 +507,21 @@ abstract class SQLClass {
     builtInOrMembers:
       | boolean
       | TableVariantMember[]
-      | ((builder: TableVariantMemberBuilder) => TableVariantMember[]) = false
+      | ((builder: TableVariantBuilder) => TableVariantMember[]) = false
   ): ProxiedTable<T> | TableVariant<T> {
-    if (Array.isArray(builtInOrMembers)) {
-      return TableVariant.create(name as string, builtInOrMembers);
-    }
-    if (typeof builtInOrMembers === 'function') {
-      return TableVariant.create(
+    if (
+      typeof builtInOrMembers === 'function' ||
+      Array.isArray(builtInOrMembers)
+    ) {
+      return createTableVariant(
         name as string,
-        builtInOrMembers(TableVariantMemberBuilder)
+        builtInOrMembers as
+          | ((builder: TableVariantBuilder) => TableVariantMember[])
+          | TableVariantMember[]
       );
     }
-    return new Table(name, builtInOrMembers) as ProxiedTable<T>;
+    return Table.create(name, builtInOrMembers as boolean);
   }
-
-  static column(name: string, type: DbType): ColumnDeclareForAdd {
-    return new ColumnDeclareForAdd(name, type);
-  }
-
   /**
    * 声明一个函数
    */
@@ -841,16 +838,12 @@ abstract class SQLClass {
     return selects[0];
   }
 
-  static createTable<N extends string>(
-    name: CompatiableObjectName<N>
-  ): CreateTable<N> {
-    return new CreateTable(name);
+  static get createTable(): CreateTableBuilder {
+    return createTable;
   }
 
-  static alterTable<N extends string>(
-    name: CompatiableObjectName<N>
-  ): AlterTable<N> {
-    return new AlterTable(name);
+  static get alterTable(): AlterTableBuilder {
+    return alterTable;
   }
 
   static createView<T extends RowObject = any, N extends string = string>(
@@ -869,20 +862,26 @@ abstract class SQLClass {
     return new CreateIndex(name);
   }
 
-  static createProcedure(name: CompatiableObjectName): CreateProcedure {
-    return new CreateProcedure(name);
+  static get createProcedure(): CreateProcedureBuilder {
+    return createProcedure;
   }
 
-  static alterProcedure(name: CompatiableObjectName): AlterProcedure {
-    return new AlterProcedure(name);
+  static get alterProcedure(): AlterProcedureBuilder {
+    return alterProcedure;
   }
 
-  static createFunction(name: CompatiableObjectName): CreateFunction {
-    return new CreateFunction(name);
+  static get createFunction(): CreateFunctionBuilder {
+    return createFunction;
   }
 
-  static alterFunction(name: CompatiableObjectName): AlterFunction {
-    return new AlterFunction(name);
+  static get alterFunction(): AlterFunctionBuilder {
+    return alterFunction;
+  }
+
+  static dropProcedure<N extends string>(
+    name: CompatiableObjectName<N>
+  ): DropProcedure<N> {
+    return new DropProcedure(name);
   }
 
   static dropTable<N extends string>(
@@ -895,12 +894,6 @@ abstract class SQLClass {
     name: CompatiableObjectName<N>
   ): DropView<N> {
     return new DropView(name);
-  }
-
-  static dropProcedure<N extends string>(
-    name: CompatiableObjectName<N>
-  ): DropProcedure<N> {
-    return new DropProcedure(name);
   }
 
   static dropFunction<N extends string>(
@@ -996,6 +989,8 @@ abstract class SQLClass {
   }
 
   //******************end statement*******************//
+
+  //*************************** 参数声明 ***************************//
   /**
    * input 参数
    */
@@ -1004,7 +999,7 @@ abstract class SQLClass {
     value: T,
     type?: DbTypeOf<T>
   ): Parameter<T, N> {
-    return Parameter.input(name, value, type);
+    return new Parameter(name, type, value, 'IN');
   }
 
   /**
@@ -1015,8 +1010,21 @@ abstract class SQLClass {
     type: T,
     value?: TsTypeOf<T>
   ): Parameter<TsTypeOf<T>, N> {
-    return Parameter.output(name, type, value);
+    return new Parameter(name, type, value, 'OUT');
   }
+
+  /**
+   * 创建一个输入输出参数
+   */
+  static inoutput<T extends DbType, N extends string>(
+    name: N,
+    type: T,
+    value?: TsTypeOf<T>
+  ): Parameter<TsTypeOf<T>, N> {
+    return new Parameter(name, type, value, 'INOUT');
+  }
+
+  //***************************End 参数声明 ***************************//
 
   static sequence<T extends Numeric>(name: CompatiableObjectName): Sequence<T> {
     return new Sequence(name);
@@ -1145,7 +1153,8 @@ import {
   TableVariant,
   ProxiedTableVariant,
   TableVariantMember,
-  TableVariantMemberBuilder,
+  TableVariantBuilder,
+  createTableVariant,
 } from './rowset';
 import {
   GroupCondition,
@@ -1182,22 +1191,27 @@ import { Raw } from './raw';
 import { Interger, isScalar, Numeric, Scalar } from './scalar';
 import {
   AlterDatabase,
-  AlterFunction,
-  AlterProcedure,
-  AlterTable,
+  alterFunction,
+  AlterFunctionBuilder,
+  alterProcedure,
+  AlterProcedureBuilder,
+  alterTable,
+  AlterTableBuilder,
   AlterView,
   Annotation,
   Assignment,
   Block,
   Break,
-  ColumnDeclareForAdd,
   Continue,
   CreateDatabase,
-  CreateFunction,
+  createFunction,
+  CreateFunctionBuilder,
   CreateIndex,
-  CreateProcedure,
+  createProcedure,
+  CreateProcedureBuilder,
   CreateSequence,
-  CreateTable,
+  createTable,
+  CreateTableBuilder,
   CreateView,
   Declare,
   Delete,

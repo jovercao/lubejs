@@ -1,5 +1,5 @@
 import { SQL, SQL_SYMBOLE } from '../../sql';
-import { DbType, DbTypeOf } from '../../db-type';
+import { DbType, TsTypeOf } from '../../db-type';
 import { Literal } from '../../expression/literal';
 import { PARAMETER_DIRECTION } from '../../expression/parameter';
 import { Scalar } from '../../scalar';
@@ -14,7 +14,7 @@ export class ProcedureParameter<
 
   constructor(
     name: N,
-    dataType: DbTypeOf<T>,
+    dataType: DbType,
     direct: PARAMETER_DIRECTION = 'IN',
     defaultValue?: Literal<T> | T
   ) {
@@ -27,6 +27,15 @@ export class ProcedureParameter<
         ? defaultValue
         : SQL.literal(defaultValue);
     }
+  }
+
+  static create<T extends DbType, N extends string>(
+    name: N,
+    dataType: T,
+    direct: PARAMETER_DIRECTION = 'IN',
+    defaultValue?: Literal<TsTypeOf<T>> | TsTypeOf<T>
+  ): ProcedureParameter<TsTypeOf<T>, N> {
+    return new ProcedureParameter(name, dataType, direct, defaultValue);
   }
 
   $dbType: DbType;

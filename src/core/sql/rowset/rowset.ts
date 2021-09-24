@@ -19,8 +19,14 @@ export abstract class Rowset<
     super();
     // *******************添加代理字段名属性******************
     // ***** 修改继承原型链为 this > Rowset & FieldProxy > AST ******
+    // **********************************************************
+  }
 
-    const proxied_proto = new Proxy(Object.create(Rowset.prototype), {
+  /**
+   * 继承Rowset后必须在调用此函数，以达到创建代理Rowset的目的。
+   */
+  protected $proxy(): ProxiedRowset<T> {
+    const proxied_proto = new Proxy(Object.create(this.constructor.prototype), {
       get: (proto: any, key: string | number | symbol) => {
         if (key in proto) {
           return Reflect.get(proto, key, this);
@@ -36,7 +42,7 @@ export abstract class Rowset<
       },
     });
     Object.setPrototypeOf(this, proxied_proto);
-    // **********************************************************
+    return this as ProxiedRowset<T>;
   }
 
   $name?: CompatiableObjectName = undefined;
@@ -96,7 +102,9 @@ export abstract class Rowset<
     return this;
   }
 
-  static isRowset(object: any): object is CompatibleRowset<any> | CompatibleRowset {
+  static isRowset(
+    object: any
+  ): object is CompatibleRowset<any> | CompatibleRowset {
     return object?.$tag === SQL_SYMBOLE.ROWSET;
   }
 

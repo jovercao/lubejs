@@ -55,26 +55,4 @@ export class Parameter<
     this.value = value;
     this.direction = direction;
   }
-
-  /**
-   * input 参数
-   */
-  static input<T extends Scalar, N extends string>(
-    name: N,
-    value: T,
-    type?: DbTypeOf<T>
-  ): Parameter<T, N> {
-    return new Parameter(name, type, value, 'IN');
-  }
-
-  /**
-   * output参数
-   */
-  static output<T extends DbType, N extends string>(
-    name: N,
-    type: T,
-    value?: TsTypeOf<T>
-  ): Parameter<TsTypeOf<T>, N> {
-    return new Parameter(name, type, value, 'OUT');
-  }
 }

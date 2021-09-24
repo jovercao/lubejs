@@ -1,24 +1,23 @@
+import { Condition } from '../../condition';
 import { DbType } from '../../db-type';
 import { CompatiableObjectName } from '../../object/db-object';
-import { RowObject } from '../../types';
-import { Select } from '../crud/select';
 import { Statement, STATEMENT_KIND } from '../statement';
-import {
-  AlterTableAddBuilder,
-  AlterTableAddMember,
-} from './alter-table-add-builder';
-import { AlterTableDropBuilder } from './alter-table-drop-builder';
 import { AlterTableDropMember } from './alter-table-drop-member';
 import { CheckConstraint, CheckConstraintBuilder } from './check-constraint';
 import { ColumnDeclareForAdd } from './column-declare-for-add';
 import { ColumnDeclareForAlter } from './column-declare-for-alter';
+import { CreateTableMember } from './create-table';
 import { ForeignKey } from './foreign-key';
 import { PrimaryKey } from './primary-key';
+import { SQL_SYMBOLE_TABLE_MEMBER } from './table-member';
 import { UniqueKey } from './unique-key';
 
 export class AlterTable<N extends string = string> extends Statement {
   static isAlterTable(object: any): object is AlterTable {
-    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.ALTER_TABLE;
+    return (
+      Statement.isStatement(object) &&
+      object.$kind === STATEMENT_KIND.ALTER_TABLE
+    );
   }
   $kind: STATEMENT_KIND.ALTER_TABLE = STATEMENT_KIND.ALTER_TABLE;
   $name: CompatiableObjectName<N>;
@@ -57,7 +56,7 @@ export class AlterTable<N extends string = string> extends Statement {
 
   add(
     build: (
-      builder: AlterTableAddBuilder
+      builder: AlterTableBuilder['add']
     ) => AlterTableAddMember | AlterTableAddMember[]
   ): this;
   add(...members: AlterTableAddMember[]): this;
@@ -65,14 +64,14 @@ export class AlterTable<N extends string = string> extends Statement {
     ...members:
       | [
           (
-            builder: AlterTableAddBuilder
+            builder: AlterTableBuilder['add']
           ) => AlterTableAddMember[] | AlterTableAddMember
         ]
       | AlterTableAddMember[]
   ): this {
     this._assertAdd();
     if (typeof members[0] === 'function') {
-      const ret = members[0](AlterTableAddBuilder);
+      const ret = members[0](alterTable.add);
       members = Array.isArray(ret) ? ret : [ret];
       this.add(...members);
       return this;
@@ -94,7 +93,7 @@ export class AlterTable<N extends string = string> extends Statement {
     this._assertAdd();
     let column: ColumnDeclareForAdd;
     if (typeof columnOrBuilder === 'function') {
-      column = columnOrBuilder(AlterTableAddBuilder.column);
+      column = columnOrBuilder(alterTable.add.column);
     } else {
       column = columnOrBuilder;
     }
@@ -110,7 +109,7 @@ export class AlterTable<N extends string = string> extends Statement {
     this._assertAdd();
     let key: PrimaryKey;
     if (typeof keyOrBuilder === 'function') {
-      key = keyOrBuilder(AlterTableAddBuilder.primaryKey);
+      key = keyOrBuilder(alterTable.add.primaryKey);
     } else {
       key = keyOrBuilder;
     }
@@ -126,7 +125,7 @@ export class AlterTable<N extends string = string> extends Statement {
     this._assertAdd();
     let key: ForeignKey;
     if (typeof keyOrBuilder === 'function') {
-      key = keyOrBuilder(AlterTableAddBuilder.foreignKey);
+      key = keyOrBuilder(alterTable.add.foreignKey);
     } else {
       key = keyOrBuilder;
     }
@@ -142,7 +141,7 @@ export class AlterTable<N extends string = string> extends Statement {
     this._assertAdd();
     let key: UniqueKey;
     if (typeof keyOrBuilder === 'function') {
-      key = keyOrBuilder(AlterTableAddBuilder.uniqueKey);
+      key = keyOrBuilder(alterTable.add.uniqueKey);
     } else {
       key = keyOrBuilder;
     }
@@ -158,7 +157,7 @@ export class AlterTable<N extends string = string> extends Statement {
     this._assertAdd();
     let check: CheckConstraint;
     if (typeof keyOrBuilder === 'function') {
-      check = keyOrBuilder(AlterTableAddBuilder.check);
+      check = keyOrBuilder(alterTable.add.check);
     } else {
       check = keyOrBuilder;
     }
@@ -167,15 +166,17 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 
   drop(member: AlterTableDropMember): this;
-  drop(build: (builder: AlterTableDropBuilder) => AlterTableDropMember): this;
+  drop(
+    build: (builder: AlterTableBuilder['drop']) => AlterTableDropMember
+  ): this;
   drop(
     memberOrBuilder:
-      | ((builder: AlterTableDropBuilder) => AlterTableDropMember)
+      | ((builder: AlterTableBuilder['drop']) => AlterTableDropMember)
       | AlterTableDropMember
   ): this {
     this._assertDrop();
     if (typeof memberOrBuilder === 'function') {
-      const member = memberOrBuilder(AlterTableDropBuilder);
+      const member = memberOrBuilder(alterTable.drop);
       this.$drop = member;
       return this;
     }
@@ -185,31 +186,31 @@ export class AlterTable<N extends string = string> extends Statement {
 
   dropColumn(name: string): this {
     this._assertDrop();
-    this.$drop = AlterTableDropBuilder.column(name);
+    this.$drop = alterTable.drop.column(name);
     return this;
   }
 
   dropPrimaryKey(name: string): this {
     this._assertDrop();
-    this.$drop = AlterTableDropBuilder.primaryKey(name);
+    this.$drop = alterTable.drop.primaryKey(name);
     return this;
   }
 
   dropForeignKey(name: string): Statement {
     this._assertDrop();
-    this.$drop = AlterTableDropBuilder.foreignKey(name);
+    this.$drop = alterTable.drop.foreignKey(name);
     return this;
   }
 
   dropCheck(name: string): this {
     this._assertDrop();
-    this.$drop = AlterTableDropBuilder.check(name);
+    this.$drop = alterTable.drop.check(name);
     return this;
   }
 
   dropUniqueKey(name: string): this {
     this._assertDrop();
-    this.$drop = AlterTableDropBuilder.uniqueKey(name);
+    this.$drop = alterTable.drop.uniqueKey(name);
     return this;
   }
 
@@ -226,9 +227,7 @@ export class AlterTable<N extends string = string> extends Statement {
       );
     }
     if (typeof buildColumn === 'function') {
-      this.$alterColumn = buildColumn(
-        (name: string, type: DbType) => new ColumnDeclareForAlter(name, type)
-      );
+      this.$alterColumn = buildColumn(alterTable.alter.column);
     } else {
       this.$alterColumn = buildColumn;
     }
@@ -236,23 +235,77 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 }
 
-export class CreateView<
-  T extends RowObject = any,
-  N extends string = string
-> extends Statement {
-  static isCreateView(object: any): object is CreateView {
-    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.CREATE_VIEW;
-  }
-  $kind: STATEMENT_KIND.CREATE_VIEW = STATEMENT_KIND.CREATE_VIEW;
-  $name: CompatiableObjectName<N>;
-  $body?: Select<T>;
-  constructor(name: CompatiableObjectName<N>) {
-    super();
-    this.$name = name;
-  }
-
-  as(select: Select<T>): this {
-    this.$body = select;
-    return this;
-  }
+export function alterTable(name: CompatiableObjectName): AlterTable {
+  return new AlterTable(name);
 }
+
+alterTable.add = {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): ColumnDeclareForAdd<N> {
+    return new ColumnDeclareForAdd(name, type);
+  },
+
+  primaryKey(name?: string): PrimaryKey {
+    return new PrimaryKey(name);
+  },
+
+  foreignKey(name?: string): ForeignKey {
+    return new ForeignKey(name);
+  },
+
+  check(nameOrSql: string | Condition, _sql?: Condition): CheckConstraint {
+    let name: string | undefined;
+    let sql: Condition;
+    if (typeof nameOrSql === 'string') {
+      name = nameOrSql;
+      sql = _sql!;
+    } else {
+      sql = nameOrSql;
+    }
+    return new CheckConstraint(sql, name);
+  },
+
+  uniqueKey(name?: string): UniqueKey {
+    return new UniqueKey(name);
+  },
+};
+
+alterTable.drop = {
+  column(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.COLUMN, name);
+  },
+
+  primaryKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.PRIMARY_KEY, name);
+  },
+
+  foreignKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.FOREIGN_KEY, name);
+  },
+
+  check(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(
+      SQL_SYMBOLE_TABLE_MEMBER.CHECK_CONSTRAINT,
+      name
+    );
+  },
+
+  uniqueKey(name: string): AlterTableDropMember {
+    return new AlterTableDropMember(SQL_SYMBOLE_TABLE_MEMBER.UNIQUE_KEY, name);
+  },
+};
+
+alterTable.alter = {
+  column<N extends string, T extends DbType>(
+    name: N,
+    type: T
+  ): ColumnDeclareForAlter<N> {
+    return new ColumnDeclareForAlter(name, type);
+  },
+};
+
+export type AlterTableBuilder = typeof alterTable;
+
+export type AlterTableAddMember = CreateTableMember;
