@@ -1,25 +1,25 @@
 /* eslint-disable @typescript-eslint/ban-types */
 
 import { SQL } from '../core';
-import { DbContext } from './db-context';
+import { DbContext } from '../orm/db-context';
 import {
   ColumnMetadata,
   ForeignRelationMetadata,
   IndexMetadata,
   TableEntityMetadata,
   ViewEntityMetadata,
-} from './metadata';
+} from '../orm/metadata';
 import {
   compareObject,
   EqulsCompartor,
   ObjectDifference,
   ObjectKeyCompartor,
-} from '../migrate/compare';
+} from './compare';
 import {
   isTableEntity,
   isViewEntity,
   isForeignRelation,
-} from './metadata/util';
+} from '../orm/metadata/util';
 
 /*********************************
  * [元数据生成顺序]
@@ -68,10 +68,10 @@ export interface ForeignKeySchema {
   comment?: string;
 }
 
-export interface SchemaSchema {
-  name: string;
-  comment?: string;
-}
+// export interface SchemaSchema {
+//   name: string;
+//   comment?: string;
+// }
 
 export interface DatabaseSchema {
   /**
@@ -92,7 +92,7 @@ export interface DatabaseSchema {
   /**
    * 架构
    */
-  schemas: SchemaSchema[];
+  schemas: string[];
 
   /**
    * 视图
@@ -273,12 +273,12 @@ export interface CheckConstraintSchema {
   comment?: string;
 }
 
-export interface UniqueConstraintSchema {
-  kind: 'UNIQUE';
-  name: string;
-  columns: KeyColumnSchema[];
-  comment?: string;
-}
+// export interface UniqueConstraintSchema {
+//   kind: 'UNIQUE';
+//   name: string;
+//   columns: KeyColumnSchema[];
+//   comment?: string;
+// }
 
 export interface KeyColumnSchema {
   name: string;
@@ -295,7 +295,7 @@ export interface PrimaryKeySchema {
   columns: KeyColumnSchema[];
 }
 
-export type ConstraintSchema = CheckConstraintSchema | UniqueConstraintSchema;
+export type ConstraintSchema = CheckConstraintSchema; // | UniqueConstraintSchema;
 
 /**
  * 视图架构

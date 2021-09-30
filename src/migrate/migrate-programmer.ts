@@ -10,8 +10,8 @@ import {
   PrimaryKeySchema,
   SequenceSchema,
   TableSchema,
-  UniqueConstraintSchema,
-} from '../orm/schema';
+  // UniqueConstraintSchema,
+} from './schema';
 import { CompatiableObjectName, DbType, SqlUtil } from '../core';
 
 // export class MigrateProgrammer {
@@ -773,7 +773,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     if (cst.kind === 'CHECK') {
       return this.checkConstraint(cst);
     }
-    this.uniqueConstraint(cst);
+    // this.uniqueConstraint(cst);
   }
 
   private checkConstraint(check: CheckConstraintSchema): void {
@@ -782,11 +782,11 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
 
-  private uniqueConstraint(key: UniqueConstraintSchema): void {
-    this.middleCodes.push(
-      `builder.uniqueKey('${key.name}').on(${this.keyColumns(key.columns)})`
-    );
-  }
+  // private uniqueConstraint(key: UniqueConstraintSchema): void {
+  //   this.middleCodes.push(
+  //     `builder.uniqueKey('${key.name}').on(${this.keyColumns(key.columns)})`
+  //   );
+  // }
 
   createTable(table: TableSchema): void {
     const members: string[] = table.columns.map(col => this.columnForAdd(col));
@@ -800,245 +800,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
       table
     )}).body(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
-    // if (table.foreignKeys?.length > 0) {
-    //   table.foreignKeys.map(fk => this.addForeignKey(table, fk));
-    // }
-    // for (const index of table.indexes) {
-    //   this.createIndex(table, index);
-    // }
-
-    // if (table.comment) {
-    //   this.comment('Table', table, table.comment);
-    // }
-
-    // for (const column of table.columns) {
-    //   if (column.isRowflag) {
-    //     this.setAutoFlag(table, column.name);
-    //   }
-    //   if (column.comment) {
-    //     this.comment('Column', table, column.name, column.comment);
-    //   }
-    // }
-
-    // for (const cst of table.constraints || []) {
-    //   if (cst.comment) {
-    //     this.comment('Constraint', table, cst.name, cst.comment);
-    //   }
-    // }
-
-    // for (const index of table.indexes || []) {
-    //   if (index.comment) {
-    //     this.comment('Index', table, index.name, index.comment);
-    //   }
-    // }
-    // if (table.seedData?.length) {
-    //   this.insertSeedData(table, table.seedData);
-    // }
   }
-
-  // alterTableAndAll(tableChanges: ObjectDifference<TableSchema>): void {
-  //   const target = tableChanges.target!;
-  //   // PRIMARY KEY
-  //   if (tableChanges.changes?.primaryKey) {
-  //     if (tableChanges.changes.primaryKey.added) {
-  //       this.addPrimaryKey(target, tableChanges.changes.primaryKey.added);
-  //     }
-
-  //     if (tableChanges.changes.primaryKey.removed) {
-  //       this.dropPrimaryKey(
-  //         target,
-  //         tableChanges.changes.primaryKey.removed.name
-  //       );
-  //     }
-
-  //     if (tableChanges.changes?.primaryKey.changes) {
-  //       if (
-  //         !(
-  //           tableChanges.changes?.primaryKey.changes.comment &&
-  //           Object.keys(tableChanges.changes?.primaryKey.changes).length === 1
-  //         )
-  //       ) {
-  //         this.dropPrimaryKey(
-  //           target,
-  //           tableChanges.changes.primaryKey.target!.name
-  //         );
-  //         this.addPrimaryKey(target, tableChanges.changes.primaryKey.source!);
-  //       }
-
-  //       if (tableChanges.changes?.primaryKey.changes.comment) {
-  //         this.comment(
-  //           'Constraint',
-  //           target,
-  //           tableChanges.changes.primaryKey.source!.name,
-  //           tableChanges.changes.primaryKey.source!.comment
-  //         );
-  //       }
-  //     }
-  //   }
-
-  //   // COLUMNS
-  //   if (tableChanges.changes?.columns) {
-  //     for (const col of tableChanges.changes.columns.removeds || []) {
-  //       // const fk = findTargetForeignKey(({ table, foreignKey }) => isNameEquals(tableName, name))
-  //       this.dropColumn(target, col.name);
-  //     }
-  //     for (const column of tableChanges.changes.columns.addeds || []) {
-  //       this.addColumn(target, column);
-  //       if (column.isRowflag) {
-  //         this.setAutoFlag(target, column.name);
-  //       }
-  //       if (column.comment) {
-  //         this.comment('Column', target, column.name, column.comment);
-  //       }
-  //     }
-
-  //     for (const { target, source, changes } of tableChanges.changes.columns
-  //       .changes || []) {
-  //       if (!changes) continue;
-  //       // 如果类型或者是否可空变化
-  //       if (changes.type || changes.isNullable) {
-  //         this.alterColumn(target!, source!);
-  //       }
-  //       if (changes.isRowflag) {
-  //         if (source!.isRowflag) {
-  //           this.setAutoFlag(target!, source!.name);
-  //         } else {
-  //           this.dropAutoFlag(target!, source!.name);
-  //         }
-  //       }
-  //       if (changes.defaultValue) {
-  //         if (!changes.defaultValue.source) {
-  //           this.dropDefaultValue(target!, target!.name);
-  //         } else {
-  //           this.setDefaultValue(
-  //             target!,
-  //             source!.name,
-  //             changes.defaultValue.source
-  //           );
-  //         }
-  //       }
-
-  //       if (
-  //         changes.isIdentity ||
-  //         changes.identityIncrement ||
-  //         changes.identityIncrement
-  //       ) {
-  //         if (!source!.isIdentity) {
-  //           this.middleCodes.push(
-  //             '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
-  //           );
-  //           this.dropIdentity(target!, target!.name);
-  //         } else {
-  //           this.middleCodes.push(
-  //             '// 敬告：因为需要重建表，在mssql中尚未实现该功能。'
-  //           );
-
-  //           this.setIdentity(
-  //             target!,
-  //             source!.name,
-  //             source!.identityStartValue!,
-  //             source!.identityIncrement!
-  //           );
-  //         }
-  //       }
-
-  //       if (changes.comment) {
-  //         this.comment('Column', target!, source!.name, changes.comment.source);
-  //       }
-  //     }
-  //   }
-
-  //   // FOREIGN KEY
-  //   if (tableChanges.changes?.foreignKeys) {
-  //     for (const fk of tableChanges.changes?.foreignKeys?.addeds || []) {
-  //       this.addForeignKey(target, fk);
-  //       if (fk.comment) {
-  //         this.comment('Constraint', target, fk.name, fk.comment);
-  //       }
-  //     }
-
-  //     for (const { name } of tableChanges.changes?.foreignKeys?.removeds ||
-  //       []) {
-  //       this.dropForeignKey(target, name);
-  //     }
-
-  //     for (const { source, target, changes } of tableChanges.changes
-  //       ?.foreignKeys?.changes || []) {
-  //       this.dropForeignKey(target!, target!.name);
-  //       this.addForeignKey(target!, source!);
-  //       if (changes?.comment) {
-  //         this.comment(
-  //           'Constraint',
-  //           target!,
-  //           target!.name,
-  //           changes.comment.source
-  //         );
-  //       }
-  //     }
-  //   }
-
-  //   // CONSTRAINT
-  //   if (tableChanges.changes?.constraints) {
-  //     for (const constraint of tableChanges.changes.constraints.addeds || []) {
-  //       this.addConstraint(target, constraint);
-
-  //       if (constraint.comment) {
-  //         this.comment(
-  //           'Constraint',
-  //           target,
-  //           constraint.name,
-  //           constraint.comment
-  //         );
-  //       }
-  //     }
-
-  //     for (const constraint of tableChanges.changes.constraints.removeds ||
-  //       []) {
-  //       this.dropConstraint(target, constraint);
-  //     }
-
-  //     for (const { source, target, changes } of tableChanges.changes.constraints
-  //       .changes || []) {
-  //       this.dropConstraint(target!, target!);
-  //       this.addConstraint(target!, source!);
-  //       if (changes?.comment) {
-  //         this.comment(
-  //           'Constraint',
-  //           target!,
-  //           target!.name,
-  //           changes.comment.source
-  //         );
-  //       }
-  //     }
-  //   }
-
-  //   // INDEXES
-  //   if (tableChanges.changes?.indexes) {
-  //     for (const index of tableChanges.changes.indexes.addeds || []) {
-  //       this.createIndex(target, index);
-  //       if (index.comment) {
-  //         this.comment('Index', target, index.name, index.comment);
-  //       }
-  //     }
-
-  //     for (const index of tableChanges.changes.indexes.removeds || []) {
-  //       this.dropIndex(target, index.name);
-  //     }
-
-  //     for (const { source, target, changes } of tableChanges.changes.indexes
-  //       .changes || []) {
-  //       this.dropIndex(target!, target!.name);
-  //       this.createIndex(target!, source!);
-  //       if (changes?.comment) {
-  //         this.comment('Index', target!, source!.name, changes.comment.source);
-  //       }
-  //     }
-  //   }
-
-  //   if (tableChanges.changes?.comment) {
-  //     this.comment('Table', target, tableChanges.changes.comment.source);
-  //   }
-  // }
 
   namify(objName: CompatiableObjectName): string {
     const nameobj = this.sqlUtil.parseObjectName(objName);
@@ -1195,13 +957,13 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
       );
       return;
     }
-    this.middleCodes.push(
-      `builder.alterTable(${this.namify(
-        table
-      )}).add(({ uniqueKey }) => uniqueKey(${JSON.stringify(
-        constaint.name
-      )}).on(${this.keyColumns(constaint.columns)}))`
-    );
+    // this.middleCodes.push(
+    //   `builder.alterTable(${this.namify(
+    //     table
+    //   )}).add(({ uniqueKey }) => uniqueKey(${JSON.stringify(
+    //     constaint.name
+    //   )}).on(${this.keyColumns(constaint.columns)}))`
+    // );
   }
 
   addPrimaryKey(table: CompatiableObjectName, key: PrimaryKeySchema): void {

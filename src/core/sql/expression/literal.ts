@@ -54,7 +54,7 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
       case SharedArrayBuffer:
         return DbType.binary(0);
       default:
-        throw new Error('Invalid value.');
+        throw new Error('Invalid literial value.' + value);
     }
   }
 }

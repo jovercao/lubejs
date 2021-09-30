@@ -66,6 +66,10 @@ export type DATETIMEOFFSET = {
   readonly name: 'DATETIMEOFFSET';
 };
 
+export type TIME = {
+  readonly name: 'TIME';
+};
+
 export type BINARY = {
   readonly name: 'BINARY';
   readonly length: number;
@@ -132,6 +136,7 @@ export type DbType =
   | STRING
   | DATE
   | DATETIME
+  // | TIME
   | DATETIMEOFFSET
   | BINARY
   | BOOLEAN

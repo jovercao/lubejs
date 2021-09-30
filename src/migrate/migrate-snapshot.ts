@@ -7,7 +7,7 @@ import {
   FunctionSchema,
   PrimaryKeySchema,
   ProcedureSchema,
-  SchemaSchema,
+  // SchemaSchema,
   SequenceSchema,
   TableSchema,
   ViewSchema,
@@ -18,7 +18,6 @@ import {
   AlterTable,
   CompatiableObjectName,
   CompatibleExpression,
-  Condition,
   CreateTable,
   CreateTableMember,
   Expression,
@@ -666,12 +665,12 @@ export class SnapshotMigrateTracker {
               constraint.comment = comment;
               break;
             }
-            case 'setSchemaComment': {
-              const [schemaName, comment] = statement.$datas;
-              const schema = this.getSchema(schemaName);
-              schema.comment = comment;
-              break;
-            }
+            // case 'setSchemaComment': {
+            //   const [schemaName, comment] = statement.$datas;
+            //   const schema = this.getSchema(schemaName);
+            //   schema.comment = comment;
+            //   break;
+            // }
             case 'dropTableComment': {
               const [tableName] = statement.$datas;
               const table = this.getTable(tableName);
@@ -714,12 +713,12 @@ export class SnapshotMigrateTracker {
               constraint.comment = undefined;
               break;
             }
-            case 'dropSchemaComment': {
-              const [schemaName] = statement.$datas;
-              const schema = this.getSchema(schemaName);
-              schema.comment = undefined;
-              break;
-            }
+            // case 'dropSchemaComment': {
+            //   const [schemaName] = statement.$datas;
+            //   const schema = this.getSchema(schemaName);
+            //   schema.comment = undefined;
+            //   break;
+            // }
           }
       }
     }
@@ -798,10 +797,10 @@ export class SnapshotMigrateTracker {
 
   private assertSchemaNotExists(name: string): void {
     this.assertDatabaseExists(this.database);
-    const schema = this.database.schemas.find(p => p.name === name);
+    const schema = this.database.schemas.find(p => p === name);
     if (schema)
       throw new Error(
-        `Schema ${this.sqlUtil.sqlifyObjectName(schema.name)} is exists.`
+        `Schema ${this.sqlUtil.sqlifyObjectName(schema)} is exists.`
       );
   }
 
@@ -938,19 +937,19 @@ export class SnapshotMigrateTracker {
           });
           break;
         }
-        case SQL_SYMBOLE.UNIQUE_KEY: {
-          assertAst(item.$columns, 'Unique key name not found.');
-          assertAst(item.$name, 'Unique key name not found.');
-          table.constraints.push({
-            name: item.$name,
-            kind: 'UNIQUE',
-            columns: item.$columns.map(c => ({
-              name: c.name,
-              isAscending: c.sort === 'ASC',
-            })),
-          });
-          break;
-        }
+        // case SQL_SYMBOLE.UNIQUE_KEY: {
+        //   assertAst(item.$columns, 'Unique key name not found.');
+        //   assertAst(item.$name, 'Unique key name not found.');
+        //   table.constraints.push({
+        //     name: item.$name,
+        //     kind: 'UNIQUE',
+        //     columns: item.$columns.map(c => ({
+        //       name: c.name,
+        //       isAscending: c.sort === 'ASC',
+        //     })),
+        //   });
+        //   break;
+        // }
         case SQL_SYMBOLE.CHECK_CONSTRAINT: {
           assertAst(item.$name, 'Unique key name not found.');
           table.constraints.push({
@@ -1083,16 +1082,16 @@ export class SnapshotMigrateTracker {
     }
   }
 
-  private getSchema(name: any): SchemaSchema {
-    this.assertDatabaseExists(this.database);
-    const schema = this.database.schemas.find(p => name === p.name);
-    if (!schema) {
-      throw new Error(
-        `Schema ${this.sqlUtil.sqlifyObjectName(name)} is not found.`
-      );
-    }
-    return schema;
-  }
+  // private getSchema(name: any): string {
+  //   this.assertDatabaseExists(this.database);
+  //   const schema = this.database.schemas.find(p => name === p);
+  //   if (!schema) {
+  //     throw new Error(
+  //       `Schema ${this.sqlUtil.sqlifyObjectName(name)} is not found.`
+  //     );
+  //   }
+  //   return schema;
+  // }
   private getSequence(name: any): SequenceSchema {
     this.assertDatabaseExists(this.database);
     const sequence = this.database.sequences.find(p =>

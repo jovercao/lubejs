@@ -7,7 +7,7 @@ import {
   KeyColumn,
   CompatiableObjectName,
   DbType,
-  SQL
+  SQL,
 } from '../core';
 
 import { MigrateBuilder } from './migrate-builder';
@@ -21,7 +21,7 @@ import {
   PrimaryKeySchema,
   SequenceSchema,
   TableSchema,
-  UniqueConstraintSchema,
+  // UniqueConstraintSchema,
 } from '../orm';
 import { sortByDependency } from './util';
 import { compareSchema, ObjectDifference } from './compare';
@@ -266,12 +266,12 @@ export abstract class MigrateScripter<T extends string | Statement> {
             (
               tableChanges.changes
                 .constraints as ObjectDifference<CheckConstraintSchema>
-            ).changes?.sql) ||
-          (source?.kind === 'UNIQUE' &&
-            (
-              tableChanges.changes
-                .constraints as ObjectDifference<UniqueConstraintSchema>
-            ).changes?.columns)
+            ).changes?.sql)
+          // || (source?.kind === 'UNIQUE' &&
+          // (
+          //   tableChanges.changes
+          //     .constraints as ObjectDifference<UniqueConstraintSchema>
+          // ).changes?.columns)
         ) {
           this.dropConstraint(table, target!);
         }
@@ -441,12 +441,12 @@ export abstract class MigrateScripter<T extends string | Statement> {
             (
               tableChanges.changes
                 .constraints as ObjectDifference<CheckConstraintSchema>
-            ).changes?.sql) ||
-          (source?.kind === 'UNIQUE' &&
-            (
-              tableChanges.changes
-                .constraints as ObjectDifference<UniqueConstraintSchema>
-            ).changes?.columns)
+            ).changes?.sql)
+          // || (source?.kind === 'UNIQUE' &&
+          //   (
+          //     tableChanges.changes
+          //       .constraints as ObjectDifference<UniqueConstraintSchema>
+          //   ).changes?.columns)
         ) {
           this.addConstraint(table, source!);
           if (source?.comment) {
@@ -804,16 +804,16 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
         switch (constraint.kind) {
           case 'CHECK':
             return g.check(constraint.name, SQL.raw(constraint.sql));
-          case 'UNIQUE':
-            return g.uniqueKey(constraint.name).on(
-              constraint.columns.map(
-                col =>
-                  ({
-                    name: col.name,
-                    sort: col.isAscending ? 'ASC' : 'DESC',
-                  } as KeyColumn)
-              )
-            );
+          // case 'UNIQUE':
+          //   return g.uniqueKey(constraint.name).on(
+          //     constraint.columns.map(
+          //       col =>
+          //         ({
+          //           name: col.name,
+          //           sort: col.isAscending ? 'ASC' : 'DESC',
+          //         } as KeyColumn)
+          //     )
+          //   );
         }
       })
     );
@@ -829,11 +829,11 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
           this.builder.alterTable(table).dropCheck(constraint.name)
         );
         break;
-      case 'UNIQUE':
-        this.middleCodes.push(
-          this.builder.alterTable(table).dropUniqueKey(constraint.name)
-        );
-        break;
+      // case 'UNIQUE':
+      //   this.middleCodes.push(
+      //     this.builder.alterTable(table).dropUniqueKey(constraint.name)
+      //   );
+      //   break;
     }
   }
 

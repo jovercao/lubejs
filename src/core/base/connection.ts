@@ -19,7 +19,10 @@ export class AbortError extends Error {
 }
 
 abstract class ConnectionClass extends Executor {
-  constructor(public provider: DbProvider, public readonly options: ConnectOptions) {
+  constructor(
+    public provider: DbProvider,
+    public readonly options: ConnectOptions
+  ) {
     super();
   }
 
@@ -137,4 +140,13 @@ export type ConnectOptions = {
    * 单个查询超时时长,单位: ms，默认为15000ms
    */
   requestTimeout?: number;
+
+  /**
+   * 多条语句执行，针对不同的SQL语言采取不同的策略
+   * MSSQL 本身支持语句块查询，并支持变量声明等操作
+   * MYSQL 则需要开启后方可支持，但不支持局部变量声明等操作;
+   * PGSQL 则需要声明为DO语句，支持局部变量声明等操作，但不支持行集返回及输出参数，仅可通过临时表等方式返回；
+   * 而lubejs则在客户端层面支持多语句执行(SQL字符串除外)，实际上则是执行多条语句并一次返回。
+   */
+  // multiStatement: boolean;
 };

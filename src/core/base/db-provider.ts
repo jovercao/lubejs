@@ -29,4 +29,5 @@ export interface DbProvider {
  */
 export interface DbProviderFactory {
   (): DbProvider;
+  dialect: string;
 }

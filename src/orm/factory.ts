@@ -1,6 +1,6 @@
 import { Connection, ConnectOptions } from '../core/base/connection';
 import { loadConfig, prepareConnectOptions } from '../core/config';
-import { connect } from '../core';
+import { createConnection } from '../core';
 import { DbContext, DbContextConstructor } from './db-context';
 import { metadataStore } from './metadata-store';
 
@@ -39,17 +39,17 @@ export async function createContext(
     // if (!options) {
     //   throw new Error(`Context ${Ctr.name} 's config not found in configure file, pls configure it or provider options.`)
     // }
-    lube = await connect(options);
+    lube = await createConnection(options);
   } else if (typeof optOrCfgOrUrlOrLubeOrCtr === 'function') {
     Ctr = optOrCfgOrUrlOrLubeOrCtr;
     if (!optOrCfgOrUrlOrLube) {
       const options = await getConnectOptions(Ctr);
-      lube = await connect(options);
+      lube = await createConnection(options);
     } else if (optOrCfgOrUrlOrLube instanceof Connection) {
       lube = optOrCfgOrUrlOrLube;
     } else {
       const options = await getConnectOptions(optOrCfgOrUrlOrLube);
-      lube = await connect(options);
+      lube = await createConnection(options);
     }
   } else if (optOrCfgOrUrlOrLubeOrCtr instanceof Connection) {
     Ctr = metadataStore.defaultContext.class;
@@ -57,7 +57,7 @@ export async function createContext(
   } else {
     Ctr = metadataStore.defaultContext.class;
     const options = await getConnectOptions(optOrCfgOrUrlOrLubeOrCtr);
-    lube = await connect(options);
+    lube = await createConnection(options);
   }
 
   return new Ctr(lube);

@@ -1,7 +1,10 @@
-import { parse, stringify, v4 } from 'uuid'
+import { parse, stringify, v4 } from 'uuid';
 
 export class Uuid {
   constructor(strOrBuffer?: string | ArrayLike<number>) {
+    if (!(this instanceof Uuid)) {
+      return new Uuid(strOrBuffer);
+    }
     if (typeof strOrBuffer === 'string') {
       this._buffer = Array.from(parse(strOrBuffer));
     } else if (strOrBuffer) {
@@ -12,13 +15,15 @@ export class Uuid {
   }
 
   readonly [n: number]: number;
-  private readonly _buffer: number[];
+  private readonly _buffer!: number[];
 
   toString(): string {
     return stringify(this._buffer);
   }
 
-  private static readonly DEFAULT = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  private static readonly DEFAULT = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  ];
 
   static new(): Uuid {
     const uuid = new Uuid();

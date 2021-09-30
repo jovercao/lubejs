@@ -128,7 +128,12 @@ export abstract class Executor {
       command = {
         sql: this.sqlUtil.sql(args[0], ...args.slice(1)),
       };
-    } else if (
+      // 如果是语句数组
+    }
+    // else if (Array.isArray(args[0]) && Statement.isStatement(args[0][0])) {
+
+    // }
+    else if (
       args.length === 1 &&
       typeof args[0] === 'object' &&
       typeof args[0].sql === 'string'

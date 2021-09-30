@@ -25,13 +25,16 @@ import {
   Command,
   DbProvider,
   getProvider,
+  loadConfig,
+  createConnection,
 } from '../core';
 import { MigrateBuilder } from './migrate-builder';
 import { StatementMigrateScripter } from './migrate-scripter';
 import { ProgramMigrateScripter } from './migrate-programmer';
 import './types';
-import { loadConfig } from '../core/config';
 import { Writable } from 'stream';
+import { SchemaLoader } from './schema-loader';
+import { Connection } from '../core/base/connection';
 
 const { readdir, stat, writeFile } = promises;
 export interface Migrate {
@@ -115,16 +118,17 @@ export function outputCommand(cmd: Command, writer: Writable): void {
 class MigrateCliClass {
   private _targetSchemaName!: string;
   constructor(
-    private contextName?: string,
+    context?: string | DbContext,
     public readonly migrateDir: string = './migrates'
   ) {
     // 设置为默认数据库
     return (async () => {
-      await this.init();
+      await this.init(context);
       return this;
     })() as any;
   }
 
+  public connection!: Connection;
   public dbContext!: DbContext;
 
   private initDatabase!: string;
@@ -133,56 +137,65 @@ class MigrateCliClass {
 
   private migrateBuilder!: MigrateBuilder;
 
-  private async init(): Promise<void> {
+  private schemaLoader!: SchemaLoader;
+
+  private async init(context?: DbContext | string): Promise<void> {
     let Ctr: DbContextConstructor;
     let metadata: DbContextMetadata;
-    if (this.contextName) {
-      metadata = metadataStore.getContext(this.contextName);
-      Ctr = metadata.class;
+
+    if (!context || typeof context === 'string') {
+      if (context) {
+        metadata = metadataStore.getContext(context);
+        Ctr = metadata.class;
+      } else {
+        metadata = metadataStore.defaultContext;
+        Ctr = metadata.class;
+      }
+      const config = await loadConfig();
+      if (!config.configures[Ctr.name]) {
+        throw new Error(`DbContext ${context}, connection config not found.`);
+      }
+      const options = Object.assign({}, config.configures[Ctr.name]);
+      // 不直接进入指定数据库，而是进入系统数据库
+      if (options.database) {
+        this.targetDatabase = options.database;
+        options.database = undefined;
+      }
+      this.connection = await createConnection(options);
+      this.dbContext = await createContext(Ctr, this.connection);
     } else {
-      metadata = metadataStore.defaultContext;
-      Ctr = metadata.class;
-      this.contextName = Ctr.name;
+      this.dbContext = context;
+      this.connection = context.connection;
     }
-    const config = await loadConfig();
-    if (!config.configures[Ctr.name]) {
-      throw new Error(
-        `DbContext ${this.contextName}, connection config not found.`
-      );
-    }
-    const options = Object.assign({}, config.configures[Ctr.name]);
-    // 不直接进入指定数据库，而是进入系统数据库
-    if (options.database) {
-      this.targetDatabase = options.database;
-      options.database = undefined;
-    } else {
-      this.targetDatabase = this.dbContext.metadata.database;
-    }
-    this.dbContext = await createContext(Ctr, options);
+    this.targetDatabase =
+      this.connection.options.database || this.dbContext.metadata.database;
     // 进入后的数据库名称
-    this.initDatabase = await this.dbContext.connection.getDatabaseName();
+    this.initDatabase = await this.connection.getDatabaseName();
     if (this.initDatabase === this.targetDatabase) {
-      await this.dbContext.connection.close();
+      await this.connection.close();
       throw new Error('Migrate must run with super administrator user.');
     }
-    this.provider = getProvider(this.dbContext.connection.options.dialect!);
+    this.provider = getProvider(this.connection.options.dialect!);
     this.migrateBuilder = this.provider.getMigrateBuilder();
-    this._targetSchemaName = await this.dbContext.connection.getSchemaName();
+    this.schemaLoader = this.provider.getSchemaLoader(
+      this.dbContext!.connection
+    );
+    this._targetSchemaName = await this.connection.getSchemaName();
   }
 
   /**
    * 确保在目标数据库中运行
    */
   private async runInTargetDatabase<T>(handler: () => Promise<T>): Promise<T> {
-    const currentDb = await this.dbContext.connection.getDatabaseName();
+    const currentDb = await this.connection.getDatabaseName();
     if (currentDb !== this.targetDatabase) {
-      await this.dbContext.connection.query(SQL.use(this.targetDatabase));
+      await this.connection.query(SQL.use(this.targetDatabase));
       try {
         const result = await handler();
-        await this.dbContext.connection.query(SQL.use(currentDb));
+        await this.connection.query(SQL.use(currentDb));
         return result;
       } finally {
-        await this.dbContext.connection.query(SQL.use(currentDb));
+        await this.connection.query(SQL.use(currentDb));
       }
     }
     return handler();
@@ -197,15 +210,9 @@ class MigrateCliClass {
     const statements: Statement[] = [];
     const scripter = createMigrateBuilder(builder, statements);
     if (action === 'up') {
-      await instance.up(
-        scripter,
-        this.dbContext.connection.options.provider!.dialect
-      );
+      await instance.up(scripter, this.connection.options.provider!.dialect);
     } else {
-      await instance.down(
-        scripter,
-        this.dbContext.connection.options.provider!.dialect
-      );
+      await instance.down(scripter, this.connection.options.provider!.dialect);
     }
     return statements;
   }
@@ -220,7 +227,7 @@ class MigrateCliClass {
    * @returns
    */
   private async existsTargetDatabase(): Promise<boolean> {
-    const result = await this.dbContext.connection.queryScalar(
+    const result = await this.connection.queryScalar(
       SQL.select(1).where(SQL.std.existsDatabase(this.targetDatabase))
     );
     return result === 1;
@@ -252,39 +259,6 @@ class MigrateCliClass {
             `===============Migrate up script from "${info.path}"====================`
           )
         );
-
-        // statements.push(SQL.note('Check last migration exists in database?'));
-        // const t = SQL.table(LUBE_MIGRATE_TABLE_NAME);
-        // if (i >= 1) {
-        //   const lastInfo = migrates[i - 1];
-        //   statements.push(
-        //     SQL.if(
-        //       SQL.not(
-        //         SQL.exists(
-        //           SQL.select(1)
-        //             .from(t)
-        //             .where(
-        //               t.migrate_id.eq(lastInfo.id).and(t.hash.eq(lastInfo.hash!))
-        //             )
-        //         )
-        //       )
-        //     ).then(
-        //       this.dbContext.lube.provider.migrateBuilder.throw(
-        //         `Migration ${lastInfo.id} must upped before ${info.id}.`
-        //       )
-        //     )
-        //   );
-        // }
-        // statements.push(SQL.note('Check last migration exists in database?'));
-        // statements.push(
-        //   SQL.if(
-        //     SQL.exists(SQL.select(1).from(t).where(t.migrate_id.eq(info.id)))
-        //   ).then(
-        //     this.dbContext.lube.provider.migrateBuilder.throw(
-        //       `Migration ${info.id} upped in database.`
-        //     )
-        //   )
-        // );
         const Migrate = await importMigrate(info);
         const codes = await this.runMigrate(Migrate, 'up', this.migrateBuilder);
         statements.push(...codes);
@@ -348,15 +322,15 @@ class MigrateCliClass {
     }
 
     const scripts = statements.map(statement =>
-      this.dbContext.connection.sqlUtil.sqlify(statement)
+      this.connection.sqlUtil.sqlify(statement)
     );
     return scripts;
   }
   private _migrateList?: MigrateInfo[];
 
   async dispose(): Promise<void> {
-    if (this.dbContext?.connection?.opened) {
-      await this.dbContext.connection.close();
+    if (this.connection.opened) {
+      await this.connection.close();
     }
   }
 
@@ -367,14 +341,11 @@ class MigrateCliClass {
   public async getDbMigrate(): Promise<MigrateInfo | undefined> {
     try {
       const migrate = await this.runInTargetDatabase(async () => {
-        const [item] = await this.dbContext.connection.select(
-          LUBE_MIGRATE_TABLE_NAME,
-          {
-            offset: 0,
-            limit: 1,
-            sorts: t => [t.$field('migrate_id').desc()],
-          }
-        );
+        const [item] = await this.connection.select(LUBE_MIGRATE_TABLE_NAME, {
+          offset: 0,
+          limit: 1,
+          sorts: t => [t.$field('migrate_id').desc()],
+        });
         if (!item) return;
         const id = item.migrate_id;
         return this.getMigrate(id);
@@ -394,24 +365,20 @@ class MigrateCliClass {
   /**
    * 创建数据库
    */
-  async ensureDatabase(): Promise<void> {
+  async ensureTargetDatabase(): Promise<void> {
     if (!(await this.existsTargetDatabase())) {
-      await this.dbContext.connection.query(
-        SQL.createDatabase(this.targetDatabase)
-      );
+      await this.connection.query(SQL.createDatabase(this.targetDatabase));
     }
   }
 
   /**
-   * 删除数据库
+   * 如果数据库已经存在，删除目标数据库
    */
-  async dropDatabase(): Promise<void> {
+  async dropTargetDatabase(): Promise<void> {
     try {
       if (await this.existsTargetDatabase()) {
-        await this.dbContext.connection.changeDatabase(this.initDatabase);
-        await this.dbContext.connection.query(
-          SQL.dropDatabase(this.targetDatabase)
-        );
+        await this.connection.changeDatabase(this.initDatabase);
+        await this.connection.query(SQL.dropDatabase(this.targetDatabase));
       }
     } catch (error: any) {
       const e = new Error(`DropDatabase error:` + error.toString());
@@ -553,7 +520,7 @@ class MigrateCliClass {
    * @returns
    */
   async getDbSchema(): Promise<DatabaseSchema | undefined> {
-    return this.dbContext!.connection.getSchema(this.targetDatabase);
+    return this.schemaLoader.getDatabaseSchema(this.targetDatabase);
   }
 
   /**
@@ -609,7 +576,7 @@ class MigrateCliClass {
       throw new Error(`无法更新数据库，因为继续更新将删除数据库。`);
     }
     // const exists = await this.existsDatabase();
-    await this.ensureDatabase();
+    await this.ensureTargetDatabase();
     const current = await this.getDbMigrate();
     const scripts = await this._script(current, target);
     await this.runInTargetDatabase(async () => {
@@ -617,7 +584,7 @@ class MigrateCliClass {
         if (output) {
           outputCommand(cmd, output);
         }
-        await this.dbContext.connection.query(cmd);
+        await this.connection.query(cmd);
         console.info(`----------------------------------------------------`);
       }
     });
@@ -647,7 +614,7 @@ class MigrateCliClass {
       start = await this.getMigrate(options.start);
     }
     const scripts = await this._script(start, end);
-    const text = this.dbContext.connection.sqlUtil.joinBatchSql(
+    const text = this.connection.sqlUtil.joinBatchSql(
       ...scripts.map(cmd => cmd.sql)
     );
     if (options?.outputPath) {
@@ -686,7 +653,7 @@ class MigrateCliClass {
         const snapshotPath = resolve(
           join(
             this.migrateDir,
-            `${match[1]}_${match[2]}.${this.dbContext.connection.options.dialect}.snapshot.${extname}`
+            `${match[1]}_${match[2]}.${this.connection.options.dialect}.snapshot.${extname}`
           )
         );
         results.push({
@@ -719,7 +686,7 @@ class MigrateCliClass {
   // async getDefaultSchema(): Promise<string> {
   //   await this.ensureDatabase();
   //   const defaultSchema = await this.runInTargetDatabase(async () => {
-  //     return await this.dbContext.connection.getDefaultSchema();
+  //     return await this.connection.getDefaultSchema();
   //   });
   //   return defaultSchema;
   // }
@@ -739,10 +706,10 @@ class MigrateCliClass {
     notResolverType: boolean
   ): Promise<string> {
     const scripter = new ProgramMigrateScripter(
-      this.dbContext.connection.sqlUtil,
+      this.connection.sqlUtil,
       notResolverType
     );
-    const defaultSchema = await this.dbContext.connection.getSchemaName();
+    const defaultSchema = await this.connection.getSchemaName();
     scripter.migrate(defaultSchema, source, target);
     const upCodes = scripter.getScripts();
     scripter.clear();
@@ -786,55 +753,32 @@ export default ${name};
   async sync(output?: Writable): Promise<void> {
     const metadataSchema = generateSchema(this.dbContext);
 
-    const defaultSchema = await this.dbContext.connection.getSchemaName();
+    const defaultSchema = await this.connection.getSchemaName();
+    await this.ensureTargetDatabase();
+
     // 需要操作的数据库名称, 优先取连接字符串中的数据库名称，Metadata中的数据名称次之。
     const dbSchema: DatabaseSchema | undefined =
-      await this.dbContext.connection.getSchema(this.targetDatabase);
-    // 如果数据库不存在，先创建数据库
-    if (!dbSchema) {
-      await this.dbContext.connection.query(
-        SQL.createDatabase(this.targetDatabase)
-      );
-    }
-
+      await this.schemaLoader.getDatabaseSchema(this.targetDatabase);
     const scripter = new StatementMigrateScripter(
       this.provider.getMigrateBuilder()
     );
     scripter.migrate(defaultSchema, metadataSchema, dbSchema);
     const statements: Statement[] = scripter.getScripts();
 
-    // if (options?.outputPath) {
-    //   const commands = statements.map(p =>
-    //     this.dbContext.connection.sqlUtil.sqlify(p)
-    //   );
-    //   const filePath = resolve(outputPath);
-    //   const dir = dirname(filePath);
-    //   if (!existsSync(dir)) {
-    //     await mkdir(dir);
-    //   }
-    //   const text = commands
-    //     .map(cmd => cmd.sql)
-    //     .join('\n---------------------------------------------\n');
-    //   await writeFile(outputPath, text, 'utf-8');
-    //   console.log(
-    //     `Generate scripts successed, and output to file ${filePath}`.green
-    //   );
-    //   return;
-    // }
     if (output) {
       output.write(`*************************************************\n`);
       output.write(`开始更新数据库架构，请稍候......\n`);
     }
     await this.runInTargetDatabase(async () => {
       for (const statement of statements) {
-        const cmd = this.dbContext.connection.sqlUtil.sqlify(statement);
+        const cmd = this.connection.sqlUtil.sqlify(statement);
         if (output) {
           outputCommand(cmd, output);
           output.write(
             '----------------------------------------------------\n'
           );
         }
-        await this.dbContext.connection.query(cmd);
+        await this.connection.query(cmd);
       }
     });
     if (output) {
@@ -883,7 +827,7 @@ export default ${name};
         if (!lastSchema) {
           lastSchema = {
             name:
-              this.dbContext.connection.options.database ||
+              this.connection.options.database ||
               this.dbContext.metadata.database,
             tables: [],
             schemas: [],
@@ -896,7 +840,7 @@ export default ${name};
         }
         const tracker = new SnapshotMigrateTracker(
           lastSchema,
-          this.dbContext.connection.sqlUtil,
+          this.connection.sqlUtil,
           this.targetSchemaName
         );
         const builder = new SnapshotMigrateBuilder();
@@ -914,7 +858,7 @@ export const schema: DatabaseSchema = ${JSON.stringify(
             undefined,
             2
           )};
-export const dialect = '${this.dbContext.connection.options.provider!.dialect}';
+export const dialect = '${this.connection.options.provider!.dialect}';
 export const hash = "${currentHash}";
 export default schema;
 `
@@ -927,7 +871,7 @@ export default schema;
 export type MigrateCli = MigrateCliClass;
 
 export type MigrateCliConstructor = {
-  new (contextName?: string, migrateDir?: string): Promise<MigrateCli>;
+  new (context?: string | DbContext, migrateDir?: string): Promise<MigrateCli>;
 };
 
 export const MigrateCli: MigrateCliConstructor = MigrateCliClass as any;
