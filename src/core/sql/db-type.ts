@@ -166,8 +166,10 @@ export type TsTypeOf<T extends DbType> = T extends
   ? Decimal
   : T extends INT64
   ? bigint
-  : T extends STRING | UUID
+  : T extends STRING
   ? string
+  : T extends UUID
+  ? UUID
   : T extends DATE | DATETIME | DATETIMEOFFSET
   ? Date
   : T extends TIME
@@ -252,7 +254,7 @@ export const DbType = {
     name: 'DATE',
   } as DATE,
   time: {
-    name: 'TIME'
+    name: 'TIME',
   } as TIME,
   datetime: {
     name: 'DATETIME',

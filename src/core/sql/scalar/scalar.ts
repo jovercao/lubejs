@@ -22,6 +22,8 @@ export type Scalar =
   | Binary
   | Uuid
   | Decimal
+  | object
+  | Array<Scalar>
   | null;
 // TODO: 适配 JSON 和 ARRAY数据类型
 // | RowObject
