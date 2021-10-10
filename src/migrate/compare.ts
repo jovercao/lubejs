@@ -481,6 +481,17 @@ export function compareSchema(
     }
     if (
       [
+        'tables[].database',
+        'views[].database',
+        'sequences[].database',
+        'procedures[].database',
+        'functions[].database',
+      ].includes(path)
+    ) {
+      return true;
+    }
+    if (
+      [
         'tables[].schema',
         'views[].schema',
         'sequences[].schema',
@@ -492,15 +503,6 @@ export function compareSchema(
       return defaultSchema
         ? left || defaultSchema === right || defaultSchema
         : !left || !right || left === right;
-      // if (
-      //   left === null ||
-      //   left === undefined ||
-      //   right === null ||
-      //   right === undefined
-      // ) {
-      //   return true;
-      // }
-      // return left === right;
     }
     // 不比较种子数据、数据库名、排序规则、数据库批注等属性
     if (['name', 'collate', 'comment', 'tables[].seedData'].includes(path)) {

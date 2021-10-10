@@ -1,7 +1,7 @@
 import { SQL } from '../sql';
 
 /**
- * 标识符，可以多级，如表名等
+ * 对象标识符，如表对象，存储过程，函数等的基类
  */
 export abstract class DBObject<N extends string = string> extends SQL {
   constructor(name: CompatiableObjectName<N>, builtIn = false) {
@@ -22,7 +22,7 @@ export abstract class DBObject<N extends string = string> extends SQL {
 }
 
 /**
- * ObjectName
+ * 对象名称，表、视图、存储过程、函数、序列等
  */
 export interface ObjectName<N extends string = string> {
   name: N;
@@ -30,6 +30,9 @@ export interface ObjectName<N extends string = string> {
   database?: string;
 }
 
+/**
+ * 对象名
+ */
 export type CompatiableObjectName<N extends string = string> =
   | ObjectName<N>
   | N;

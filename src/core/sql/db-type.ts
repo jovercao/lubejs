@@ -10,7 +10,14 @@
 import { Raw } from './raw';
 import { deepthEqual } from './util';
 import { parse, stringify, v4 } from 'uuid';
-import { Binary, Decimal, DecimalConstructor, Scalar, Uuid } from './scalar';
+import {
+  Binary,
+  Decimal,
+  DecimalConstructor,
+  Time,
+  Scalar,
+  Uuid,
+} from './scalar';
 import { DataType } from '../../orm';
 
 // **********************************类型声明******************************************
@@ -136,7 +143,7 @@ export type DbType =
   | STRING
   | DATE
   | DATETIME
-  // | TIME
+  | TIME
   | DATETIMEOFFSET
   | BINARY
   | BOOLEAN
@@ -163,6 +170,8 @@ export type TsTypeOf<T extends DbType> = T extends
   ? string
   : T extends DATE | DATETIME | DATETIMEOFFSET
   ? Date
+  : T extends TIME
+  ? Time
   : T extends BOOLEAN
   ? boolean
   : T extends BINARY
@@ -191,7 +200,9 @@ export type DbTypeOf<T> = T extends string
   : T extends number
   ? DECIMAL | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
   : T extends Date
-  ? DATETIME | DATE
+  ? DATETIME | DATE | DATETIMEOFFSET
+  : T extends Time
+  ? TIME
   : T extends boolean
   ? BOOLEAN
   : T extends Binary
@@ -202,9 +213,9 @@ export type DbTypeOf<T> = T extends string
   ? UUID
   : T extends Decimal
   ? DECIMAL
-  : // : T extends Array<infer M>
-  // ? LIST<DbTypeOf<M>>
-  T extends object
+  : T extends Array<infer M>
+  ? ARRAY<DbTypeOf<M>>
+  : T extends Object
   ? OBJECT<T>
   : never;
 
@@ -240,6 +251,9 @@ export const DbType = {
   date: {
     name: 'DATE',
   } as DATE,
+  time: {
+    name: 'TIME'
+  } as TIME,
   datetime: {
     name: 'DATETIME',
   } as DATETIME,

@@ -1,5 +1,5 @@
 import Decimal from "decimal.js-light";
-import { Star, CompatibleExpression, Scalar, Expression, Numeric, Uuid, DbType, TsTypeOf, CompatiableObjectName, Condition } from "../sql";
+import { Star, CompatibleExpression, Scalar, Expression, Numeric, Uuid, DbType, TsTypeOf, CompatiableObjectName, Condition, Time } from "../sql";
 import { Standard } from "../standard";
 import { DbProvider } from "./db-provider";
 
@@ -20,10 +20,9 @@ export abstract class StandardTranslator implements Standard {
 
   abstract sum<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T>;
 
-  abstract max<T extends string | number | bigint | boolean | Decimal | Date | Uuid | null>(expr: Expression<T>): Expression<T>;
+  abstract max<T extends string | number | bigint | boolean | Decimal | Date | Time | Uuid | null>(expr: Expression<T>): Expression<T>;
 
-  abstract min<T extends string | number | bigint | boolean | Decimal | Date | Uuid | null>(expr: Expression<T>): Expression<T>;
-
+  abstract min<T extends string | number | bigint | boolean | Decimal | Date | Time | Uuid | null>(expr: Expression<T>): Expression<T>;
 
   abstract convert<T extends DbType>(expr: CompatibleExpression<Scalar>, toType: T): Expression<TsTypeOf<T>>;
 

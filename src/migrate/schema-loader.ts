@@ -25,7 +25,7 @@ export abstract class SchemaLoader {
   abstract getTableNames(
     database: string,
     schema?: string
-  ): Promise<Required<ObjectName>[]>;
+  ): Promise<ObjectName[]>;
 
   /**
    * 获取'指定数据库'及'指定架构（可选）'下的所有表结构
@@ -43,7 +43,7 @@ export abstract class SchemaLoader {
   abstract getViewNames(
     database: string,
     schema: string
-  ): Promise<Required<ObjectName>[]>;
+  ): Promise<ObjectName[]>;
   abstract getViews(database: string, schema: string): Promise<ViewSchema[]>;
   abstract getView(
     databse: string,
@@ -154,7 +154,7 @@ export abstract class SchemaLoader {
   abstract getFunctionNames(
     database: string,
     schema?: string
-  ): Promise<Required<ObjectName>[]>;
+  ): Promise<ObjectName[]>;
 
   /**
    * 获取指定数据库，指定架构（可选）下的所有函数列表
@@ -179,7 +179,7 @@ export abstract class SchemaLoader {
   abstract getProcedureNames(
     database: string,
     schema?: string
-  ): Promise<Required<ObjectName>[]>;
+  ): Promise<ObjectName[]>;
   /**
    * 获取存储过程结构列表
    */

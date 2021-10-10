@@ -1,5 +1,5 @@
 import { SQL_SYMBOLE } from '../sql';
-import { DbType } from '../db-type';
+import { DbType, DbTypeOf } from '../db-type';
 import { Scalar } from '../scalar';
 import { Expression } from './expression';
 
@@ -13,6 +13,7 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
    * 实际值
    */
   $value: T;
+  $dbType?: DbType;
   static isLiteral(object: any): object is Literal {
     return object?.$type === SQL_SYMBOLE.LITERAL;
   }
@@ -21,9 +22,10 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
     return this.$value;
   }
 
-  constructor(value: T) {
+  constructor(value: T, dbType?: DbTypeOf<T>) {
     super();
     this.$value = value;
+    this.$dbType = dbType;
   }
 
   static isLiterial(object: any): object is Literal<any> {

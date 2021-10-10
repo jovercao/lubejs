@@ -358,7 +358,7 @@ export abstract class SqlUtil {
   /**
    * 编译字面量
    */
-  public abstract sqlifyLiteral(literal: Scalar | Raw): string;
+  public abstract sqlifyLiteral(literal: Scalar | Raw, type?: DbType): string;
 
   /**
    * 将AST编译成一个可供执行的命令
@@ -905,7 +905,7 @@ export abstract class SqlUtil {
       );
     }
     if (Literal.isLiteral(expr)) {
-      return this.sqlifyLiteral(expr.$value);
+      return this.sqlifyLiteral(expr.$value, expr.$dbType);
     }
 
     if (Operation.isOperation(expr)) {

@@ -11,6 +11,10 @@ export type WhereObject<T extends RowObject = DefaultInputObject> = {
     | CompatibleExpression<FieldTypeOf<T, K>>[];
 };
 
+export type CompatiblifyTuple<T extends Scalar[]> = {
+  [P in keyof T]: T[P] extends Scalar ? CompatibleExpression<T[P]> : never;
+};
+
 /**
  * 取值结果集首个返回值类型运算
  */

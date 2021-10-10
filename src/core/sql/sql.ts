@@ -191,8 +191,8 @@ abstract class SQLClass {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
   }
 
-  static literal<T extends Scalar>(value: T): Literal<T> {
-    return new Literal(value);
+  static literal<T extends Scalar>(value: T, dbType?: DbTypeOf<T>): Literal<T> {
+    return new Literal(value, dbType);
   }
 
   static var<T extends Scalar, N extends string = string>(
@@ -561,122 +561,26 @@ abstract class SQLClass {
     return Func.ensure(func).invokeAsScalar<T>(...args);
   }
 
-  static makeInvoke<T extends RowObject>(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): () => ProxiedRowset<T>;
-  static makeInvoke<T extends RowObject, A1 extends CompatibleExpression>(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => ProxiedRowset<T>;
-  static makeInvoke<
-    T extends RowObject,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'table',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => ProxiedRowset<T>;
-
   static makeInvoke(
     type: 'table',
     name: CompatiableObjectName,
     builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => ProxiedRowset<any>;
-
-  static makeInvoke<T extends Scalar>(
-    type: 'scalar',
+  ): (...args: any) => ProxiedRowset<any>;
+  static makeInvoke<R extends RowObject, A extends Scalar[] = []>(
+    type: 'table',
     name: CompatiableObjectName,
     builtIn?: boolean
-  ): () => Expression<T>;
-  static makeInvoke<T extends Scalar, A1 extends CompatibleExpression>(
-    type: 'scalar',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Expression<T>;
-  static makeInvoke<
-    T extends Scalar,
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression
-  >(
-    type: 'scalar',
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Expression<T>;
+  ): (...args: CompatiblifyTuple<A>) => ProxiedRowset<R>;
   static makeInvoke(
     type: 'scalar',
     name: CompatiableObjectName,
     builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => Expression<any>;
+  ): (...args: any) => Expression<any>;
+  static makeInvoke<R extends Scalar, A extends Scalar[] = []>(
+    type: 'scalar',
+    name: CompatiableObjectName,
+    builtIn?: boolean
+  ): (...args: CompatiblifyTuple<A>) => Expression<R>;
   static makeInvoke(
     type: 'table' | 'scalar',
     name: CompatiableObjectName,
@@ -700,65 +604,18 @@ abstract class SQLClass {
   /**
    * 创建一个可供JS调用的存储过程
    */
-  static makeExec<R extends Scalar = number, O extends RowObject[] = []>(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): () => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4) => Execute<R, O>;
-  static makeExec<
-    A1 extends CompatibleExpression,
-    A2 extends CompatibleExpression,
-    A3 extends CompatibleExpression,
-    A4 extends CompatibleExpression,
-    A5 extends CompatibleExpression,
-    R extends Scalar = number,
-    O extends RowObject[] = []
-  >(
-    name: CompatiableObjectName,
-    builtIn?: boolean
-  ): (arg1: A1, arg2: A2, arg3: A3, arg4: A4, arg5: A5) => Execute<R, O>;
-
   static makeExec(
     name: CompatiableObjectName,
     builtIn?: boolean
-  ): (...args: CompatibleExpression[]) => Expression<any>;
+  ): (...args: any[]) => Execute<any, any>;
+  static makeExec<
+    R extends Scalar = number,
+    A extends Scalar[] = [],
+    O extends RowObject[] = []
+  >(
+    name: CompatiableObjectName,
+    builtIn?: boolean
+  ): (...args: CompatiblifyTuple<A>) => Execute<R, O>;
   static makeExec(name: CompatiableObjectName, builtIn = false): any {
     return function (
       ...args: CompatibleExpression<Scalar>[]
@@ -996,9 +853,24 @@ abstract class SQLClass {
    */
   static input<T extends Scalar, N extends string>(
     name: N,
-    value: T,
-    type?: DbTypeOf<T>
-  ): Parameter<T, N> {
+    value: T
+  ): Parameter<ExpandScalar<T>, N>
+  static input<T extends DbType, N extends string>(
+    name: N,
+    type: T,
+    value?: TsTypeOf<T>,
+  ): Parameter<TsTypeOf<T>, N>
+  static input(
+    name: string,
+    typeOrValue: DbType | Scalar,
+    value?: Scalar,
+  ): Parameter {
+    let type: DbType | undefined;
+    if (isDbType(typeOrValue)) {
+      type = typeOrValue
+    } else {
+      value = typeOrValue;
+    }
     return new Parameter(name, type, value, 'IN');
   }
 
@@ -1132,8 +1004,8 @@ export type SQL = SQLClass;
 export const SQL: SQLConstructor = SQLClass;
 
 // ********************因为循环引用的原因，必须将import放置在后面********************** //
-import { RowObject, ColumnsOf, ExpandScalar } from './types';
-import { DbType, DbTypeOf, TsTypeOf } from './db-type';
+import { RowObject, ColumnsOf, ExpandScalar, CompatiblifyTuple } from './types';
+import { DbType, DbTypeOf, isDbType, TsTypeOf } from './db-type';
 import { Document } from './document';
 import {
   CompatiableObjectName,

@@ -167,8 +167,10 @@ class MigrateCliClass {
       this.dbContext = context;
       this.connection = context.connection;
     }
-    this.targetDatabase =
-      this.connection.options.database || this.dbContext.metadata.database;
+    if (!this.targetDatabase) {
+      this.targetDatabase = this.dbContext.metadata.database;
+    }
+
     // 进入后的数据库名称
     this.initDatabase = await this.connection.getDatabaseName();
     if (this.initDatabase === this.targetDatabase) {

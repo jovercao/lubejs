@@ -1,7 +1,9 @@
 import Decimal from 'decimal.js-light';
 import { Uuid } from './uuid';
+import { Time } from './time';
 
 export type UuidConstructor = typeof Uuid;
+export type TimeConstructor = typeof Time;
 export type DecimalConstructor = typeof Decimal;
 export type Binary = ArrayBuffer | SharedArrayBuffer | Buffer;
 
@@ -16,6 +18,7 @@ export type Scalar =
   | bigint
   | Decimal
   | Date
+  | Time
   | Binary
   | Uuid
   | Decimal
@@ -24,7 +27,7 @@ export type Scalar =
 // | RowObject
 // | Array<ScalarType>
 
-export { Decimal, Uuid };
+export { Decimal, Uuid, Time };
 
 /**
  * 所有数值类型
