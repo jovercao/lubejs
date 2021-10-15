@@ -23,14 +23,10 @@ import { metadataStore } from './metadata-store';
 import { makeRowset, aroundRowset, isTableEntity } from './metadata/util';
 import { DbContext } from './db-context';
 import {
-  ColumnsOf,
   DefaultRowObject,
   NamedSelect,
-  XTable,
 } from '../core/sql';
 import { EntityMgr } from './entity-mgr';
-
-// import { getMetadata } from 'typeorm'
 
 const { select } = SQL;
 const ROWSET_ALIAS = '__t__';
