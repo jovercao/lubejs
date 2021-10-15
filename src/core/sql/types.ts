@@ -1,5 +1,19 @@
-import type { BaseScalar, Binary, Decimal, Json, List, Scalar, Uuid } from './scalar';
-import type { XExpression, Expression, FieldTypeOf, Literal } from './expression';
+import type {
+  BaseScalar,
+  Binary,
+  Decimal,
+  Json,
+  List,
+  Scalar,
+  Time,
+  Uuid,
+} from './scalar';
+import type {
+  XExpression,
+  Expression,
+  FieldTypeOf,
+  Literal,
+} from './expression';
 
 /**
  * 简化后的whereObject查询条件
@@ -28,19 +42,18 @@ export type DefaultRowObject = {
 export type DefaultInputObject = Record<string, Scalar>;
 
 export type ScalarFromExpression<T> = NonNullable<T> extends Expression<infer X>
-  ? undefined | null extends T
-    ? X | undefined | null
+    ? null extends T
+    ? X | null
     : undefined extends T
-    ? X | undefined
-    : null extends T
     ? X | null
     : X
-  : T;
+  : T extends Scalar ? ExpandScalar<DataRowValueType<T>>
+  : never;
 
 /**
  * 将undefined可空类型转换为用于提交到数据库中的null可空类型
  */
-export type DataRowValueType<T extends Scalar | undefined> = T extends undefined
+export type DataRowValueType<T extends Scalar | undefined> = undefined extends T
   ? Exclude<T, undefined> | null
   : T;
 
@@ -58,8 +71,10 @@ export type DataRowType<T extends object> = {
  * 将选择项，列、或者字段转换成Model类型
  */
 export type RowObjectFrom<T extends InputObject> = {
-  [P in keyof T]: ScalarFromExpression<T[P]>;
+  [P in keyof T]-?: ScalarFromExpression<T[P]>;
 };
+type d = ScalarFromExpression<Expression<number>>;
+
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 export type RowObject = object;
@@ -96,16 +111,24 @@ export type AssertType<T, X extends Scalar> = T extends X ? X : never;
  * 例： ExpandType<1> // => number;
  */
 export type ExpandScalar<T extends Scalar> =
+  | AssertType<T, null>
   | AssertType<T, string>
   | AssertType<T, number>
   | AssertType<T, bigint>
+  | AssertType<T, boolean>
   | AssertType<T, Decimal>
   | AssertType<T, Date>
   | AssertType<T, Uuid>
+  | AssertType<T, Time>
   | AssertType<T, Binary>
-  | AssertType<T, boolean>
-  | AssertType<T, null>
-  | AssertType<T, List<BaseScalar>>
+  | AssertType<T, List<number>>
+  | AssertType<T, List<string>>
+  | AssertType<T, List<bigint>>
+  | AssertType<T, List<boolean>>
+  | AssertType<T, List<Decimal>>
+  | AssertType<T, List<Date>>
+  | AssertType<T, List<Uuid>>
+  | AssertType<T, List<Time>>
   | AssertType<T, Json>;
 
 /**

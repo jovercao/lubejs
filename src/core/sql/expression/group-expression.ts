@@ -13,6 +13,6 @@ export class GroupExpression<T extends Scalar = Scalar> extends Expression<T> {
   }
   constructor(inner: XExpression<T>) {
     super();
-    this.$inner = Expression.isExpression(inner) ? inner : SQL.literal(inner);
+    this.$inner = Expression.ensureExpression(inner);
   }
 }

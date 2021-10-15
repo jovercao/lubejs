@@ -16,9 +16,7 @@ export class FunctionParameter<
     this.$name = name;
     this.$dbType = dataType;
     if (defaultValue) {
-      this.$default = Literal.isLiteral(defaultValue)
-        ? defaultValue
-        : SQL.literal(defaultValue);
+      this.$default = Literal.ensureLiterial(defaultValue);
     }
   }
   $dbType: DbType;

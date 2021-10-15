@@ -31,7 +31,7 @@ export class BinaryOperation<T extends Scalar = Scalar> extends Operation<T> {
   ) {
     super();
     this.$operator = operator;
-    this.$left = Expression.isExpression(left) ? left : SQL.literal(left);
-    this.$right = Expression.isExpression(right) ? right : SQL.literal(right);
+    this.$left = Expression.ensureExpression(left);
+    this.$right = Expression.ensureExpression(right);
   }
 }

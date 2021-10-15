@@ -20,6 +20,6 @@ export class Assignment<T extends Scalar = Scalar> extends Statement {
   constructor(left: Assignable<T>, right: XExpression<T>) {
     super();
     this.left = left;
-    this.right = Expression.isExpression(right) ? right : SQL.literal(right);
+    this.right = Expression.ensureExpression(right);
   }
 }

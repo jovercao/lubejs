@@ -10,6 +10,7 @@
     "emitDecoratorMetadata": true,
     "strictFunctionTypes": false,
     "sourceMap": false,
+    "stripInternal": true,
     "strict": true,
     "outDir": "dist",
     "lib": [

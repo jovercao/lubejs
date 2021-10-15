@@ -19,7 +19,9 @@ export class When<T extends Scalar = any> extends SQL {
     } else {
       this.$expr = expr;
     }
-    this.$value = Expression.isExpression(then) ? then : SQL.literal(then);
+    this.$value = (
+      Expression.isExpression(then) ? then : SQL.literal(then)
+    ) as any;
   }
 }
 

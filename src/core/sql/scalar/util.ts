@@ -29,10 +29,7 @@ export function isScalar(value: any): value is Scalar {
 /**
  * 判断一个对象是不是一个数据库合法的列表(数组)类型
  */
-export function isList(
-  value: any,
-  MAX_SEARCH_SIZE = 10
-): value is List<BaseScalar> {
+export function isList(value: any, MAX_SEARCH_SIZE = 10): value is List {
   if (!Array.isArray(value)) return false;
   for (let i = 0; i < Math.min(MAX_SEARCH_SIZE, value.length); i++) {
     if (!isBaseScalar(value[i])) return false;
@@ -40,20 +37,11 @@ export function isList(
   return true;
 }
 
+/**
+ * 判断是否为二进制类型
+ * @param value
+ * @returns
+ */
 export function isBinary(value: any): value is Binary {
-  return (
-    value instanceof ArrayBuffer ||
-    value instanceof Uint8Array ||
-    value instanceof Uint16Array ||
-    value instanceof Uint32Array ||
-    value instanceof BigUint64Array ||
-    value instanceof Int8Array ||
-    value instanceof Int16Array ||
-    value instanceof Int32Array ||
-    value instanceof BigInt64Array ||
-    value instanceof Float32Array ||
-    value instanceof Float64Array ||
-    value instanceof Uint8ClampedArray ||
-    value instanceof SharedArrayBuffer
-  );
+  return value?.[Symbol.toStringTag] === 'Uint8Array';
 }

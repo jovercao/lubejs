@@ -1,7 +1,6 @@
 import { SQL, SQL_SYMBOLE } from '../sql';
 import type { Interger, Numeric, Scalar } from '../scalar';
 import type { DbType, ScalarFromDbType } from '../db-type';
-import type { ExpandScalar } from '../types';
 
 /**
  * 可兼容JS常量的表达式
@@ -28,14 +27,14 @@ export abstract class Expression<T extends Scalar = Scalar>
   /**
    * 加法运算，返回数值，如果是字符串相连接，请使用join函数
    */
-  add(expr: XExpression<Numeric>): Expression<Numeric> {
+  add(expr: XExpression<T>): Expression<T> {
     return SQL.add(this as any, expr as any);
   }
 
   /**
    * 减法运算
    */
-  sub(expr: XExpression<Numeric>): Expression<Numeric> {
+  sub(expr: XExpression<T>): Expression<T> {
     return SQL.sub(this as any, expr as any);
   }
 
@@ -43,7 +42,7 @@ export abstract class Expression<T extends Scalar = Scalar>
    * 乘法运算
    * @param expr 要与当前表达式相乘的表达式
    */
-  mul(expr: XExpression<Numeric>): Expression<Numeric> {
+  mul(expr: XExpression<T>): Expression<T> {
     return SQL.mul(this as any, expr as any);
   }
 
@@ -52,7 +51,7 @@ export abstract class Expression<T extends Scalar = Scalar>
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  div(expr: XExpression<Numeric>): Expression<Numeric> {
+  div(expr: XExpression<T>): Expression<T> {
     return SQL.div(this as any, expr as any);
   }
 
@@ -61,7 +60,7 @@ export abstract class Expression<T extends Scalar = Scalar>
    * @param expr 要与当前表达式相除的表达式
    * @returns 返回运算后的表达式
    */
-  mod(expr: XExpression<ExpandScalar<T>>): Expression<T> {
+  mod(expr: XExpression<T>): Expression<T> {
     return SQL.mod(this as any, expr);
   }
 
@@ -124,8 +123,8 @@ export abstract class Expression<T extends Scalar = Scalar>
    * @param expr 要与当前表达式相比较的表达式
    * @returns 返回对比条件表达式
    */
-  eq(expr: XExpression<ExpandScalar<T>>): Condition {
-    return SQL.eq(this as unknown as Expression<ExpandScalar<T>>, expr);
+  eq(expr: XExpression<T>): Condition {
+    return SQL.eq(this, expr);
   }
 
   /**
@@ -133,11 +132,8 @@ export abstract class Expression<T extends Scalar = Scalar>
    * @param expr 要与当前表达式相比较的表达式
    * @returns 返回对比条件表达式
    */
-  neq(expr: XExpression<ExpandScalar<T>>): Condition {
-    return BinaryCompareCondition.neq(
-      this as unknown as Expression<ExpandScalar<T>>,
-      expr
-    );
+  neq(expr: XExpression<T>): Condition {
+    return BinaryCompareCondition.neq(this, expr);
   }
 
   /**
@@ -290,6 +286,10 @@ export abstract class Expression<T extends Scalar = Scalar>
   static isExpression(object: any): object is Expression {
     return object?.$tag === SQL_SYMBOLE.EXPRESSION;
   }
+
+  static ensureExpression<T extends Scalar>(value: XExpression<T>): Expression<T> {
+    return Expression.isExpression(value) ? value : Literal.ensureLiterial(value);
+  }
 }
 // 避免循环引用问题
 import {
@@ -297,4 +297,5 @@ import {
   UnaryCompareCondition,
   Condition,
 } from '../condition';
-import { Select, SelectColumn, Sort } from '../statement';
+import { Select, SelectColumn, Sort } from '../statement';import { Literal } from './literal'
+

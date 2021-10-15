@@ -32,6 +32,7 @@ export class Table<T extends RowObject = DefaultRowObject>
   }
 
   $name: XObjectName;
+
   readonly $builtin: boolean;
   readonly $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 

@@ -5,28 +5,42 @@ import { Time } from './time';
 export type UuidConstructor = typeof Uuid;
 export type TimeConstructor = typeof Time;
 export type DecimalConstructor = typeof Decimal;
-export type Binary = ArrayBuffer | SharedArrayBuffer | Buffer;
-
-/**
- * 数据库值类型
- */
-export type Scalar = BaseScalar | List<BaseScalar> | Json;
+export type Binary = Uint8Array;
 
 /**
  * 对应数据库中的数组类型
  */
-export type List<T extends BaseScalar> = Array<T>;
+export type List<
+  T extends Exclude<BaseScalar, Binary> = Exclude<BaseScalar, Binary>
+> = Array<T>;
 
+/**
+ * 数据库值类型
+ */
+export type Scalar = BaseScalar | List | Json;
+
+/**
+ * Json中的类型
+ */
+export type JsonTypes = string | number | boolean | null | JsonObject;
 /**
  * JSON数据类型，对应数据库中的JSON类型
  */
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | Record<string, string | number | boolean | null>
-  | Array<Json>;
+export type JsonObject = {
+  [K: string]: JsonTypes;
+};
+
+/**
+ * Json类型，限定为JsonObject是为了避免类型冲突。
+ */
+export type Json = JsonObject;
+
+// | string
+// | number
+// | boolean
+// | null
+// | Record<string, string | number | boolean | null>
+// | Array<Json>;
 
 /**
  * 标量类型，不含JSON类型及

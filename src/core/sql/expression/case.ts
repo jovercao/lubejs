@@ -36,9 +36,7 @@ export class Case<T extends Scalar = any> extends Expression<T> {
    * @param defaults
    */
   else(defaults: XExpression<T>): this {
-    this.$default = Expression.isExpression(defaults)
-      ? defaults
-      : SQL.literal(defaults);
+    this.$default = Expression.ensureExpression(defaults);
     return this;
   }
 

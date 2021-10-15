@@ -113,9 +113,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    * 默认值
    */
   hasDefaultValue(expr: XExpression<V>): this {
-    this.metadata.defaultValue = Expression.isExpression(expr)
-      ? expr
-      : SQL.literal(expr);
+    this.metadata.defaultValue = Expression.ensureExpression(expr);
     return this;
   }
 
@@ -140,9 +138,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   isCalculated(expr: XExpression<V>): this {
     this.metadata.isCalculate = true;
-    this.metadata.calculateExpression = Expression.isExpression(expr)
-      ? expr
-      : SQL.literal(expr);
+    this.metadata.calculateExpression = Expression.ensureExpression(expr);
     return this;
   }
 

@@ -69,7 +69,7 @@ abstract class SQLClass {
   /**
    * 负号运算符 -
    */
-  static neg(expr: XExpression<number>): Expression<number> {
+  static neg(expr: XExpression<number>): Expression<ExpandScalar<number>> {
     return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
   }
 
@@ -196,15 +196,15 @@ abstract class SQLClass {
   static literal<T extends Scalar>(
     value: T,
     dbType?: DbTypeFromScalar<T>
-  ): Literal<T> {
-    return new Literal(value, dbType);
+  ): Literal<ExpandScalar<T>> {
+    return new Literal(value as any, dbType);
   }
 
   static var<T extends Scalar, N extends string = string>(
     name: N,
     type: DbTypeFromScalar<T>
-  ): Variant<T, N> {
-    return new Variant(name, type);
+  ): Variant<ExpandScalar<T>, N> {
+    return new Variant(name, type) as any;
   }
   /**
    * 创建一个字段
@@ -349,8 +349,8 @@ abstract class SQLClass {
   }
 
   static eq<T extends Scalar>(
-    left: XExpression<ExpandScalar<T>>,
-    right: XExpression<ExpandScalar<T>>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.EQ, left, right);
   }
