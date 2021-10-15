@@ -904,6 +904,7 @@ export abstract class SqlUtil {
         parent
       );
     }
+
     if (Literal.isLiteral(expr)) {
       return this.sqlifyLiteral(expr.$value, expr.$dbType);
     }

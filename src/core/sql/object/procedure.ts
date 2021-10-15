@@ -55,3 +55,4 @@ export class Procedure<
 
 import { XExpression, Parameter } from '../expression';
 import { Execute } from '../statement';
+import { isConstructorDeclaration } from 'typescript';
