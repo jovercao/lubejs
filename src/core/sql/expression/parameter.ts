@@ -1,8 +1,8 @@
 import { SQL_SYMBOLE } from '../sql';
-import { DbType, DbTypeOf, TsTypeOf } from '../db-type';
+import { DbType } from '../db-type';
 import { Scalar } from '../scalar';
-import { Expression } from './expression';
 import { Literal } from './literal';
+import { Assignable } from './common/assignable';
 
 /**
  * 参数方向
@@ -15,10 +15,10 @@ export type PARAMETER_DIRECTION = 'IN' | 'OUT' | 'INOUT';
 export class Parameter<
   T extends Scalar = any,
   N extends string = string
-> extends Expression<T> {
+> extends Assignable<T> {
   $name: N;
   $builtin = false;
-  $type: SQL_SYMBOLE.PARAMETER = SQL_SYMBOLE.PARAMETER;
+  readonly $type: SQL_SYMBOLE.PARAMETER = SQL_SYMBOLE.PARAMETER;
   static isParameter(object: any): object is Parameter {
     return object?.$type === SQL_SYMBOLE.PARAMETER;
   }

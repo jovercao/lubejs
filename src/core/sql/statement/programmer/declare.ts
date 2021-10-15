@@ -2,27 +2,27 @@ import { Statement, STATEMENT_KIND } from '../statement';
 import { Variant } from '../../expression';
 import { TableVariant } from '../../rowset';
 import { Block } from '../control';
-import { SQL } from '../../sql';
+import { SQL, SQL_SYMBOLE } from '../../sql';
 
 /**
  * 声明语句，暂时只支持变量声明
  */
-export class Declare extends Statement {
+export class Declare extends SQL {
   static isDeclare(object: any): object is Declare {
-    return (
-      Statement.isStatement(object) && object.$kind === STATEMENT_KIND.DECLARE
-    );
+    return object?.$type === SQL_SYMBOLE.DECLARE;
   }
   $declares: (Variant | TableVariant)[];
-  $body?: Block;
-  $kind: STATEMENT_KIND.DECLARE = STATEMENT_KIND.DECLARE;
+  readonly $type: SQL_SYMBOLE.DECLARE = SQL_SYMBOLE.DECLARE;
   constructor(members: (Variant | TableVariant)[]) {
     super();
     this.$declares = members;
   }
 
-  body(...statements: Statement[] | [Statement[]]): this {
-    this.$body = SQL.block(statements as any);
-    return this;
+  do(...statements: Statement[] | [Statement[]]): Block {
+    if (Array.isArray(statements[0])) {
+      statements = statements[0];
+    }
+    const block = new Block(statements as Statement[], this);
+    return block;
   }
 }

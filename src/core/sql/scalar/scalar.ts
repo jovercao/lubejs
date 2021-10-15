@@ -8,10 +8,31 @@ export type DecimalConstructor = typeof Decimal;
 export type Binary = ArrayBuffer | SharedArrayBuffer | Buffer;
 
 /**
- * 标量类型
+ * 数据库值类型
+ */
+export type Scalar = BaseScalar | List<BaseScalar> | Json;
+
+/**
+ * 对应数据库中的数组类型
+ */
+export type List<T extends BaseScalar> = Array<T>;
+
+/**
+ * JSON数据类型，对应数据库中的JSON类型
+ */
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | Record<string, string | number | boolean | null>
+  | Array<Json>;
+
+/**
+ * 标量类型，不含JSON类型及
  * 对应数据库标量类型的JS类型集
  */
-export type Scalar =
+export type BaseScalar =
   | string
   | boolean
   | number
@@ -21,13 +42,9 @@ export type Scalar =
   | Time
   | Binary
   | Uuid
-  | Decimal
-  | object
-  | Array<Scalar>
+  // | object
+  // | Array<Scalar>
   | null;
-// TODO: 适配 JSON 和 ARRAY数据类型
-// | RowObject
-// | Array<ScalarType>
 
 export { Decimal, Uuid, Time };
 

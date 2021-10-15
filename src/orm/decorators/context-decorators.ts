@@ -5,7 +5,7 @@ import { setEntityOptions } from './entity-decorators';
 import { DbContextMetadata } from '../metadata';
 import { DbContext, DbContextConstructor } from '../db-context';
 import 'reflect-metadata';
-import { DataType, ScalarType } from '../types';
+import { DataType, ScalarDataType } from '../data-types';
 import { Uuid, UuidConstructor } from '../../core/sql';
 
 const CONTEXT_KEY = Symbol('lubejs:context');

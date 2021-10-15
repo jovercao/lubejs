@@ -9,7 +9,7 @@ import { Statement } from "./statement/statement";
     return object?.$type === SQL_SYMBOLE.DOCUMENT;
   }
   statements: Statement[];
-  $type: SQL_SYMBOLE.DOCUMENT = SQL_SYMBOLE.DOCUMENT;
+  readonly $type: SQL_SYMBOLE.DOCUMENT = SQL_SYMBOLE.DOCUMENT;
 
   constructor(statements: Statement[]) {
     super();

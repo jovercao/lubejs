@@ -1,6 +1,6 @@
 import { DbContext } from "../db-context";
-import { Scalar, DbType, ProxiedRowset, Expression, CompatibleExpression } from "../../core";
-import { ScalarType } from "../types";
+import { Scalar, DbType, XRowset, Expression, XExpression } from "../../core";
+import { ScalarDataType } from "../data-types";
 
 /**
  * 属性元数据
@@ -24,7 +24,7 @@ import { ScalarType } from "../types";
   /**
    * 类型
    */
-  type: ScalarType;
+  type: ScalarDataType;
 
   /**
    * 字段名
@@ -79,8 +79,8 @@ import { ScalarType } from "../types";
    * 自动生成表达式（程序）
    */
   generator?: (
-    rowset: ProxiedRowset<any>,
+    rowset: XRowset<any>,
     item: any,
     context: DbContext
-  ) => CompatibleExpression<T>;
+  ) => XExpression<T>;
 }

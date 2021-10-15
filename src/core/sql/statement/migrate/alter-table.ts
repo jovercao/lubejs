@@ -1,6 +1,6 @@
 import { Condition } from '../../condition';
 import { DbType } from '../../db-type';
-import { CompatiableObjectName } from '../../object/db-object';
+import { XObjectName } from '../../object/';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { AlterTableDropMember } from './alter-table-drop-member';
 import { CheckConstraint, CheckConstraintBuilder } from './check-constraint';
@@ -20,7 +20,7 @@ export class AlterTable<N extends string = string> extends Statement {
     );
   }
   $kind: STATEMENT_KIND.ALTER_TABLE = STATEMENT_KIND.ALTER_TABLE;
-  $name: CompatiableObjectName<N>;
+  $name: XObjectName<N>;
 
   $adds?: AlterTableAddMember[];
 
@@ -28,7 +28,7 @@ export class AlterTable<N extends string = string> extends Statement {
 
   $alterColumn?: ColumnDeclareForAlter;
 
-  constructor(name: CompatiableObjectName<N>) {
+  constructor(name: XObjectName<N>) {
     super();
     this.$name = name;
   }
@@ -235,7 +235,7 @@ export class AlterTable<N extends string = string> extends Statement {
   }
 }
 
-export function alterTable(name: CompatiableObjectName): AlterTable {
+export function alterTable(name: XObjectName): AlterTable {
   return new AlterTable(name);
 }
 

@@ -1,7 +1,12 @@
-import { CompatiableObjectName } from '../../object/db-object';
 import { SQL } from '../../sql';
+import { XObjectName } from '../../object';
+import { DbType, ScalarFromDbType } from '../../db-type';
+import {
+  Literal,
+  PARAMETER_DIRECTION,
+  ProcedureParameter,
+} from '../../expression';
 import { Statement, STATEMENT_KIND } from '../statement';
-import { ProcedureParameter } from './procedure-parameter';
 
 export class CreateProcedure<
   P extends ProcedureParameter[] = []
@@ -13,11 +18,11 @@ export class CreateProcedure<
     );
   }
   $kind: STATEMENT_KIND.CREATE_PROCEDURE = STATEMENT_KIND.CREATE_PROCEDURE;
-  $name: CompatiableObjectName;
+  $name: XObjectName;
   $params?: P;
   $body?: Statement;
 
-  constructor(name: CompatiableObjectName) {
+  constructor(name: XObjectName) {
     super();
     this.$name = name;
   }
@@ -130,7 +135,9 @@ export class CreateProcedure<
     return this as any;
   }
 
-  body(...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]): this {
+  body(
+    ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
+  ): this {
     if (typeof sql[0] === 'function') {
       sql = sql[0](this.$params || ([] as any));
     }
@@ -139,12 +146,16 @@ export class CreateProcedure<
   }
 }
 
-export const createProcedure = (
-  name: CompatiableObjectName
-): CreateProcedure => {
+export const createProcedure = (name: XObjectName): CreateProcedure => {
   return new CreateProcedure(name);
 };
 
-createProcedure.param = ProcedureParameter.create;
+createProcedure.param = <T extends DbType, N extends string>(
+  name: N,
+  dataType: T,
+  direct: PARAMETER_DIRECTION = 'IN',
+  defaultValue?: Literal<ScalarFromDbType<T>> | ScalarFromDbType<T>
+): ProcedureParameter<ScalarFromDbType<T>, N> =>
+  ProcedureParameter.create(name, dataType, direct, defaultValue);
 
 export type CreateProcedureBuilder = typeof createProcedure;

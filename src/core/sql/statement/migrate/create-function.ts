@@ -1,11 +1,8 @@
-import { DbType, DbTypeOf, isDbType } from '../../db-type';
-import { CompatiableObjectName } from '../../object/db-object';
-import { Statement, STATEMENT_KIND } from '../statement';
-import { FunctionParameter } from './function-parameter';
-import { isPlainObject } from '../../util';
 import { SQL } from '../../sql';
-import { Literal, Variant } from '../../expression';
-import { Scalar } from '../../scalar';
+import { DbType, ScalarFromDbType } from '../../db-type';
+import { XObjectName } from '../../object';
+import { Statement, STATEMENT_KIND } from '../statement';
+import { Literal, Variant, FunctionParameter } from '../../expression';
 import { TableVariant } from '../../rowset';
 
 export type FunctionParameterObject = Record<
@@ -23,12 +20,12 @@ export class CreateFunction<
     );
   }
   $kind: STATEMENT_KIND.CREATE_FUNCTION = STATEMENT_KIND.CREATE_FUNCTION;
-  $name: CompatiableObjectName;
+  $name: XObjectName;
   $params?: P;
   $body?: Statement;
   $returns?: Variant | TableVariant | DbType;
 
-  constructor(name: CompatiableObjectName) {
+  constructor(name: XObjectName) {
     super();
     this.$name = name;
   }
@@ -146,7 +143,9 @@ export class CreateFunction<
     return this;
   }
 
-  body(...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]): this {
+  body(
+    ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
+  ): this {
     if (typeof sql[0] === 'function') {
       sql = sql[0](this.$params || ([] as any));
     }
@@ -155,10 +154,16 @@ export class CreateFunction<
   }
 }
 
-export function createFunction(name: CompatiableObjectName): CreateFunction {
+export function createFunction(name: XObjectName): CreateFunction {
   return new CreateFunction(name);
 }
 
-createFunction.param = FunctionParameter.create;
+createFunction.param = <T extends DbType, N extends string>(
+  name: N,
+  dataType: T,
+  defaultValue?: Literal<ScalarFromDbType<T>> | ScalarFromDbType<T>
+): FunctionParameter<ScalarFromDbType<T>, N> => {
+  return FunctionParameter.create(name, dataType, defaultValue);
+};
 
 export type CreateFunctionBuilder = typeof createFunction;

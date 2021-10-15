@@ -1,4 +1,4 @@
-import { CompatiableObjectName } from '../../object/db-object';
+import { XObjectName } from '../../object';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { KeyColumns, KeyColumnsObject } from './key-column';
 
@@ -8,7 +8,7 @@ export class CreateIndex extends Statement {
   }
   $kind: STATEMENT_KIND.CREATE_INDEX = STATEMENT_KIND.CREATE_INDEX;
   $name?: string;
-  $table?: CompatiableObjectName;
+  $table?: XObjectName;
   $columns?: KeyColumns;
   $clustered: boolean = false;
   $unique: boolean = false;
@@ -29,7 +29,7 @@ export class CreateIndex extends Statement {
   }
 
   on(
-    table: CompatiableObjectName,
+    table: XObjectName,
     columns: KeyColumns | string[] | KeyColumnsObject
   ): this {
     if (this.$table) {

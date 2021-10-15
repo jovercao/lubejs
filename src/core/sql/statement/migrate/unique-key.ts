@@ -9,7 +9,7 @@ export class UniqueKey extends SQL {
   static isUniqueKey(object: any): object is UniqueKey {
     return object?.$type === SQL_SYMBOLE.UNIQUE_KEY
   }
-  $type: SQL_SYMBOLE.UNIQUE_KEY = SQL_SYMBOLE.UNIQUE_KEY;
+  readonly $type: SQL_SYMBOLE.UNIQUE_KEY = SQL_SYMBOLE.UNIQUE_KEY;
   $name?: string;
   $columns?: KeyColumns;
 

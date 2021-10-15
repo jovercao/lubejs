@@ -1,4 +1,4 @@
-import { Condition } from '../../condition/condition';
+import { Condition } from '../../condition';
 import { DbType } from '../../db-type';
 import { CheckConstraint } from './check-constraint';
 import { ColumnDeclareForAdd } from './column-declare-for-add';

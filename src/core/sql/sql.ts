@@ -1,3 +1,5 @@
+import type { RowObject, ColumnsOf, ExpandScalar, CompatiblifyTuple } from './types';
+
 /**
  * 所有AST类的基类
  */
@@ -38,7 +40,7 @@ abstract class SQLClass {
     return new Continue();
   }
 
-  static return(value?: CompatibleExpression): Return {
+  static return(value?: XExpression): Return {
     return new Return(value);
   }
 
@@ -56,18 +58,18 @@ abstract class SQLClass {
   }
 
   static group(condition: Condition): Condition;
-  static group<T extends Scalar>(expr: CompatibleExpression<T>): Expression<T>;
-  static group(value: Condition | CompatibleExpression): any {
-    if (Condition.isCondition(value) || isPlainObject(value)) {
-      return new GroupCondition(value as Condition);
+  static group<T extends Scalar>(expr: XExpression<T>): Expression<T>;
+  static group(value: Condition | XExpression): any {
+    if (Condition.isCondition(value)) {
+      return new GroupCondition(value);
     }
-    return new GroupExpression(value as CompatibleExpression);
+    return new GroupExpression(value as XExpression);
   }
 
   /**
    * 负号运算符 -
    */
-  static neg(expr: CompatibleExpression<number>): Expression<number> {
+  static neg(expr: XExpression<number>): Expression<number> {
     return new UnaryOperation(UNARY_OPERATION_OPERATOR.NEG, expr);
   }
 
@@ -76,9 +78,9 @@ abstract class SQLClass {
    */
   static concat(
     ...strs: [
-      CompatibleExpression<string>,
-      CompatibleExpression<string>,
-      ...CompatibleExpression<string>[]
+      XExpression<string>,
+      XExpression<string>,
+      ...XExpression<string>[]
     ]
   ): Expression<string> {
     let exp = strs[0];
@@ -95,8 +97,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static add<T extends Numeric>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.ADD, left, right);
   }
@@ -108,8 +110,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static sub<T extends Numeric>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SUB, left, right);
   }
@@ -121,8 +123,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static mul<T extends Numeric>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.MUL, left, right);
   }
@@ -134,8 +136,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static div<T extends Numeric>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.DIV, left, right);
   }
@@ -147,8 +149,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static mod<T extends Numeric>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.MOD, left, right);
   }
@@ -159,8 +161,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static xor<T extends Interger>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.XOR, left, right);
   }
@@ -172,8 +174,8 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static shl<T extends Interger>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHL, left, right);
   }
@@ -185,19 +187,22 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static shr<T extends Interger>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T> {
     return new BinaryOperation(BINARY_OPERATION_OPERATOR.SHR, left, right);
   }
 
-  static literal<T extends Scalar>(value: T, dbType?: DbTypeOf<T>): Literal<T> {
+  static literal<T extends Scalar>(
+    value: T,
+    dbType?: DbTypeFromScalar<T>
+  ): Literal<T> {
     return new Literal(value, dbType);
   }
 
   static var<T extends Scalar, N extends string = string>(
     name: N,
-    type: DbTypeOf<T>
+    type: DbTypeFromScalar<T>
   ): Variant<T, N> {
     return new Variant(name, type);
   }
@@ -206,7 +211,7 @@ abstract class SQLClass {
    */
   static field<T extends Scalar, N extends string>(
     name: N,
-    rowset?: CompatibleRowset
+    rowset?: XRowsets
   ): Field<T, N> {
     return new Field(name, rowset);
   }
@@ -225,24 +230,24 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static and<T extends Interger>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T>;
   static and(
     ...args:
       | Condition[]
       | [Condition[]]
-      | [CompatibleExpression<Interger>, CompatibleExpression<Interger>]
+      | [XExpression<Interger>, XExpression<Interger>]
   ): any {
     if (Array.isArray(args[0])) {
       args = args[0];
     }
 
-    if (Expression.isExpression(args[0]) || isScalar(args[0])) {
+    if (Expression.isExpression(args[0]) || isBaseScalar(args[0])) {
       return new BinaryOperation(
         BINARY_OPERATION_OPERATOR.AND,
         args[0],
-        args[1] as CompatibleExpression<Interger>
+        args[1] as XExpression<Interger>
       );
     }
 
@@ -263,23 +268,23 @@ abstract class SQLClass {
    * @returns 返回算术运算表达式
    */
   static or<T extends Interger>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Expression<T>;
   static or(
     ...args:
       | Condition[]
       | [Condition[]]
-      | [CompatibleExpression<Interger>, CompatibleExpression<Interger>]
+      | [XExpression<Interger>, XExpression<Interger>]
   ): any {
     if (Array.isArray(args[0])) {
       args = args[0];
     }
-    if (Expression.isExpression(args[0]) || isScalar(args[0])) {
+    if (Expression.isExpression(args[0]) || isBaseScalar(args[0])) {
       return new BinaryOperation(
         BINARY_OPERATION_OPERATOR.OR,
         args[0],
-        args[1] as CompatibleExpression<Interger>
+        args[1] as XExpression<Interger>
       );
     }
     return BinaryLogicCondition.join(LOGIC_OPERATOR.OR, args as Condition[]);
@@ -296,9 +301,9 @@ abstract class SQLClass {
    * @param right 右值
    * @returns 返回算术运算表达式
    */
-  static not<T extends Interger>(value: CompatibleExpression<T>): Expression<T>;
-  static not(arg: Condition | CompatibleExpression<Interger>): any {
-    if (Expression.isExpression(arg) || isScalar(arg)) {
+  static not<T extends Interger>(value: XExpression<T>): Expression<T>;
+  static not(arg: Condition | XExpression<Interger>): any {
+    if (Expression.isExpression(arg) || isBaseScalar(arg)) {
       return new UnaryOperation(UNARY_OPERATION_OPERATOR.NOT, arg);
     }
     return new UnaryLogicCondition(LOGIC_OPERATOR.NOT, arg);
@@ -331,7 +336,7 @@ abstract class SQLClass {
    * @returns 返回比较运算符
    * @param expr 表达式
    */
-  static isNull(expr: CompatibleExpression<Scalar>): Condition {
+  static isNull(expr: XExpression<Scalar>): Condition {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NULL, expr);
   }
   /**
@@ -339,13 +344,13 @@ abstract class SQLClass {
    * @param expr 表达式
    * @returns 返回比较运算符
    */
-  static isNotNull(expr: CompatibleExpression<Scalar>): Condition {
+  static isNotNull(expr: XExpression<Scalar>): Condition {
     return new UnaryCompareCondition(UNARY_COMPARE_OPERATOR.IS_NOT_NULL, expr);
   }
 
   static eq<T extends Scalar>(
-    left: CompatibleExpression<ExpandScalar<T>>,
-    right: CompatibleExpression<ExpandScalar<T>>
+    left: XExpression<ExpandScalar<T>>,
+    right: XExpression<ExpandScalar<T>>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.EQ, left, right);
   }
@@ -357,15 +362,15 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static neq<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.NEQ, left, right);
   }
 
   static lt<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.LT, left, right);
   }
@@ -376,8 +381,8 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static lte<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.LTE, left, right);
   }
@@ -388,8 +393,8 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static gt<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.GT, left, right);
   }
@@ -400,8 +405,8 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static gte<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ): Condition {
     return new BinaryCompareCondition(BINARY_COMPARE_OPERATOR.GTE, left, right);
   }
@@ -412,8 +417,8 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static like(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
+    left: XExpression<string>,
+    right: XExpression<string>
   ): Condition {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.LIKE,
@@ -428,8 +433,8 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static notLike(
-    left: CompatibleExpression<string>,
-    right: CompatibleExpression<string>
+    left: XExpression<string>,
+    right: XExpression<string>
   ): Condition {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.NOT_LIKE,
@@ -444,27 +449,27 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
+    left: XExpression<T>,
     select: Select<any>
   ): Condition;
   static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[]
+    left: XExpression<T>,
+    values: XExpression<T>[]
   ): Condition;
   static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[] | Select<any>
+    left: XExpression<T>,
+    values: XExpression<T>[] | Select<any>
   ): Condition;
   static in<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[] | Select<any>
+    left: XExpression<T>,
+    values: XExpression<T>[] | Select<any>
   ): Condition {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.IN,
       left,
       Select.isSelect(values)
         ? values.asValue()
-        : values.map(v => Expression.ensure(v))
+        : values.map(v => (Expression.isExpression(v) ? v : SQL.literal(v)))
     );
   }
 
@@ -475,13 +480,13 @@ abstract class SQLClass {
    * @returns 返回比较运算对比条件
    */
   static notIn<T extends Scalar>(
-    left: CompatibleExpression<T>,
-    values: CompatibleExpression<T>[]
+    left: XExpression<T>,
+    values: XExpression<T>[]
   ): Condition {
     return new BinaryCompareCondition(
       BINARY_COMPARE_OPERATOR.NOT_IN,
       left,
-      values.map(v => Expression.ensure(v))
+      values.map(v => (Expression.isExpression(v) ? v : SQL.literal(v)))
     );
   }
   /**
@@ -497,18 +502,18 @@ abstract class SQLClass {
     members:
       | ((builder: TableVariantBuilder) => TableVariantMember[])
       | TableVariantMember[]
-  ): ProxiedTableVariant<T>;
+  ): XTableVariant<T>;
   static table<T extends RowObject = any>(
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
-  ): ProxiedTable<T>;
+  ): XTable<T>;
   static table<T extends RowObject = any>(
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtInOrMembers:
       | boolean
       | TableVariantMember[]
       | ((builder: TableVariantBuilder) => TableVariantMember[]) = false
-  ): ProxiedTable<T> | TableVariant<T> {
+  ): XTable<T> | TableVariant<T> {
     if (
       typeof builtInOrMembers === 'function' ||
       Array.isArray(builtInOrMembers)
@@ -525,7 +530,7 @@ abstract class SQLClass {
   /**
    * 声明一个函数
    */
-  static func(name: CompatiableObjectName, builtIn = false): Func {
+  static func(name: XObjectName, builtIn = false): Func {
     return new Func(name, builtIn);
   }
   /**
@@ -535,7 +540,7 @@ abstract class SQLClass {
     R extends Scalar = number,
     O extends RowObject[] = never,
     N extends string = string
-  >(name: CompatiableObjectName<N>, builtIn = false): Procedure<R, O, N> {
+  >(name: XObjectName<N>, builtIn = false): Procedure<R, O, N> {
     return new Procedure(name, builtIn);
   }
 
@@ -548,53 +553,51 @@ abstract class SQLClass {
   }
 
   static invokeAsTable<T extends RowObject = any>(
-    func: CompatiableObjectName | Func<string>,
-    args: CompatibleExpression<Scalar>[]
-  ): ProxiedRowset<T> {
+    func: XObjectName | Func<string>,
+    args: XExpression<Scalar>[]
+  ): XRowset<T> {
     return Func.ensure(func).invokeAsTable<T>(...args);
   }
 
   static invokeAsScalar<T extends Scalar = any>(
-    func: CompatiableObjectName | Func<string>,
-    args: CompatibleExpression<Scalar>[]
+    func: XObjectName | Func<string>,
+    args: XExpression<Scalar>[]
   ): Expression<T> {
     return Func.ensure(func).invokeAsScalar<T>(...args);
   }
 
   static makeInvoke(
     type: 'table',
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
-  ): (...args: any) => ProxiedRowset<any>;
+  ): (...args: any) => XRowset<any>;
   static makeInvoke<R extends RowObject, A extends Scalar[] = []>(
     type: 'table',
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
-  ): (...args: CompatiblifyTuple<A>) => ProxiedRowset<R>;
+  ): (...args: CompatiblifyTuple<A>) => XRowset<R>;
   static makeInvoke(
     type: 'scalar',
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
   ): (...args: any) => Expression<any>;
   static makeInvoke<R extends Scalar, A extends Scalar[] = []>(
     type: 'scalar',
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
   ): (...args: CompatiblifyTuple<A>) => Expression<R>;
   static makeInvoke(
     type: 'table' | 'scalar',
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn = false
   ): any {
     if (type === 'table') {
-      return function (
-        ...args: CompatibleExpression[]
-      ): ProxiedRowset<RowObject> {
+      return function (...args: XExpression[]): XRowset<RowObject> {
         return SQL.invokeAsTable(SQL.func(name, builtIn), args);
       };
     }
     if (type === 'scalar') {
-      return function (...args: CompatibleExpression<Scalar>[]): Expression {
+      return function (...args: XExpression<Scalar>[]): Expression {
         return SQL.invokeAsScalar<Scalar>(SQL.func(name, builtIn), args);
       };
     }
@@ -605,7 +608,7 @@ abstract class SQLClass {
    * 创建一个可供JS调用的存储过程
    */
   static makeExec(
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
   ): (...args: any[]) => Execute<any, any>;
   static makeExec<
@@ -613,13 +616,11 @@ abstract class SQLClass {
     A extends Scalar[] = [],
     O extends RowObject[] = []
   >(
-    name: CompatiableObjectName,
+    name: XObjectName,
     builtIn?: boolean
   ): (...args: CompatiblifyTuple<A>) => Execute<R, O>;
-  static makeExec(name: CompatiableObjectName, builtIn = false): any {
-    return function (
-      ...args: CompatibleExpression<Scalar>[]
-    ): Execute<any, any> {
+  static makeExec(name: XObjectName, builtIn = false): any {
+    return function (...args: XExpression<Scalar>[]): Execute<any, any> {
       return SQL.execute(SQL.proc<Scalar, any, string>(name, builtIn), args);
     };
   }
@@ -633,7 +634,7 @@ abstract class SQLClass {
    */
   static set<T extends Scalar = any>(
     left: Assignable<T>,
-    right: CompatibleExpression<T>
+    right: XExpression<T>
   ): Assignment<T> {
     return new Assignment(left, right);
   }
@@ -657,13 +658,13 @@ abstract class SQLClass {
    * @param value
    */
   static when<T extends Scalar>(
-    expr: CompatibleExpression<Scalar>,
-    value: CompatibleExpression<T>
+    expr: XExpression<Scalar>,
+    value: XExpression<T>
   ): When<T> {
     return new When(expr, value);
   }
 
-  static case<T extends Scalar>(expr?: CompatibleExpression): Case<T> {
+  static case<T extends Scalar>(expr?: XExpression): Case<T> {
     return new Case<T>(expr);
   }
   /**
@@ -673,8 +674,8 @@ abstract class SQLClass {
     ...rowsets:
       | WithSelect[]
       | [WithSelect[]]
-      | ProxiedWithSelect[]
-      | [ProxiedWithSelect[]]
+      | XWithSelect[]
+      | [XWithSelect[]]
       | [SelectAliasObject]
   ): With {
     return new With(...rowsets);
@@ -704,13 +705,13 @@ abstract class SQLClass {
   }
 
   static createView<T extends RowObject = any, N extends string = string>(
-    name: CompatiableObjectName<N>
+    name: XObjectName<N>
   ): CreateView<T, N> {
     return new CreateView(name);
   }
 
   static alterView<T extends RowObject = any, N extends string = string>(
-    name: CompatiableObjectName<N>
+    name: XObjectName<N>
   ): AlterView<T, N> {
     return new AlterView(name);
   }
@@ -736,31 +737,25 @@ abstract class SQLClass {
   }
 
   static dropProcedure<N extends string>(
-    name: CompatiableObjectName<N>
+    name: XObjectName<N>
   ): DropProcedure<N> {
     return new DropProcedure(name);
   }
 
-  static dropTable<N extends string>(
-    name: CompatiableObjectName<N>
-  ): DropTable<N> {
+  static dropTable<N extends string>(name: XObjectName<N>): DropTable<N> {
     return new DropTable(name);
   }
 
-  static dropView<N extends string>(
-    name: CompatiableObjectName<N>
-  ): DropView<N> {
+  static dropView<N extends string>(name: XObjectName<N>): DropView<N> {
     return new DropView(name);
   }
 
-  static dropFunction<N extends string>(
-    name: CompatiableObjectName<N>
-  ): DropFunction<N> {
+  static dropFunction<N extends string>(name: XObjectName<N>): DropFunction<N> {
     return new DropFunction(name);
   }
 
   static dropIndex<N extends string>(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: N
   ): DropIndex<N> {
     return new DropIndex(table, name);
@@ -780,7 +775,7 @@ abstract class SQLClass {
    * @param fields
    */
   static insert<T extends RowObject = any>(
-    table: CompatibleTable<T>,
+    table: XTables<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return new Insert(table, fields);
@@ -789,18 +784,14 @@ abstract class SQLClass {
    * 更新一个表格
    * @param table
    */
-  static update<T extends RowObject = any>(
-    table: CompatibleTable<T>
-  ): Update<T> {
+  static update<T extends RowObject = any>(table: XTables<T>): Update<T> {
     return new Update(table);
   }
   /**
    * 删除一个表格
    * @param table 表格
    */
-  static delete<T extends RowObject = any>(
-    table: CompatibleTable<T>
-  ): Delete<T> {
+  static delete<T extends RowObject = any>(table: XTables<T>): Delete<T> {
     return new Delete(table);
   }
 
@@ -812,18 +803,16 @@ abstract class SQLClass {
     return new Raw(sql);
   }
 
-  static block(...statements: Statement[]): Block;
-  static block(statements: Statement[]): Block;
-  static block(...statements: Statement[] | [Statement[]]): Block {
-    if (statements.length === 1 && Array.isArray(statements[0])) {
-      statements = statements[0];
+  static block(...args: Statement[] | [Statement[]]): Block {
+    if (args.length === 1 && Array.isArray(args[0])) {
+      args = args[0];
     }
-    return new Block(statements as Statement[]);
+    return new Block(args as Statement[]);
   }
 
   static execute<R extends Scalar = any, O extends RowObject[] = []>(
-    proc: CompatiableObjectName | Procedure<R, O, string>,
-    params?: CompatibleExpression<Scalar>[]
+    proc: XObjectName | Procedure<R, O, string>,
+    params?: XExpression<Scalar>[]
     // | Parameter<JsConstant, string>[] | InputObject
   ): Execute<R, O> {
     return new Execute(proc, params);
@@ -838,10 +827,10 @@ abstract class SQLClass {
   static dropDatabase(name: string): DropDatabase {
     return new DropDatabase(name);
   }
-  static createSequence(name: CompatiableObjectName): CreateSequence {
+  static createSequence(name: XObjectName): CreateSequence {
     return new CreateSequence(name);
   }
-  static dropSequence(name: CompatiableObjectName): DropSequence {
+  static dropSequence(name: XObjectName): DropSequence {
     return new DropSequence(name);
   }
 
@@ -854,20 +843,20 @@ abstract class SQLClass {
   static input<T extends Scalar, N extends string>(
     name: N,
     value: T
-  ): Parameter<ExpandScalar<T>, N>
+  ): Parameter<ExpandScalar<T>, N>;
   static input<T extends DbType, N extends string>(
     name: N,
     type: T,
-    value?: TsTypeOf<T>,
-  ): Parameter<TsTypeOf<T>, N>
+    value?: ScalarFromDbType<T>
+  ): Parameter<ExpandScalar<ScalarFromDbType<T>>, N>;
   static input(
     name: string,
     typeOrValue: DbType | Scalar,
-    value?: Scalar,
+    value?: Scalar
   ): Parameter {
     let type: DbType | undefined;
     if (isDbType(typeOrValue)) {
-      type = typeOrValue
+      type = typeOrValue;
     } else {
       value = typeOrValue;
     }
@@ -880,8 +869,8 @@ abstract class SQLClass {
   static output<T extends DbType, N extends string>(
     name: N,
     type: T,
-    value?: TsTypeOf<T>
-  ): Parameter<TsTypeOf<T>, N> {
+    value?: ScalarFromDbType<T>
+  ): Parameter<ExpandScalar<ScalarFromDbType<T>>, N> {
     return new Parameter(name, type, value, 'OUT');
   }
 
@@ -891,19 +880,20 @@ abstract class SQLClass {
   static inoutput<T extends DbType, N extends string>(
     name: N,
     type: T,
-    value?: TsTypeOf<T>
-  ): Parameter<TsTypeOf<T>, N> {
+    value?: ScalarFromDbType<T>
+  ): Parameter<ExpandScalar<ScalarFromDbType<T>>, N> {
     return new Parameter(name, type, value, 'INOUT');
   }
 
   //***************************End 参数声明 ***************************//
 
-  static sequence<T extends Numeric>(name: CompatiableObjectName): Sequence<T> {
+  static sequence<T extends Numeric>(name: XObjectName): Sequence<T> {
     return new Sequence(name);
   }
 }
 
 export enum SQL_SYMBOLE {
+  DECLARE = 'DECLARE',
   EXPRESSION = 'EXPRESSION',
   CREATE_TABLE_COLUMN = 'CREATE_TABLE_COLUMN',
   STAR = 'STAR',
@@ -1004,26 +994,31 @@ export type SQL = SQLClass;
 export const SQL: SQLConstructor = SQLClass;
 
 // ********************因为循环引用的原因，必须将import放置在后面********************** //
-import { RowObject, ColumnsOf, ExpandScalar, CompatiblifyTuple } from './types';
-import { DbType, DbTypeOf, isDbType, TsTypeOf } from './db-type';
+import {
+  DbType,
+  DbTypeFromScalar,
+  isDbType,
+  ScalarFromDbType,
+} from './db-type';
 import { Document } from './document';
 import {
-  CompatiableObjectName,
+  XObjectName,
   Func,
   Procedure,
   BuiltIn,
   Sequence,
+  Star,
 } from './object';
 import {
   Table,
   WithSelect,
-  ProxiedTable,
-  CompatibleRowset,
-  ProxiedRowset,
-  CompatibleTable,
-  ProxiedWithSelect,
+  XTable,
+  XRowsets,
+  XRowset,
+  XTables,
+  XWithSelect,
   TableVariant,
-  ProxiedTableVariant,
+  XTableVariant,
   TableVariantMember,
   TableVariantBuilder,
   createTableVariant,
@@ -1045,7 +1040,7 @@ import {
   Assignable,
   BinaryOperation,
   Case,
-  CompatibleExpression,
+  XExpression,
   Expression,
   Field,
   GroupExpression,
@@ -1060,7 +1055,7 @@ import {
   UNARY_OPERATION_OPERATOR,
 } from './expression/common/operation';
 import { Raw } from './raw';
-import { Interger, isScalar, Numeric, Scalar } from './scalar';
+import { Scalar, Interger, isBaseScalar, Numeric } from './scalar';
 import {
   AlterDatabase,
   alterFunction,
@@ -1101,11 +1096,10 @@ import {
   Select,
   SelectAction,
   SelectAliasObject,
-  Star,
   Statement,
   Update,
   Use,
   While,
   With,
 } from './statement';
-import { clone, isPlainObject } from './util';
+import { clone } from './util';

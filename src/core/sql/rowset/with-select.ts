@@ -1,5 +1,13 @@
 import { SQL_SYMBOLE } from '../sql';
 import { Rowset } from './rowset';
+import { Field } from '../expression/field';
+import type { Select } from '../statement';
+import {
+  ColumnsOf,
+  DataRowValueType,
+  DefaultRowObject,
+  RowObject,
+} from '../types';
 
 export class WithSelect<T extends RowObject = any> extends Rowset<T> {
   private constructor(name: string, select: Select<T>) {
@@ -24,16 +32,12 @@ export class WithSelect<T extends RowObject = any> extends Rowset<T> {
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: string, select: Select<T>): ProxiedWithSelect<T> {
-    return new WithSelect(name, select) as ProxiedWithSelect<T>;
+  >(name: string, select: Select<T>): XWithSelect<T> {
+    return new WithSelect(name, select) as XWithSelect<T>;
   }
 }
 
-export type ProxiedWithSelect<T extends RowObject = RowObject> = WithSelect<T> &
+export type XWithSelect<T extends RowObject = RowObject> = WithSelect<T> &
   {
-    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
+    readonly [P in ColumnsOf<T>]: Field<DataRowValueType<T[P]>, P>;
   };
-
-import { Field } from '../expression/field';
-import { Select } from '../statement/crud/select';
-import { ColumnsOf, DbValueType, DefaultRowObject, RowObject } from '../types';

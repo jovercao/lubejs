@@ -1,6 +1,6 @@
 import { SQL, SQL_SYMBOLE } from '../../sql';
 import { RowObject } from '../../types';
-import { Select } from './select';
+import type { Select } from './select';
 
 /**
  * 联接查询
@@ -8,7 +8,7 @@ import { Select } from './select';
 export class Union<T extends RowObject = any> extends SQL {
   $select: Select<T>;
   $all: boolean;
-  $type: SQL_SYMBOLE.UNION = SQL_SYMBOLE.UNION;
+  readonly $type: SQL_SYMBOLE.UNION = SQL_SYMBOLE.UNION;
   // $isRecurse: boolean;
 
   /**

@@ -1,20 +1,14 @@
-import { CompatibleCondition, Condition } from '../../../condition/condition';
-import { RowObject, WhereObject } from '../../../types';
-import {
-  CompatibleRowset,
-  ProxiedRowset,
-  Rowset,
-} from '../../../rowset/rowset';
-import { CompatiableObjectName } from '../../../object/db-object';
-import { With } from '../with';
+import assert from 'assert';
+import { XCondition, Condition } from '../../../condition';
+import { RowObject } from '../../../types';
+import { XRowsets, XRowset, Rowset, Table } from '../../../rowset';
+import { XObjectName } from '../../../object';
+import type { With } from '../with';
 import { Join } from './join';
 import { Statement } from '../../statement';
-import assert from 'assert';
-import { isPlainObject } from '../../../util';
-import { Table } from '../../../rowset';
 
 export abstract class Fromable<T extends RowObject = any> extends Statement {
-  $froms?: ProxiedRowset[];
+  $froms?: XRowset[];
   $joins?: Join[];
   $where?: Condition;
   $with?: With;
@@ -23,7 +17,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * 从表中查询，可以查询多表
    * @param tables
    */
-  from(...tables: (CompatibleRowset | CompatiableObjectName)[]): this {
+  from(...tables: (XRowsets | XObjectName)[]): this {
     this.$froms = tables.map(table =>
       Rowset.isRowset(table) ? table : Table.create(table)
     );
@@ -45,7 +39,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * @memberof Select
    */
   join<T extends RowObject = any>(
-    table: CompatibleRowset<T> | CompatiableObjectName,
+    table: XRowsets<T> | XObjectName,
     on: Condition,
     left?: boolean
   ): this {
@@ -63,14 +57,14 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * @param on
    */
   leftJoin<T extends RowObject = any>(
-    table: CompatibleRowset<T> | CompatiableObjectName,
+    table: XRowsets<T> | XObjectName,
     on: Condition
   ): this {
     return this.join(table, on, true);
   }
 
-  protected ensureCondition(condition: CompatibleCondition<T>): Condition {
-    if (isPlainObject(condition)) {
+  protected ensureCondition(condition: XCondition<T>): Condition {
+    if (!Condition.isCondition(condition)) {
       // 严格限制语法，字段名必须带上表别名
       assert(
         this.$froms,
@@ -82,7 +76,9 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
         );
       }
       const rowset = this.$froms?.[0];
-      return Condition.ensure(condition, rowset);
+      return Condition.isCondition(condition)
+        ? condition
+        : Condition.parse(condition, rowset);
     }
     return condition;
   }
@@ -91,7 +87,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * where查询条件
    * @param condition
    */
-  where(condition: CompatibleCondition<T>) {
+  where(condition: XCondition<T>) {
     assert(!this.$where, 'where is declared');
     condition = this.ensureCondition(condition);
     this.$where = condition as Condition;
@@ -103,7 +99,7 @@ export abstract class Fromable<T extends RowObject = any> extends Statement {
    * @param condition
    * @returns
    */
-  andWhere(condition: CompatibleCondition<T>) {
+  andWhere(condition: XCondition<T>) {
     if (!this.$where) return this.where(condition);
     this.$where = Condition.and(this.$where, this.ensureCondition(condition));
     return this;

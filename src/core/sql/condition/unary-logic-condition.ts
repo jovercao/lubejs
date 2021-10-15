@@ -1,9 +1,14 @@
-import { CompatibleCondition, Condition, CONDITION_KIND, LOGIC_OPERATOR } from "./condition";
+import {
+  XCondition,
+  Condition,
+  CONDITION_KIND,
+  LOGIC_OPERATOR,
+} from './condition';
 
 /**
  * 一元逻辑查询条件
  */
- export class UnaryLogicCondition extends Condition {
+export class UnaryLogicCondition extends Condition {
   $operator: LOGIC_OPERATOR.NOT = LOGIC_OPERATOR.NOT;
   $condition: Condition;
   $kind: CONDITION_KIND.UNARY_LOGIC = CONDITION_KIND.UNARY_LOGIC;
@@ -20,6 +25,9 @@ import { CompatibleCondition, Condition, CONDITION_KIND, LOGIC_OPERATOR } from "
   }
 
   static isUnaryLogicCondition(object: any): object is UnaryLogicCondition {
-    return Condition.isCondition(object) && object.$kind === CONDITION_KIND.UNARY_LOGIC
+    return (
+      Condition.isCondition(object) &&
+      object.$kind === CONDITION_KIND.UNARY_LOGIC
+    );
   }
 }

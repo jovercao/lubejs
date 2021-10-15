@@ -1,6 +1,6 @@
-import { Condition } from "../../condition/condition";
-import { Statement, STATEMENT_KIND } from "../statement";
-import { Block } from "./block";
+import { Condition } from '../../condition';
+import { Statement, STATEMENT_KIND } from '../statement';
+import { Block } from './block';
 
 export class While extends Statement {
   $kind: STATEMENT_KIND.WHILE = STATEMENT_KIND.WHILE;
@@ -25,6 +25,8 @@ export class While extends Statement {
   }
 
   static isWhile(object: any): object is While {
-    return Statement.isStatement(object) && object.$kind === STATEMENT_KIND.WHILE;
+    return (
+      Statement.isStatement(object) && object.$kind === STATEMENT_KIND.WHILE
+    );
   }
 }

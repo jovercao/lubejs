@@ -1,7 +1,5 @@
-import { Decimal, isStringType, Uuid } from '../core';
-import { Entity } from './entity';
-import { ColumnMetadata, EntityMetadata } from './metadata';
-import { FetchRelations, ScalarType } from './types';
+import { Decimal, Uuid } from '../core';
+import { FetchRelations, ScalarDataType } from './data-types';
 
 const PropertySelector: any = new Proxy(
   {},
@@ -22,7 +20,7 @@ export function selectProperty(selector: (p: any) => any): any {
   return property;
 }
 
-export function isScalarType(value: any): value is ScalarType {
+export function isScalarType(value: any): value is ScalarDataType {
   return (
     value === String ||
     value === Date ||

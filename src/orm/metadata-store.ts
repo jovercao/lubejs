@@ -1,6 +1,6 @@
 import { DbContextConstructor } from "./db-context";
 import { DbContextMetadata, EntityMetadata } from "./metadata";
-import { EntityType } from "./types";
+import { EntityType } from "./data-types";
 
 /**********************************装饰器声明*************************************/
 export class MetadataStore {

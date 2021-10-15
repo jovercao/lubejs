@@ -1,15 +1,15 @@
 import { UuidConstructor } from "../../core";
 import { ConnectOptions } from "../../core/base/connection";
-import { DbType, DbTypeOf, Scalar, ScalarTypeOf, TsTypeOf } from "../../core/sql";
+import { Scalar } from "../../core/sql";
 import { DbContext } from "../db-context";
 import { Entity, EntityConstructor } from "../entity";
 import { ColumnMetadata, DbContextMetadata, EntityMetadata, KeyMetadata } from "../metadata";
 import { metadataStore } from "../metadata-store";
 import { isTableEntity } from "../metadata/util";
-import { DataType, EntityType, ScalarType } from "../types";
+import { EntityType, ScalarDataType } from "../data-types";
 import { EntityBuilder } from "./entity-builder";
 import { PropertyBuilder } from "./property-builder";
-import { fixColumn, fixEntity, fixEntityIndexes, fixEntityKey, fixEntityRelations } from "./util";
+import { fixColumn, fixEntity, fixEntityIndexes, fixEntityRelations } from "./util";
 
 export class ContextBuilder<T extends DbContext = DbContext> {
   public readonly metadata: DbContextMetadata;
@@ -182,7 +182,7 @@ export class ContextBuilder<T extends DbContext = DbContext> {
   | BigIntConstructor
   | UuidConstructor>(
     name: string,
-    type: ScalarType
+    type: ScalarDataType
   ): PropertyBuilder<Entity, Scalar>{
     // this.metadata.globalKeyName = name;
     // this.metadata.globalKeyType = type;

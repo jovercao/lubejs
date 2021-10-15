@@ -1,9 +1,9 @@
-import { SQL, SQL_SYMBOLE } from "../../sql";
-import { CompatiableObjectName } from "../../object/db-object";
+import { SQL, SQL_SYMBOLE } from '../../sql';
+import { XObjectName } from '../../object';
 
 export class ForeignKey extends SQL {
   static isForeignKey(object: any): object is ForeignKey {
-    return object?.$type === SQL_SYMBOLE.FOREIGN_KEY
+    return object?.$type === SQL_SYMBOLE.FOREIGN_KEY;
   }
   constructor(name?: string, columns?: string[]) {
     super();
@@ -13,11 +13,11 @@ export class ForeignKey extends SQL {
     }
   }
 
-  $type: SQL_SYMBOLE.FOREIGN_KEY = SQL_SYMBOLE.FOREIGN_KEY;
+  readonly $type: SQL_SYMBOLE.FOREIGN_KEY = SQL_SYMBOLE.FOREIGN_KEY;
   $name?: string;
   $columns?: string[];
   $referenceColumns?: string[];
-  $referenceTable?: CompatiableObjectName;
+  $referenceTable?: XObjectName;
   $deleteCascade?: boolean;
 
   on(...columns: string[] | [string[]]): this {
@@ -28,7 +28,7 @@ export class ForeignKey extends SQL {
     return this;
   }
 
-  reference(table: CompatiableObjectName, columns: string[]): this {
+  reference(table: XObjectName, columns: string[]): this {
     this.$referenceTable = table;
     this.$referenceColumns = columns;
     return this;

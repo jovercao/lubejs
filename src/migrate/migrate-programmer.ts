@@ -12,7 +12,7 @@ import {
   TableSchema,
   // UniqueConstraintSchema,
 } from './schema';
-import { CompatiableObjectName, DbType, SqlUtil } from '../core';
+import { XObjectName, DbType, SqlUtil } from '../core';
 
 // export class MigrateProgrammer {
 //   constructor(private sqlUtil: SqlUtil, private builderName: string) {
@@ -650,31 +650,31 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
   commentColumn(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     name: string,
     comment?: string
   ): void {
     this.comment('Column', table, name, comment);
   }
-  commentTable(table: CompatiableObjectName<string>, comment?: string): void {
+  commentTable(table: XObjectName<string>, comment?: string): void {
     this.comment('Table', table, comment);
   }
   commentIndex(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     name: string,
     comment?: string
   ): void {
     this.comment('Index', table, name, comment);
   }
   commentConstraint(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     name: string,
     comment?: string
   ): void {
     this.comment('Constraint', table, name, comment);
   }
   commentForeignKey(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     name: string,
     comment?: string
   ): void {
@@ -684,16 +684,16 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   private stringifyType(type: string): string {
     if (this.notResolverType) return `SQL.raw('${type}')`;
     const dbType = this.sqlUtil.parseRawType(type);
-    switch (dbType.name) {
+    switch (dbType.type) {
       case 'BINARY':
       case 'STRING':
-        return `DbType.${dbType.name.toLowerCase()}(${
-          dbType.length === DbType.MAX ? 'DbType.MAX' : dbType.length
+        return `DbType.${dbType.type.toLowerCase()}(${
+          dbType.size === DbType.MAX ? 'DbType.MAX' : dbType.size
         })`;
       case 'DECIMAL':
-        return `DbType.decimal(${dbType.precision}, ${dbType.digit})`;
+        return `DbType.decimal(${dbType.precision}, ${dbType.scale})`;
       default:
-        return 'DbType.' + dbType.name.toLowerCase();
+        return 'DbType.' + dbType.type.toLowerCase();
     }
   }
 
@@ -802,7 +802,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     this.middleCodes.push(sql);
   }
 
-  namify(objName: CompatiableObjectName): string {
+  namify(objName: XObjectName): string {
     const nameobj = this.sqlUtil.parseObjectName(objName);
     if (!nameobj.schema) {
       return JSON.stringify(nameobj.name);
@@ -811,7 +811,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     return JSON.stringify({ name, schema });
   }
 
-  dropPrimaryKey(table: CompatiableObjectName<string>, name: string) {
+  dropPrimaryKey(table: XObjectName<string>, name: string) {
     this.middleCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -827,7 +827,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     this.middleCodes.push(`builder.dropTable(${this.namify(table)})`);
   }
 
-  dropColumn(table: CompatiableObjectName, column: string): void {
+  dropColumn(table: XObjectName, column: string): void {
     this.middleCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -835,13 +835,13 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
 
-  setAutoRowflag(table: CompatiableObjectName<string>, column: string): void {
+  setAutoRowflag(table: XObjectName<string>, column: string): void {
     this.middleCodes.push(
       `builder.setAutoRowflag(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
-  dropAutoRowflag(table: CompatiableObjectName<string>, column: string): void {
+  dropAutoRowflag(table: XObjectName<string>, column: string): void {
     this.middleCodes.push(
       `builder.dropAutoRowflag(${this.namify(table)}, ${JSON.stringify(
         column
@@ -850,7 +850,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   dropConstraint(
-    table: CompatiableObjectName,
+    table: XObjectName,
     constraint: ConstraintSchema
   ): void {
     this.middleCodes.push(
@@ -870,7 +870,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   //   )}, ${genKeyColumns(index.columns)})`;
   // }
 
-  addColumn(table: CompatiableObjectName, column: ColumnSchema): void {
+  addColumn(table: XObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -878,7 +878,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
 
-  alterColumn(table: CompatiableObjectName, column: ColumnSchema): void {
+  alterColumn(table: XObjectName, column: ColumnSchema): void {
     this.middleCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -887,7 +887,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   setDefaultValue(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string,
     defaultValue: string
   ): void {
@@ -898,7 +898,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
 
-  dropDefaultValue(table: CompatiableObjectName, column: string): void {
+  dropDefaultValue(table: XObjectName, column: string): void {
     this.middleCodes.push(
       `builder.dropDefaultValue(${this.namify(table)}, ${JSON.stringify(
         column
@@ -907,7 +907,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   setIdentity(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string,
     startValue: number,
     increment: number
@@ -919,13 +919,13 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     );
   }
 
-  dropIdentity(table: CompatiableObjectName, column: string): void {
+  dropIdentity(table: XObjectName, column: string): void {
     this.middleCodes.push(
       `builder.dropIdentity(${this.namify(table)}, ${JSON.stringify(column)})`
     );
   }
 
-  addForeignKey(table: CompatiableObjectName, fk: ForeignKeySchema): void {
+  addForeignKey(table: XObjectName, fk: ForeignKeySchema): void {
     let sql = `builder.alterTable(${this.namify(
       table
     )}).add(builder => ${this.foreignKey(fk)})`;
@@ -935,7 +935,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     this.afterCodes.push(sql);
   }
 
-  dropForeignKey(table: CompatiableObjectName, name: string): void {
+  dropForeignKey(table: XObjectName, name: string): void {
     this.beforeCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -944,7 +944,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
   }
 
   addConstraint(
-    table: CompatiableObjectName,
+    table: XObjectName,
     constaint: ConstraintSchema
   ): void {
     if (constaint.kind === 'CHECK') {
@@ -966,7 +966,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     // );
   }
 
-  addPrimaryKey(table: CompatiableObjectName, key: PrimaryKeySchema): void {
+  addPrimaryKey(table: XObjectName, key: PrimaryKeySchema): void {
     this.middleCodes.push(
       `builder.alterTable(${this.namify(
         table
@@ -990,7 +990,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     this.middleCodes.push(`builder.dropSequence(${this.namify(sequence)})`);
   }
 
-  createIndex(table: CompatiableObjectName<string>, index: IndexSchema): void {
+  createIndex(table: XObjectName<string>, index: IndexSchema): void {
     let sql = `builder.createIndex(${JSON.stringify(
       index.name
     )}).on(${this.namify(table)}, ${this.keyColumns(index.columns)})`;
@@ -1004,7 +1004,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     this.middleCodes.push(sql);
   }
 
-  dropIndex(table: CompatiableObjectName<string>, name: string): void {
+  dropIndex(table: XObjectName<string>, name: string): void {
     this.middleCodes.push(
       `builder.dropIndex(${this.namify(table)}, ${JSON.stringify(name)})`
     );
@@ -1012,18 +1012,18 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
 
   comment(
     type: 'Table' | 'Procedure' | 'Function' | 'Schema',
-    object: CompatiableObjectName<string>,
+    object: XObjectName<string>,
     comment?: string
   ): void;
   comment(
     type: 'Column' | 'Constraint' | 'Index',
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     member: string,
     comment?: string
   ): void;
   comment(
     type: string,
-    object: CompatiableObjectName<string>,
+    object: XObjectName<string>,
     memberOrComment?: string,
     _comment?: string
   ): void {

@@ -1,8 +1,12 @@
+
 /**
  * 数据库行集，混入类型
  */
 
 import { SQL, SQL_SYMBOLE } from '../sql';
+import { Field } from '../expression';
+import { Star, XObjectName } from '../object';
+import { ColumnsOf, DataRowValueType, RowObject } from '../types';
 
 export type PropertyName = string;
 export type ColumnName = string;
@@ -25,7 +29,7 @@ export abstract class Rowset<
   /**
    * 继承Rowset后必须在调用此函数，以达到创建代理Rowset的目的。
    */
-  protected $proxy(): ProxiedRowset<T> {
+  protected $proxy(): XRowset<T> {
     const proxied_proto = new Proxy(Object.create(this.constructor.prototype), {
       get: (proto: any, key: string | number | symbol) => {
         if (key in proto) {
@@ -42,10 +46,10 @@ export abstract class Rowset<
       },
     });
     Object.setPrototypeOf(this, proxied_proto);
-    return this as ProxiedRowset<T>;
+    return this as XRowset<T>;
   }
 
-  $name?: CompatiableObjectName = undefined;
+  $name?: XObjectName = undefined;
   /**
    * 别名
    */
@@ -61,19 +65,19 @@ export abstract class Rowset<
   /**
    * 为当前表添加别名
    */
-  as(alias: string): ProxiedRowset<T> {
+  as(alias: string): XRowset<T> {
     if (this.$alias) {
       throw new Error(`Rowset is exists alias: ${this.$alias}`);
     }
     this.$alias = alias;
-    return this as ProxiedRowset<T>;
+    return this as XRowset<T>;
   }
 
   /**
    * 字段
    * @param name 节点名称
    */
-  $field<P extends ColumnsOf<T>>(name: P): Field<DbValueType<T[P]>> {
+  $field<P extends ColumnsOf<T>>(name: P): Field<DataRowValueType<T[P]>> {
     if (!this.$name) {
       throw new Error('You must named rowset befor use field.');
     }
@@ -102,9 +106,7 @@ export abstract class Rowset<
     return this;
   }
 
-  static isRowset(
-    object: any
-  ): object is CompatibleRowset<any> | CompatibleRowset {
+  static isRowset(object: any): object is XRowsets<any> | XRowsets {
     return object?.$tag === SQL_SYMBOLE.ROWSET;
   }
 
@@ -116,35 +118,30 @@ export abstract class Rowset<
   // }
 }
 
-export type CompatibleRowset<
+export type XRowsets<
   // eslint-disable-next-line
   T extends RowObject = {}
 > =
-  // | CompatibleTable<T, N>
   | Rowset<T>
-  | ProxiedRowset<T>
+  | XRowset<T>
   | Table<T>
-  | ProxiedTable<T>
+  | XTable<T>
   | NamedSelect<T>
-  | ProxiedNamedSelect<T>
+  | XNamedSelect<T>
   | TableVariant<T>
-  | ProxiedTableVariant<T>
+  | XTableVariant<T>
   | TableFuncInvoke<T>
-  | ProxiedTableFuncInvoke<T>;
+  | XTableFuncInvoke<T>;
 
 /**
  * 代理后的行集
  */
-export type ProxiedRowset<T extends RowObject = RowObject> = Rowset<T> &
+export type XRowset<T extends RowObject = RowObject> = Rowset<T> &
   {
-    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
+    readonly [P in ColumnsOf<T>]: Field<DataRowValueType<T[P]>, P>;
   };
 
-import { Field } from '../expression/field';
-import { CompatiableObjectName } from '../object/db-object';
-import { Star, ProxiedTableFuncInvoke, TableFuncInvoke } from '../statement';
-import { ColumnsOf, DbValueType, RowObject } from '../types';
-import { NamedSelect, ProxiedNamedSelect } from './named-select';
-import { ProxiedTable, Table } from './table';
-import { ProxiedTableVariant, TableVariant } from './table-variant';
-import { Scalar } from '../scalar';
+import { NamedSelect, XNamedSelect } from './named-select';
+import { XTable, Table } from './table';
+import { XTableVariant, TableVariant } from './table-variant';
+import { XTableFuncInvoke, TableFuncInvoke } from './table-func-invoke';

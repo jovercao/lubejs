@@ -1,15 +1,9 @@
 import { SQL_SYMBOLE } from '../sql';
-import { Field } from '../expression/field';
-import { ColumnsOf, DbValueType, RowObject } from '../types';
+import { Field } from '../expression';
+import { ColumnsOf, DataRowValueType, RowObject } from '../types';
 import { Rowset } from './rowset';
-import {
-  CheckConstraint,
-  ColumnDeclareForAdd,
-  PrimaryKey,
-  UniqueKey,
-} from '../statement/migrate';
 import { DbType } from '../db-type';
-import { Condition } from '../condition';
+import type { Condition } from '../condition';
 
 export type TableVariantMember =
   | PrimaryKey
@@ -18,7 +12,7 @@ export type TableVariantMember =
   | ColumnDeclareForAdd;
 
 export class TableVariant<T extends RowObject = any> extends Rowset<T> {
-  $type: SQL_SYMBOLE.TABLE_VARIANT = SQL_SYMBOLE.TABLE_VARIANT;
+  readonly $type: SQL_SYMBOLE.TABLE_VARIANT = SQL_SYMBOLE.TABLE_VARIANT;
   $builtin!: boolean;
   $body?: TableVariantMember[];
   $name: string;
@@ -34,28 +28,27 @@ export class TableVariant<T extends RowObject = any> extends Rowset<T> {
       this.$body = members;
       return this;
     };
-    this.$proxy()
+    this.$proxy();
   }
 
   body!: (members: TableVariantMember[]) => this;
 }
 
-export type ProxiedTableVariant<T extends RowObject = RowObject> =
-  TableVariant<T> &
-    {
-      readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
-    };
+export type XTableVariant<T extends RowObject = RowObject> = TableVariant<T> &
+  {
+    readonly [P in ColumnsOf<T>]: Field<DataRowValueType<T[P]>, P>;
+  };
 
 export function createTableVariant<T extends RowObject = any>(
   name: string,
   members:
     | ((builder: TableVariantBuilder) => TableVariantMember[])
     | TableVariantMember[]
-): ProxiedTableVariant<T> {
+): XTableVariant<T> {
   if (typeof members === 'function') {
     members = members(createTableVariant);
   }
-  return new TableVariant(name).body(members) as ProxiedTableVariant<T>;
+  return new TableVariant(name).body(members) as XTableVariant<T>;
 }
 
 createTableVariant.primaryKey = (name?: string): PrimaryKey => {
@@ -89,3 +82,10 @@ createTableVariant.uniqueKey = (name?: string): UniqueKey => {
 };
 
 export type TableVariantBuilder = typeof createTableVariant;
+
+import {
+  CheckConstraint,
+  ColumnDeclareForAdd,
+  PrimaryKey,
+  UniqueKey,
+} from '../statement';

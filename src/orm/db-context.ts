@@ -14,7 +14,7 @@ import {
   EntityInstance,
   EntityKeyType,
 } from './entity';
-import { DbContextEventHandler, DbEvents } from './types';
+import { DbContextEventHandler, DbEvents } from './data-types';
 import { metadataStore } from './metadata-store';
 import { EntityMgr } from './entity-mgr';
 
@@ -36,10 +36,10 @@ export class DbContext {
     this._metadata = value;
   }
 
-  private _repositories?: Map<Entity, Repository<any>>;
+  private _repositories?: Map<EntityConstructor, Repository<any>>;
 
   // 为节省内存，Repository 使用共享对象
-  private get repositories(): Map<Entity, Repository<any>> {
+  private get repositories(): Map<EntityConstructor, Repository<any>> {
     if (!this._repositories) {
       this._repositories = new Map();
     }
@@ -47,10 +47,10 @@ export class DbContext {
   }
 
 
-  private _mgrs?: Map<Entity, EntityMgr<any>>;
+  private _mgrs?: Map<EntityConstructor, EntityMgr<any>>;
 
   // 为节省内存，Repository 使用共享对象
-  private get mgrs(): Map<Entity, EntityMgr<any>> {
+  private get mgrs(): Map<EntityConstructor, EntityMgr<any>> {
     if (!this._mgrs) {
       this._mgrs = new Map();
     }
@@ -236,7 +236,7 @@ export class DbContext {
     return this;
   }
 
-  private _emit(event: DbEvents, Entity: Entity, items: Entity[]): void {
+  private _emit(event: DbEvents, Entity: EntityConstructor, items: Entity[]): void {
     this._emitter.emit(event, Entity, items);
     this._emitter.emit('all', Entity, items);
   }

@@ -1,6 +1,6 @@
 import { Condition } from '../../condition';
 import { DbType } from '../../db-type';
-import { CompatiableObjectName } from '../../object/db-object';
+import { XObjectName } from '../../object';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { CheckConstraint } from './check-constraint';
 import { ColumnDeclareForAdd } from './column-declare-for-add';
@@ -17,9 +17,9 @@ export class CreateTable<N extends string = string> extends Statement {
   }
   readonly $kind: STATEMENT_KIND.CREATE_TABLE = STATEMENT_KIND.CREATE_TABLE;
   $body?: CreateTableMember[];
-  $name: CompatiableObjectName<N>;
+  $name: XObjectName<N>;
 
-  constructor(name: CompatiableObjectName<N>) {
+  constructor(name: XObjectName<N>) {
     super();
     this.$name = name;
   }
@@ -67,11 +67,11 @@ export type CreateTableMember =
   | UniqueKey;
 
 export type CreateTableHandler = {
-  <N extends string>(name: CompatiableObjectName<N>): CreateTable<N>;
+  <N extends string>(name: XObjectName<N>): CreateTable<N>;
 } & CreateTableBuilder;
 
 export function createTable<N extends string>(
-  name: CompatiableObjectName<N>,
+  name: XObjectName<N>,
   members?:
     | ((builder: CreateTableBuilder) => CreateTableMember[])
     | CreateTableMember[]

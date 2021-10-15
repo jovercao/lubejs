@@ -1,8 +1,8 @@
-import { SQL, SQL_SYMBOLE } from '../../sql';
-import { DbType, DbTypeOf, TsTypeOf } from '../../db-type';
-import { Literal } from '../../expression/literal';
-import { Scalar } from '../../scalar';
-import { Assignable } from '../../expression';
+import { SQL, SQL_SYMBOLE } from '../sql';
+import { DbType, ScalarFromDbType } from '../db-type';
+import { Scalar } from '../scalar';
+import { Literal } from './literal';
+import { Assignable } from './common/assignable';
 
 export class FunctionParameter<
   T extends Scalar = Scalar,
@@ -28,8 +28,8 @@ export class FunctionParameter<
   static create<T extends DbType, N extends string>(
     name: N,
     dataType: T,
-    defaultValue?: Literal<TsTypeOf<T>> | TsTypeOf<T>
-  ): FunctionParameter<TsTypeOf<T>, N> {
+    defaultValue?: Literal<ScalarFromDbType<T>> | ScalarFromDbType<T>
+  ): FunctionParameter<ScalarFromDbType<T>, N> {
     return new FunctionParameter(name, dataType, defaultValue);
   }
 }

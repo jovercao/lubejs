@@ -1,7 +1,7 @@
-import assert from "assert";
-import { Condition } from "../../condition/condition";
-import { Statement, STATEMENT_KIND } from "../statement";
-import { Block } from "./block";
+import assert from 'assert';
+import { Condition } from '../../condition';
+import { Statement, STATEMENT_KIND } from '../statement';
+import { Block } from './block';
 
 export class If extends Statement {
   $kind: STATEMENT_KIND.IF = STATEMENT_KIND.IF;

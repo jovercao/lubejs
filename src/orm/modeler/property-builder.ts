@@ -1,9 +1,10 @@
 import {
   Scalar,
   DbType,
-  ProxiedRowset,
-  CompatibleExpression,
+  XRowset,
+  XExpression,
   Expression,
+  SQL,
 } from '../../core';
 import { DbContext } from '../db-context';
 import { Entity } from '../entity';
@@ -32,7 +33,7 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   hasType(dbType: DbType): Omit<this, 'hasType'> {
     this.metadata.dbType = dbType;
-    this.metadata.isRowflag = dbType.name === 'ROWFLAG';
+    this.metadata.isRowflag = dbType.type === 'ROWFLAG';
     return this;
   }
 
@@ -43,10 +44,10 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
    */
   isAutogen(
     generator: (
-      rowset: ProxiedRowset<T>,
+      rowset: XRowset<T>,
       item: T,
       context: DbContext
-    ) => CompatibleExpression<V>
+    ) => XExpression<V>
   ): this {
     this.metadata.generator = generator as any;
     return this;
@@ -111,8 +112,10 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   /**
    * 默认值
    */
-  hasDefaultValue(expr: CompatibleExpression<V>): this {
-    this.metadata.defaultValue = Expression.ensure(expr);
+  hasDefaultValue(expr: XExpression<V>): this {
+    this.metadata.defaultValue = Expression.isExpression(expr)
+      ? expr
+      : SQL.literal(expr);
     return this;
   }
 
@@ -135,9 +138,11 @@ export class PropertyBuilder<T extends Entity, V extends Scalar = Scalar> {
   /**
    * 将列声明为计算列
    */
-  isCalculated(expr: CompatibleExpression<V>): this {
+  isCalculated(expr: XExpression<V>): this {
     this.metadata.isCalculate = true;
-    this.metadata.calculateExpression = Expression.ensure(expr);
+    this.metadata.calculateExpression = Expression.isExpression(expr)
+      ? expr
+      : SQL.literal(expr);
     return this;
   }
 

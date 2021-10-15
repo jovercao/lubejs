@@ -1,5 +1,5 @@
-import { SQL, SQL_SYMBOLE } from "../../sql";
-import { DbType } from "../../db-type";
+import { SQL, SQL_SYMBOLE } from '../../sql';
+import { DbType } from '../../db-type';
 
 export abstract class ColumnDeclare<
   N extends string = string,

@@ -20,7 +20,7 @@ import {
   isManyToOne,
 } from './util';
 import { DbContextConstructor } from '../db-context';
-import { FetchRelations } from '../types';
+import { FetchRelations } from '../data-types';
 
 export interface CommonEntityMetadata {
   /**

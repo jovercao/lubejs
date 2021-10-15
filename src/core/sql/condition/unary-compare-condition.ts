@@ -1,6 +1,7 @@
 import assert from 'assert';
-import { CompatibleExpression, Expression } from '../expression/expression';
 import { Scalar } from '../scalar';
+import { SQL } from '../sql';
+import { XExpression, Expression } from '../expression';
 import { Condition, CONDITION_KIND, UNARY_COMPARE_OPERATOR } from './condition';
 
 /**
@@ -16,14 +17,11 @@ export class UnaryCompareCondition extends Condition {
    * @param operator 运算符
    * @param expr 查询条件
    */
-  constructor(
-    operator: UNARY_COMPARE_OPERATOR,
-    expr: CompatibleExpression<Scalar>
-  ) {
+  constructor(operator: UNARY_COMPARE_OPERATOR, expr: XExpression<Scalar>) {
     super();
     this.$operator = operator;
     assert(expr, 'next must not null');
-    this.$expr = Expression.ensure(expr);
+    this.$expr = Expression.isExpression(expr) ? expr : SQL.literal(expr);
   }
 
   static isUnaryCompareCondition(object: any): object is UnaryCompareCondition {
@@ -32,5 +30,4 @@ export class UnaryCompareCondition extends Condition {
       object.$kind === CONDITION_KIND.UNARY_COMPARE
     );
   }
-
 }

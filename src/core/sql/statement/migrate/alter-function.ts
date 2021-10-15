@@ -1,13 +1,9 @@
-import { DbType, DbTypeOf, isDbType } from '../../db-type';
-import { CompatiableObjectName } from '../../object/db-object';
-import { Statement, STATEMENT_KIND } from '../statement';
-import { FunctionParameter } from './function-parameter';
-import { FunctionParameterObject } from './create-function';
-import { isPlainObject } from '../../util';
-import { Scalar } from '../../scalar';
 import { SQL } from '../../sql';
 import { TableVariant } from '../../rowset';
-import { Variant } from '../../expression';
+import { DbType, ScalarFromDbType } from '../../db-type';
+import { XObjectName } from '../../object';
+import { Statement, STATEMENT_KIND } from '../statement';
+import { FunctionParameter, Literal, Variant } from '../../expression';
 
 export class AlterFunction<
   P extends FunctionParameter[] = []
@@ -19,12 +15,12 @@ export class AlterFunction<
     );
   }
   $kind: STATEMENT_KIND.ALTER_FUNCTION = STATEMENT_KIND.ALTER_FUNCTION;
-  $name: CompatiableObjectName;
+  $name: XObjectName;
   $params?: P;
   $body?: Statement;
   $returns?: Variant | TableVariant | DbType;
 
-  constructor(name: CompatiableObjectName) {
+  constructor(name: XObjectName) {
     super();
     this.$name = name;
   }
@@ -145,7 +141,9 @@ export class AlterFunction<
   /**
    * 定义函数体
    */
-  body(...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]): this {
+  body(
+    ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
+  ): this {
     if (typeof sql[0] === 'function') {
       sql = sql[0](this.$params || ([] as any));
     }
@@ -154,10 +152,16 @@ export class AlterFunction<
   }
 }
 
-export function alterFunction(name: CompatiableObjectName): AlterFunction {
+export function alterFunction(name: XObjectName): AlterFunction {
   return new AlterFunction(name);
 }
 
-alterFunction.param = FunctionParameter.create;
+alterFunction.param = <T extends DbType, N extends string>(
+  name: N,
+  dataType: T,
+  defaultValue?: Literal<ScalarFromDbType<T>> | ScalarFromDbType<T>
+): FunctionParameter<ScalarFromDbType<T>, N> => {
+  return FunctionParameter.create(name, dataType, defaultValue);
+};
 
 export type AlterFunctionBuilder = typeof alterFunction;

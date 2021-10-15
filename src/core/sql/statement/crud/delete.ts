@@ -1,8 +1,6 @@
-import { CompatibleCondition, Condition } from '../../condition';
-import { TableVariant } from '../../rowset';
-import { CompatibleTable, Table } from '../../rowset/table';
+import { XCondition, Condition } from '../../condition';
+import { TableVariant, XTables, Table } from '../../rowset';
 import { RowObject } from '../../types';
-import { isPlainObject } from '../../util';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { Fromable } from './common/fromable';
 
@@ -15,7 +13,7 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
   $table: Table<T>;
   $kind: STATEMENT_KIND.DELETE = STATEMENT_KIND.DELETE;
 
-  constructor(table: CompatibleTable<T>) {
+  constructor(table: XTables<T>) {
     super();
     this.$table =
       Table.isTable(table) || TableVariant.isTableVariant(table)
@@ -23,9 +21,9 @@ export class Delete<T extends RowObject = any> extends Fromable<T> {
         : Table.create(table);
   }
 
-  protected ensureCondition(condition: CompatibleCondition<T>): Condition {
-    if (isPlainObject(condition)) {
-      return Condition.ensure(condition, this.$table);
+  protected ensureCondition(condition: XCondition<T>): Condition {
+    if (!Condition.isCondition(condition)) {
+      return Condition.parse(condition, this.$table);
     }
     return condition;
   }

@@ -1,10 +1,10 @@
-import { Select } from "../statement/crud/select";
-import { Condition, CONDITION_KIND } from "./condition";
+import type { Select } from '../statement';
+import { Condition, CONDITION_KIND } from './condition';
 
 /**
  * 一元比较条件
  */
- export class ExistsCondition extends Condition {
+export class ExistsCondition extends Condition {
   $statement: Select;
   $kind: CONDITION_KIND.EXISTS = CONDITION_KIND.EXISTS;
 
@@ -18,6 +18,8 @@ import { Condition, CONDITION_KIND } from "./condition";
   }
 
   static isExistsCondition(object: any): object is ExistsCondition {
-    return Condition.isCondition(object) && object.$kind === CONDITION_KIND.EXISTS;
+    return (
+      Condition.isCondition(object) && object.$kind === CONDITION_KIND.EXISTS
+    );
   }
 }

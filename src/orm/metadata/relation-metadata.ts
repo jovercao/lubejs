@@ -8,7 +8,7 @@ import { EntityConstructor } from "../entity";
 import { Scalar } from "../../core";
 import { ColumnMetadata } from "./column-metadata";
 import { EntityMetadata, TableEntityMetadata } from "./entity-metadata";
-import { EntityType } from "../types";
+import { EntityType } from "../data-types";
 
 /**
  * 关联关系

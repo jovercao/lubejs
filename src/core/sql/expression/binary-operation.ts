@@ -1,10 +1,11 @@
-import { Numeric, Scalar, Interger } from '../scalar';
+import { Scalar } from '../scalar';
+import { SQL } from '../sql';
+import { XExpression, Expression } from './expression';
 import {
   BINARY_OPERATION_OPERATOR,
   Operation,
   OPERATION_KIND,
 } from './common/operation';
-import { CompatibleExpression, Expression } from './expression';
 
 /**
  * 二元运算表达式
@@ -15,7 +16,9 @@ export class BinaryOperation<T extends Scalar = Scalar> extends Operation<T> {
   $right: Expression<T>;
   $operator: BINARY_OPERATION_OPERATOR;
   static isBinaryOperation(object: any): object is BinaryOperation {
-    return Operation.isOperation(object) && object.$kind === OPERATION_KIND.BINARY;
+    return (
+      Operation.isOperation(object) && object.$kind === OPERATION_KIND.BINARY
+    );
   }
 
   /**
@@ -23,12 +26,12 @@ export class BinaryOperation<T extends Scalar = Scalar> extends Operation<T> {
    */
   constructor(
     operator: BINARY_OPERATION_OPERATOR,
-    left: CompatibleExpression<T>,
-    right: CompatibleExpression<T>
+    left: XExpression<T>,
+    right: XExpression<T>
   ) {
     super();
     this.$operator = operator;
-    this.$left = Expression.ensure(left);
-    this.$right = Expression.ensure(right);
+    this.$left = Expression.isExpression(left) ? left : SQL.literal(left);
+    this.$right = Expression.isExpression(right) ? right : SQL.literal(right);
   }
 }

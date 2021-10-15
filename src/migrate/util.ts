@@ -1,4 +1,4 @@
-import { CompatiableObjectName } from "../core";
+import { XObjectName } from "../core";
 
 export function sortByDependency<T>(
   source: T[],
@@ -31,8 +31,8 @@ export function sortByDependency<T>(
  * @returns
  */
  export function isSameObject(
-  name1: CompatiableObjectName,
-  name2: CompatiableObjectName
+  name1: XObjectName,
+  name2: XObjectName
 ): boolean {
   let schema1: string | undefined;
   let table1: string;

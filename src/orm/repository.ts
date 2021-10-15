@@ -1,14 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import {
-  ProxiedTable,
-  Condition,
-  isStringType,
-  isScalar,
-  SQL,
-  Executor,
-} from '../core';
+import { XTable, Condition, isScalar, SQL, Executor } from '../core';
 import { Queryable } from './queryable';
 import {
   ColumnMetadata,
@@ -30,7 +23,8 @@ import {
   FetchRelations,
   RelationKeyOf,
   RepositoryEventHandler,
-} from './types';
+  ScalarDataType,
+} from './data-types';
 import {
   isForeignOneToOne,
   isManyToMany,
@@ -79,7 +73,7 @@ export type DeleteOptions = {
 export class Repository<T extends Entity> {
   protected metadata!: TableEntityMetadata;
   // INFO 因为列会进行映射，因此rowset的返回类型不确定
-  protected rowset!: ProxiedTable<DefaultRowObject>;
+  protected rowset!: XTable<DefaultRowObject>;
   private _emitter: AsyncEventEmitter = new AsyncEventEmitter();
 
   constructor(
@@ -100,7 +94,7 @@ export class Repository<T extends Entity> {
     if (!this.metadata) {
       throw new Error(`Only allow register entity constructor.`);
     }
-    this.rowset = makeRowset(ctr) as ProxiedTable<DefaultRowObject>;
+    this.rowset = makeRowset(ctr) as XTable<DefaultRowObject>;
   }
 
   protected get connection(): Executor {
@@ -157,30 +151,7 @@ export class Repository<T extends Entity> {
             : options?.withoutRelations
         );
       }
-      const row: any = Object.create(null);
-      for (const column of this.metadata.columns) {
-        if (column.isIdentity || column.isRowflag) continue;
-        if (column.generator) {
-          if (Reflect.get(item, column.property) !== undefined) {
-            console.warn(
-              `Entity ${this.metadata.className} Property ${column.property} is autoGen column, but value found, will override it here.`
-            );
-          }
-          row[column.columnName] = await column.generator(
-            this.rowset,
-            item,
-            this.context
-          );
-          continue;
-        }
-        if (
-          !Reflect.has(item, column.property) &&
-          (column.isImplicit || column.defaultValue)
-        ) {
-          continue;
-        }
-        row[column.columnName] = this.toDbValue(item, column);
-      }
+      const row = await this.mgr.getInsertValues(this.rowset, item);
       await this.connection.insert(this.rowset, row);
 
       const key = this.metadata.key.column.isIdentity
@@ -205,67 +176,6 @@ export class Repository<T extends Entity> {
       }
     }
     this._emit('inserted', items, this.context);
-  }
-
-  /**
-   * 获取定位查询条件（仅查询）
-   * @param item
-   * @returns
-   */
-  protected getWhereForQuery(item: T): Condition {
-    const keyValue = Reflect.get(item, this.metadata.key.property);
-    if (keyValue === undefined) {
-      throw new Error(
-        `Key property ${this.metadata.key.property} is undefined.`
-      );
-    }
-    const condition: Condition = this.rowset
-      .$field(this.metadata.key.property as any)
-      .eq(keyValue);
-    return condition;
-  }
-
-  protected getWhereForUpdate(item: T): Condition {
-    const keyValue = Reflect.get(item, this.metadata.key.property);
-    if (keyValue === undefined) {
-      throw new Error(
-        `Key property ${this.metadata.key.property} is undefined.`
-      );
-    }
-    let condition: Condition = this.rowset
-      .$field(this.metadata.key.property as any)
-      .eq(keyValue);
-    if (this.metadata.rowflagColumn) {
-      const rowflagValue = Reflect.get(
-        item,
-        this.metadata.rowflagColumn.property
-      );
-      if (rowflagValue === undefined) {
-        throw new Error(
-          `Rowflag property ${this.metadata.rowflagColumn.property} is undefined.`
-        );
-      }
-      condition = condition.and(
-        this.rowset
-          .$field(this.metadata.rowflagColumn.property as any)
-          .eq(rowflagValue)
-      );
-    }
-    return condition;
-  }
-
-  private toDbValue(item: T, column: ColumnMetadata): any {
-    if (
-      (column.type === Object || column.type === Array) &&
-      isStringType(column.dbType)
-    ) {
-      return JSON.stringify(Reflect.get(item, column.property));
-    } else {
-      const value = Reflect.get(item, column.property);
-      // undefined 切换为null
-      if (value === undefined) return null;
-      return value;
-    }
   }
 
   public async update(items: T | T[], options?: SaveOptions<T>): Promise<void> {
@@ -295,14 +205,8 @@ export class Repository<T extends Entity> {
             : options?.withoutRelations
         );
       }
-      const changes: any = {};
-      for (const column of this.metadata.columns) {
-        if (column.isIdentity || column.isPrimaryKey || column.isRowflag)
-          continue;
-        if (column.isImplicit && !Reflect.has(item, column.property)) continue;
-        changes[column.columnName] = this.toDbValue(item, column);
-      }
-      const where = this.getWhereForUpdate(item);
+      const changes = await this.mgr.getUpdateChanges(this.rowset, item);
+      const where = await this.mgr.getUpdateWhere(this.rowset, item);
       const lines = await this.connection.update(this.rowset, changes, where);
       if (lines === 0) {
         throw new Error(
@@ -312,7 +216,7 @@ export class Repository<T extends Entity> {
 
       const updated = await this.connection.find(
         this.rowset,
-        this.getWhereForQuery(item)
+        this.mgr.getQueryWhere(this.rowset, item)
       );
       this.mgr.toEntity(updated!, item);
 
@@ -359,7 +263,7 @@ export class Repository<T extends Entity> {
       if (options?.withDetail) {
         await this._deleteDetail(item);
       }
-      const where = this.getWhereForQuery(item);
+      const where = this.mgr.getQueryWhere(this.rowset, item);
       const lines = await this.connection.delete(this.rowset, where);
       if (lines !== 1) {
         throw new Error(
@@ -512,48 +416,6 @@ export class Repository<T extends Entity> {
       .fetchFirst();
     return (result?.count ?? 0) > 0;
   }
-
-  /**
-   * 将EntityItem 转换为 DataRow
-   */
-  protected toDataRow(item: T, datarow?: any): any {
-    if (!datarow) {
-      datarow = Object.create(null);
-    }
-    for (const column of this.metadata.columns) {
-      if (column.isIdentity || column.isRowflag) continue;
-      if (column.isImplicit && !Reflect.has(item, column.property)) continue;
-      // 因为rowset已经在core中完成字段映射功能，此处可直接使用property访问
-      Reflect.set(datarow, column.property, this.toDbValue(item, column));
-    }
-    return datarow;
-  }
-
-  // protected async loadSnapshot(item: T): Promise<T> {
-  //   if (!Reflect.has(item, this.metadata.key.property)) return null;
-  //   const key = Reflect.get(item, this.metadata.key.property);
-  //   const snaphsot = await this.get(key);
-  //   for (const relation of this.metadata.relations) {
-  //     if (!Reflect.has(item, relation.property)) continue;
-  //     // 主对从，加载从表属性，以便对比参考
-  //     if (isOneToMany(relation) || isManyToMany(relation) || isPrimaryOneToOne(relation)) {
-  //       await this.fetchRelation(snaphsot, relation.property);
-  //     }
-  //   }
-  //   return snaphsot;
-  // }
-
-  private _repositories: Record<string, Repository<any>> = {};
-
-  // private _getRelationRepository(relation: RelationMetadata): Repository<any> {
-  //   if (!this._repositories[relation.property]) {
-  //     this._repositories[relation.property] = new Repository(
-  //       this.context,
-  //       relation.referenceClass
-  //     );
-  //   }
-  //   return this._repositories[relation.property];
-  // }
 
   private _setProperty(item: T, column: ColumnMetadata, value: any): void {
     // 更新引用外键

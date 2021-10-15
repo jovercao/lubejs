@@ -7,14 +7,14 @@
 import {
   Condition,
   DbType,
-  TsTypeOf,
-  CompatibleExpression,
+  ScalarFromDbType,
+  XExpression,
   Expression,
   Binary,
   Numeric,
   Scalar,
   Star,
-  CompatiableObjectName,
+  XObjectName,
   StandardExpression,
   StandardCondition,
   Float,
@@ -25,28 +25,28 @@ export class Standard {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   protected constructor() {}
   static std: Standard = new Standard();
-  count(expr: Star | CompatibleExpression<Scalar>): Expression<number> {
+  count(expr: Star | XExpression<Scalar>): Expression<number> {
     return StandardExpression.create(STD.count.name, [expr]);
   }
-  avg<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T> {
+  avg<T extends Numeric>(expr: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.avg.name, [expr]);
   }
-  sum<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T> {
+  sum<T extends Numeric>(expr: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.sum.name, [expr]);
   }
 
-  max<T extends Exclude<Scalar, Binary>>(expr: Expression<T>): Expression<T> {
+  max<T extends Exclude<Scalar, Binary | Object | Array<Scalar>>>(expr: Expression<T>): Expression<T> {
     return StandardExpression.create(STD.max.name, [expr]);
   }
-  min<T extends Exclude<Scalar, Binary>>(expr: Expression<T>): Expression<T> {
+  min<T extends Exclude<Scalar, Binary | Object | Array<Scalar>>>(expr: Expression<T>): Expression<T> {
     return StandardExpression.create(STD.min.name, [expr]);
   }
   /**
    * 获取标识列的最近插入值
    */
   identityValue(
-    table: CompatibleExpression<string>,
-    column: CompatibleExpression<string>
+    table: XExpression<string>,
+    column: XExpression<string>
   ): Expression<number | bigint> {
     return StandardExpression.create(STD.identityValue.name, [table, column]);
   }
@@ -54,9 +54,9 @@ export class Standard {
    * 转换数据类型
    */
   convert<T extends DbType>(
-    expr: CompatibleExpression,
+    expr: XExpression,
     toType: T
-  ): Expression<TsTypeOf<T>> {
+  ): Expression<ScalarFromDbType<T>> {
     return StandardExpression.create(STD.convert.name, [expr, toType]);
   }
   /**
@@ -75,8 +75,8 @@ export class Standard {
    * 切换时区
    */
   switchTimezone(
-    date: CompatibleExpression<Date>,
-    offset: CompatibleExpression<string>
+    date: XExpression<Date>,
+    offset: XExpression<string>
   ): Expression<Date> {
     return StandardExpression.create(STD.switchTimezone.name, [date, offset]);
   }
@@ -84,7 +84,7 @@ export class Standard {
    * 格式化日期函数
    */
   formatDate(
-    date: CompatibleExpression<Date>,
+    date: XExpression<Date>,
     format: string
   ): Expression<string> {
     return StandardExpression.create(STD.formatDate.name, [date, format]);
@@ -94,7 +94,7 @@ export class Standard {
    * @param date
    * @returns
    */
-  yearOf(date: CompatibleExpression<Date>): Expression<number> {
+  yearOf(date: XExpression<Date>): Expression<number> {
     return StandardExpression.create(STD.yearOf.name, [date]);
   }
   /**
@@ -102,7 +102,7 @@ export class Standard {
    * @param date
    * @returns
    */
-  monthOf(date: CompatibleExpression<Date>): Expression<number> {
+  monthOf(date: XExpression<Date>): Expression<number> {
     return StandardExpression.create(STD.monthOf.name, [date]);
   }
   /**
@@ -110,7 +110,7 @@ export class Standard {
    * @param date
    * @returns
    */
-  dayOf(date: CompatibleExpression<Date>): Expression<number> {
+  dayOf(date: XExpression<Date>): Expression<number> {
     return StandardExpression.create(STD.dayOf.name, [date]);
   }
   /**
@@ -120,8 +120,8 @@ export class Standard {
    * @returns
    */
   daysBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.daysBetween.name, [start, end]);
   }
@@ -132,8 +132,8 @@ export class Standard {
    * @returns
    */
   monthsBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.monthsBetween.name, [start, end]);
   }
@@ -144,8 +144,8 @@ export class Standard {
    * @returns
    */
   yearsBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.yearsBetween.name, [start, end]);
   }
@@ -156,8 +156,8 @@ export class Standard {
    * @returns
    */
   hoursBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.hoursBetween.name, [start, end]);
   }
@@ -168,8 +168,8 @@ export class Standard {
    * @returns
    */
   minutesBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.minutesBetween.name, [start, end]);
   }
@@ -180,44 +180,44 @@ export class Standard {
    * @returns
    */
   secondsBetween(
-    start: CompatibleExpression<Date>,
-    end: CompatibleExpression<Date>
+    start: XExpression<Date>,
+    end: XExpression<Date>
   ): Expression<number> {
     return StandardExpression.create(STD.secondsBetween.name, [start, end]);
   }
   addDays(
-    date: CompatibleExpression<Date>,
-    days: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    days: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addDays.name, [date, days]);
   }
   addMonths(
-    date: CompatibleExpression<Date>,
-    months: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    months: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addMonths.name, [date, months]);
   }
   addYears(
-    date: CompatibleExpression<Date>,
-    years: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    years: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addYears.name, [date, years]);
   }
   addHours(
-    date: CompatibleExpression<Date>,
-    hours: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    hours: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addHours.name, [date, hours]);
   }
   addMinutes(
-    date: CompatibleExpression<Date>,
-    minutes: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    minutes: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addMinutes.name, [date, minutes]);
   }
   addSeconds(
-    date: CompatibleExpression<Date>,
-    seconds: CompatibleExpression<Numeric>
+    date: XExpression<Date>,
+    seconds: XExpression<Numeric>
   ): Expression<Date> {
     return StandardExpression.create(STD.addSeconds.name, [date, seconds]);
   }
@@ -226,7 +226,7 @@ export class Standard {
    * @param str
    * @returns
    */
-  strlen(str: CompatibleExpression<string>): Expression<number> {
+  strlen(str: XExpression<string>): Expression<number> {
     return StandardExpression.create(STD.strlen.name, [str]);
   }
   /**
@@ -237,9 +237,9 @@ export class Standard {
    * @returns
    */
   substr(
-    str: CompatibleExpression<string>,
-    start: CompatibleExpression<Numeric>,
-    length: CompatibleExpression<Numeric>
+    str: XExpression<string>,
+    start: XExpression<Numeric>,
+    length: XExpression<Numeric>
   ): Expression<string> {
     return StandardExpression.create(STD.substr.name, [start, length]);
   }
@@ -252,9 +252,9 @@ export class Standard {
    * @returns
    */
   replace(
-    str: CompatibleExpression<string>,
-    search: CompatibleExpression<string>,
-    to: CompatibleExpression<string>
+    str: XExpression<string>,
+    search: XExpression<string>,
+    to: XExpression<string>
   ): Expression<string> {
     return StandardExpression.create(STD.replace.name, [str, search, to]);
   }
@@ -263,7 +263,7 @@ export class Standard {
    * @param str
    * @returns
    */
-  trim(str: CompatibleExpression<string>): Expression<string> {
+  trim(str: XExpression<string>): Expression<string> {
     return StandardExpression.create(STD.trim.name, [str]);
   }
   /**
@@ -271,7 +271,7 @@ export class Standard {
    * @param str
    * @returns
    */
-  trimEnd(str: CompatibleExpression<string>): Expression<string> {
+  trimEnd(str: XExpression<string>): Expression<string> {
     return StandardExpression.create(STD.trimEnd.name, [str]);
   }
   /**
@@ -279,7 +279,7 @@ export class Standard {
    * @param str
    * @returns
    */
-  upper(str: CompatibleExpression<string>): Expression<string> {
+  upper(str: XExpression<string>): Expression<string> {
     return StandardExpression.create(STD.upper.name, [str]);
   }
   /**
@@ -287,7 +287,7 @@ export class Standard {
    * @param str
    * @returns
    */
-  lower(str: CompatibleExpression<string>): Expression<string> {
+  lower(str: XExpression<string>): Expression<string> {
     return StandardExpression.create(STD.lower.name, [str]);
   }
   /**
@@ -297,9 +297,9 @@ export class Standard {
    * @returns
    */
   strpos(
-    str: CompatibleExpression<string>,
-    search: CompatibleExpression<string>,
-    startAt?: CompatibleExpression<number>
+    str: XExpression<string>,
+    search: XExpression<string>,
+    startAt?: XExpression<number>
   ): Expression<number> {
     return StandardExpression.create(STD.strpos.name, [str, search, startAt]);
   }
@@ -308,44 +308,41 @@ export class Standard {
    * @param str 字符编码
    * @returns
    */
-  ascii(str: CompatibleExpression<string>): Expression<number> {
+  ascii(str: XExpression<string>): Expression<number> {
     return StandardExpression.create(STD.ascii.name, [str]);
   }
-  asciiChar(code: CompatibleExpression<number>): Expression<string> {
+  asciiChar(code: XExpression<number>): Expression<string> {
     return StandardExpression.create(STD.asciiChar.name, [code]);
   }
-  unicode(str: CompatibleExpression<string>): Expression<number> {
+  unicode(str: XExpression<string>): Expression<number> {
     return StandardExpression.create(STD.unicode.name, [str]);
   }
-  unicodeChar(code: CompatibleExpression<number>): Expression<string> {
+  unicodeChar(code: XExpression<number>): Expression<string> {
     return StandardExpression.create(STD.unicodeChar.name, [code]);
   }
   nvl<T extends Scalar>(
-    value: CompatibleExpression<T>,
-    defaultValue: CompatibleExpression<T>
+    value: XExpression<T>,
+    defaultValue: XExpression<T>
   ): Expression<T> {
     return StandardExpression.create(STD.nvl.name, [value, defaultValue]);
   }
-  abs<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  abs<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.abs.name, [value]);
   }
-  exp<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  exp<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.exp.name, [value]);
   }
-  // cbrt(value: CompatibleExpression<number>): Expression<number> {
-  //   return StandardExpression.create(Standard.cbrt.name, [value]);
-  // }
 
-  ceil<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  ceil<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.ceil.name, [value]);
   }
-  floor<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  floor<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.floor.name, [value]);
   }
-  ln<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  ln<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.ln.name, [value]);
   }
-  log<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  log<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.log.name, [value]);
   }
 
@@ -353,80 +350,80 @@ export class Standard {
     return StandardExpression.create(STD.pi.name, []);
   }
   power<T extends Numeric>(
-    a: CompatibleExpression<T>,
-    b: CompatibleExpression<Numeric>
+    a: XExpression<T>,
+    b: XExpression<Numeric>
   ): Expression<T> {
     return StandardExpression.create(STD.power.name, [a, b]);
   }
-  radians<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  radians<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.radians.name, [value]);
   }
-  degrees<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  degrees<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.degrees.name, [value]);
   }
   random(): Expression<Float> {
     return StandardExpression.create(STD.random.name, []);
   }
   round<T extends Numeric>(
-    value: CompatibleExpression<T>,
-    s?: CompatibleExpression<Numeric>
+    value: XExpression<T>,
+    s?: XExpression<Numeric>
   ): Expression<T> {
     return StandardExpression.create(STD.round.name, [value, s]);
   }
-  sign<T extends Numeric>(value: CompatibleExpression<T>): Expression<T> {
+  sign<T extends Numeric>(value: XExpression<T>): Expression<T> {
     return StandardExpression.create(STD.sign.name, [value]);
   }
-  sqrt(value: CompatibleExpression<Numeric>): Expression<Float> {
+  sqrt(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.sqrt.name, [value]);
   }
-  cos(value: CompatibleExpression<Numeric>): Expression<Float> {
+  cos(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.cos.name, [value]);
   }
-  sin(value: CompatibleExpression<Numeric>): Expression<Float> {
+  sin(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.sin.name, [value]);
   }
-  tan(value: CompatibleExpression<Numeric>): Expression<Float> {
+  tan(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.tan.name, [value]);
   }
-  acos(value: CompatibleExpression<Numeric>): Expression<Float> {
+  acos(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.acos.name, [value]);
   }
-  asin(value: CompatibleExpression<Numeric>): Expression<Float> {
+  asin(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.asin.name, [value]);
   }
-  atan(value: CompatibleExpression<Numeric>): Expression<Float> {
+  atan(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.atan.name, [value]);
   }
-  atan2(value: CompatibleExpression<Numeric>): Expression<Float> {
+  atan2(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.atan2.name, [value]);
   }
-  cot(value: CompatibleExpression<Numeric>): Expression<Float> {
+  cot(value: XExpression<Numeric>): Expression<Float> {
     return StandardExpression.create(STD.cot.name, [value]);
   }
 
 
-  existsTable(table: CompatiableObjectName): Condition {
+  existsTable(table: XObjectName): Condition {
     return StandardCondition.create(STD.existsTable.name, [table]);
   }
   existsDatabase(database: string): Condition {
     return StandardCondition.create(STD.existsDatabase.name, [database]);
   }
-  existsView(name: CompatiableObjectName): Condition {
+  existsView(name: XObjectName): Condition {
     return StandardCondition.create(STD.existsView.name, [name]);
   }
-  existsFunction(name: CompatiableObjectName): Condition {
+  existsFunction(name: XObjectName): Condition {
     return StandardCondition.create(STD.existsFunction.name, [name]);
   }
   /**
    * 返回是否存在存储过程条件
    */
-  existsProcedure(name: CompatiableObjectName): Condition {
+  existsProcedure(name: XObjectName): Condition {
     return StandardCondition.create(STD.existsProcedure.name, [name]);
   }
   /**
    * 返回是否存在序列
    */
-  existsSequence(name: CompatiableObjectName): Condition {
+  existsSequence(name: XObjectName): Condition {
     return StandardCondition.create(STD.existsSequence.name, [name]);
   }
 
@@ -448,7 +445,7 @@ export class Standard {
    * 获取序列下一个值
    */
   sequenceNextValue<T extends Numeric>(
-    sequenceName: CompatiableObjectName
+    sequenceName: XObjectName
   ): Expression<T> {
     return StandardExpression.create(STD.sequenceNextValue.name, [
       sequenceName,

@@ -1,28 +1,23 @@
-import { SQL, SQL_SYMBOLE } from '../../sql';
-import { CompatibleExpression, Expression } from '../../expression/expression';
 import { Scalar } from '../../scalar';
+import { SQL, SQL_SYMBOLE } from '../../sql';
 import { ColumnsOf, DefaultInputObject, RowObject } from '../../types';
+import { XExpression, Expression } from '../../expression';
 import { SelectColumn } from './select-column';
 
 export class Sort extends SQL {
-  $type: SQL_SYMBOLE.SORT = SQL_SYMBOLE.SORT;
+  readonly $type: SQL_SYMBOLE.SORT = SQL_SYMBOLE.SORT;
   $expr: Expression | SelectColumn;
-  $direction?: SORT_DIRECTION;
-  constructor(expr: CompatibleExpression<Scalar>, direction?: SORT_DIRECTION) {
+  $direction: SORT_DIRECTION;
+  constructor(expr: XExpression<Scalar>, direction: SORT_DIRECTION = 'ASC') {
     super();
-    this.$expr = Expression.ensure(expr);
+    this.$expr = Expression.isExpression(expr) ? expr : SQL.literal(expr);
     this.$direction = direction;
   }
 
-  static isSortInfo(object: any): object is Sort {
+  static isSort(object: any): object is Sort {
     return object?.$type === SQL_SYMBOLE.SORT;
   }
 }
-
-export type CompatibleSortInfo<T extends RowObject = DefaultInputObject> =
-  | Sort[]
-  | SortObject<T>
-  | [CompatibleExpression, SORT_DIRECTION][];
 
 export type SORT_DIRECTION = 'ASC' | 'DESC';
 

@@ -1,4 +1,4 @@
-import { isScalar, isBinary } from '../core';
+import { isBaseScalar, isBinary } from '../core';
 import { DatabaseSchema } from '../orm';
 
 export type CompareScalarType =
@@ -65,7 +65,7 @@ export function isObejctType(value: any): value is CompareObjectType {
 }
 
 export function getType(value: any): ValueType {
-  if (isScalar(value)) return ValueType.scalar;
+  if (isBaseScalar(value)) return ValueType.scalar;
 
   if (Array.isArray(value)) {
     const el1Type = getType(value[0]);

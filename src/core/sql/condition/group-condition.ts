@@ -1,10 +1,9 @@
-import { CompatibleCondition, Condition, CONDITION_KIND } from "./condition";
+import { Condition, CONDITION_KIND } from './condition';
 
 export class GroupCondition extends Condition {
   $inner: Condition;
 
-  readonly $kind: CONDITION_KIND.GROUP =
-    CONDITION_KIND.GROUP;
+  readonly $kind: CONDITION_KIND.GROUP = CONDITION_KIND.GROUP;
 
   constructor(condition: Condition) {
     super();
@@ -12,6 +11,8 @@ export class GroupCondition extends Condition {
   }
 
   static isGroupCondition(object: any): object is GroupCondition {
-    return Condition.isCondition(object) && object.$kind === CONDITION_KIND.GROUP
+    return (
+      Condition.isCondition(object) && object.$kind === CONDITION_KIND.GROUP
+    );
   }
 }

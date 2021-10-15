@@ -1,5 +1,7 @@
-
 import { SQL, SQL_SYMBOLE } from '../sql';
+import { DefaultInputObject, RowObject, WhereObject } from '../types';
+import { XRowsets, Rowset } from '../rowset/rowset';
+import { Field } from '../expression';
 
 /**
  * 查询条件
@@ -13,7 +15,7 @@ export abstract class Condition extends SQL {
    * @returns 返回新的查询条件
    */
   and(condition: Condition): Condition {
-    return BinaryLogicCondition.and(this, condition);
+    return SQL.and(this, condition);
 
     // condition = ensureCondition(condition);
     // return new BinaryLogicCondition(LOGIC_OPERATOR.AND, this, SqlBuilder.group(condition));
@@ -25,19 +27,17 @@ export abstract class Condition extends SQL {
    * @returns 返回新的查询条件
    */
   or(condition: Condition): Condition {
-    return BinaryLogicCondition.or(this, condition);
+    return SQL.or(this, condition);
   }
 
   static isCondition(object: any): object is Condition {
     return object?.$type === SQL_SYMBOLE.CONDITION;
   }
 
-  static ensure<T extends RowObject>(
-    condition: Condition | WhereObject<T>,
-    rowset?: CompatibleRowset<T>
+  static parse<T extends RowObject>(
+    condition: WhereObject<T>,
+    rowset?: XRowsets<T>
   ): Condition {
-    if (Condition.isCondition(condition)) return condition;
-
     let makeField: (name: string) => Field;
     if (rowset) {
       if (typeof rowset === 'string' || Array.isArray(rowset)) {
@@ -111,12 +111,6 @@ export enum CONDITION_KIND {
 /**
  * 可兼容的查询条件
  */
-export type CompatibleCondition<T extends RowObject = DefaultInputObject> =
+export type XCondition<T extends RowObject = DefaultInputObject> =
   | Condition
   | WhereObject<T>;
-
-
-import { DefaultInputObject, RowObject, WhereObject } from '../types';
-import { CompatibleRowset, Rowset } from '../rowset/rowset';
-import { Field } from '../expression/field';
-import { BinaryLogicCondition } from './binary-logic-condition';

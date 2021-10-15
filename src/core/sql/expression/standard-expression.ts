@@ -19,7 +19,7 @@ import { Expression } from "./expression";
    this.$datas = datas;
  }
 
- readonly $type: SQL_SYMBOLE.STANDARD_EXPRESSION =
+  readonly $type: SQL_SYMBOLE.STANDARD_EXPRESSION =
    SQL_SYMBOLE.STANDARD_EXPRESSION;
 
  readonly $name: string;

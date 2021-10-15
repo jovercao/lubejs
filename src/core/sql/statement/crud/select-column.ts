@@ -1,5 +1,5 @@
 import { SQL, SQL_SYMBOLE } from '../../sql';
-import { Expression } from '../../expression/expression';
+import type { Expression } from '../../expression';
 import { Scalar } from '../../scalar';
 
 /**
@@ -9,7 +9,7 @@ export class SelectColumn<
   T extends Scalar = Scalar,
   N extends string = string
 > extends SQL {
-  $type: SQL_SYMBOLE.SELECT_COLUMN = SQL_SYMBOLE.SELECT_COLUMN;
+  readonly $type: SQL_SYMBOLE.SELECT_COLUMN = SQL_SYMBOLE.SELECT_COLUMN;
 
   /**
    * 列名称

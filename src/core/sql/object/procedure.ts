@@ -1,10 +1,7 @@
-import { SQL_SYMBOLE } from "../sql";
-import { CompatibleExpression } from "../expression/expression";
-import { Scalar } from "../scalar";
-import { Execute } from "../statement/programmer/execute";
-import { InputObject, RowObject } from "../types";
-import { CompatiableObjectName, DBObject } from "./db-object";
-import { Parameter } from "../expression/parameter"
+import { SQL_SYMBOLE } from '../sql';
+import type { Scalar } from '../scalar';
+import type { InputObject, RowObject } from '../types';
+import { XObjectName, DBObject } from './db-object';
 
 /**
  * @param N 存储过程名称
@@ -28,29 +25,33 @@ export class Procedure<
   // P11 extends Scalar = never,
   // P12 extends Scalar = never
 > extends DBObject<N> {
-
   readonly $type: SQL_SYMBOLE.PROCEDURE = SQL_SYMBOLE.PROCEDURE;
 
-  execute(...params: [CompatibleExpression]): Execute<R>;
+  execute(...params: [XExpression]): Execute<R>;
   execute(...params: Parameter<Scalar, string>[]): Execute<R>;
   execute(params: InputObject): Execute<R>;
   execute(
     ...params:
       | [InputObject]
       | Parameter<Scalar, string>[]
-      | CompatibleExpression<Scalar>[]
+      | XExpression<Scalar>[]
   ): Execute<R, O> {
     return new Execute(this.$name, params as any);
   }
 
   static isProcedure(object: any): object is Procedure<any, any, any> {
-    return object?.$type === SQL_SYMBOLE.PROCEDURE
+    return object?.$type === SQL_SYMBOLE.PROCEDURE;
   }
 
-  static ensure(proc: CompatiableObjectName | Procedure<any, any, any>): Procedure<any, any, any> {
-    if ( Procedure.isProcedure(proc)) {
-       return proc
+  static ensure(
+    proc: XObjectName | Procedure<any, any, any>
+  ): Procedure<any, any, any> {
+    if (Procedure.isProcedure(proc)) {
+      return proc;
     }
     return new Procedure(proc);
   }
 }
+
+import { XExpression, Parameter } from '../expression';
+import { Execute } from '../statement';

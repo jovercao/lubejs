@@ -1,30 +1,39 @@
-import { SQL, SQL_SYMBOLE } from "../../sql";
-import { Field } from "../../expression/field";
-import { CompatiableObjectName } from "../../object/db-object";
-import { ProxiedWithSelect, WithSelect } from "../../rowset/with-select";
-import { CompatibleTable } from '../../rowset/table'
-import { Scalar } from "../../scalar";
-import { ColumnsOf, RowObject } from "../../types";
-import { SelectAction } from "./common/select-action";
-import { Delete } from "./delete";
-import { Insert } from "./insert";
-import { Select } from "./select";
-import { Update } from "./update";
-import { isPlainObject } from "../../util";
+import { SQL, SQL_SYMBOLE } from '../../sql';
+import { Field } from '../../expression';
+import { XObjectName } from '../../object';
+import { XWithSelect, WithSelect, XTables } from '../../rowset';
+import { Scalar } from '../../scalar';
+import { ColumnsOf, RowObject } from '../../types';
+import { SelectAction } from './common/select-action';
+import { Delete } from './delete';
+import { Insert } from './insert';
+import { Select } from './select';
+import { Update } from './update';
 
 export class With<A extends SelectAliasObject = any> extends SQL {
-  $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
+  readonly $type: SQL_SYMBOLE.WITH = SQL_SYMBOLE.WITH;
 
   $rowsets: WithSelect[];
 
   /**
    * With结构
    */
-  constructor(...items: WithSelect[] | [WithSelect[]] | ProxiedWithSelect[] | [ProxiedWithSelect[]] | [SelectAliasObject]) {
+  constructor(
+    ...items:
+      | WithSelect[]
+      | [WithSelect[]]
+      | XWithSelect[]
+      | [XWithSelect[]]
+      | [SelectAliasObject]
+  ) {
     super();
-    if (items.length === 0 && isPlainObject(items[0])) {
-      this.$rowsets = Object.entries(items[0]).map(
-        ([name, sel]) => WithSelect.create(name, sel)
+    if (
+      items.length === 0 &&
+      !Array.isArray(items[0]) &&
+      !WithSelect.isWithSelect(items[0])
+    ) {
+      this.$rowsets = Object.entries(items[0]).map(([name, sel]) =>
+        WithSelect.create(name, sel)
       );
     } else if (Array.isArray(items[0])) {
       this.$rowsets = items[0] as WithSelect[];
@@ -48,7 +57,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param fields
    */
   insert<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T>,
+    table: XObjectName | XTables<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     const sql = new Insert(table, fields);
@@ -61,7 +70,7 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param table
    */
   update<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T>
+    table: XObjectName | XTables<T>
   ): Update<T> {
     const sql = new Update(table);
     sql.$with = this;
@@ -73,14 +82,13 @@ export class With<A extends SelectAliasObject = any> extends SQL {
    * @param table 表格
    */
   delete<T extends RowObject = any>(
-    table: CompatiableObjectName | CompatibleTable<T>
+    table: XObjectName | XTables<T>
   ): Delete<T> {
     const sql = new Delete(table);
     sql.$with = this;
     return sql;
   }
 }
-
 
 export type SelectAliasObject = {
   [alias: string]: Select;

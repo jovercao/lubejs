@@ -28,7 +28,7 @@ export interface RelationOptions {
   isDetail?: boolean;
 }
 
-export function oneToOne<T extends object>(
+export function oneToOne<T extends Entity>(
   referenceEntityGetter: () => EntityConstructor<T>,
   referenceProperty?: (p: Required<T>) => object
 ): PropertyDecorator {

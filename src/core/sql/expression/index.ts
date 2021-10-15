@@ -12,3 +12,6 @@ export * from './when';
 export * from './common/assignable';
 export * from './common/operation';
 export * from './expression';
+export * from './scalar-func-invoke';
+export * from './function-parameter';
+export * from './procedure-parameter';

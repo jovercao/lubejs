@@ -1,0 +1,5 @@
+
+大致模块依赖顺序：
+
+[scalar, types] <-- [sql, object, db-type] <-- [raw, expression] <-- rowset <-- condition <-- [statement, document]
+

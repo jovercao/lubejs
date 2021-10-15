@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/prefer-as-const */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
@@ -7,139 +8,124 @@
 //    direction?: ParameterDirection
 // }
 
-import { Raw } from './raw';
-import { deepthEqual } from './util';
-import { parse, stringify, v4 } from 'uuid';
 import {
   Binary,
   Decimal,
-  DecimalConstructor,
   Time,
   Scalar,
   Uuid,
+  List,
+  Json,
+  BaseScalar,
 } from './scalar';
-import { DataType } from '../../orm';
 
 // **********************************类型声明******************************************
 
 export type INT64 = {
-  readonly name: 'INT64';
+  readonly type: 'INT64';
 };
 
 export type INT32 = {
-  readonly name: 'INT32';
-  readonly length?: 8 | 16 | 32 | 64;
+  readonly type: 'INT32';
 };
 
 export type INT16 = {
-  readonly name: 'INT16';
+  readonly type: 'INT16';
 };
 
 export type INT8 = {
-  readonly name: 'INT8';
+  readonly type: 'INT8';
 };
 
 export type DECIMAL = {
-  readonly name: 'DECIMAL';
+  readonly type: 'DECIMAL';
   readonly precision: number;
-  readonly digit?: number;
+  readonly scale: number;
 };
 
-export type FLOAT = {
-  readonly name: 'FLOAT';
+export type FLOAT32 = {
+  readonly type: 'FLOAT32';
 };
 
-export type DOUBLE = {
-  readonly name: 'DOUBLE';
+export type FLOAT64 = {
+  readonly type: 'FLOAT64';
 };
 
 export type STRING = {
-  readonly name: 'STRING';
+  readonly type: 'STRING';
   /**
    * 为0时表示无限大
    */
-  readonly length: number;
+  readonly size: number;
 };
 
 export type DATE = {
-  readonly name: 'DATE';
+  readonly type: 'DATE';
 };
 
 export type DATETIME = {
-  readonly name: 'DATETIME';
+  readonly type: 'DATETIME';
 };
 
 export type DATETIMEOFFSET = {
-  readonly name: 'DATETIMEOFFSET';
+  readonly type: 'DATETIMEOFFSET';
 };
 
 export type TIME = {
-  readonly name: 'TIME';
+  readonly type: 'TIME';
 };
 
 export type BINARY = {
-  readonly name: 'BINARY';
-  readonly length: number;
+  readonly type: 'BINARY';
+  readonly size: number;
 };
 
 export type BOOLEAN = {
-  readonly name: 'BOOLEAN';
+  readonly type: 'BOOLEAN';
 };
 
 export type UUID = {
-  readonly name: 'UUID';
+  readonly type: 'UUID';
 };
 
 /**
  * 行标识列，如sqlserver的timestamp
  */
 export type ROWFLAG = {
-  readonly name: 'ROWFLAG';
+  readonly type: 'ROWFLAG';
 };
 
 /**
  * 对象类型,不使用JSON，是因为冲突
  */
-export type OBJECT<T extends object = any> = {
-  readonly name: 'OBJECT';
-};
-
-const DEFAULT_OBJECT: OBJECT<any> = {
-  name: 'OBJECT',
+export type JSON<T extends Json = Json> = {
+  readonly type: 'JSON';
 };
 
 /**
  * 列表类型，即数组，不使用ARRAY，亦是因为命名冲突
  */
-export type ARRAY<T extends DbType> = {
-  readonly name: 'ARRAY';
+export type LIST<T extends BaseScalar> = {
+  readonly type: 'LIST';
   /**
    * 元素类型
    */
-  readonly type: T;
+  readonly innerType: DbType;
 };
 
-export function isSameDbType(type1: DbType, type2: DbType): boolean {
-  return deepthEqual(type1, type2);
-}
-
 export function isDbType(value: any): value is DbType {
-  if (typeof value?.name !== 'string') return false;
-  return !!Reflect.get(DbType, (value.name as string).toLowerCase());
+  if (typeof value?.type !== 'string') return false;
+  return (value.type as string).toLowerCase() in DbType;
 }
 
-export function isStringType(type: any): type is STRING {
-  return type?.name === 'STRING';
-}
-
-export type DbType =
+export type BaseDbType =
   | INT8
   | INT16
   | INT32
   | INT64
   | DECIMAL
-  | FLOAT
-  | DOUBLE
+  | FLOAT32
+  | FLOAT64
   | STRING
   | DATE
   | DATETIME
@@ -147,20 +133,19 @@ export type DbType =
   | DATETIMEOFFSET
   | BINARY
   | BOOLEAN
-  | UUID
-  | ROWFLAG
-  | OBJECT
-  | ARRAY<any>;
+  | UUID;
+
+export type DbType = BaseDbType | ROWFLAG | JSON | LIST<any>;
 
 /**
  * 类型转换
  */
-export type TsTypeOf<T extends DbType> = T extends
+export type ScalarFromDbType<T extends DbType> = T extends
   | INT8
   | INT16
   | INT32
-  | FLOAT
-  | DOUBLE
+  | FLOAT32
+  | FLOAT64
   ? number
   : T extends DECIMAL
   ? Decimal
@@ -169,7 +154,7 @@ export type TsTypeOf<T extends DbType> = T extends
   : T extends STRING
   ? string
   : T extends UUID
-  ? UUID
+  ? Uuid
   : T extends DATE | DATETIME | DATETIMEOFFSET
   ? Date
   : T extends TIME
@@ -180,27 +165,21 @@ export type TsTypeOf<T extends DbType> = T extends
   ? Binary
   : T extends ROWFLAG
   ? any
-  : T extends OBJECT<infer M>
+  : T extends JSON<infer M>
   ? M
   : T extends Raw
   ? Scalar
-  : T extends ARRAY<infer M>
-  ? TsTypeOf<M>[]
-  : never;
-
-export type ScalarTypeOf<T extends DataType> = T extends new (
-  ...args: any
-) => infer R
-  ? R
+  : T extends LIST<infer M>
+  ? M[]
   : never;
 
 /**
  * 从TS Type 转换为DbType的类型
  */
-export type DbTypeOf<T> = T extends string
+export type DbTypeFromScalar<T> = T extends string
   ? STRING
   : T extends number
-  ? DECIMAL | FLOAT | DOUBLE | INT16 | INT8 | INT32 | INT64
+  ? DECIMAL | FLOAT32 | FLOAT64 | INT16 | INT8 | INT32 | INT64
   : T extends Date
   ? DATETIME | DATE | DATETIMEOFFSET
   : T extends Time
@@ -215,84 +194,160 @@ export type DbTypeOf<T> = T extends string
   ? UUID
   : T extends Decimal
   ? DECIMAL
-  : T extends Array<infer M>
-  ? ARRAY<DbTypeOf<M>>
-  : T extends Object
-  ? OBJECT<T>
+  : T extends List<infer M>
+  ? DbTypeFromScalar<M> extends BaseScalar
+    ? LIST<DbTypeFromScalar<M>>
+    : never
+  : T extends Json
+  ? JSON<T>
   : never;
+
+const MAX = 0;
+
+const float32: FLOAT32 & (() => FLOAT32) = Object.assign(() => float32, {
+  type: 'FLOAT32',
+} as FLOAT32);
+
+const float64: FLOAT64 & (() => FLOAT64) = Object.assign(() => float64, {
+  type: 'FLOAT64',
+} as FLOAT64);
+
+const date: DATE & (() => DATE) = Object.assign(() => date, {
+  type: 'DATE',
+} as DATE);
+
+const time: TIME & (() => TIME) = Object.assign(() => time, {
+  type: 'TIME',
+} as TIME);
+
+const datetime: DATETIME & (() => DATETIME) = Object.assign(() => datetime, {
+  type: 'DATETIME',
+} as DATETIME);
+
+const datetimeoffset: DATETIMEOFFSET & (() => DATETIMEOFFSET) = Object.assign(
+  () => datetimeoffset,
+  {
+    type: 'DATETIMEOFFSET',
+  } as DATETIMEOFFSET
+);
+
+const boolean: BOOLEAN & (() => BOOLEAN) = Object.assign(() => boolean, {
+  type: 'BOOLEAN',
+} as BOOLEAN);
+
+const uuid: UUID & (() => UUID) = Object.assign(() => uuid, {
+  type: 'UUID',
+} as UUID);
+
+const rowflag: ROWFLAG & (() => ROWFLAG) = Object.assign(() => rowflag, {
+  type: 'ROWFLAG',
+} as ROWFLAG);
+
+const int8: INT8 & (() => INT8) = Object.assign((): INT8 => int8, {
+  type: 'INT8',
+} as INT8);
+
+const int16: INT16 & (() => INT16) = Object.assign((): INT16 => int16, {
+  type: 'INT16',
+} as INT16);
+
+const int32: INT32 & (() => INT32) = Object.assign((): INT32 => int32, {
+  type: 'INT32',
+} as INT32);
+
+const int64: INT64 & (() => INT64) = Object.assign((): INT64 => int64, {
+  type: 'INT64',
+} as INT64);
+
+const string: STRING & ((size: number) => STRING) = Object.assign(
+  (length: number): STRING => ({
+    type: 'STRING',
+    size: length,
+  }),
+  {
+    type: 'STRING',
+    size: MAX,
+  } as STRING
+);
+
+const decimal: DECIMAL & ((precision: number, digit?: number) => DECIMAL) =
+  Object.assign(
+    (precision: number, digit: number = 2): DECIMAL => ({
+      type: 'DECIMAL',
+      precision,
+      scale: digit,
+    }),
+    {
+      type: 'DECIMAL',
+      precision: 18,
+      scale: 2,
+    } as DECIMAL
+  );
+
+const binary: BINARY & ((size: number) => BINARY) = Object.assign(
+  (length: number): BINARY => ({
+    type: 'BINARY',
+    size: length,
+  }),
+  {
+    type: 'BINARY',
+    size: MAX,
+  } as BINARY
+);
+
+const json: JSON & (<T extends Json = any>() => JSON<T>) = Object.assign(
+  () => json,
+  {
+    type: 'JSON',
+  } as JSON
+);
+
+const list: LIST<string> &
+  (<T extends BaseDbType = any>(innerType: T) => LIST<ScalarFromDbType<T>>) =
+  Object.assign(
+    <T extends BaseDbType = any>(innerType: T): LIST<ScalarFromDbType<T>> => ({
+      type: 'LIST',
+      innerType,
+    }),
+    {
+      type: 'LIST',
+      innerType: string,
+    } as LIST<string>
+  );
 
 /**
  * 数据库标准类型定义
  */
 export const DbType = {
   int8: {
-    name: 'INT8',
+    type: 'INT8',
   } as INT8,
-  int16: { name: 'INT16' } as INT16,
-  int32: { name: 'INT32' } as INT32,
-  int64: { name: 'INT64' } as INT64,
-  decimal(precision: number, digit?: number): DECIMAL {
-    return {
-      name: 'DECIMAL',
-      precision,
-      digit,
-    };
-  },
-  float: {
-    name: 'FLOAT',
-  } as FLOAT,
-  double: {
-    name: 'DOUBLE',
-  } as DOUBLE,
-  string(length: number): STRING {
-    return {
-      name: 'STRING',
-      length,
-    };
-  },
-  date: {
-    name: 'DATE',
-  } as DATE,
-  time: {
-    name: 'TIME',
-  } as TIME,
-  datetime: {
-    name: 'DATETIME',
-  } as DATETIME,
-  datetimeoffset: {
-    name: 'DATETIMEOFFSET',
-  } as DATETIMEOFFSET,
-  binary(length: number): BINARY {
-    return {
-      name: 'BINARY',
-      length,
-    };
-  },
-  boolean: {
-    name: 'BOOLEAN',
-  } as BOOLEAN,
-  uuid: {
-    name: 'UUID',
-  } as UUID,
-  object: <T extends object = any>(): OBJECT<T> => {
-    return DEFAULT_OBJECT;
-  },
-  array<T extends DbType>(type: T): ARRAY<T> {
-    return {
-      name: 'ARRAY',
-      type,
-    };
-  },
+  int16,
+  int32,
+  int64,
+  decimal,
+  float32,
+  float64,
+  date,
+  time,
+  datetime,
+  datetimeoffset,
+  boolean,
+  uuid,
+  rowflag,
+  string,
+  binary,
+  json,
+  list,
   raw(name: string): any {
     return new Raw(name);
   },
-  rowflag: {
-    name: 'ROWFLAG',
-  } as ROWFLAG,
-  MAX: 0,
+  MAX,
 };
 
 // /**
 //  * 所浮点类型
 //  */
 // export type Float = number;
+
+import { Raw } from './raw';

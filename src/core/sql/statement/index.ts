@@ -23,7 +23,7 @@ import {
   Use,
 } from './migrate';
 
-import { Assignment, Declare } from './programmer';
+import { Assignment } from './programmer';
 import { StandardStatement } from './other/standard-statement';
 
 export * from './control';
@@ -72,7 +72,6 @@ export declare type ProgramStatement =
 export declare type FunctionStatement =
   | Use
   | Assignment
-  | Declare
   | CrudStatement
   | StandardStatement;
 

@@ -5,8 +5,8 @@ import {
   AlterTable,
   AlterView,
   ColumnsOf,
-  CompatiableObjectName,
-  CompatibleTable,
+  XObjectName,
+  XTables,
   Condition,
   CreateDatabase,
   CreateFunction,
@@ -29,7 +29,7 @@ import {
   Scalar,
   Statement,
   Update,
-  CompatibleExpression,
+  XExpression,
   SQL,
 } from '../core';
 
@@ -52,50 +52,50 @@ export abstract class MigrateBuilder {
     return Statement.isStatement(statement) ? statement : SQL.raw(statement);
   }
 
-  createTable(name: CompatiableObjectName): CreateTable {
+  createTable(name: XObjectName): CreateTable {
     return SQL.createTable(name);
   }
 
-  alterTable(name: CompatiableObjectName): AlterTable {
+  alterTable(name: XObjectName): AlterTable {
     return SQL.alterTable(name);
   }
-  dropTable(name: CompatiableObjectName): DropTable {
+  dropTable(name: XObjectName): DropTable {
     return SQL.dropTable(name);
   }
 
-  createView(name: CompatiableObjectName): CreateView {
+  createView(name: XObjectName): CreateView {
     return SQL.createView(name);
   }
 
-  alterView(name: CompatiableObjectName): AlterView {
+  alterView(name: XObjectName): AlterView {
     return SQL.alterView(name);
   }
 
-  dropView(name: CompatiableObjectName): DropView {
+  dropView(name: XObjectName): DropView {
     return SQL.dropView(name);
   }
 
-  createProcedure(name: CompatiableObjectName): CreateProcedure {
+  createProcedure(name: XObjectName): CreateProcedure {
     return SQL.createProcedure(name);
   }
 
-  alterProcedure(name: CompatiableObjectName): AlterProcedure {
+  alterProcedure(name: XObjectName): AlterProcedure {
     return SQL.alterProcedure(name);
   }
 
-  dropProcedure(name: CompatiableObjectName): DropProcedure {
+  dropProcedure(name: XObjectName): DropProcedure {
     return SQL.dropProcedure(name);
   }
-  createFunction(name: CompatiableObjectName): CreateFunction {
+  createFunction(name: XObjectName): CreateFunction {
     return SQL.createFunction(name);
   }
-  alterFunction(name: CompatiableObjectName): AlterFunction {
+  alterFunction(name: XObjectName): AlterFunction {
     return SQL.alterFunction(name);
   }
-  dropFunction(name: CompatiableObjectName): DropFunction {
+  dropFunction(name: XObjectName): DropFunction {
     return SQL.dropFunction(name);
   }
-  createSequence(name: CompatiableObjectName): CreateSequence {
+  createSequence(name: XObjectName): CreateSequence {
     return SQL.createSequence(name);
   }
 
@@ -103,16 +103,16 @@ export abstract class MigrateBuilder {
     return SQL.createIndex(name);
   }
 
-  dropIndex(table: CompatiableObjectName, name: string): DropIndex {
+  dropIndex(table: XObjectName, name: string): DropIndex {
     return SQL.dropIndex(table, name);
   }
 
-  dropSequence(name: CompatiableObjectName): DropSequence {
+  dropSequence(name: XObjectName): DropSequence {
     return SQL.dropSequence(name);
   }
 
   insert<T extends RowObject = any>(
-    table: CompatibleTable<T>,
+    table: XTables<T>,
     fields?: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[]
   ): Insert<T> {
     return SQL.insert(table, fields);
@@ -122,7 +122,7 @@ export abstract class MigrateBuilder {
    * 更新一个表格
    * @param table
    */
-  update<T extends RowObject = any>(table: CompatibleTable<T>): Update<T> {
+  update<T extends RowObject = any>(table: XTables<T>): Update<T> {
     return SQL.update(table);
   }
 
@@ -130,32 +130,32 @@ export abstract class MigrateBuilder {
    * 删除一个表格
    * @param table 表格
    */
-  delete<T extends RowObject = any>(table: CompatibleTable<T>): Delete<T> {
+  delete<T extends RowObject = any>(table: XTables<T>): Delete<T> {
     return SQL.delete(table);
   }
 
-  abstract renameTable(name: CompatiableObjectName, newName: string): Statement;
+  abstract renameTable(name: XObjectName, newName: string): Statement;
   abstract renameColumn(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string,
     newName: string
   ): Statement;
-  abstract renameView(name: CompatiableObjectName, newName: string): Statement;
+  abstract renameView(name: XObjectName, newName: string): Statement;
   abstract renameIndex(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string,
     newName: string
   ): Statement;
   abstract renameSequence(
-    name: CompatiableObjectName,
+    name: XObjectName,
     newName: string
   ): Statement;
   abstract renameProcedure(
-    name: CompatiableObjectName,
+    name: XObjectName,
     newName: string
   ): Statement;
   abstract renameFunction(
-    name: CompatiableObjectName,
+    name: XObjectName,
     newName: string
   ): Statement;
   abstract renameDatabase(name: string, newName: string): Statement;
@@ -165,57 +165,57 @@ export abstract class MigrateBuilder {
   // abstract setForeignKeyComment(table: CompatiableObjectName, name: string, comment: string): Statement;
 
   abstract setTableComment(
-    name: CompatiableObjectName,
+    name: XObjectName,
     comment: string
   ): Statement;
   abstract setViewComment(
-    name: CompatiableObjectName,
+    name: XObjectName,
     comment: string
   ): Statement;
   abstract setColumnComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string,
     comment: string
   ): Statement;
   abstract setIndexComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string,
     comment: string
   ): Statement;
   abstract setConstraintComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string,
     comment: string
   ): Statement;
   abstract setSchemaComment(name: string, comment: string): Statement;
   abstract setSequenceComment(
-    name: CompatiableObjectName,
+    name: XObjectName,
     comment: string
   ): Statement;
   abstract setProcedureComment(
-    name: CompatiableObjectName,
+    name: XObjectName,
     comment: string
   ): Statement;
   abstract setFunctionComment(
-    name: CompatiableObjectName,
+    name: XObjectName,
     comment: string
   ): Statement;
 
   abstract dropSchemaComment(name: string): Statement;
-  abstract dropSequenceComment(name: CompatiableObjectName): Statement;
-  abstract dropProcedureComment(name: CompatiableObjectName): Statement;
-  abstract dropFunctionComment(name: CompatiableObjectName): Statement;
-  abstract dropTableComment(name: CompatiableObjectName): Statement;
+  abstract dropSequenceComment(name: XObjectName): Statement;
+  abstract dropProcedureComment(name: XObjectName): Statement;
+  abstract dropFunctionComment(name: XObjectName): Statement;
+  abstract dropTableComment(name: XObjectName): Statement;
   abstract dropColumnComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string
   ): Statement;
   abstract dropIndexComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string
   ): Statement;
   abstract dropConstraintComment(
-    table: CompatiableObjectName,
+    table: XObjectName,
     name: string
   ): Statement;
 
@@ -223,7 +223,7 @@ export abstract class MigrateBuilder {
    * 将列修改为自动行标识列
    */
   abstract setAutoRowflag(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string
   ): Statement;
 
@@ -231,19 +231,19 @@ export abstract class MigrateBuilder {
    *
    */
   abstract dropAutoRowflag(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string
   ): Statement;
 
   // 为列添加或修改默认值
   abstract setDefaultValue(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string,
-    defaultValue: CompatibleExpression
+    defaultValue: XExpression
   ): Statement;
   // 删除列默认值约束
   abstract dropDefaultValue(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string
   ): Statement;
 
@@ -265,7 +265,7 @@ export abstract class MigrateBuilder {
 
   // 给字段增加自增属性
   abstract setIdentity(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string,
     startValue: number,
     increment: number
@@ -273,7 +273,7 @@ export abstract class MigrateBuilder {
 
   // 移除字段自增属性
   abstract dropIdentity(
-    table: CompatiableObjectName,
+    table: XObjectName,
     column: string
   ): Statement;
 
@@ -300,7 +300,7 @@ export abstract class MigrateBuilder {
 
   // 创建Check约束
   addCheckConstaint(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     sql: Condition,
     name?: string
   ): Statement {
@@ -310,7 +310,7 @@ export abstract class MigrateBuilder {
   }
 
   dropCheckConstaint(
-    table: CompatiableObjectName<string>,
+    table: XObjectName<string>,
     name: string
   ): Statement {
     return SQL.alterTable(table).drop(builder => builder.check(name));

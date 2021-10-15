@@ -1,22 +1,22 @@
 import assert from 'assert';
-import { CompatibleCondition, Condition } from '../../condition/condition';
-import { CompatibleExpression, Expression } from '../../expression/expression';
-import { ValuedSelect } from '../../expression/valied-select';
-import { ProxiedWithSelect, WithSelect } from '../../rowset/with-select';
-import { ProxiedNamedSelect, NamedSelect } from '../../rowset/named-select';
-import { Scalar } from '../../scalar';
-import { isScalar } from '../../scalar/util';
+import { BaseScalar, Scalar, isBaseScalar } from '../../scalar';
+import { SQL } from '../../sql';
 import { AsScalarType, InputObject, RowObject } from '../../types';
-import { isPlainObject } from '../../util';
+import { Star } from '../../object/star';
+import type { Condition } from '../../condition';
+import { XExpression, Expression, ValuedSelect, Field } from '../../expression';
+import {
+  XWithSelect,
+  WithSelect,
+  XNamedSelect,
+  NamedSelect,
+} from '../../rowset';
 import { Statement, STATEMENT_KIND } from '../statement';
+import { COLUMN_NAME_PREEFIX } from './common/select-action';
 import { Fromable } from './common/fromable';
 import { SelectColumn } from './select-column';
-import { CompatibleSortInfo, Sort, SortObject, SORT_DIRECTION } from './sort';
-import { Star } from './star';
-
+import { Sort, SortObject, SORT_DIRECTION } from './sort';
 import { Union } from './union';
-import { Field } from '../../expression';
-import { COLUMN_NAME_PREEFIX } from './common/select-action';
 
 /**
  * SELECT查询，传入的表达式会被自动命名为 '#column_' + i;
@@ -34,27 +34,34 @@ export class Select<T extends RowObject = any> extends Fromable {
 
   readonly $kind: STATEMENT_KIND.SELECT = STATEMENT_KIND.SELECT;
 
-  constructor(results?: InputObject<T>);
   constructor(
-    ...columns: (
-      | CompatibleExpression<Scalar>
-      | SelectColumn<Scalar, string>
-      | Star<any>
-    )[]
-  );
-  constructor(...columns: any) {
+    ...columns:
+      | (
+          | BaseScalar
+          | Expression<Scalar>
+          | SelectColumn<Scalar, string>
+          | Star<any>
+        )[]
+      | [results: InputObject<T>]
+  ) {
     super();
     assert(
       columns.length > 0,
       'Must select one or more columns by Select statement.'
     );
-    if (columns.length === 1 && isPlainObject(columns[0])) {
+    if (
+      columns.length === 1 &&
+      !Star.isStar(columns[0]) &&
+      !SelectColumn.isSelectColumn(columns[0]) &&
+      !Expression.isExpression(columns[0]) &&
+      !isBaseScalar(columns[0])
+    ) {
       const results = columns[0];
       this.$columns = Object.entries(results as InputObject<T>).map(
         ([name, expr]: [string, unknown]) => {
           return new SelectColumn(
             name,
-            Expression.ensure(expr as CompatibleExpression)
+            Expression.isExpression(expr) ? expr : SQL.literal(expr as Scalar)
           );
         }
       );
@@ -63,7 +70,7 @@ export class Select<T extends RowObject = any> extends Fromable {
     let i = 0;
     // 实例化
     this.$columns = (
-      columns as (CompatibleExpression<Scalar> | SelectColumn<Scalar, string>)[]
+      columns as (XExpression<Scalar> | SelectColumn<Scalar, string>)[]
     ).map(item => {
       if (Field.isField(item)) {
         return item.as();
@@ -73,16 +80,8 @@ export class Select<T extends RowObject = any> extends Fromable {
       }
       return new SelectColumn(
         COLUMN_NAME_PREEFIX + (++i).toString(),
-        Expression.ensure(item)
+        Expression.isExpression(item) ? item : SQL.literal(item)
       );
-
-      // if (
-      //   Expression.isExpression(item) ||
-      //   SelectColumn.isSelectColumn(item) ||
-      //   Star.isStar(item)
-      // )
-      //   return item;
-      // return Expression.ensure(item);
     });
   }
 
@@ -108,51 +107,32 @@ export class Select<T extends RowObject = any> extends Fromable {
    * order by 排序
    * @param sorts 排序信息
    */
-  orderBy(
-    sorts:
-      | SortObject<T>
-      | (
-          | Sort
-          | CompatibleExpression<Scalar>
-          | [CompatibleExpression, SORT_DIRECTION]
-        )[]
-  ): this;
-  orderBy(
-    ...sorts: (
-      | Sort
-      | CompatibleExpression<Scalar>
-      | [CompatibleExpression, SORT_DIRECTION]
-    )[]
-  ): this;
-  orderBy(sorts: CompatibleSortInfo): this;
-  orderBy(...args: any[]): this {
+  orderBy(sorts: Sort[] | SortObject<T>): this;
+  orderBy(...sorts: Sort[]): this;
+  orderBy(...args: Sort[] | [Sort[] | SortObject<T>]): this {
     // assert(!this.$orders, 'order by clause is declared')
     assert(args.length > 0, 'must have one or more order basis');
+    let ds: Sort[] | [SortObject<T>];
     // 如果传入的是对象类型
-    if (args.length === 1) {
-      if (isPlainObject(args[0])) {
-        const obj = args[0];
-        this.$sorts = Object.entries(obj).map(
-          ([expr, direction]) => new Sort(expr, direction as SORT_DIRECTION)
-        );
-        return this;
-      }
-      if (Array.isArray(args[0])) {
-        args = args[0];
-      }
+    if (Array.isArray(args[0])) {
+      ds = args[0] as Sort[] | [SortObject<T>];
+    } else {
+      ds = args as Sort[] | [SortObject<T>];
     }
-    const sorts = args as (
-      | Sort
-      | CompatibleExpression<Scalar>
-      | [CompatibleExpression, SORT_DIRECTION]
-    )[];
-    this.$sorts = sorts.map(item =>
-      Sort.isSortInfo(item)
-        ? item
-        : isScalar(item) || Expression.isExpression(item)
-        ? new Sort(item as CompatibleExpression<Scalar>)
-        : new Sort(item[0], item[1])
-    );
+    if (ds.length === 1 && !Sort.isSort(ds[0])) {
+      const obj = ds[0];
+      this.$sorts = Object.entries(obj).map(
+        ([expr, direction]) => new Sort(expr, direction as SORT_DIRECTION)
+      );
+      return this;
+    }
+    this.$sorts = (ds as Sort[]).map(item => {
+      if (Sort.isSort(item)) return item;
+      if (isBaseScalar(item) || Expression.isExpression(item)) {
+        return new Sort(item);
+      }
+      throw new Error(`Not sortable object: ${item}.`);
+    });
     return this;
   }
 
@@ -160,8 +140,10 @@ export class Select<T extends RowObject = any> extends Fromable {
    * 分组查询
    * @param groups
    */
-  groupBy(...groups: CompatibleExpression<Scalar>[]) {
-    this.$groups = groups.map(expr => Expression.ensure(expr));
+  groupBy(...groups: XExpression[]) {
+    this.$groups = groups.map(expr =>
+      Expression.isExpression(expr) ? expr : SQL.literal(expr)
+    );
     return this;
   }
 
@@ -217,12 +199,12 @@ export class Select<T extends RowObject = any> extends Fromable {
    * 将本次查询，转换为Table行集
    * @param alias
    */
-  as<TAlias extends string>(alias: TAlias): ProxiedNamedSelect<T> {
+  as<TAlias extends string>(alias: TAlias): XNamedSelect<T> {
     return NamedSelect.create(this, alias) as any;
   }
 
-  asWith<N extends string>(name: N): ProxiedWithSelect<T> {
-    return WithSelect.create(name, this) as ProxiedWithSelect<T>;
+  asWith<N extends string>(name: N): XWithSelect<T> {
+    return WithSelect.create(name, this) as XWithSelect<T>;
   }
 
   /**

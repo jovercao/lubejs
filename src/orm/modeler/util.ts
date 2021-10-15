@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js-light';
-import { isSameDbType, DbType, Uuid } from '../../core';
+import { DbType, Uuid } from '../../core';
 import { Entity } from '../entity';
 import {
   DbContextMetadata,
@@ -25,7 +25,7 @@ import {
   isManyToMany,
   isPrimaryOneToOne,
 } from '../metadata/util';
-import { DataType } from '../types';
+import { DataType, isListType } from '../data-types';
 import { lowerFirst, complex } from '../util';
 import { ContextBuilder } from './context-builder';
 
@@ -382,10 +382,14 @@ export function fixManyToMany(
       if (!relationEntity) {
         const ctr = class extends Entity {};
         Reflect.set(ctr, 'name', className);
-        relationEntity = ctxBuilder.entity<any>(ctr).asTable(className).metadata;
+        relationEntity = ctxBuilder
+          .entity<any>(ctr)
+          .asTable(className).metadata;
       }
       if (!isTableEntity(relationEntity)) {
-        throw new Error(`Entity ${relationEntity.className} is not a table entity.`);
+        throw new Error(
+          `Entity ${relationEntity.className} is not a table entity.`
+        );
       }
       relation.relationClass = relationEntity.class;
       relation.relationEntity = relationEntity;
@@ -696,9 +700,6 @@ export function fixEntityRelations(
  * @returns
  */
 export function dataTypeToDbType(dataType: DataType): DbType {
-  if (Array.isArray(dataType)) {
-    return DbType.array(dataTypeToDbType(dataType[0]));
-  }
   switch (dataType) {
     case String:
       return DbType.string(DbType.MAX);
@@ -712,17 +713,40 @@ export function dataTypeToDbType(dataType: DataType): DbType {
     case ArrayBuffer:
     case SharedArrayBuffer:
       return DbType.binary(DbType.MAX);
-    case Object:
-      return DbType.object();
     case BigInt:
       return DbType.int64;
     case Uuid:
       return DbType.uuid;
     case Decimal:
       return DbType.decimal(18, 6);
+    case Object:
+      return DbType.json();
     default:
-      throw new Error(
-        `Unsupport to default db type ${dataType}, please set DbType explicitly`
-      );
+      if (isListType(dataType)) {
+        return DbType.list(dataType[0] as any);
+      }
+      return DbType.json();
   }
+}
+
+function isSameDbType(type1: DbType, type2: DbType): boolean {
+  return deepthEqual(type1, type2);
+}
+
+function deepthEqual(left: any, right: any): boolean {
+  const type = typeof left;
+  if (type !== 'function' && type !== 'object') {
+    return left === right;
+  }
+
+  if (!right) return false;
+  const leftKeys = Object.getOwnPropertyNames(left);
+  const rightKeys = Object.getOwnPropertyNames(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  for (const key of leftKeys) {
+    if (!deepthEqual(left[key], right[key])) {
+      return false;
+    }
+  }
+  return true;
 }

@@ -1,9 +1,9 @@
 import { SQL, SQL_SYMBOLE } from '../../sql';
-import { DbType, TsTypeOf } from '../../db-type';
-import { Literal } from '../../expression/literal';
-import { PARAMETER_DIRECTION } from '../../expression/parameter';
-import { Scalar } from '../../scalar';
-import { Assignable } from '../../expression';
+import { DbType, ScalarFromDbType } from '../db-type';
+import { Literal } from './literal';
+import { PARAMETER_DIRECTION } from './parameter';
+import { Scalar } from '../scalar';
+import { Assignable } from './common/assignable';
 
 export class ProcedureParameter<
   T extends Scalar = Scalar,
@@ -33,8 +33,8 @@ export class ProcedureParameter<
     name: N,
     dataType: T,
     direct: PARAMETER_DIRECTION = 'IN',
-    defaultValue?: Literal<TsTypeOf<T>> | TsTypeOf<T>
-  ): ProcedureParameter<TsTypeOf<T>, N> {
+    defaultValue?: Literal<ScalarFromDbType<T>> | ScalarFromDbType<T>
+  ): ProcedureParameter<ScalarFromDbType<T>, N> {
     return new ProcedureParameter(name, dataType, direct, defaultValue);
   }
 

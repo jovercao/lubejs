@@ -1,6 +1,6 @@
 import assert from 'assert';
 import EventEmitter from 'events';
-import { CompatibleCondition, Condition } from '../sql/condition/condition';
+import { Condition } from '../sql/condition/condition';
 import { SqlUtil } from './sql-util';
 import { Connection } from './connection';
 import { Command, QueryResult } from './types';
@@ -8,8 +8,7 @@ import {
   SQL,
   RowObject,
   WhereObject,
-  ProxiedRowset,
-  CompatibleSortInfo,
+  XRowset,
   Sort,
   Parameter,
   Scalar,
@@ -19,23 +18,26 @@ import {
   Execute,
   InputObject,
   AsScalarType,
-  CompatiableObjectName,
+  XObjectName,
   Table,
-  CompatibleExpression,
-  ProxiedTable,
+  XExpression,
+  XTable,
   ColumnsOf,
   Field,
-  isScalar,
   Rowset,
   RowObjectFrom,
   Assignment,
   Procedure,
   Expression,
   Star,
-  CompatibleTable,
+  XTables,
   TableVariant,
-  ProxiedTableVariant,
-  CompatibleRowset,
+  XTableVariant,
+  XRowsets,
+  DefaultRowObject,
+  isList,
+  SortObject,
+  Insert,
 } from '../sql';
 
 const { and, doc } = SQL;
@@ -44,12 +46,12 @@ export interface SelectOptions<T extends RowObject = any> {
   where?:
     | WhereObject<T>
     | Condition
-    | ((table: Readonly<ProxiedRowset<T>>) => Condition);
+    | ((table: Readonly<XRowset<T>>) => Condition);
   top?: number;
   offset?: number;
   limit?: number;
   distinct?: boolean;
-  sorts?: CompatibleSortInfo | ((rowset: ProxiedRowset<T>) => Sort[]);
+  sorts?: Sort[] | SortObject<T> | ((rowset: XRowset<T>) => Sort[]);
 }
 
 export interface QueryHandler {
@@ -57,8 +59,6 @@ export interface QueryHandler {
     QueryResult<any, any, any>
   >;
 }
-
-export const INSERT_MAXIMUM_ROWS = 1000;
 
 /**
  * 数据执行器
@@ -245,77 +245,44 @@ export abstract class Executor {
   /**
    * 插入数据
    */
-  async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | Table<T>,
-    values: InputObject<T> | InputObject<T>[] | CompatibleExpression[]
+  async insert<T extends RowObject = DefaultRowObject>(
+    table: XObjectName | XTable<any>,
+    fields: string[] | Field<Scalar, ColumnsOf<T>>,
+    values: Scalar[][] | Scalar[]
   ): Promise<number>;
+
   /**
    * 插入数据
    */
-  async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T>,
-    values: T | T[]
+  async insert<T extends RowObject = DefaultRowObject>(
+    table: XTable<T> | XObjectName,
+    values: InputObject<T>[] | InputObject
   ): Promise<number>;
-  async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T>,
-    fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
-    value:
-      | InputObject<T>
-      | InputObject<T>[]
-      | CompatibleExpression[]
-      | CompatibleExpression[][]
-  ): Promise<number>;
-  async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T>,
-    fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[],
-    value: T | T[]
-  ): Promise<number>;
-  async insert<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedTable<T>,
-    arg2:
-      | ColumnsOf<T>[]
-      | Field<Scalar, ColumnsOf<T>>[]
-      | InputObject<T>
-      | InputObject<T>[]
-      | CompatibleExpression
-      | CompatibleExpression[],
-    arg3?:
-      | InputObject<T>
-      | InputObject<T>[]
-      | CompatibleExpression
-      | CompatibleExpression[]
-      | undefined
+
+  async insert(
+    table: XObjectName | XTable<any>,
+    fieldsOrValues: InputObject[] | InputObject | string[] | Field,
+    values?: Scalar[][] | Scalar[]
   ): Promise<number> {
-    let fields: ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[] | undefined;
-    let values:
-      | InputObject<T>
-      | InputObject<T>[]
-      | CompatibleExpression
-      | CompatibleExpression[]
-      | undefined;
+    let fields: string[] | Field[] | undefined;
 
-    if (arguments.length <= 2) {
-      values = arg2;
-      fields = undefined;
+    let innerValues: InputObject[] | Scalar[][];
+    if (!values) {
+      innerValues = (
+        Array.isArray(fieldsOrValues) ? fieldsOrValues : [fieldsOrValues]
+      ) as InputObject[];
     } else {
-      values = arg3;
-      fields = arg2 as ColumnsOf<T>[] | Field<Scalar, ColumnsOf<T>>[];
+      fields = fieldsOrValues as string[] | Field[];
+      if (fields.length <= 0) {
+        throw new Error(`Fields not allow empty.`);
+      }
+      // 如果是行数组数组时
+      innerValues = Insert.isRowDataArray(values, fields.length) ? values : [values];
     }
-
-    // 确保装入数组里，以便 使用
-    // UnsureExpression[] => UnsureExpression[][]
-    // Object => Object[]
-    if (
-      !Array.isArray(values) ||
-      (!Array.isArray(values[0]) && isScalar(values[0]))
-    ) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      values = [values as any];
-    }
-    const packedValues = values;
+    const packedValues = innerValues;
     if (packedValues.length > INSERT_MAXIMUM_ROWS) {
       console.warn(
-        'Values exceed 1000 rows, and will be inserted multiple times.'
+        `Values exceed ${INSERT_MAXIMUM_ROWS} rows, and will be inserted multiple times.`
       );
     }
     const action = async (): Promise<number> => {
@@ -341,33 +308,30 @@ export abstract class Executor {
     T extends RowObject = any,
     G extends InputObject<T> = InputObject<T>
   >(
-    table: ProxiedTable<T> | CompatiableObjectName,
-    results: (rowset: Readonly<ProxiedRowset<T>>) => G,
-    where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
+    table: XTable<T> | XObjectName,
+    results: (rowset: Readonly<XRowset<T>>) => G,
+    where: Condition | WhereObject<T> | ((table: XRowset<T>) => Condition)
   ): Promise<RowObjectFrom<G> | null>;
   async find<T extends RowObject = any>(
-    table: ProxiedTable<T> | CompatiableObjectName,
-    where: Condition | WhereObject<T> | ((table: ProxiedRowset<T>) => Condition)
+    table: XTable<T> | XObjectName,
+    where: Condition | WhereObject<T> | ((table: XRowset<T>) => Condition)
   ): Promise<T | null>;
   async find<
     T extends RowObject = any,
     G extends InputObject<T> = InputObject<T>
   >(
-    table: ProxiedTable<T> | CompatiableObjectName,
+    table: XTable<T> | XObjectName,
     resultsOrwhere:
       | Condition
       | WhereObject<T>
-      | ((table: ProxiedRowset<T>) => Condition)
+      | ((table: XRowset<T>) => Condition)
       | ((rowset: Readonly<Rowset<T>>) => G),
-    where?:
-      | Condition
-      | WhereObject<T>
-      | ((table: ProxiedRowset<T>) => Condition)
+    where?: Condition | WhereObject<T> | ((table: XRowset<T>) => Condition)
   ): Promise<T | RowObjectFrom<G> | null> {
     const t = Rowset.isRowset(table) ? table : Table.create<T>(table);
     let results: ((rowset: Readonly<Rowset<T>>) => G) | undefined;
     if (!where) {
-      where = resultsOrwhere as (table: ProxiedRowset<T>) => Condition;
+      where = resultsOrwhere as (table: XRowset<T>) => Condition;
     } else {
       results = resultsOrwhere as (rowset: Readonly<Rowset<T>>) => G;
     }
@@ -400,17 +364,17 @@ export abstract class Executor {
     T extends RowObject = any,
     G extends InputObject<T> = InputObject<T>
   >(
-    table: CompatiableObjectName | ProxiedRowset<T>,
-    results: (rowset: Readonly<ProxiedRowset<T>>) => G,
+    table: XObjectName | XRowset<T>,
+    results: (rowset: Readonly<XRowset<T>>) => G,
     options?: SelectOptions<T>
   ): Promise<RowObjectFrom<G>[]>;
   async select<T extends RowObject = any>(
-    table: CompatiableObjectName | ProxiedRowset<T>,
+    table: XObjectName | XRowset<T>,
     options?: SelectOptions<T>
   ): Promise<T[]>;
   async select(
-    table: CompatibleRowset<any> | CompatiableObjectName,
-    arg2?: SelectOptions | ((rowset: Readonly<ProxiedRowset>) => any),
+    table: XRowsets<any> | XObjectName,
+    arg2?: SelectOptions | ((rowset: Readonly<XRowset>) => any),
     arg3?: SelectOptions
   ): Promise<any[]> {
     let options: SelectOptions | undefined;
@@ -432,15 +396,13 @@ export abstract class Executor {
 
     const sql = SQL.select(columns).from(t);
     if (where) {
-      sql.where(
-        typeof where === 'function' ? where(t as ProxiedRowset<any>) : where
-      );
+      sql.where(typeof where === 'function' ? where(t as XRowset<any>) : where);
     }
     if (sorts) {
       if (Array.isArray(sorts)) {
         sql.orderBy(...sorts);
       } else if (typeof sorts === 'function') {
-        sql.orderBy(...sorts(t as ProxiedRowset<any>));
+        sql.orderBy(...sorts(t as XRowset<any>));
       } else {
         sql.orderBy(sorts);
       }
@@ -459,12 +421,12 @@ export abstract class Executor {
    * 更新表
    */
   async update<T extends RowObject = any>(
-    table: CompatibleTable<T>,
+    table: XTables<T>,
     sets: InputObject<T> | Assignment[],
     where?:
       | WhereObject<T>
       | Condition
-      | ((table: Readonly<ProxiedRowset<T>>) => Condition)
+      | ((table: Readonly<XRowset<T>>) => Condition)
   ): Promise<number> {
     const t =
       Table.isTable(table) || TableVariant.isTableVariant(table)
@@ -483,13 +445,11 @@ export abstract class Executor {
   }
 
   async delete<T extends RowObject = any>(
-    table: CompatibleTable<T>,
+    table: XTables<T>,
     where?:
       | WhereObject<T>
       | Condition
-      | ((
-          table: Readonly<ProxiedTable<T>> | Readonly<ProxiedTableVariant<T>>
-        ) => Condition)
+      | ((table: Readonly<XTable<T>> | Readonly<XTableVariant<T>>) => Condition)
   ): Promise<number> {
     const t =
       Table.isTable(table) || TableVariant.isTableVariant(table)
@@ -511,11 +471,14 @@ export abstract class Executor {
     T extends RowObject = never,
     O extends [T, ...RowObject[]] = [T]
   >(
-    spName: CompatiableObjectName | Procedure<R, O>,
-    params?: CompatibleExpression[]
+    spName: XObjectName | Procedure<R, O>,
+    params?: XExpression[]
   ): Promise<QueryResult<O[0], R, O>> {
     const sql = SQL.execute<R, O>(spName, params);
     const res = await this.query(sql);
     return res as any;
   }
 }
+
+
+export const INSERT_MAXIMUM_ROWS = 1000;

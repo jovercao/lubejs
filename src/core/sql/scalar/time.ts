@@ -25,27 +25,46 @@ export class Time {
       ms = now.getMilliseconds();
     }
 
+    let time: number;
     if (typeof h === 'string') {
-      this._time = this._parseTime(h);
+      time = this._parseTime(h);
     } else {
-      this._time = this._toTicks(h, m!, s!, ms!);
+      time = this._toTicks(h, m!, s!, ms!);
     }
+    this._checkRange(time);
+    this._time = time;
   }
 
-  private _time!: number;
+  private _time: number = 0;
 
   valueOf() {
-    return;
+    return this._time;
   }
 
   get hours(): number {
     return Math.floor(this._time / HOUR_PRE_MILLISECOND);
   }
 
-  get minute(): number {
+  set hours(value: number) {
+    if (value < 0 || value >= 24) {
+      throw new Error(`Out of range.`);
+    }
+    const offset = (value - this.hours) * HOUR_PRE_MILLISECOND;
+    this._time += offset;
+  }
+
+  get minutes(): number {
     return Math.floor(
       (this._time % HOUR_PRE_MILLISECOND) / MINUTE_PRE_MILLISECOND
     );
+  }
+
+  set minutes(value: number) {
+    if (value < 0 || value >= 60) {
+      throw new Error(`Out of range.`);
+    }
+    const offset = (value - this.minutes) * MINUTE_PRE_MILLISECOND;
+    this._time += offset;
   }
 
   get seconds(): number {
@@ -54,8 +73,62 @@ export class Time {
     );
   }
 
-  get milliSecond(): number {
+  set seconds(value: number) {
+    if (value < 0 || value >= 60) {
+      throw new Error(`Out of range.`);
+    }
+    const offset = (value - this.seconds) * SECOND_PRE_MILLISECOND;
+    this._time += offset;
+  }
+
+  get milliSeconds(): number {
     return this._time % SECOND_PRE_MILLISECOND;
+  }
+
+  set milliSeconds(value: number) {
+    if (value < 0 || value >= 1000) {
+      throw new Error(`Out of range.`);
+    }
+    const offset = value - this.milliSeconds;
+    this._time += offset;
+  }
+
+  private static isInvalid(time: number): boolean {
+    return time < 0 || time >= 24 * HOUR_PRE_MILLISECOND;
+  }
+
+  private _checkRange(time: number) {
+    if (Time.isInvalid(time)) {
+      throw new Error(`Time out of range.`);
+    }
+  }
+
+  add(
+    interval: number,
+    unit: 'hour' | 'h' | 'minute' | 'm' | 'second' | 's' | 'millisecond' | 'ms'
+  ): this {
+    let time: number;
+    if (unit === 'h' || unit === 'hour') {
+      time = this._time + interval * HOUR_PRE_MILLISECOND;
+    } else if (unit === 'minute' || unit === 'm') {
+      time = this._time + interval * MINUTE_PRE_MILLISECOND;
+    } else if (unit === 'second' || unit === 's') {
+      time = this._time + interval * SECOND_PRE_MILLISECOND;
+    } else if (unit === 'ms') {
+      time = this._time + interval;
+    } else {
+      throw new Error(`Invalid unit ${unit}`);
+    }
+    this._checkRange(time);
+    this._time = time;
+    return this;
+  }
+
+  /**
+   * 序列化
+   */
+  toJSON() {
+    return this.toString();
   }
 
   /**
@@ -65,11 +138,11 @@ export class Time {
     return (
       this.hours.toString().padStart(2, '0') +
       ':' +
-      this.minute.toString().padStart(2, '0') +
+      this.minutes.toString().padStart(2, '0') +
       ':' +
       this.seconds.toString().padStart(2, '0') +
       '.' +
-      this.milliSecond.toString().padStart(3, '0')
+      this.milliSeconds.toString().padStart(3, '0')
     );
   }
 
@@ -80,15 +153,19 @@ export class Time {
     return (
       this.hours.toString().padStart(2, '0') +
       ':' +
-      this.minute.toString().padStart(2, '0') +
+      this.minutes.toString().padStart(2, '0') +
       ':' +
       this.seconds.toString().padStart(2, '0')
     );
   }
 
   // 1 tick = 1 ms;
-  private _toTicks(hh: number, mm: number, ss: number, ms: number): number {
-    return hh * 60 * 60 * 1000 + mm * 60 * 1000 + ss * 1000 + ms;
+  private _toTicks(hh: number, mm?: number, ss?: number, ms?: number): number {
+    let ticks = hh * 60 * 60 * 1000;
+    if (mm) ticks += mm * 60 * 1000;
+    if (ss) ticks += ss * 1000;
+    if (ms) ticks += ms;
+    return ticks;
   }
 
   private static time_reg =

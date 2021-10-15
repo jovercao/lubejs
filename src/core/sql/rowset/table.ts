@@ -1,22 +1,23 @@
 import { SQL_SYMBOLE } from '../sql';
-import { Field } from '../expression/field';
-import { CompatiableObjectName, DBObject } from '../object/db-object';
-import { Star } from '../statement/crud/star';
-import { ColumnsOf, DbValueType, DefaultRowObject, RowObject } from '../types';
+import { Field } from '../expression';
+import { XObjectName, DBObject } from '../object';
+import {
+  ColumnsOf,
+  DataRowValueType,
+  DefaultRowObject,
+  RowObject,
+} from '../types';
 import { Rowset } from './rowset';
-import { TableVariant } from './table-variant';
-import { ProxiedTableVariant } from '.';
+import type { XTableVariant } from './table-variant';
 
 /**
  * 表对象，表和视图均使用该对象
  */
-export class Table<
-    T extends RowObject = DefaultRowObject
-  >
+export class Table<T extends RowObject = DefaultRowObject>
   extends Rowset<T>
   implements DBObject
 {
-  constructor(name: CompatiableObjectName, builtIn = false) {
+  constructor(name: XObjectName, builtIn = false) {
     super();
     this.$name = name;
     this.$builtin = builtIn;
@@ -26,13 +27,13 @@ export class Table<
   static create<
     T extends RowObject = DefaultRowObject,
     N extends string = string
-  >(name: CompatiableObjectName<N>, builtIn = false): ProxiedTable<T> {
-    return new Table<T>(name, builtIn) as ProxiedTable<T>;
+  >(name: XObjectName<N>, builtIn = false): XTable<T> {
+    return new Table<T>(name, builtIn) as XTable<T>;
   }
 
-  $name: CompatiableObjectName;
+  $name: XObjectName;
   readonly $builtin: boolean;
-  $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
+  readonly $type: SQL_SYMBOLE.TABLE = SQL_SYMBOLE.TABLE;
 
   // /**
   //  * 访问字段
@@ -45,24 +46,22 @@ export class Table<
   //   return new Field<T[P], P>([name, ...pathName(this.$name)] as Name<P>);
   // }
 
-  as!: <N extends string>(alias: N) => ProxiedTable<T>;
+  as!: <N extends string>(alias: N) => XTable<T>;
 
-  static isTable(object: any): object is Table | ProxiedTable {
+  static isTable(object: any): object is Table | XTable {
     return object?.$type === SQL_SYMBOLE.TABLE;
   }
 }
 
-export type CompatibleTable<
+export type XTables<
   // eslint-disable-next-line
   T extends RowObject = {}
-> = CompatiableObjectName | ProxiedTable<T> | ProxiedTableVariant<T>;
+> = XObjectName | XTable<T> | XTableVariant<T>;
 
 /**
  * 代理后的表
  */
-export type ProxiedTable<
-  T extends RowObject = RowObject
-> = Table<T> &
+export type XTable<T extends RowObject = RowObject> = Table<T> &
   {
-    readonly [P in ColumnsOf<T>]: Field<DbValueType<T[P]>, P>;
+    readonly [P in ColumnsOf<T>]: Field<DataRowValueType<T[P]>, P>;
   };

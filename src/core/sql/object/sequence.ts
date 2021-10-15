@@ -1,4 +1,3 @@
-import { Expression } from '../expression';
 import { Numeric } from '../scalar';
 import { SQL, SQL_SYMBOLE } from '../sql';
 import { DBObject } from './db-object';
@@ -14,6 +13,8 @@ export class Sequence<
    * 获取值
    */
   nextValue(): Expression<T> {
-    return SQL.std.sequenceNextValue<T>(this.$name)
+    return SQL.std.sequenceNextValue<T>(this.$name);
   }
 }
+
+import type { Expression } from '../expression';

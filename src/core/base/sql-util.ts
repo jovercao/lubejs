@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import assert from 'assert';
 import {
-  CompatiableObjectName,
+  XObjectName,
   Raw,
   Field,
   DbType,
@@ -201,7 +201,7 @@ export abstract class SqlUtil {
     return this.provider.stdTranslator;
   }
 
-  sqlifyObjectName(name: CompatiableObjectName, builtIn = false): string {
+  sqlifyObjectName(name: XObjectName, builtIn = false): string {
     // TIPS: buildIn 使用小写原因是数据库默认值会被自动转换为小写从而产生结果差异，造成不必要的数据架构变化。
     if (Raw.isRaw(name)) {
       return name.$sql;
@@ -383,7 +383,7 @@ export abstract class SqlUtil {
     };
   }
 
-  abstract parseObjectName(name: CompatiableObjectName): ObjectName;
+  abstract parseObjectName(name: XObjectName): ObjectName;
 
   protected sqlifyStatement(
     /**
@@ -1245,24 +1245,7 @@ export abstract class SqlUtil {
 
   protected abstract sqlifyFunctionParameter(varDec: FunctionParameter): string;
 
-  protected sqlifyDeclare(declare: Declare): string {
-    this.assertAst(
-      declare.$body,
-      `Declare statement not have do statement. Use '.do(...)' to specify it.`
-    );
-    return (
-      'DECLARE ' +
-      declare.$declares
-        .map(dec =>
-          TableVariant.isTableVariant(dec)
-            ? this.sqlifyTableVariantDeclare(dec)
-            : this.sqlifyVariantDeclare(dec)
-        )
-        .join(', ') +
-      '\n' +
-      this.sqlifyBlock(declare.$body)
-    );
-  }
+  protected abstract sqlifyDeclare(declare: Declare): string;
 
   protected sqlifyUpdate(
     update: Update,

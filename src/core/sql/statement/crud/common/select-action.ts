@@ -1,17 +1,14 @@
-import { CompatibleExpression } from '../../../expression/expression';
-import { Scalar } from '../../../scalar';
-import {
-  ColumnsOf,
+import type { XExpression } from '../../../expression';
+import type { BaseScalar, Scalar } from '../../../scalar';
+import type {
   DefaultRowObject,
   InputObject,
   RowObject,
   RowObjectFrom,
 } from '../../../types';
-import { Select } from '../select';
-import { Star } from '../star';
-import { SelectColumn } from '../select-column';
-import { ColumnKeyOf } from '../../../../../orm';
-import { Field } from '../../../expression';
+import type { Select } from '../select';
+import type { Star } from '../../../object';
+import type { SelectColumn } from '../select-column';
 
 /**
  * 自动列名前缀
@@ -33,14 +30,14 @@ export type SelectAction = {
   // <T extends Scalar>(value: CompatibleExpression<T>): Select<{
   //   '#column_1': T;
   // }>;
-  <T extends Scalar>(expr: CompatibleExpression<T>): Select<{
+  <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
+  <T extends RowObject>(fields: SelectColumn): Select<T>;
+  <T extends RowObject>(results: InputObject<T>): Select<T>;
+  <T extends BaseScalar>(expr: XExpression<T>): Select<{
     '*no name': T;
   }>;
-  <T extends RowObject>(fields: SelectColumn): Select<T>;
-  <T extends InputObject>(results: T): Select<RowObjectFrom<T>>;
-  <T extends RowObject>(results: InputObject<T>): Select<T>;
   <T extends Scalar>(
-    ...results: (Star | CompatibleExpression<T> | SelectColumn)[]
+    ...results: (Star | XExpression<T> | SelectColumn)[]
   ): Select<DefaultRowObject>;
   // <
   //   A extends SelectColumn | Field,

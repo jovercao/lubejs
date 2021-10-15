@@ -1,11 +1,12 @@
 import { EntityConstructor, Entity } from '../entity';
-import { CompatibleExpression, DbType, ProxiedRowset } from '../../core';
+import { XExpression, DbType, XRowset } from '../../core';
 import { isScalarType } from '../util';
 import { ColumnMetadata } from '../metadata';
-import { ScalarType } from '../types';
+import { ScalarDataType } from '../data-types';
 import { addEntitiyColumn } from './entity-decorators';
 import { DbContext } from '../db-context';
 import 'reflect-metadata';
+import { isDbType } from '../../core/sql';
 
 const COLUMN_KEY = Symbol('lubejs:column');
 
@@ -25,9 +26,9 @@ export interface ColumnOptions
       | 'identityStartValue'
     >
   > {
-  type: ScalarType;
-  defaultValueGetter?: () => CompatibleExpression;
-  calculateExpressionGetter?: () => CompatibleExpression;
+  type: ScalarDataType;
+  defaultValueGetter?: () => XExpression;
+  calculateExpressionGetter?: () => XExpression;
 }
 
 export function getColumnOptions(
@@ -51,15 +52,15 @@ function setColumnOptions(
 }
 
 export function column<T extends Entity>(name?: string): PropertyDecorator;
-export function column<T extends Entity>(type: ScalarType): PropertyDecorator;
+export function column<T extends Entity>(type: ScalarDataType): PropertyDecorator;
 export function column<T extends Entity>(dbType: DbType): PropertyDecorator;
 export function column<T extends Entity>(
-  type: ScalarType,
+  type: ScalarDataType,
   dbType: DbType
 ): PropertyDecorator;
 export function column<T extends Entity>(
   name: string,
-  type?: ScalarType
+  type?: ScalarDataType
 ): PropertyDecorator;
 export function column<T extends Entity>(
   name: string,
@@ -67,31 +68,34 @@ export function column<T extends Entity>(
 ): PropertyDecorator;
 export function column<T extends Entity>(
   name: string,
-  type: ScalarType,
+  type: ScalarDataType,
   dbType: DbType
 ): PropertyDecorator;
 export function column<T extends Entity>(
-  nameOrTypeOrDbType?: string | DbType | ScalarType,
-  typeOrDbType?: DbType | ScalarType,
+  nameOrTypeOrDbType?: string | DbType | ScalarDataType,
+  typeOrDbType?: DbType | ScalarDataType,
   dbType?: DbType
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     let name: string | undefined;
     let dbType: DbType | undefined;
-    let type: ScalarType | undefined;
+    let type: ScalarDataType | undefined;
     // 无参数
     if (typeof nameOrTypeOrDbType === 'string') {
       name = nameOrTypeOrDbType;
-      if (typeof typeOrDbType === 'object') {
+      if (isDbType(typeOrDbType)) {
         dbType = typeOrDbType;
       } else {
         type = typeOrDbType;
       }
-    } else if (typeof nameOrTypeOrDbType === 'object') {
+    } else if (isDbType(nameOrTypeOrDbType)) {
       dbType = nameOrTypeOrDbType;
-    } else if (typeof nameOrTypeOrDbType === 'function') {
+    } else if (
+      typeof nameOrTypeOrDbType === 'function' ||
+      Array.isArray(nameOrTypeOrDbType)
+    ) {
       type = nameOrTypeOrDbType;
-      if (typeof typeOrDbType === 'object') {
+      if (isDbType(typeOrDbType)) {
         dbType = typeOrDbType;
       }
     }
@@ -136,7 +140,7 @@ export function nullable(yesOrNo: boolean = true): PropertyDecorator {
 }
 
 export function calculate(
-  exprGetter: () => CompatibleExpression
+  exprGetter: () => XExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
@@ -157,10 +161,10 @@ export function noCalculate(): PropertyDecorator {
 
 export function autogen<T extends Entity = any>(
   generator: (
-    rowset: ProxiedRowset<T>,
+    rowset: XRowset<T>,
     item: object,
     context: DbContext
-  ) => CompatibleExpression
+  ) => XExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
@@ -181,7 +185,7 @@ export function noAutogen<T extends Entity = any>(): PropertyDecorator {
 }
 
 export function defaultValue(
-  exprGetter: () => CompatibleExpression
+  exprGetter: () => XExpression
 ): PropertyDecorator {
   return function (target: Object, key: string) {
     setColumnOptions(target.constructor as EntityConstructor, key, {
@@ -202,7 +206,7 @@ export function noDefaultValue(): PropertyDecorator {
  * 单独标记属性类型
  * Uuid Decimal Date等对象类型必须使用type进行标记
  */
-export function type(type: ScalarType): PropertyDecorator {
+export function type(type: ScalarDataType): PropertyDecorator {
   return function (target: Object, key: string): void {
     setColumnOptions(target.constructor as EntityConstructor, key, {
       type,

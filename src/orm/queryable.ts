@@ -2,10 +2,10 @@
 /* eslint-disable @typescript-eslint/no-inferrable-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  CompatibleCondition,
-  CompatibleExpression,
+  XCondition,
+  XExpression,
   RowObjectFrom,
-  ProxiedRowset,
+  XRowset,
   InputObject,
   Sort,
   SortObject,
@@ -16,8 +16,8 @@ import {
   SQL,
 } from '../core';
 import { EntityMetadata, TableEntityMetadata } from './metadata';
-import { FetchRelations } from './types';
-import { Entity, EntityConstructor, EntityInstance } from './entity';
+import { FetchRelations } from './data-types';
+import { Entity, EntityConstructor, EntityInstance, ToEntity } from './entity';
 import { mergeFetchRelations } from './util';
 import { metadataStore } from './metadata-store';
 import { makeRowset, aroundRowset, isTableEntity } from './metadata/util';
@@ -26,7 +26,7 @@ import {
   ColumnsOf,
   DefaultRowObject,
   NamedSelect,
-  ProxiedTable,
+  XTable,
 } from '../core/sql';
 import { EntityMgr } from './entity-mgr';
 
@@ -36,13 +36,11 @@ const { select } = SQL;
 const ROWSET_ALIAS = '__t__';
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export class Queryable<T extends Entity | RowObject>
-  implements AsyncIterable<T>
-{
+export class Queryable<T extends RowObject> implements AsyncIterable<T> {
   constructor(
     protected context: DbContext,
-    Ctr?: EntityConstructor<T>,
-    rowset?: ProxiedRowset<T>
+    Ctr?: EntityConstructor<ToEntity<T>>,
+    rowset?: XRowset<T>
   ) {
     if (!Ctr && !rowset) {
       throw new Error(`Ctr and rowset One of them must be specified.`);
@@ -50,7 +48,7 @@ export class Queryable<T extends Entity | RowObject>
     if (Ctr) {
       this._metadata = metadataStore.getEntity(Ctr);
       if (!rowset) {
-        this._rowset = makeRowset<any>(Ctr) as ProxiedRowset<T>;
+        this._rowset = makeRowset<any>(Ctr) as XRowset<T>;
       }
     }
 
@@ -63,14 +61,14 @@ export class Queryable<T extends Entity | RowObject>
     }
   }
 
-  private get mgr(): EntityMgr<T> {
+  private get mgr(): EntityMgr<ToEntity<T>> {
     if (!this._metadata) {
       throw new Error(`Mgr is only allowed for entities in queryable.`);
     }
     return this.context.getMgr(this._metadata.class);
   }
 
-  private _rowset!: ProxiedRowset<DefaultRowObject>;
+  private _rowset!: XRowset<DefaultRowObject>;
   // protected sql: Select<any>;
   private _metadata?: EntityMetadata;
   private _includes?: FetchRelations<T>;
@@ -83,14 +81,6 @@ export class Queryable<T extends Entity | RowObject>
     return this._sql;
   }
   private _tableMetadata?: TableEntityMetadata;
-
-  // private _appendWhere(where: CompatibleCondition<T>): this {
-  //   if (!this._where) {
-  //     this._where = ensureCondition(where, this.rowset);
-  //   }
-  //   this._where = and(this._where, ensureCondition(where, this.rowset));
-  //   return this;
-  // }
 
   protected get executor(): Executor {
     return this.context.connection;
@@ -139,9 +129,9 @@ export class Queryable<T extends Entity | RowObject>
   // /**
   //  * 克隆当前对象用于添加信息，以免污染当前对象
   //  */
-  fork(rowset: ProxiedRowset<T>): Queryable<T> {
+  fork(rowset: XRowset<T>): Queryable<T> {
     if (this._metadata) {
-      rowset = aroundRowset(rowset, this._metadata);
+      rowset = aroundRowset(rowset, this._metadata) as any;
     }
     const queryable = new Queryable(
       this.context,
@@ -157,8 +147,8 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 过滤数据并返回一个新的Queryable
    */
-  filter(condition: (p: ProxiedRowset<T>) => CompatibleCondition<T>): this {
-    this.sql.andWhere(condition(this._rowset as ProxiedRowset<T>));
+  filter(condition: (p: XRowset<T>) => XCondition<T>): this {
+    this.sql.andWhere(condition(this._rowset as XRowset<T>));
     return this;
   }
 
@@ -173,11 +163,11 @@ export class Queryable<T extends Entity | RowObject>
     }));
   }
 
-  sort(sorts: (p: ProxiedRowset<T>) => Sort[] | SortObject<T>): this {
+  sort(sorts: (p: XRowset<T>) => Sort[] | SortObject<T>): this {
     if (this.sql.$sorts) {
-      throw new Error(`Sort cannot be used twice.`);
+      throw new Error(`Cannot be used .sort(...) twice.`);
     }
-    this.sql.orderBy(sorts(this._rowset as ProxiedRowset<T>));
+    this.sql.orderBy(sorts(this._rowset as XRowset<T>));
     return this;
 
     // return this.fork(
@@ -191,7 +181,7 @@ export class Queryable<T extends Entity | RowObject>
   /**
    * 添加过滤条件，并限定返回头一条记录
    */
-  find(filter: (p: ProxiedRowset<T>) => CompatibleCondition<T>): this {
+  find(filter: (p: XRowset<T>) => XCondition<T>): this {
     return this.filter(filter).take(1);
   }
 
@@ -207,43 +197,43 @@ export class Queryable<T extends Entity | RowObject>
    * 返回一个新的类型
    */
   map<G extends InputObject>(
-    results: (p: ProxiedRowset<T>) => G
+    results: (p: XRowset<T>) => G
   ): Queryable<RowObjectFrom<G>> {
     const rowset = this._sql ? this._sql.as(ROWSET_ALIAS) : this._rowset;
-    const sql = select(results(rowset as ProxiedRowset<T>)).from(rowset);
+    const sql = select(results(rowset as XRowset<T>)).from(rowset);
     return new Queryable(this.context, undefined, sql.as(ROWSET_ALIAS));
   }
 
   groupBy<G extends InputObject>(
-    results: (p: ProxiedRowset<T>) => G,
-    groups: (p: ProxiedRowset<T>) => CompatibleExpression[],
-    having?: (p: ProxiedRowset<T>) => Condition
+    results: (p: XRowset<T>) => G,
+    groups: (p: XRowset<T>) => XExpression[],
+    having?: (p: XRowset<T>) => Condition
   ): Queryable<RowObjectFrom<G>> {
     const rowset = this._sql ? this.sql.as(ROWSET_ALIAS) : this._rowset;
 
-    const sql = select(results(rowset as ProxiedRowset<T>)).groupBy(
-      ...groups(this._rowset as ProxiedRowset<T>)
+    const sql = select(results(rowset as XRowset<T>)).groupBy(
+      ...groups(this._rowset as XRowset<T>)
     );
     if (having) {
-      sql.having(having(rowset as ProxiedRowset<T>));
+      sql.having(having(rowset as XRowset<T>));
     }
     return new Queryable(this.context, undefined, sql.as(ROWSET_ALIAS));
   }
 
   join<J extends Entity, G extends InputObject>(
     entity: EntityConstructor<J>,
-    on: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => Condition,
-    results: (left: ProxiedRowset<T>, right: ProxiedRowset<J>) => G
+    on: (left: XRowset<T>, right: XRowset<J>) => Condition,
+    results: (left: XRowset<T>, right: XRowset<J>) => G
   ): Queryable<RowObjectFrom<G>> {
     const rightRowset = makeRowset(entity);
     const leftRowset = this._sql ? this._sql.as(ROWSET_ALIAS) : this._rowset;
     const newRowset = SQL.select(
-      results(leftRowset as ProxiedRowset<T>, rightRowset as ProxiedRowset<J>)
+      results(leftRowset as XRowset<T>, rightRowset as XRowset<J>)
     )
       .from(this._rowset)
       .join(
         rightRowset,
-        on(leftRowset as ProxiedRowset<T>, rightRowset as ProxiedRowset<J>),
+        on(leftRowset as XRowset<T>, rightRowset as XRowset<J>),
         true
       )
       .as(ROWSET_ALIAS);

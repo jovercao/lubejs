@@ -1,6 +1,6 @@
-import { CompatiableObjectName } from '../../object';
+import { XObjectName } from '../../object';
 import { RowObject } from '../../types';
-import { Select } from '../crud/select';
+import { Select } from '../crud';
 import { Statement, STATEMENT_KIND } from '../statement';
 
 export class CreateView<
@@ -14,9 +14,9 @@ export class CreateView<
     );
   }
   $kind: STATEMENT_KIND.CREATE_VIEW = STATEMENT_KIND.CREATE_VIEW;
-  $name: CompatiableObjectName<N>;
+  $name: XObjectName<N>;
   $body?: Select<T>;
-  constructor(name: CompatiableObjectName<N>) {
+  constructor(name: XObjectName<N>) {
     super();
     this.$name = name;
   }

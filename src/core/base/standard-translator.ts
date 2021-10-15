@@ -1,5 +1,5 @@
 import Decimal from "decimal.js-light";
-import { Star, CompatibleExpression, Scalar, Expression, Numeric, Uuid, DbType, TsTypeOf, CompatiableObjectName, Condition, Time } from "../sql";
+import { Star, XExpression, Scalar, Expression, Numeric, Uuid, DbType, ScalarFromDbType, XObjectName, Condition, Time } from "../sql";
 import { Standard } from "../standard";
 import { DbProvider } from "./db-provider";
 
@@ -12,143 +12,143 @@ export abstract class StandardTranslator implements Standard {
     return this.provider.sqlUtil;
   }
 
-  abstract identityValue(table: CompatibleExpression<string>, column: CompatibleExpression<string>): Expression<number | bigint>;
+  abstract identityValue(table: XExpression<string>, column: XExpression<string>): Expression<number | bigint>;
 
-  abstract count(expr: Star<any> | CompatibleExpression<Scalar>): Expression<number>;
+  abstract count(expr: Star<any> | XExpression<Scalar>): Expression<number>;
 
-  abstract avg<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T>;
+  abstract avg<T extends Numeric>(expr: XExpression<T>): Expression<T>;
 
-  abstract sum<T extends Numeric>(expr: CompatibleExpression<T>): Expression<T>;
+  abstract sum<T extends Numeric>(expr: XExpression<T>): Expression<T>;
 
   abstract max<T extends string | number | bigint | boolean | Decimal | Date | Time | Uuid | null>(expr: Expression<T>): Expression<T>;
 
   abstract min<T extends string | number | bigint | boolean | Decimal | Date | Time | Uuid | null>(expr: Expression<T>): Expression<T>;
 
-  abstract convert<T extends DbType>(expr: CompatibleExpression<Scalar>, toType: T): Expression<TsTypeOf<T>>;
+  abstract convert<T extends DbType>(expr: XExpression<Scalar>, toType: T): Expression<ScalarFromDbType<T>>;
 
   abstract now(): Expression<Date>;
 
   abstract utcNow(): Expression<Date>;
 
-  abstract switchTimezone(date: CompatibleExpression<Date>, offset: CompatibleExpression<string>): Expression<Date>;
+  abstract switchTimezone(date: XExpression<Date>, offset: XExpression<string>): Expression<Date>;
 
-  abstract formatDate(date: CompatibleExpression<Date>, format: string): Expression<string>;
+  abstract formatDate(date: XExpression<Date>, format: string): Expression<string>;
 
-  abstract yearOf(date: CompatibleExpression<Date>): Expression<number>;
+  abstract yearOf(date: XExpression<Date>): Expression<number>;
 
-  abstract monthOf(date: CompatibleExpression<Date>): Expression<number>;
+  abstract monthOf(date: XExpression<Date>): Expression<number>;
 
-  abstract dayOf(date: CompatibleExpression<Date>): Expression<number>;
+  abstract dayOf(date: XExpression<Date>): Expression<number>;
 
-  abstract daysBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract daysBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract monthsBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract monthsBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract yearsBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract yearsBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract hoursBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract hoursBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract minutesBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract minutesBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract secondsBetween(start: CompatibleExpression<Date>, end: CompatibleExpression<Date>): Expression<number>;
+  abstract secondsBetween(start: XExpression<Date>, end: XExpression<Date>): Expression<number>;
 
-  abstract addDays(date: CompatibleExpression<Date>, days: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addDays(date: XExpression<Date>, days: XExpression<Numeric>): Expression<Date>;
 
-  abstract addMonths(date: CompatibleExpression<Date>, months: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addMonths(date: XExpression<Date>, months: XExpression<Numeric>): Expression<Date>;
 
-  abstract addYears(date: CompatibleExpression<Date>, years: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addYears(date: XExpression<Date>, years: XExpression<Numeric>): Expression<Date>;
 
-  abstract addHours(date: CompatibleExpression<Date>, hours: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addHours(date: XExpression<Date>, hours: XExpression<Numeric>): Expression<Date>;
 
-  abstract addMinutes(date: CompatibleExpression<Date>, minutes: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addMinutes(date: XExpression<Date>, minutes: XExpression<Numeric>): Expression<Date>;
 
-  abstract addSeconds(date: CompatibleExpression<Date>, seconds: CompatibleExpression<Numeric>): Expression<Date>;
+  abstract addSeconds(date: XExpression<Date>, seconds: XExpression<Numeric>): Expression<Date>;
 
-  abstract strlen(str: CompatibleExpression<string>): Expression<number>;
+  abstract strlen(str: XExpression<string>): Expression<number>;
 
-  abstract substr(str: CompatibleExpression<string>, start: CompatibleExpression<Numeric>, length: CompatibleExpression<Numeric>): Expression<string>;
+  abstract substr(str: XExpression<string>, start: XExpression<Numeric>, length: XExpression<Numeric>): Expression<string>;
 
-  abstract replace(str: CompatibleExpression<string>, search: CompatibleExpression<string>, to: CompatibleExpression<string>): Expression<string>;
+  abstract replace(str: XExpression<string>, search: XExpression<string>, to: XExpression<string>): Expression<string>;
 
-  abstract trim(str: CompatibleExpression<string>): Expression<string>;
+  abstract trim(str: XExpression<string>): Expression<string>;
 
-  abstract trimEnd(str: CompatibleExpression<string>): Expression<string>;
+  abstract trimEnd(str: XExpression<string>): Expression<string>;
 
-  abstract upper(str: CompatibleExpression<string>): Expression<string>;
+  abstract upper(str: XExpression<string>): Expression<string>;
 
-  abstract lower(str: CompatibleExpression<string>): Expression<string>;
+  abstract lower(str: XExpression<string>): Expression<string>;
 
-  abstract strpos(str: CompatibleExpression<string>, search: CompatibleExpression<string>, startAt?: CompatibleExpression<number>): Expression<number>;
+  abstract strpos(str: XExpression<string>, search: XExpression<string>, startAt?: XExpression<number>): Expression<number>;
 
-  abstract ascii(str: CompatibleExpression<string>): Expression<number>;
+  abstract ascii(str: XExpression<string>): Expression<number>;
 
-  abstract asciiChar(code: CompatibleExpression<number>): Expression<string>;
+  abstract asciiChar(code: XExpression<number>): Expression<string>;
 
-  abstract unicode(str: CompatibleExpression<string>): Expression<number>;
+  abstract unicode(str: XExpression<string>): Expression<number>;
 
-  abstract unicodeChar(code: CompatibleExpression<number>): Expression<string>;
+  abstract unicodeChar(code: XExpression<number>): Expression<string>;
 
-  abstract nvl<T extends Scalar>(value: CompatibleExpression<T>, defaultValue: CompatibleExpression<T>): Expression<T>;
+  abstract nvl<T extends Scalar>(value: XExpression<T>, defaultValue: XExpression<T>): Expression<T>;
 
-  abstract abs<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract abs<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract exp<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract exp<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract ceil<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract ceil<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract floor<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract floor<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract ln<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract ln<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract log<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract log<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
   abstract pi(): Expression<number>;
 
-  abstract power<T extends Numeric>(a: CompatibleExpression<T>, b: CompatibleExpression<Numeric>): Expression<T>;
+  abstract power<T extends Numeric>(a: XExpression<T>, b: XExpression<Numeric>): Expression<T>;
 
-  abstract radians<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract radians<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract degrees<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract degrees<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
   abstract random(): Expression<number>;
 
-  abstract round<T extends Numeric>(value: CompatibleExpression<T>, s?: CompatibleExpression<Numeric>): Expression<T>;
+  abstract round<T extends Numeric>(value: XExpression<T>, s?: XExpression<Numeric>): Expression<T>;
 
-  abstract sign<T extends Numeric>(value: CompatibleExpression<T>): Expression<T>;
+  abstract sign<T extends Numeric>(value: XExpression<T>): Expression<T>;
 
-  abstract sqrt(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract sqrt(value: XExpression<Numeric>): Expression<number>;
 
-  abstract cos(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract cos(value: XExpression<Numeric>): Expression<number>;
 
-  abstract sin(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract sin(value: XExpression<Numeric>): Expression<number>;
 
-  abstract tan(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract tan(value: XExpression<Numeric>): Expression<number>;
 
-  abstract acos(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract acos(value: XExpression<Numeric>): Expression<number>;
 
-  abstract asin(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract asin(value: XExpression<Numeric>): Expression<number>;
 
-  abstract atan(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract atan(value: XExpression<Numeric>): Expression<number>;
 
-  abstract atan2(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract atan2(value: XExpression<Numeric>): Expression<number>;
 
-  abstract cot(value: CompatibleExpression<Numeric>): Expression<number>;
+  abstract cot(value: XExpression<Numeric>): Expression<number>;
 
-  abstract existsTable(table: CompatiableObjectName<string>): Condition;
+  abstract existsTable(table: XObjectName<string>): Condition;
 
   abstract existsDatabase(database: string): Condition;
 
-  abstract existsView(name: CompatiableObjectName<string>): Condition;
+  abstract existsView(name: XObjectName<string>): Condition;
 
-  abstract existsFunction(name: CompatiableObjectName<string>): Condition;
+  abstract existsFunction(name: XObjectName<string>): Condition;
 
-  abstract existsProcedure(name: CompatiableObjectName<string>): Condition;
+  abstract existsProcedure(name: XObjectName<string>): Condition;
 
-  abstract existsSequence(name: CompatiableObjectName<string>): Condition;
+  abstract existsSequence(name: XObjectName<string>): Condition;
 
   abstract currentDatabase(): Expression<string>;
 
   abstract defaultSchema(): Expression<string>;
 
-  abstract sequenceNextValue<T extends Numeric>(sequenceName: CompatiableObjectName<string>): Expression<T>;
+  abstract sequenceNextValue<T extends Numeric>(sequenceName: XObjectName<string>): Expression<T>;
 }

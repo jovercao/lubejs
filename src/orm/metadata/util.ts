@@ -1,5 +1,5 @@
 import { Entity, EntityConstructor } from '../entity';
-import { ProxiedRowset, Table } from '../../core';
+import { XRowset, Table } from '../../core';
 import { isClass } from '../util';
 import {
   EntityMetadata,
@@ -18,15 +18,15 @@ import {
   ForeignRelationMetadata,
 } from './relation-metadata';
 import { metadataStore } from '../metadata-store';
-import { EntityType } from '../types';
-import { DefaultRowObject, ProxiedTable } from '../../core/sql';
+import { EntityType } from '../data-types';
+import { DefaultRowObject, XTable } from '../../core/sql';
 
 const ENTITY_COLUMN_MAPS = new Map<EntityMetadata, Record<string, string>>();
 
 export function aroundRowset<T extends Entity = any>(
-  rowset: ProxiedRowset<T>,
+  rowset: XRowset<T>,
   metadata: EntityMetadata
-): ProxiedRowset<T> {
+): XRowset<T> {
   if (!ENTITY_COLUMN_MAPS.has(metadata)) {
     const map: Record<string, string> = {};
     metadata.columns.forEach(col => {
@@ -45,10 +45,10 @@ export function aroundRowset<T extends Entity = any>(
  */
 export function makeRowset<T extends Entity = any>(
   entity: EntityConstructor<T>
-): ProxiedRowset<DefaultRowObject> {
+): XRowset<DefaultRowObject> {
   const metadata = metadataStore.getEntity(entity);
   if (!metadata) throw new Error(`No metadata found ${entity}`);
-  let rowset: ProxiedRowset<T>;
+  let rowset: XRowset<T>;
   if (isQueryEntity(metadata)) {
     rowset = metadata.sql.as('_') as any;
   } else if (isTableEntity(metadata)) {

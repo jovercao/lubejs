@@ -1,7 +1,7 @@
 import { Scalar, Select } from "../../core";
 import { Entity, EntityConstructor } from "../entity";
 import { ColumnMetadata, EntityMetadata, HasManyMetadata, HasOneMetadata, IndexMetadata, KeyMetadata, TableEntityMetadata } from "../metadata";
-import { DataTypeOf, ScalarType } from "../types";
+import { DataTypeOf, ScalarDataType } from "../data-types";
 import { selectProperty } from "../util";
 import { ContextBuilder } from "./context-builder";
 import { HasManyBuilder } from "./has-many-builder";
@@ -391,7 +391,7 @@ import { TableKeyBuilder } from "./table-key-builder";
       const metadata: ColumnMetadata<P> = {
         kind: 'COLUMN',
         property,
-        type: type as ScalarType,
+        type: type as ScalarDataType,
       } as ColumnMetadata<P>;
       columnBuilder = new PropertyBuilder<T, P>(
         this.contextBuilder,

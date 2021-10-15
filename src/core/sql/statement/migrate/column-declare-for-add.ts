@@ -1,7 +1,7 @@
-import { SQL_SYMBOLE } from '../../sql';
-import { Condition } from '../../condition/condition';
-import { DbType, TsTypeOf } from '../../db-type';
-import { CompatibleExpression, Expression } from '../../expression/expression';
+import { SQL, SQL_SYMBOLE } from '../../sql';
+import { Condition } from '../../condition';
+import { DbType, ScalarFromDbType } from '../../db-type';
+import { XExpression, Expression } from '../../expression';
 import { ColumnDeclare } from './column-declare';
 
 export class ColumnDeclareForAdd<
@@ -9,16 +9,16 @@ export class ColumnDeclareForAdd<
   T extends DbType = DbType
 > extends ColumnDeclare<N, T> {
   static isColumnDeclareForAdd(object: any): object is ColumnDeclareForAdd {
-    return object?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN
+    return object?.$type === SQL_SYMBOLE.CREATE_TABLE_COLUMN;
   }
-  $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
-  $default?: Expression<TsTypeOf<T>>;
+  readonly $type: SQL_SYMBOLE.CREATE_TABLE_COLUMN = SQL_SYMBOLE.CREATE_TABLE_COLUMN;
+  $default?: Expression<ScalarFromDbType<T>>;
 
   $primaryKey?: {
     nonclustered: boolean;
   };
 
-  $calculate?: Expression<TsTypeOf<T>>;
+  $calculate?: Expression<ScalarFromDbType<T>>;
   $identity?: {
     startValue: number;
     increment: number;
@@ -26,8 +26,8 @@ export class ColumnDeclareForAdd<
   // 检查约束
   $check?: Condition;
 
-  as(expr: Expression<TsTypeOf<T>>): this {
-    this.$calculate = expr;
+  as(value: Expression<ScalarFromDbType<T>>): this {
+    this.$calculate = value;
     return this;
   }
   identity(startValue: number = 0, increment: number = 1): this {
@@ -50,8 +50,8 @@ export class ColumnDeclareForAdd<
     return this;
   }
 
-  default(value: CompatibleExpression): this {
-    this.$default = Expression.ensure(value);
+  default(value: XExpression): this {
+    this.$default = Expression.isExpression(value) ? value : SQL.literal(value);
     return this;
   }
 }

@@ -1,14 +1,13 @@
 import assert from 'assert';
-import { CompatibleCondition, Condition } from '../../condition';
-import { CompatibleExpression, Expression } from '../../expression/expression';
-import { TableVariant } from '../../rowset';
-import { CompatibleTable, Table } from '../../rowset/table';
+import { XCondition, Condition } from '../../condition';
+import { Expression } from '../../expression';
+import { TableVariant, XTables, Table } from '../../rowset';
 import { Scalar } from '../../scalar';
+import { SQL } from '../../sql';
 import { InputObject, RowObject } from '../../types';
-import { isPlainObject } from '../../util';
-import { Assignment } from '../programmer/assignment';
 import { Statement, STATEMENT_KIND } from '../statement';
 import { Fromable } from './common/fromable';
+import { Assignment } from '../programmer';
 
 /**
  * Update 语句
@@ -19,7 +18,7 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
 
   readonly $kind: STATEMENT_KIND.UPDATE = STATEMENT_KIND.UPDATE;
 
-  constructor(table: CompatibleTable<T>) {
+  constructor(table: XTables<T>) {
     super();
     const tb =
       Table.isTable(table) || TableVariant.isTableVariant(table)
@@ -51,7 +50,9 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
           ([key, value]: [string, unknown]) =>
             new Assignment(
               this.$table.$field(key as any),
-              Expression.ensure(value as CompatibleExpression)
+              Expression.isExpression(value)
+                ? value
+                : SQL.literal(value as Scalar)
             )
         );
         return this;
@@ -61,9 +62,9 @@ export class Update<T extends RowObject = any> extends Fromable<T> {
     return this;
   }
 
-  protected ensureCondition(condition: CompatibleCondition<T>): Condition {
-    if (isPlainObject(condition)) {
-      return Condition.ensure(condition, this.$table);
+  protected ensureCondition(condition: XCondition<T>): Condition {
+    if (!Condition.isCondition(condition)) {
+      return Condition.parse(condition, this.$table);
     }
     return condition;
   }

@@ -1,8 +1,7 @@
-import { assert } from 'console';
 import DataLoader from 'dataloader';
 import { FetchRelations, RelationKeyOf } from '.';
-import { isStringType, ProxiedRowset, SQL } from '../core';
-import { DefaultRowObject } from '../core/sql';
+import { XRowset, SQL } from '../core';
+import { Condition, DefaultRowObject, XTable } from '../core/sql';
 import { DbContext } from './db-context';
 import {
   Entity,
@@ -20,7 +19,6 @@ import {
   OneToManyMetadata,
   OneToOneMetadata,
   RelationMetadata,
-  TableEntityMetadata,
 } from './metadata';
 import { metadataStore } from './metadata-store';
 import {
@@ -33,6 +31,7 @@ import {
   isTableEntity,
 } from './metadata/util';
 import { Queryable } from './queryable';
+import { DataType } from './data-types';
 
 const REF_ID_ALIAS_NAME = '##REF_ID';
 
@@ -54,17 +53,18 @@ export class EntityMgr<T extends Entity> {
    * 转换成数据库所使用的值
    */
   toDbValue(item: T, column: ColumnMetadata): any {
-    if (
-      (column.type === Object || column.type === Array) &&
-      isStringType(column.dbType)
-    ) {
-      return JSON.stringify(Reflect.get(item, column.property));
-    } else {
-      const value = Reflect.get(item, column.property);
-      // undefined 切换为null
-      if (value === undefined) return null;
-      return value;
-    }
+    return Reflect.get(item, column.property) ?? null;
+    // if (
+    //   (column.type === Object || column.type === Array) &&
+    //   isStringType(column.dbType)
+    // ) {
+    //   return JSON.stringify(Reflect.get(item, column.property));
+    // } else {
+    //   const value = Reflect.get(item, column.property);
+    //   // undefined 切换为null
+    //   if (value === undefined) return null;
+    //   return value;
+    // }
   }
 
   /**
@@ -87,37 +87,199 @@ export class EntityMgr<T extends Entity> {
    * 转换成实体属性值
    */
   toEntityValue(datarow: DefaultRowObject, column: ColumnMetadata): any {
-    if (
-      (column.type === Object || column.type === Array) &&
-      isStringType(column.dbType)
-    ) {
-      return JSON.parse(Reflect.get(datarow, column.columnName));
-    } else {
-      return Reflect.get(datarow, column.columnName);
+    const value = Reflect.get(datarow, column.columnName);
+    return this._toDataType(value, column.type);
+  }
+
+  /**
+   * 获取插入信息
+   */
+  async getInsertValues(
+    rowset: XTable<DefaultRowObject>,
+    item: T
+  ): Promise<any> {
+    const row: any = Object.create(null);
+    for (const column of this.metadata.columns) {
+      if (column.isIdentity || column.isRowflag) continue;
+      if (column.generator) {
+        if (Reflect.get(item, column.property) !== undefined) {
+          console.warn(
+            `Entity ${this.metadata.className} Property ${column.property} is autoGen column, but value found, will override it here.`
+          );
+        }
+        row[column.columnName] = await column.generator(
+          rowset,
+          item,
+          this.context
+        );
+        continue;
+      }
+      if (
+        !Reflect.has(item, column.property) &&
+        (column.isImplicit || column.defaultValue)
+      ) {
+        continue;
+      }
+      row[column.columnName] = this.toDbValue(item, column);
     }
+  }
+
+  /**
+   * 获取更新信息
+   */
+  async getUpdateChanges(
+    rowset: XTable<DefaultRowObject>,
+    item: T
+  ): Promise<any> {
+    const changes: any = {};
+    for (const column of this.metadata.columns) {
+      if (column.isIdentity || column.isPrimaryKey || column.isRowflag)
+        continue;
+      if (column.isImplicit && !Reflect.has(item, column.property)) continue;
+      changes[column.columnName] = this.toDbValue(item, column);
+    }
+    return changes;
+  }
+
+  /**
+   * 获取定位查询条件（仅查询）
+   * @param item
+   * @returns
+   */
+  getQueryWhere(rowset: XTable<DefaultRowObject>, item: T): Condition {
+    const keyValue = Reflect.get(item, this.metadata.key!.property);
+    if (keyValue === undefined) {
+      throw new Error(
+        `Key property ${this.metadata.key!.property} is undefined.`
+      );
+    }
+    const condition: Condition = rowset
+      .$field(this.metadata.key!.property as any)
+      .eq(keyValue);
+    return condition;
+  }
+
+  getUpdateWhere(rowset: XTable<DefaultRowObject>, item: T): Condition {
+    const keyValue = Reflect.get(item, this.metadata.key!.property);
+    if (keyValue === undefined) {
+      throw new Error(
+        `Key property ${this.metadata.key!.property} is undefined.`
+      );
+    }
+    let condition: Condition = rowset
+      .$field(this.metadata.key!.property)
+      .eq(keyValue);
+    if (this.metadata.rowflagColumn) {
+      const rowflagValue = Reflect.get(
+        item,
+        this.metadata.rowflagColumn.property
+      );
+      if (rowflagValue === undefined) {
+        throw new Error(
+          `Rowflag property ${this.metadata.rowflagColumn.property} is undefined.`
+        );
+      }
+      condition = condition.and(
+        rowset.$field(this.metadata.rowflagColumn.property).eq(rowflagValue)
+      );
+    }
+    return condition;
+  }
+
+  getKey(item: T): EntityKeyType {
+    return Reflect.get(item, this.metadata.key!.property);
+  }
+
+  // _toScalar(value: any, type: DbType): any {
+  //   switch(type.name) {
+  //     case 'BINARY':
+  //       return isBinary(value) ? value : Buffer.from(value);
+  //     case 'BOOLEAN':
+  //       return Boolean(value);
+  //     case 'STRING':
+  //       return String(value);
+  //     case 'INT8':
+  //     case 'INT16':
+  //     case 'INT32':
+  //     case 'FLOAT':
+  //     case 'DOUBLE':
+  //       return Number(value);
+  //     case 'INT64':
+  //       return BigInt(value);
+  //     case 'DATE':
+  //     case 'DATETIME':
+  //     case 'DATETIMEOFFSET':
+  //       return new Date(value);
+  //     case 'TIME':
+  //       return value instanceof Time ? value : new Time(value);
+  //     case 'DECIMAL':
+  //       return value instanceof Decimal ? value : new Decimal(value);
+  //     case 'UUID':
+  //       return value instanceof Uuid ? value : new Uuid(value);
+  //     case 'JSON':
+  //       return
+  //   }
+  // }
+
+  _toDataType(value: any, type: DataType): any {
+    if (Array.isArray(type)) {
+      if (typeof value === 'string') {
+        value = JSON.parse(value);
+      }
+      if (!Array.isArray(value)) {
+        throw new Error(`Error db type for proerty type.`);
+      }
+      return value.map((v: any) => this._toDataType(v, type[0]));
+    }
+    if (value === null) return null;
+
+    if (type === BigInt) {
+      return BigInt(value);
+    }
+    if (type === Number) {
+      return Number(value);
+    }
+    if (type === String) {
+      return String(value);
+    }
+    if (type === Boolean) {
+      return Boolean(value);
+    }
+
+    if (value instanceof type) {
+      return value;
+    }
+    return new (type as new (o: any) => any)(value);
   }
 
   /**
    * 将数据库记录转换为实体实例
    */
-  toEntity(datarow: DefaultRowObject, item?: T): T {
-    if (!item) {
-      item = new this.metadata.class() as any;
-    }
-    for (const column of this.metadata.columns) {
-      const itemValue = this.toEntityValue(datarow, column);
-      // 如果是隐式属性，则声明为不可见属性
-      if (column.isImplicit) {
-        Reflect.defineProperty(item!, column.property, {
-          enumerable: false,
-          value: itemValue,
-          writable: true,
-        });
-      } else {
-        Reflect.set(item!, column.property, itemValue);
+  toEntity(datarow: DefaultRowObject, item?: T): EntityInstance<T> {
+    if (this.metadata) {
+      if (!item) {
+        item = new this.metadata.class() as any;
       }
+      for (const column of this.metadata.columns) {
+        const itemValue = this.toEntityValue(datarow, column);
+        // 如果是隐式属性，则声明为不可见属性
+        if (column.isImplicit) {
+          Reflect.defineProperty(item!, column.property, {
+            enumerable: false,
+            value: itemValue,
+            writable: true,
+          });
+        } else {
+          Reflect.set(item!, column.property, itemValue);
+        }
+      }
+    } else {
+      if (!item) {
+        item = new Entity() as T;
+      }
+      Object.assign(item, datarow);
     }
-    return item!;
+    return item! as any;
   }
 
   public getKeyValue(item: EntityInstance<T> | T): EntityKeyType {
@@ -160,7 +322,7 @@ export class EntityMgr<T extends Entity> {
       loader = new DataLoader(
         async (keys: EntityKeyType[]) => {
           const result = await this.queryable(options)
-            .filter((p: ProxiedRowset<any>) =>
+            .filter((p: XRowset<any>) =>
               p[relation.foreignProperty].in(keys)
             )
             .fetchAll();
@@ -207,7 +369,7 @@ export class EntityMgr<T extends Entity> {
       loader = new DataLoader(
         async (keys: EntityKeyType[]) => {
           const data = await this.queryable(options)
-            .filter((p: ProxiedRowset<any>) =>
+            .filter((p: XRowset<any>) =>
               p[this.metadata.key!.property].in(keys)
             )
             .fetchAll();
@@ -350,8 +512,8 @@ export class EntityMgr<T extends Entity> {
           Reflect.defineProperty(items[index], relation.property, {
             enumerable: false,
             value: data,
-            writable: true
-          })
+            writable: true,
+          });
         } else {
           Reflect.set(items[index], relation.property, data);
         }
