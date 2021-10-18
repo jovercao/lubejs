@@ -30,12 +30,12 @@ export class CreateSequence<
   }
 
   startWith(value: number | Literal<number>): this {
-    this.$startValue = Literal.ensureLiterial(value);
+    this.$startValue = Literal.ensureLiteral(value);
     return this;
   }
 
   incrementBy(value: number | Literal<number>): this {
-    this.$increment = Literal.ensureLiterial(value);
+    this.$increment = Literal.ensureLiteral(value);
     return this;
   }
 }

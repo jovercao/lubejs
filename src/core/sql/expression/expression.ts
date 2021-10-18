@@ -288,7 +288,7 @@ export abstract class Expression<T extends Scalar = Scalar>
   }
 
   static ensureExpression<T extends Scalar>(value: XExpression<T>): Expression<T> {
-    return Expression.isExpression(value) ? value : Literal.ensureLiterial(value);
+    return Expression.isExpression(value) ? value : Literal.ensureLiteral(value);
   }
 }
 // 避免循环引用问题

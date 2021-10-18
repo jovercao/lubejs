@@ -4,7 +4,13 @@ import { SQL } from '../../sql';
 import { AsScalarType, InputObject, RowObject } from '../../types';
 import { Star } from '../../object/star';
 import type { Condition } from '../../condition';
-import { XExpression, Expression, ValuedSelect, Field } from '../../expression';
+import {
+  XExpression,
+  Expression,
+  ValuedSelect,
+  Field,
+  Literal,
+} from '../../expression';
 import {
   XWithSelect,
   WithSelect,
@@ -59,8 +65,12 @@ export class Select<T extends RowObject = any> extends Fromable {
       const results = columns[0];
       this.$columns = Object.entries(results as InputObject<T>).map(
         ([name, expr]: [string, unknown]) => {
+          if (Literal.isLiteral(expr) && !expr.$dbType) {
+            expr.fitType();
+          }
           return new SelectColumn(
             name,
+            // 选择项需要转换成目标类型，避免返回类型不对的问题
             Expression.isExpression(expr) ? expr : SQL.literal(expr as Scalar)
           );
         }
@@ -73,7 +83,7 @@ export class Select<T extends RowObject = any> extends Fromable {
       columns as (XExpression<Scalar> | SelectColumn<Scalar, string>)[]
     ).map(item => {
       if (Field.isField(item)) {
-        return item.as();
+        return item.as(item.$name);
       }
       if (Star.isStar(item) || SelectColumn.isSelectColumn(item)) {
         return item;

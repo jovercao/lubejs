@@ -1,7 +1,7 @@
 import { SQL_SYMBOLE } from '../sql';
 import { Field } from '../expression';
 import { ColumnsOf, DataRowValueType, RowObject } from '../types';
-import { Rowset } from './rowset';
+import { Rowset, XRowset } from './rowset';
 import { DbType } from '../db-type';
 import type { Condition } from '../condition';
 
@@ -23,15 +23,24 @@ export class TableVariant<T extends RowObject = any> extends Rowset<T> {
   constructor(name: string) {
     super();
     this.$name = name;
-    // TIPS: Rowset 因为代理原因，不可直接继承
-    this.body = (members: TableVariantMember[]): this => {
-      this.$body = members;
-      return this;
-    };
     this.$proxy();
   }
 
-  body!: (members: TableVariantMember[]) => this;
+  /**
+   * 创建用于查询的别名
+   */
+  as(alias: string): XRowset<T>;
+  /**
+   * 表变量成员声明
+   */
+  as(members: TableVariantMember[]): this;
+  as(members: string | TableVariantMember[]): this | XRowset<T> {
+    if (typeof members === 'string') {
+      return super.as(members);
+    }
+    this.$body = members;
+    return this;
+  }
 }
 
 export type XTableVariant<T extends RowObject = RowObject> = TableVariant<T> &
@@ -48,7 +57,7 @@ export function createTableVariant<T extends RowObject = any>(
   if (typeof members === 'function') {
     members = members(createTableVariant);
   }
-  return new TableVariant(name).body(members) as XTableVariant<T>;
+  return new TableVariant(name).as(members) as XTableVariant<T>;
 }
 
 createTableVariant.primaryKey = (name?: string): PrimaryKey => {

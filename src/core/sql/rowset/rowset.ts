@@ -30,7 +30,7 @@ export abstract class Rowset<
    * 继承Rowset后必须在调用此函数，以达到创建代理Rowset的目的。
    */
   protected $proxy(): XRowset<T> {
-    const proxied_proto = new Proxy(Object.create(this.constructor.prototype), {
+    const proxied_proto = new Proxy(Object.create(Object.getPrototypeOf(this)), {
       get: (proto: any, key: string | number | symbol) => {
         if (key in proto) {
           return Reflect.get(proto, key, this);

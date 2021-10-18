@@ -32,13 +32,13 @@ export class CreateTable<N extends string = string> extends Statement {
   /**
    * 定义表成员，使用构造器
    */
-  body(build: (builder: CreateTableBuilder) => CreateTableMember[]): this;
+  as(build: (builder: CreateTableBuilder) => CreateTableMember[]): this;
   /**
    * 定义表成员，使用表成员变量
    */
-  body(...members: CreateTableMember[]): this;
-  body(members: CreateTableMember[]): this;
-  body(
+  as(...members: CreateTableMember[]): this;
+  as(members: CreateTableMember[]): this;
+  as(
     ...members:
       | [(builder: CreateTableBuilder) => CreateTableMember[]]
       | CreateTableMember[]
@@ -51,7 +51,7 @@ export class CreateTable<N extends string = string> extends Statement {
       members = members[0];
     }
     if (typeof members[0] === 'function') {
-      this.body(...members[0](createTable));
+      this.as(...members[0](createTable));
       return this;
     }
     this.$body = members as CreateTableMember[];
@@ -78,7 +78,7 @@ export function createTable<N extends string>(
 ): CreateTable<N> {
   let result = new CreateTable(name);
   if (members) {
-    result = result.body(members as any);
+    result = result.as(members as any);
   }
   return result;
 }

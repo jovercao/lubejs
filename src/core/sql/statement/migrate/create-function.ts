@@ -143,7 +143,7 @@ export class CreateFunction<
     return this;
   }
 
-  body(
+  as(
     ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
   ): this {
     if (typeof sql[0] === 'function') {

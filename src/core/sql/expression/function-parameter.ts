@@ -16,7 +16,7 @@ export class FunctionParameter<
     this.$name = name;
     this.$dbType = dataType;
     if (defaultValue) {
-      this.$default = Literal.ensureLiterial(defaultValue);
+      this.$default = Literal.ensureLiteral(defaultValue);
     }
   }
   $dbType: DbType;

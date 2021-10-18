@@ -10,7 +10,8 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
   constructor(value: T, dbType?: DbTypeFromScalar<T>) {
     super();
     this.$value = value;
-    this.$dbType = dbType ? dbType : Literal.parseValueType(value);
+    // this.$dbType = dbType ? dbType : Literal.parseValueType(value);
+    this.$dbType = dbType;
   }
 
   readonly $type: SQL_SYMBOLE.LITERAL = SQL_SYMBOLE.LITERAL;
@@ -19,7 +20,7 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
    * 实际值
    */
   readonly $value: T;
-  readonly $dbType?: DbType;
+  $dbType?: DbType;
   static isLiteral(object: any): object is Literal {
     return object?.$type === SQL_SYMBOLE.LITERAL;
   }
@@ -28,12 +29,14 @@ export class Literal<T extends Scalar = Scalar> extends Expression<T> {
     return this.$value;
   }
 
-  static isLiterial(object: any): object is Literal<any> {
-    return object?.$type === SQL_SYMBOLE.LITERAL;
+  fitType() {
+    if (!this.$dbType) {
+      this.$dbType = Literal.parseValueType(this.$value);
+    }
   }
 
-  static ensureLiterial<T extends Scalar>(value: T | Literal<T>): Literal<T> {
-    return Literal.isLiterial(value) ? value : new Literal(value);
+  static ensureLiteral<T extends Scalar>(value: T | Literal<T>): Literal<T> {
+    return Literal.isLiteral(value) ? value : new Literal(value);
   }
 
   /**

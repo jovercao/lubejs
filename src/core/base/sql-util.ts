@@ -672,6 +672,13 @@ export abstract class SqlUtil {
     params?: Set<Parameter<Scalar, string>>,
     parent?: SQL
   ): string {
+    if (SelectColumn.isSelectColumn(column)) {
+      return `${this.sqlifyExpression(
+        column.$expr,
+        params,
+        column
+      )} AS ${this.quoted(column.$name)}`;
+    }
     if (Raw.isRaw(column)) {
       return column.$sql;
     }
@@ -681,12 +688,9 @@ export abstract class SqlUtil {
     if (Star.isStar(column)) {
       return this.sqlifyStar(column);
     }
-    if (SelectColumn.isSelectColumn(column)) {
-      return `${this.sqlifyExpression(
-        column.$expr,
-        params,
-        column
-      )} AS ${this.quoted(column.$name)}`;
+    if (Literal.isLiteral(column)) {
+      // 自动附带常量返回类型
+      return this.sqlifyLiteral(column.$value, column.$dbType || Literal.parseValueType(column.$value))
     }
     return this.sqlifyExpression(column, params, parent);
   }

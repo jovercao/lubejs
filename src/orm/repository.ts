@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/ban-types */
-import { XTable, Condition, isScalar, SQL, Executor } from '../core';
+import { XTable, SQL, Executor, DefaultRowObject, isBaseScalar } from '../core';
 import { Queryable } from './queryable';
 import {
   ColumnMetadata,
@@ -23,7 +23,6 @@ import {
   FetchRelations,
   RelationKeyOf,
   RepositoryEventHandler,
-  ScalarDataType,
 } from './data-types';
 import {
   isForeignOneToOne,
@@ -36,7 +35,6 @@ import {
 } from './metadata/util';
 import { metadataStore } from './metadata-store';
 import { EntityMgr } from './entity-mgr';
-import { DefaultRowObject } from '../core/sql';
 import { mergeFetchRelations } from './util';
 
 // TODO: 依赖注入Repository事务传递, 首先支持三种选项，1.如果有事务则使用无则开启 2.必须使用新事务 3.从不使用事务 【4.嵌套事务,在事务内部开启一个子事务】
@@ -238,7 +236,7 @@ export class Repository<T extends Entity> {
     options?: DeleteOptions
   ): Promise<void> {
     let items: T[];
-    if (isScalar(data)) {
+    if (isBaseScalar(data)) {
       const item = await this.get(data);
       if (!item) {
         throw new Error(

@@ -141,7 +141,7 @@ export class AlterFunction<
   /**
    * 定义函数体
    */
-  body(
+  as(
     ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
   ): this {
     if (typeof sql[0] === 'function') {

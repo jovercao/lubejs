@@ -94,7 +94,7 @@ export class Insert<T extends RowObject = any> extends Statement {
     const fields = this.$fields.map(field => field.$name);
 
     return items.map((item: any) => {
-      return fields.map(fieldName => SQL.literal(item[fieldName]));
+      return fields.map(fieldName => SQL.literal(item[fieldName] === undefined ? null : item[fieldName]));
     });
   }
 
@@ -122,7 +122,7 @@ export class Insert<T extends RowObject = any> extends Statement {
         ]
   ): this {
     assert(!this.$values, 'Values is exists.');
-    assert(args.length > 0, 'rows must more than one elements.');
+    assert(args.length > 0 && !(args.length === 1 && !args[0]), 'rows must more than one elements.');
 
     // args: [Select<T>]
     if (args.length === 1 && Select.isSelect(args[0])) {
@@ -154,7 +154,6 @@ export class Insert<T extends RowObject = any> extends Statement {
       this.$values = this._values(args[0] as InputObject<T>[]);
       return this;
     }
-
     assert(this.$fields, `Must call .fields() first, when use array values.`);
 
     // args: [Scalar[][]]

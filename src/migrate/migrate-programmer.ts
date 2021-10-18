@@ -798,7 +798,7 @@ export class ProgramMigrateScripter extends MigrateScripter<string> {
     }
     const sql = `builder.createTable(${this.namify(
       table
-    )}).body(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
+    )}).as(builder => [\n      ${members.join(`,\n      `)}\n    ])`;
     this.middleCodes.push(sql);
   }
 

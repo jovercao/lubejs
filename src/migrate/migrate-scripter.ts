@@ -545,7 +545,7 @@ export class StatementMigrateScripter extends MigrateScripter<Statement> {
 
   createTable(table: TableSchema): void {
     this.middleCodes.push(
-      this.builder.createTable(table).body(g => [
+      this.builder.createTable(table).as(g => [
         ...table.columns.map(schema =>
           this.tableColumnForAdd(g.column, schema)
         ),

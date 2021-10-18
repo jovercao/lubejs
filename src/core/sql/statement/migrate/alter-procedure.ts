@@ -135,7 +135,7 @@ export class AlterProcedure<
     return this as any;
   }
 
-  body(
+  as(
     ...sql: [Statement[]] | Statement[] | [(params: P) => Statement[]]
   ): this {
     if (typeof sql[0] === 'function') {

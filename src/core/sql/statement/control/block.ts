@@ -6,20 +6,20 @@ import { Statement, STATEMENT_KIND } from '../statement';
  */
 export class Block extends Statement {
   $kind: STATEMENT_KIND.BLOCK = STATEMENT_KIND.BLOCK;
-  $statements: Statement[];
+  $body: Statement[];
   $declares?: Declare;
 
   constructor(statements: Statement[], declares?: Declare) {
     super();
-    this.$statements = statements;
+    this.$body = statements;
     this.$declares = declares;
   }
 
   append(...statements: Statement[]) {
-    if (!this.$statements) {
-      this.$statements = [];
+    if (!this.$body) {
+      this.$body = [];
     }
-    this.$statements.push(...statements);
+    this.$body.push(...statements);
   }
 
   static isBlock(object: any): object is Block {

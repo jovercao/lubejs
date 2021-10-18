@@ -122,6 +122,7 @@ export class EntityMgr<T extends Entity> {
       }
       row[column.columnName] = this.toDbValue(item, column);
     }
+    return row;
   }
 
   /**
